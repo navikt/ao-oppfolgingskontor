@@ -1,0 +1,18 @@
+name: Deploy ao-oppfolgingskontor feature branch to dev
+run-name:  Deploy ao-oppfolgingskontor feature branch ${{ github.ref_name }} to dev by @${{ github.actor }}
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+jobs:
+  dev:
+    name: Deploy to dev
+    uses: ./.github/workflows/deploy.yml
+    secrets: inherit
+    with:
+      env: dev
