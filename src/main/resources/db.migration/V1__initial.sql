@@ -4,7 +4,7 @@ CREATE TABLE arbeidsoppfolgingskontor (
     endretAv VARCHAR(20),
     endretAvType VARCHAR(20),
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE arenakontor (
@@ -13,7 +13,7 @@ CREATE TABLE arenakontor (
     endretAv VARCHAR(20),
     endretAvType VARCHAR(20),
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE geografisktilknytningkontor (
@@ -22,12 +22,12 @@ CREATE TABLE geografisktilknytningkontor (
     endretAv VARCHAR(20),
     endretAvType VARCHAR(20),
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE aktorid (
     fnr VARCHAR(11) PRIMARY KEY,
-    aktorid VARCHAR(13),
+    aktorid VARCHAR(13)
 );
 
 CREATE TABLE kontorhistorikk (
@@ -36,5 +36,5 @@ CREATE TABLE kontorhistorikk (
     endretAv VARCHAR(20),
     endretAvType VARCHAR(20),
     kontorendringstype VARCHAR(255),
-    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
