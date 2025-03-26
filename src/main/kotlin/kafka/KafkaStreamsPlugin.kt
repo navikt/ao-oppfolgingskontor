@@ -1,12 +1,13 @@
 package no.nav.kafka
 
-import io.ktor.client.plugins.api.MonitoringEvent
 import io.ktor.events.EventDefinition
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationPlugin
 import io.ktor.server.application.ApplicationStarted
 import io.ktor.server.application.ApplicationStopping
 import io.ktor.server.application.createApplicationPlugin
+import io.ktor.server.application.hooks.MonitoringEvent
+import io.ktor.server.application.log
 import org.apache.kafka.streams.KafkaStreams
 import java.time.Duration
 
