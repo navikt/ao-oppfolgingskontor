@@ -7,6 +7,8 @@ kafka-streams = "4.0.0"
 ktor-version = "3.1.1"
 logback-version = "1.4.14"
 postgres-version = "42.7.5"
+flyway-version = "11.5.0"
+hikari-version = "6.3.0"
 
 [libraries]
 ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor-version" }
@@ -29,6 +31,8 @@ ktor-server-config-yaml = { module = "io.ktor:ktor-server-config-yaml", version.
 ktor-server-test-host = { module = "io.ktor:ktor-server-test-host", version.ref = "ktor-version" }
 kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin-version" }
 kafka-streams = { module = "org.apache.kafka:kafka-streams", version.ref = "kafka-streams" }
+flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway-version" }
+hikaricp = { module = "com.zaxxer:HikariCP", version = "hikari-version" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-version" }
