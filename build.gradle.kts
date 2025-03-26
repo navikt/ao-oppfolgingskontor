@@ -5,7 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.plugin.serialization)
 }
 
-group = "no.nav"
+group = "dab.poao.nav.no"
 version = "0.0.1"
 
 application {
