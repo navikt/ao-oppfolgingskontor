@@ -16,7 +16,7 @@ import org.apache.kafka.streams.processor.api.ProcessorSupplier
 import org.apache.kafka.streams.processor.api.Record
 import java.util.Properties
 
-suspend fun startKafkaStreams(topic: String, processRecord: ProcessRecord, config: KafkaAuthenticationConfig): KafkaStreams {
+suspend fun startKafkaStreams(topic: String, config: KafkaAuthenticationConfig, processRecord: ProcessRecord,): KafkaStreams {
     return withContext(Dispatchers.IO) {
         val config = Properties().apply {
             put(StreamsConfig.APPLICATION_ID_CONFIG, "ktor-kafka-stream-app")
