@@ -20,7 +20,7 @@ data class NaisKafkaEnv(
 )
 
 fun ApplicationConfig.toKafkaEnv() : NaisKafkaEnv {
-    NaisKafkaEnv(
+    return NaisKafkaEnv(
         KAFKA_BROKERS = property("kafka.brokers").getString(),
         KAFKA_SCHEMA_REGISTRY = property("kafka.schema-registry").getString(),
         KAFKA_SCHEMA_REGISTRY_USER = property("kafka.schema-registry-user").getString(),

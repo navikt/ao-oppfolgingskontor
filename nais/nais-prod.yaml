@@ -32,6 +32,8 @@ spec:
     requests:
       cpu: 200m
       memory: 768Mi
+  kafka:
+    pool: nav-prod
   observability:
     autoInstrumentation:
       enabled: true

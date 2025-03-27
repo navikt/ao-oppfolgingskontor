@@ -1,8 +1,6 @@
 package no.nav.kafka.processor
 
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.SerializationException
-import no.nav.kafka.TopicChannels.endringPaOppfolgingsBrukerChannel
 import org.apache.kafka.streams.processor.api.Processor
 import org.apache.kafka.streams.processor.api.ProcessorContext
 import org.apache.kafka.streams.processor.api.Record
