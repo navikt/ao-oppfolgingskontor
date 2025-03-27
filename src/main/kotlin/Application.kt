@@ -1,6 +1,7 @@
 package no.nav
 
 import io.ktor.server.application.*
+import io.ktor.server.engine.*
 import no.nav.db.FlywayPlugin
 import no.nav.kafka.KafkaAuthenticationConfig
 import no.nav.kafka.KafkaStreamsPlugin
@@ -18,16 +19,5 @@ fun Application.module() {
     configureSecurity()
     configureRouting()
     install(FlywayPlugin)
-
-    val config = KafkaAuthenticationConfig(
-        truststorePath = "path/to/truststore.jks",
-        keystorePath = "path/to/keystore.p12",
-        credstorePassword = "password"
-    )
-
-    install(KafkaStreamsPlugin) {
-        kafkaStreams = listOf(
-            startKafkaStreams("loltopic", config) { record -> println(record.value()) }
-        )
-    }
+    install(KafkaStreamsPlugin)
 }

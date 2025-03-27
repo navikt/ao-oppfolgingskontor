@@ -23,7 +23,9 @@ class KafkaStreamsPluginConfig {
 
 val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
     createApplicationPlugin("KafkaStreams", ::KafkaStreamsPluginConfig) {
-        val kafkaStreams = requireNotNull(pluginConfig.kafkaStreams) { "KafkaStreams er null" }
+        val naisKafkaConfig = environment.config.toKafkaEnv()
+        val kafkaStreams = startKafkaStreams(environment.config.property("topic.in").getList(), naisKafkaConfig, { })
+
         val shutDownTimeout = pluginConfig.shutDownTimeout ?: Duration.ofSeconds(1)
 
         on(MonitoringEvent(ApplicationStarted)) { application ->

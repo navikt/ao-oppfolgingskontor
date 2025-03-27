@@ -16,30 +16,23 @@ import org.apache.kafka.streams.processor.api.ProcessorSupplier
 import org.apache.kafka.streams.processor.api.Record
 import java.util.Properties
 
-suspend fun startKafkaStreams(topic: String, config: KafkaAuthenticationConfig, processRecord: ProcessRecord,): KafkaStreams {
+suspend fun startKafkaStreams(topics: List<String>, naisKafkaEnv: NaisKafkaEnv, processRecord: ProcessRecord): KafkaStreams {
     return withContext(Dispatchers.IO) {
         val config = Properties().apply {
-            put(StreamsConfig.APPLICATION_ID_CONFIG, "ktor-kafka-stream-app")
+            put(StreamsConfig.APPLICATION_ID_CONFIG, )
             put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092")
             put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().javaClass.name)
             put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().javaClass.name)
             put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, "1000") // Control commit interval
-            put(StreamsConfig.producerPrefix(ProducerConfig.RETRIES_CONFIG), "5") // Enable retries
+            put(StreamsConfig.producerPrefix(ProducerConfig.RETRIES_CONFIG), Int.MAX_VALUE) // Enable retries
             put(StreamsConfig.producerPrefix(ProducerConfig.ACKS_CONFIG), "all") // Ensure strong consistency
             put(StreamsConfig.PRODUCTION_EXCEPTION_HANDLER_CLASS_CONFIG, RetryProductionExceptionHandler::class.java.name)
             put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SSL")
-            put(SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG, "JKS")
-            put(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, config.truststorePath)
-            put(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, config.credstorePassword)
-            put(SslConfigs.SSL_KEYSTORE_TYPE_CONFIG, "PKCS12")
-            put(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, config.keystorePath)
-            put(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG, config.credstorePassword)
-            put(SslConfigs.SSL_KEY_PASSWORD_CONFIG, config.credstorePassword)
-            put(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, "")
+            securityConfig(config)
         }
 
         val builder = StreamsBuilder()
-        val sourceStream = builder.stream<String, String>(topic)
+        val sourceStream = builder.stream<String, String>(topics)
 
         sourceStream.process(object : ProcessorSupplier<String, String, String, String> {
             override fun get(): Processor<String, String, String, String> {
@@ -48,6 +41,17 @@ suspend fun startKafkaStreams(topic: String, config: KafkaAuthenticationConfig, 
         })
         KafkaStreams(builder.build(), config).apply { start() }
     }
+}
+
+private fun Properties.securityConfig(config: KafkaAuthenticationConfig) {
+    put(SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG, "JKS")
+    put(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, config.truststorePath)
+    put(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, config.credstorePassword)
+    put(SslConfigs.SSL_KEYSTORE_TYPE_CONFIG, "PKCS12")
+    put(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, config.keystorePath)
+    put(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG, config.credstorePassword)
+    put(SslConfigs.SSL_KEY_PASSWORD_CONFIG, config.credstorePassword)
+    put(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, "")
 }
 
 class UnhandledRecordProcessingException(cause: Throwable): Exception("Unhandled record processing exception", cause)

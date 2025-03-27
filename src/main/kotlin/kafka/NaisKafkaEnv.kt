@@ -19,7 +19,7 @@ data class NaisKafkaEnv(
     val AIVEN_SECRET_UPDATED: String, // A timestamp of when the secret was created
 )
 
-fun ApplicationConfig.toKafkaEnv() {
+fun ApplicationConfig.toKafkaEnv() : NaisKafkaEnv {
     NaisKafkaEnv(
         KAFKA_BROKERS = property("kafka.brokers").getString(),
         KAFKA_SCHEMA_REGISTRY = property("kafka.schema-registry").getString(),

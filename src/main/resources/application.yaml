@@ -1,3 +1,5 @@
+appName: "$NAIS_APP_NAME"
+
 ktor:
     application:
         modules:
@@ -26,3 +28,8 @@ kafka:
   keystore-path: "$KAFKA_KEYSTORE_PATH"
   truststore-path: "$KAFKA_TRUSTSTORE_PATH"
   secret-updated: "$AIVEN_SECRET_UPDATED"
+
+topics:
+  in:
+    - "pto.endring-paa-oppfolgingsbruker-v2"
+  out:
