@@ -35,6 +35,7 @@ dependencies {
     implementation(libs.ktor.server.auth)
     implementation(libs.ktor.server.auth.jwt)
     implementation(libs.ktor.server.netty)
+    implementation(libs.logstash)
     implementation(libs.flyway.core)
     implementation(libs.hikaricp)
     implementation(libs.logback.classic)

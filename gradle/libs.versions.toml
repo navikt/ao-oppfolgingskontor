@@ -9,6 +9,7 @@ logback-version = "1.4.14"
 postgres-version = "42.7.5"
 flyway-version = "11.5.0"
 hikari-version = "6.3.0"
+logstash-version = "8.0"
 
 [libraries]
 ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor-version" }
@@ -33,6 +34,7 @@ kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version
 kafka-streams = { module = "org.apache.kafka:kafka-streams", version.ref = "kafka-streams" }
 flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway-version" }
 hikaricp = { module = "com.zaxxer:HikariCP", version.ref = "hikari-version" }
+logstash = { module = "net.logstash.logback:logstash-logback-encoder", version.ref = "logstash-version" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-version" }
