@@ -10,4 +10,4 @@ WORKDIR /app
 COPY build/libs/*.jar ./
 EXPOSE 8080
 USER nonroot
-CMD ["dab.poao.nav.no.ao-oppfolgingskontor-all.jar"]
+CMD ["ao-oppfolgingskontor-all.jar"]
