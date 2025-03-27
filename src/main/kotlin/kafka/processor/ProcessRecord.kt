@@ -1,5 +1,6 @@
 package no.nav.kafka.processor
 
+import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.streams.processor.api.Record
 
 enum class RecordProcessingResult {
@@ -8,4 +9,4 @@ enum class RecordProcessingResult {
     SKIP
 }
 
-typealias ProcessRecord = suspend (record: Record<String, String>) -> RecordProcessingResult
+typealias ProcessRecord = (record: Record<String, String>) -> RecordProcessingResult

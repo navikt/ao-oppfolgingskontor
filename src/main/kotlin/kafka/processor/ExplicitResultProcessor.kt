@@ -1,6 +1,8 @@
 package no.nav.kafka.processor
 
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.SerializationException
+import no.nav.kafka.TopicChannels.endringPaOppfolgingsBrukerChannel
 import org.apache.kafka.streams.processor.api.Processor
 import org.apache.kafka.streams.processor.api.ProcessorContext
 import org.apache.kafka.streams.processor.api.Record
@@ -17,7 +19,9 @@ class ExplicitResultProcessor(val processRecord: ProcessRecord): Processor<Strin
         this.context = context
     }
     override fun process(record: Record<String, String>) {
-        runCatching { processRecord(record) }
+        runCatching {
+            processRecord(record)
+        }
             .onSuccess {
                 when (it) {
                     RecordProcessingResult.COMMIT -> context.commit()
