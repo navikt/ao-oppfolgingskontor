@@ -32,7 +32,7 @@ ktor-server-test-host = { module = "io.ktor:ktor-server-test-host", version.ref 
 kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin-version" }
 kafka-streams = { module = "org.apache.kafka:kafka-streams", version.ref = "kafka-streams" }
 flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway-version" }
-hikaricp = { module = "com.zaxxer:HikariCP", version = "hikari-version" }
+hikaricp = { module = "com.zaxxer:HikariCP", version.ref = "hikari-version" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-version" }
