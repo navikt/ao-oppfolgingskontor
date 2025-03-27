@@ -8,7 +8,8 @@ import io.ktor.server.application.ApplicationStopping
 import io.ktor.server.application.createApplicationPlugin
 import io.ktor.server.application.hooks.MonitoringEvent
 import io.ktor.server.application.log
-import org.apache.kafka.streams.KafkaStreams
+import no.nav.kafka.config.configureStream
+import no.nav.kafka.processor.RecordProcessingResult
 import java.time.Duration
 
 val KafkaStreamsStarting: EventDefinition<Application> = EventDefinition()
@@ -16,17 +17,14 @@ val KafkaStreamsStarted: EventDefinition<Application> = EventDefinition()
 val KafkaStreamsStopping: EventDefinition<Application> = EventDefinition()
 val KafkaStreamsStopped: EventDefinition<Application> = EventDefinition()
 
-class KafkaStreamsPluginConfig {
-    var kafkaStreams: List<KafkaStreams>? = null
-    var shutDownTimeout: Duration? = null
-}
+val KafkaStreamsPlugin: ApplicationPlugin<Unit> =
+    createApplicationPlugin("KafkaStreams") {
+        val oppfolgingsBrukerTopic = environment.config.property("topics.inn.endringPaOppfolgingsbruker").getString()
+        val kafkaStreams = listOf(
+            configureStream(oppfolgingsBrukerTopic, environment.config) { RecordProcessingResult.COMMIT }
+        )
 
-val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
-    createApplicationPlugin("KafkaStreams", ::KafkaStreamsPluginConfig) {
-        val naisKafkaConfig = environment.config.toKafkaEnv()
-        val kafkaStreams = startKafkaStreams(environment.config.property("topic.in").getList(), naisKafkaConfig, { })
-
-        val shutDownTimeout = pluginConfig.shutDownTimeout ?: Duration.ofSeconds(1)
+        val shutDownTimeout = Duration.ofSeconds(1)
 
         on(MonitoringEvent(ApplicationStarted)) { application ->
             application.log.info("Starter Kafka Streams")

@@ -1,4 +1,4 @@
-package no.nav.kafka
+package no.nav.kafka.config
 
 import io.ktor.server.config.ApplicationConfig
 

@@ -30,6 +30,5 @@ kafka:
   secret-updated: "$AIVEN_SECRET_UPDATED"
 
 topics:
-  in:
-    - "pto.endring-paa-oppfolgingsbruker-v2"
-  out:
+  inn:
+    endringPaOppfolgingsbruker: "pto.endring-paa-oppfolgingsbruker-v2"
