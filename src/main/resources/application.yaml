@@ -6,6 +6,7 @@ ktor:
             - no.nav.ApplicationKt.module
     deployment:
         port: 8080
+
 postgres:
   host: "$NAIS_DATABASE_AO_OPPFOLGINGSKONTOR_AO_OPPFOLGINGSKONTOR_HOST"
   port: "$NAIS_DATABASE_AO_OPPFOLGINGSKONTOR_AO_OPPFOLGINGSKONTOR_PORT"
