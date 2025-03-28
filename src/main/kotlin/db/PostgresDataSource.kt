@@ -24,10 +24,11 @@ private fun configureDb(config: ApplicationConfig): HikariDataSource {
     val pw = config.property("postgres.password").getString()
     val sslRootCert = config.property("postgres.ssl-root-cert").getString()
     val sslMode = config.property("postgres.ssl-mode").getString()
+    val sslCert = config.property("postgres.ssl-cert").getString()
 
     return HikariDataSource(HikariConfig().apply {
         driverClassName = "org.postgresql.Driver"
-        jdbcUrl = "jdbc:postgresql://$host:$port/$databaseName?ssl=true&sslmode=$sslMode&sslrootcert=$sslRootCert"
+        jdbcUrl = "jdbc:postgresql://$host:$port/$databaseName?ssl=true&sslmode=$sslMode&sslrootcert=$sslRootCert&sslcert=$sslCert"
         maximumPoolSize = 20
         isAutoCommit = true
         initializationFailTimeout = 5000
