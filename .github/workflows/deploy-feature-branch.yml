@@ -4,6 +4,10 @@ run-name:  Deploy ao-oppfolgingskontor feature branch ${{ github.ref_name }} to 
 on:
   workflow_dispatch:
 
+concurrency:
+  group: deploy-feature
+  cancel-in-progress: true
+
 permissions:
   contents: read
   packages: write
