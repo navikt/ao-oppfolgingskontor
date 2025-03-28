@@ -25,10 +25,10 @@ import org.slf4j.event.*
 
 fun Application.configureHTTP() {
     install(Compression)
-    routing {
-        openAPI(path = "openapi", swaggerFile = "openapi/documentation.yaml")
-    }
-    routing {
-        swaggerUI(path = "openapi", swaggerFile = "openapi/documentation.yaml")
-    }
+//    routing {
+//        openAPI(path = "openapi", swaggerFile = "openapi/documentation.yaml")
+//    }
+//    routing {
+//        swaggerUI(path = "openapi", swaggerFile = "openapi/documentation.yaml")
+//    }
 }
