@@ -37,6 +37,7 @@ dependencies {
     implementation(libs.ktor.server.netty)
     implementation(libs.logstash)
     implementation(libs.flyway.core)
+    implementation(libs.flyway.postgres)
     implementation(libs.hikaricp)
     implementation(libs.logback.classic)
     implementation(libs.ktor.server.config.yaml)
