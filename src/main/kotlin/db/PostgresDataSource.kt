@@ -28,7 +28,7 @@ private fun configureDb(config: ApplicationConfig): HikariDataSource {
 
     return HikariDataSource(HikariConfig().apply {
         driverClassName = "org.postgresql.Driver"
-        jdbcUrl = "jdbc:postgresql://$host:$port/$databaseName?ssl=true&sslmode=$sslMode&sslrootcert=$sslRootCert&sslcert=$sslCert"
+        jdbcUrl = config.property("postgres.jdbc-url").getString()
         maximumPoolSize = 20
         isAutoCommit = true
         initializationFailTimeout = 5000
