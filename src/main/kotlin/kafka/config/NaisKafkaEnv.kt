@@ -16,7 +16,6 @@ data class NaisKafkaEnv(
     val KAFKA_CREDSTORE_PASSWORD: String, // Password needed to use the keystore and truststore
     val KAFKA_KEYSTORE_PATH: String, // PKCS#12 keystore for use with Java clients, as file
     val KAFKA_TRUSTSTORE_PATH: String, // JKS truststore for use with Java clients, as file
-    val AIVEN_SECRET_UPDATED: String, // A timestamp of when the secret was created
 )
 
 fun ApplicationConfig.toKafkaEnv() : NaisKafkaEnv {
@@ -34,6 +33,5 @@ fun ApplicationConfig.toKafkaEnv() : NaisKafkaEnv {
         KAFKA_CREDSTORE_PASSWORD = property("kafka.credstore-password").getString(),
         KAFKA_KEYSTORE_PATH = property("kafka.keystore-path").getString(),
         KAFKA_TRUSTSTORE_PATH = property("kafka.truststore-path").getString(),
-        AIVEN_SECRET_UPDATED = property("kafka.secret-updated").getString(),
     )
 }

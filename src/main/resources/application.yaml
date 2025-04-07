@@ -32,7 +32,6 @@ kafka:
   credstore-password: "$KAFKA_CREDSTORE_PASSWORD"
   keystore-path: "$KAFKA_KEYSTORE_PATH"
   truststore-path: "$KAFKA_TRUSTSTORE_PATH"
-  secret-updated: "$AIVEN_SECRET_UPDATED"
 
 topics:
   inn:
