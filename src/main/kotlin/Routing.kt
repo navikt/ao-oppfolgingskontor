@@ -3,6 +3,7 @@ package no.nav
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
 import com.codahale.metrics.*
+import dab.poao.nav.no.health.healthEndpoints
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
@@ -25,6 +26,8 @@ import org.slf4j.event.*
 
 fun Application.configureRouting() {
     routing {
+        healthEndpoints()
+
         get("/") {
             call.respondText("Hello World!")
         }
