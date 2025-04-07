@@ -17,10 +17,9 @@ import java.util.Properties
 
 fun configureStream(topic: String, config: ApplicationConfig, processRecord: ProcessRecord): KafkaStreams {
     val naisKafkaEnv = config.toKafkaEnv()
-    val appName = config.property("appName").getString()
 
     val config = Properties()
-        .streamsConfig(appName, naisKafkaEnv)
+        .streamsConfig(naisKafkaEnv, config)
         .securityConfig(naisKafkaEnv)
 
     val builder = StreamsBuilder()
