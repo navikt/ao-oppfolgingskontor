@@ -34,6 +34,6 @@ fun ApplicationConfig.toKafkaEnv() : NaisKafkaEnv {
         KAFKA_CREDSTORE_PASSWORD = property("kafka.credstore-password").getString(),
         KAFKA_KEYSTORE_PATH = property("kafka.keystore-path").getString(),
         KAFKA_TRUSTSTORE_PATH = property("kafka.truststore-path").getString(),
-        AIVEN_SECRET_UPDATED = property("aiven.secret-updated").getString(),
+        AIVEN_SECRET_UPDATED = property("kafka.secret-updated").getString(),
     )
 }
