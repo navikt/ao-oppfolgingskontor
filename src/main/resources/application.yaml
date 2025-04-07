@@ -19,6 +19,7 @@ postgres:
   jdbc-url: "$NAIS_DATABASE_AO_OPPFOLGINGSKONTOR_AO_OPPFOLGINGSKONTOR_JDBC_URL"
 
 kafka:
+  application-id: "$KAFKA_STREAMS_APPLICATION_ID"
   brokers: "$KAFKA_BROKERS"
   schema-registry: "$KAFKA_SCHEMA_REGISTRY"
   schema-registry-user: "$KAFKA_SCHEMA_REGISTRY_USER"
@@ -32,6 +33,7 @@ kafka:
   credstore-password: "$KAFKA_CREDSTORE_PASSWORD"
   keystore-path: "$KAFKA_KEYSTORE_PATH"
   truststore-path: "$KAFKA_TRUSTSTORE_PATH"
+
 
 topics:
   inn:

@@ -40,6 +40,7 @@ spec:
       memory: 768Mi
   kafka:
     pool: nav-dev
+    streams: true
   observability:
     autoInstrumentation:
       enabled: true

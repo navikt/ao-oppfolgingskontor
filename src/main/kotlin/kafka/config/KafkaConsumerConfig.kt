@@ -34,8 +34,8 @@ fun configureStream(topic: String, config: ApplicationConfig, processRecord: Pro
     return KafkaStreams(builder.build(), config)
 }
 
-private fun Properties.streamsConfig(appName: String, config: NaisKafkaEnv): Properties {
-    put(StreamsConfig.APPLICATION_ID_CONFIG, appName)
+private fun Properties.streamsConfig(config: NaisKafkaEnv, appConfig: ApplicationConfig): Properties {
+    put(StreamsConfig.APPLICATION_ID_CONFIG, appConfig.property("kafka.application-id").getString())
     put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, config.KAFKA_BROKERS)
     put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().javaClass.name)
     put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().javaClass.name)
