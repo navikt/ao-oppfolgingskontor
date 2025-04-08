@@ -12,6 +12,7 @@ hikari-version = "6.3.0"
 logstash-version = "8.0"
 embedded-postgres-version = "2.1.0"
 kotest-version = "5.9.1"
+graphql-kotlin-version = "8.4.0"
 
 [libraries]
 ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor-version" }
@@ -43,6 +44,7 @@ logstash = { module = "net.logstash.logback:logstash-logback-encoder", version.r
 embedded-postgres = {module = "io.zonky.test:embedded-postgres", version.ref = "embedded-postgres-version"}
 kafka-streams-test-utils = { module = "org.apache.kafka:kafka-streams-test-utils", version.ref = "kafka-streams" }
 kotest-assertions = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest-version" }
+graphql-kotlin = { module = "com.expediagroup:graphql-kotlin-ktor-server", version.ref = "graphql-kotlin-version" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-version" }
