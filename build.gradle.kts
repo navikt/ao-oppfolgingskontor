@@ -1,3 +1,4 @@
+import io.ktor.plugin.features.*
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
@@ -18,6 +19,11 @@ application {
 repositories {
     mavenCentral()
 }
+
+tasks.shadowJar {
+    mergeServiceFiles()
+}
+
 
 dependencies {
     implementation(libs.ktor.server.core)
