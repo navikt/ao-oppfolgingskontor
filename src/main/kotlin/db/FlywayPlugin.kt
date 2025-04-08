@@ -19,6 +19,7 @@ val FlywayPlugin: ApplicationPlugin<FlywayPluginConfig> = createApplicationPlugi
     application.monitor.raise(FlywayMigrationStarting, application)
     logger.info("Starting Flyway migration")
     Flyway.configure()
+        .validateMigrationNaming(true)
         .locations("db/migration")
         .dataSource(dataSource)
         .load()
