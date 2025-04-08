@@ -1,6 +1,6 @@
 CREATE TABLE arbeidsoppfolgingskontor (
     fnr VARCHAR(11) PRIMARY KEY,
-    kontorid VARCHAR(4),
+    kontorId VARCHAR(4),
     endretAv VARCHAR(20),
     endretAvType VARCHAR(20),
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -9,7 +9,7 @@ CREATE TABLE arbeidsoppfolgingskontor (
 
 CREATE TABLE arenakontor (
     fnr VARCHAR(11) PRIMARY KEY,
-    kontorid VARCHAR(4),
+    kontorId VARCHAR(4),
     endretAv VARCHAR(20),
     endretAvType VARCHAR(20),
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -18,7 +18,7 @@ CREATE TABLE arenakontor (
 
 CREATE TABLE geografisktilknytningkontor (
     fnr VARCHAR(11) PRIMARY KEY,
-    kontorid VARCHAR(4),
+    kontorId VARCHAR(4),
     endretAv VARCHAR(20),
     endretAvType VARCHAR(20),
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -36,5 +36,11 @@ CREATE TABLE kontorhistorikk (
     endretAv VARCHAR(20),
     endretAvType VARCHAR(20),
     kontorendringstype VARCHAR(255),
+    -- "Triggere" for at bruker for tildelt et kontor
+    -- Automatisk fordeling ved Arbeidssøkerregistrering
+    -- Manuelt flyttet av veileder
+    -- Endret i Arena
+    -- Endret skjermingsstatus
+    -- Endret addressebeskyttelse
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
