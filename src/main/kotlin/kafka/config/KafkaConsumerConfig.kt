@@ -33,6 +33,7 @@ fun configureStream(topology: Topology, config: ApplicationConfig): KafkaStreams
 
     val config = Properties()
         .streamsConfig(naisKafkaEnv, config)
+        .streamsErrorHandlerConfig()
         .securityConfig(naisKafkaEnv)
 
     return KafkaStreams(topology, config)
@@ -46,7 +47,10 @@ private fun Properties.streamsConfig(config: NaisKafkaEnv, appConfig: Applicatio
     put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, "1000") // Control commit interval
     put(StreamsConfig.producerPrefix(ProducerConfig.RETRIES_CONFIG), Int.MAX_VALUE) // Enable retries
     put(StreamsConfig.producerPrefix(ProducerConfig.ACKS_CONFIG), "all") // Ensure strong consistency
-    put(StreamsConfig.PRODUCTION_EXCEPTION_HANDLER_CLASS_CONFIG, RetryIfRetriableExceptionHandler::class.java.name)
+    return this
+}
+
+public fun Properties.streamsErrorHandlerConfig(): Properties {
     put(StreamsConfig.PROCESSING_EXCEPTION_HANDLER_CLASS_CONFIG, RetryIfRetriableExceptionHandler::class.java.name)
     return this
 }
