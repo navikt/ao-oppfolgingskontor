@@ -47,6 +47,7 @@ private fun Properties.streamsConfig(config: NaisKafkaEnv, appConfig: Applicatio
     put(StreamsConfig.producerPrefix(ProducerConfig.RETRIES_CONFIG), Int.MAX_VALUE) // Enable retries
     put(StreamsConfig.producerPrefix(ProducerConfig.ACKS_CONFIG), "all") // Ensure strong consistency
     put(StreamsConfig.PRODUCTION_EXCEPTION_HANDLER_CLASS_CONFIG, RetryIfRetriableExceptionHandler::class.java.name)
+    put(StreamsConfig.PROCESSING_EXCEPTION_HANDLER_CLASS_CONFIG, RetryIfRetriableExceptionHandler::class.java.name)
     return this
 }
 
