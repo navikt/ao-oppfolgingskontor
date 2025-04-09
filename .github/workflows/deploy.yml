@@ -13,6 +13,10 @@ on:
       SLACK_WEBHOOK:
         required: true
 
+concurrency:
+  group: deploy_main
+  cancel-in-progress: true
+
 jobs:
   build:
     name: Build and push Docker container
