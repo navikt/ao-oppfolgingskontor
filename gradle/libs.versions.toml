@@ -10,6 +10,7 @@ postgres-version = "42.7.5"
 flyway-version = "11.5.0"
 hikari-version = "6.3.0"
 logstash-version = "8.0"
+embedded-postgres-version = "2.1.0"
 
 [libraries]
 ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor-version" }
@@ -38,6 +39,7 @@ flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway-versi
 flyway-postgres = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway-version"}
 hikaricp = { module = "com.zaxxer:HikariCP", version.ref = "hikari-version" }
 logstash = { module = "net.logstash.logback:logstash-logback-encoder", version.ref = "logstash-version" }
+embedded-postgres = {module = "io.zonky.test:embedded-postgres", version.ref = "embedded-postgres-version"}
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-version" }
