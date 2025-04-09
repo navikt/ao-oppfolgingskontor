@@ -1,8 +1,8 @@
 package no.nav.kafka
 
 import kotlinx.serialization.json.Json
-import no.nav.db.ArenaOppfolgingsKontorTable
 import no.nav.db.dto.EndretAvType
+import no.nav.db.table.ArenaKontorTable
 import no.nav.kafka.processor.RecordProcessingResult
 import org.slf4j.LoggerFactory
 import org.apache.kafka.streams.processor.api.Record
@@ -22,7 +22,8 @@ class EndringPaOppfolgingsBrukerConsumer(
             log.warn("Mottok endring på oppfølgingsbruker uten gyldig kontorId")
             return RecordProcessingResult.COMMIT
         }
-        ArenaOppfolgingsKontorTable.insert {
+
+        ArenaKontorTable.insert {
             it[fnr] = fnrString
             it[kontorId] = endringPaOppfolgingsBruker.oppfolgingsenhet
             it[endretAv] = "ukjent"
