@@ -53,12 +53,10 @@ class ApplicationTest {
 
 
 fun setupKafkaMock(topology: Topology, topic: String): TestInputTopic<String, String> {
-    val props = Properties();
-    props.setProperty(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9091");
-//    props.setProperty(StreamsConfig.DEFAULT_TIMESTAMP_EXTRACTOR_CLASS_CONFIG, CustomTimestampExtractor.class.getName());
+    val props = Properties()
+    props.setProperty(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9091")
     props.setProperty(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String()::class.java.name)
     props.setProperty(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String()::class.java.name)
-    val driver = TopologyTestDriver(topology, props);
-    return driver.createInputTopic(topic, Serdes.String().serializer(), Serdes.String().serializer());
-
+    val driver = TopologyTestDriver(topology, props)
+    return driver.createInputTopic(topic, Serdes.String().serializer(), Serdes.String().serializer())
 }
