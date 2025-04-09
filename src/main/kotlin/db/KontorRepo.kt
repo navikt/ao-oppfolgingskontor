@@ -17,10 +17,9 @@ class KontorRepo(val dataSource: DataSource) {
     }
 
     suspend fun getKontor(fnr: Fnr): BrukersKontor {
-        val fnrId = fnr.toInt()
         val (arenaKontor, arbeidsoppfolgingKontor) = coroutineScope {
-            val arenaKontor = async { ArenaKontorEntity.findById(fnrId) }
-            val arbeidsoppfolgingKontor = async { ArbeidsOppfolgingKontorEntity.findById(fnrId) }
+            val arenaKontor = async { ArenaKontorEntity.findById(fnr) }
+            val arbeidsoppfolgingKontor = async { ArbeidsOppfolgingKontorEntity.findById(fnr) }
             Pair(arenaKontor.await(), arbeidsoppfolgingKontor.await())
         }
         return BrukersKontor(

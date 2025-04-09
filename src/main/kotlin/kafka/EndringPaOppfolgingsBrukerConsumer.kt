@@ -7,6 +7,7 @@ import no.nav.db.table.ArenaKontorTable
 import no.nav.kafka.processor.RecordProcessingResult
 import org.slf4j.LoggerFactory
 import org.apache.kafka.streams.processor.api.Record
+import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.upsert
 
 class EndringPaOppfolgingsBrukerConsumer(
@@ -23,11 +24,13 @@ class EndringPaOppfolgingsBrukerConsumer(
             return RecordProcessingResult.COMMIT
         }
 
-        ArenaKontorTable.upsert {
-            it[fnr] = fnrString
-            it[kontorId] = endringPaOppfolgingsBruker.oppfolgingsenhet
-            it[endretAv] = "ukjent"
-            it[endretAvType] = EndretAvType.ARENA.name
+        transaction {
+            ArenaKontorTable.upsert {
+                it[id] = fnrString
+                it[kontorId] = endringPaOppfolgingsBruker.oppfolgingsenhet
+                it[endretAv] = "ukjent"
+                it[endretAvType] = EndretAvType.ARENA.name
+            }
         }
         return RecordProcessingResult.COMMIT
     }
