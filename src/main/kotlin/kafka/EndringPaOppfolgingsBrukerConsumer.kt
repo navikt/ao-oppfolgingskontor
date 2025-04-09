@@ -6,7 +6,7 @@ import no.nav.db.table.ArenaKontorTable
 import no.nav.kafka.processor.RecordProcessingResult
 import org.slf4j.LoggerFactory
 import org.apache.kafka.streams.processor.api.Record
-import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.upsert
 import javax.sql.DataSource
 
 class EndringPaOppfolgingsBrukerConsumer(
@@ -23,7 +23,7 @@ class EndringPaOppfolgingsBrukerConsumer(
             return RecordProcessingResult.COMMIT
         }
 
-        ArenaKontorTable.insert {
+        ArenaKontorTable.upsert {
             it[fnr] = fnrString
             it[kontorId] = endringPaOppfolgingsBruker.oppfolgingsenhet
             it[endretAv] = "ukjent"

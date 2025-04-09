@@ -31,6 +31,7 @@ CREATE TABLE aktorid (
 );
 
 CREATE TABLE kontorhistorikk (
+    id SERIAL PRIMARY KEY,
     fnr VARCHAR(11),
     kontorid VARCHAR(4),
     endretAv VARCHAR(20),
