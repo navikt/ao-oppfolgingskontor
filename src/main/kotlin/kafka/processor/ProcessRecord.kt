@@ -1,6 +1,5 @@
 package no.nav.kafka.processor
 
-import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.streams.processor.api.Record
 
 enum class RecordProcessingResult {
