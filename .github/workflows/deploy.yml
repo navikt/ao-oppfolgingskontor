@@ -1,9 +1,6 @@
 name: Build, push, and deploy
 
 on:
-  push:
-    branches:
-      - main
   workflow_call:
     inputs:
       env:
@@ -12,15 +9,6 @@ on:
     secrets:
       SLACK_WEBHOOK:
         required: true
-
-concurrency:
-  group: deploy_main
-  cancel-in-progress: true
-
-permissions:
-  contents: read
-  packages: write
-  id-token: write
 
 jobs:
   build:
