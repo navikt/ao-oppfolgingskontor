@@ -15,10 +15,12 @@ class EndringPaOppfolgingsBrukerConsumer(
 ) {
     val log = LoggerFactory.getLogger(EndringPaOppfolgingsBrukerConsumer::class.java)
 
+    val json = Json { ignoreUnknownKeys = true }
+
     fun consume(record: Record<String, String>): RecordProcessingResult {
         log.info("Consumed record")
         val fnrString = record.key()
-        val endringPaOppfolgingsBruker = Json.decodeFromString<EndringPaOppfolgingsBruker>(record.value())
+        val endringPaOppfolgingsBruker = json.decodeFromString<EndringPaOppfolgingsBruker>(record.value())
         if (endringPaOppfolgingsBruker.oppfolgingsenhet.isNullOrBlank()) {
             log.warn("Mottok endring på oppfølgingsbruker uten gyldig kontorId")
             return RecordProcessingResult.COMMIT
