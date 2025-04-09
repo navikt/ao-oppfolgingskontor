@@ -17,7 +17,7 @@ class EndringPaOppfolgingsBrukerConsumer(
 
     fun consume(record: Record<String, String>): RecordProcessingResult {
         log.info("Consumed record")
-        val fnrString = record.value()
+        val fnrString = record.key()
         val endringPaOppfolgingsBruker = Json.decodeFromString<EndringPaOppfolgingsBruker>(record.value())
         if (endringPaOppfolgingsBruker.oppfolgingsenhet.isNullOrBlank()) {
             log.warn("Mottok endring på oppfølgingsbruker uten gyldig kontorId")
