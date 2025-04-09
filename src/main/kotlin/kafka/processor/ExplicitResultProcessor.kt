@@ -1,9 +1,11 @@
 package no.nav.kafka.processor
 
 import kotlinx.serialization.SerializationException
+import no.nav.kafka.EndringPaOppfolgingsBrukerConsumer
 import org.apache.kafka.streams.processor.api.Processor
 import org.apache.kafka.streams.processor.api.ProcessorContext
 import org.apache.kafka.streams.processor.api.Record
+import org.slf4j.LoggerFactory
 
 class UnhandledRecordProcessingException(cause: Throwable): Exception("Unhandled record processing exception", cause)
 
@@ -13,11 +15,16 @@ class UnhandledRecordProcessingException(cause: Throwable): Exception("Unhandled
 * */
 class ExplicitResultProcessor(val processRecord: ProcessRecord): Processor<String, String, String, String> {
     private lateinit var context: ProcessorContext<String, String>
+    val log = LoggerFactory.getLogger(ExplicitResultProcessor::class.java)
     override fun init(context: ProcessorContext<String, String>) {
         this.context = context
     }
+
+
     override fun process(record: Record<String, String>) {
+
         runCatching {
+            context.recordMetadata().map { log.info("Kafka partition: ${it.partition()}, offset: ${it.offset()}") }
             processRecord(record)
         }
             .onSuccess {
