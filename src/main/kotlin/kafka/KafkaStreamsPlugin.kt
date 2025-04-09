@@ -9,7 +9,7 @@ import io.ktor.server.application.createApplicationPlugin
 import io.ktor.server.application.hooks.MonitoringEvent
 import io.ktor.server.application.log
 import no.nav.kafka.config.configureStream
-import no.nav.kafka.processor.RecordProcessingResult
+import no.nav.kafka.config.configureTopology
 import java.time.Duration
 import javax.sql.DataSource
 
@@ -22,14 +22,12 @@ class KafkaStreamsPluginConfig(
     var dataSource: DataSource? = null
 )
 
-val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
-    createApplicationPlugin("KafkaStreams", ::KafkaStreamsPluginConfig) {
-        val dataSource = requireNotNull(pluginConfig.dataSource) { "DataSource is required for KafkaStreamsPlugin" }
-        val consumer = EndringPaOppfolgingsBrukerConsumer(dataSource)
+val KafkaStreamsPlugin: ApplicationPlugin<Unit> =
+    createApplicationPlugin("KafkaStreams") {
+        val consumer = EndringPaOppfolgingsBrukerConsumer()
         val oppfolgingsBrukerTopic = environment.config.property("topics.inn.endringPaOppfolgingsbruker").getString()
-        val kafkaStreams = listOf(
-            configureStream(oppfolgingsBrukerTopic, environment.config, consumer::consume)
-        )
+        val topology = configureTopology(oppfolgingsBrukerTopic, consumer::consume)
+        val kafkaStreams = listOf(configureStream(topology, environment.config))
 
         val shutDownTimeout = Duration.ofSeconds(1)
 

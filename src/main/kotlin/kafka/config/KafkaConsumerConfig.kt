@@ -11,17 +11,12 @@ import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.KafkaStreams
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
+import org.apache.kafka.streams.Topology
 import org.apache.kafka.streams.processor.api.Processor
 import org.apache.kafka.streams.processor.api.ProcessorSupplier
 import java.util.Properties
 
-fun configureStream(topic: String, config: ApplicationConfig, processRecord: ProcessRecord): KafkaStreams {
-    val naisKafkaEnv = config.toKafkaEnv()
-
-    val config = Properties()
-        .streamsConfig(naisKafkaEnv, config)
-        .securityConfig(naisKafkaEnv)
-
+fun configureTopology(topic: String, processRecord: ProcessRecord): Topology {
     val builder = StreamsBuilder()
     val sourceStream = builder.stream<String, String>(topic)
 
@@ -30,7 +25,17 @@ fun configureStream(topic: String, config: ApplicationConfig, processRecord: Pro
             return ExplicitResultProcessor(processRecord)
         }
     })
-    return KafkaStreams(builder.build(), config)
+    return builder.build()
+}
+
+fun configureStream(topology: Topology, config: ApplicationConfig): KafkaStreams {
+    val naisKafkaEnv = config.toKafkaEnv()
+
+    val config = Properties()
+        .streamsConfig(naisKafkaEnv, config)
+        .securityConfig(naisKafkaEnv)
+
+    return KafkaStreams(topology, config)
 }
 
 private fun Properties.streamsConfig(config: NaisKafkaEnv, appConfig: ApplicationConfig): Properties {

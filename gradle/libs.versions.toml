@@ -40,6 +40,7 @@ flyway-postgres = { module = "org.flywaydb:flyway-database-postgresql", version.
 hikaricp = { module = "com.zaxxer:HikariCP", version.ref = "hikari-version" }
 logstash = { module = "net.logstash.logback:logstash-logback-encoder", version.ref = "logstash-version" }
 embedded-postgres = {module = "io.zonky.test:embedded-postgres", version.ref = "embedded-postgres-version"}
+kafka-streams-test-utils = { module = "org.apache.kafka:kafka-streams-test-utils", version.ref = "kafka-streams" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-version" }

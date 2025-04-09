@@ -1,5 +1,6 @@
 package no.nav.kafka
 
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import no.nav.db.dto.EndretAvType
 import no.nav.db.table.ArenaKontorTable
@@ -7,10 +8,9 @@ import no.nav.kafka.processor.RecordProcessingResult
 import org.slf4j.LoggerFactory
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.upsert
-import javax.sql.DataSource
 
 class EndringPaOppfolgingsBrukerConsumer(
-    val dataSource: DataSource,
+//    val dataSource: DataSource,
 ) {
     val log = LoggerFactory.getLogger(EndringPaOppfolgingsBrukerConsumer::class.java)
 
@@ -33,6 +33,7 @@ class EndringPaOppfolgingsBrukerConsumer(
     }
 }
 
+@Serializable
 data class EndringPaOppfolgingsBruker(
     val oppfolgingsenhet: String?
 )

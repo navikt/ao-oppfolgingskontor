@@ -19,7 +19,5 @@ fun Application.module() {
     install(FlywayPlugin) {
         this.dataSource = dataSource
     }
-    install(KafkaStreamsPlugin) {
-        this.dataSource = dataSource
-    }
+    install(KafkaStreamsPlugin)
 }

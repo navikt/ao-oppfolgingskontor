@@ -52,4 +52,5 @@ dependencies {
     testImplementation(libs.embedded.postgres)
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test.junit)
+    testImplementation(libs.kafka.streams.test.utils)
 }
