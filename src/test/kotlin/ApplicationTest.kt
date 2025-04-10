@@ -46,8 +46,9 @@ class ApplicationTest {
             val topology = configureTopology(topic, consumer::consume)
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(fnr, """{"oppfolgingsenhet":"1234", "sistEndretDato": "2025-04-10T13:01:14+02:00" }""")
+            kafkaMockTopic.pipeInput(fnr, """{"oppfolgingsenhet":"4321", "sistEndretDato": "2025-03-10T13:01:14+02:00" }""")
             transaction {
-                ArenaKontorEntity.findById(fnr).shouldNotBeNull()
+                ArenaKontorEntity.findById(fnr)?.kontorId shouldBe "1234"
             }
         }
     }
