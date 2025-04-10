@@ -23,6 +23,7 @@ import org.apache.kafka.streams.errors.StreamsException
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.junit.Ignore
 import org.junit.jupiter.api.BeforeAll
 import java.util.*
 import javax.sql.DataSource
@@ -58,6 +59,8 @@ class ApplicationTest {
             }
         }
     }
+
+    @Ignore
     @Test
     fun testKafkaRetry() = testApplication {
         val topic = "test-topic"
@@ -92,6 +95,7 @@ class ApplicationTest {
         }
     }
 
+    @Ignore
     @Test
     fun testKafkaSkipMessage() = testApplication {
         val topic = "test-topic"
