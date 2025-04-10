@@ -10,6 +10,7 @@ import no.nav.db.entity.ArenaKontorEntity
 import no.nav.kafka.EndringPaOppfolgingsBrukerConsumer
 import no.nav.kafka.config.configureTopology
 import no.nav.kafka.config.streamsErrorHandlerConfig
+import no.nav.kafka.convertToLocalDateTime
 import no.nav.kafka.processor.RecordProcessingResult
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.StreamsConfig
@@ -106,6 +107,14 @@ class ApplicationTest {
             todo { "assert" }
 
         }
+    }
+
+    @Test
+    fun testDateTimeParse() {
+        val dateTimeString = "2025-04-10T13:01:14+02"
+        val localDateTime = dateTimeString.convertToLocalDateTime()
+        localDateTime.shouldNotBeNull()
+        println(localDateTime)
     }
 }
 

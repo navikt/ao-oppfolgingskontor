@@ -1,9 +1,6 @@
 package no.nav.kafka
 
-import kotlinx.datetime.Clock
-import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
+import kotlinx.datetime.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import no.nav.db.dto.EndretAvType
@@ -17,6 +14,7 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.upsert
 import org.slf4j.LoggerFactory
+import java.time.format.DateTimeFormatter
 
 class EndringPaOppfolgingsBrukerConsumer(
 //    val dataSource: DataSource,
@@ -40,7 +38,7 @@ class EndringPaOppfolgingsBrukerConsumer(
                 .maxByOrNull { it.createdAt }
         }
 
-        if(sistEndretKontorEntity != null && sistEndretKontorEntity.createdAt > endringPaOppfolgingsBruker.sistEndretDato.toLocalDateTime()) {
+        if(sistEndretKontorEntity != null && sistEndretKontorEntity.createdAt > endringPaOppfolgingsBruker.sistEndretDato.convertToLocalDateTime()) {
             log.warn("Sist endret kontor er eldre enn endring på oppfølgingsbruker")
             return RecordProcessingResult.SKIP
         }
@@ -67,8 +65,8 @@ class EndringPaOppfolgingsBrukerConsumer(
 
 // ""sistEndretDato":string"2025-04-10T13:01:14+02:00"
 
-fun String.toLocalDateTime(): LocalDateTime {
-    return LocalDateTime.parse(this)
+fun String.convertToLocalDateTime(): LocalDateTime {
+    return Instant.parse(this).toLocalDateTime(TimeZone.currentSystemDefault())
 }
 
 @Serializable
