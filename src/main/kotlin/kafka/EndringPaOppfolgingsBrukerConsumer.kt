@@ -1,5 +1,9 @@
 package no.nav.kafka
 
+import kotlinx.datetime.Clock
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import no.nav.db.dto.EndretAvType
@@ -13,7 +17,6 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.upsert
 import org.slf4j.LoggerFactory
-import java.time.LocalDateTime
 
 class EndringPaOppfolgingsBrukerConsumer(
 //    val dataSource: DataSource,
@@ -34,15 +37,10 @@ class EndringPaOppfolgingsBrukerConsumer(
         val sistEndretKontorEntity = transaction {
             SistEndretKontorEntity
                 .find { fnr eq fnr }
-                .sortedByDescending { it.createdAt }.firstOrNull()
+                .maxByOrNull { it.createdAt }
         }
 
-        if (sistEndretKontorEntity == null) {
-            log.warn("Fant ikke sist endret kontor for fnr: $fnrString")
-            return RecordProcessingResult.SKIP
-        }
-
-        if(sistEndretKontorEntity.createdAt > endringPaOppfolgingsBruker.sistEndretDato) {
+        if(sistEndretKontorEntity != null && sistEndretKontorEntity.createdAt > endringPaOppfolgingsBruker.sistEndretDato.toLocalDateTime()) {
             log.warn("Sist endret kontor er eldre enn endring på oppfølgingsbruker")
             return RecordProcessingResult.SKIP
         }
@@ -58,7 +56,7 @@ class EndringPaOppfolgingsBrukerConsumer(
                 it[kontorId] = endringPaOppfolgingsBruker.oppfolgingsenhet
                 it[endretAv] = "ukjent"
                 it[endretAvType] = EndretAvType.ARENA.name
-                it[updatedAt] = LocalDateTime.now()
+                it[updatedAt] = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
             }
         }
 
@@ -67,8 +65,14 @@ class EndringPaOppfolgingsBrukerConsumer(
     }
 }
 
+// ""sistEndretDato":string"2025-04-10T13:01:14+02:00"
+
+fun String.toLocalDateTime(): LocalDateTime {
+    return LocalDateTime.parse(this)
+}
+
 @Serializable
 data class EndringPaOppfolgingsBruker(
     val oppfolgingsenhet: String?,
-    val sistEndretDato: String?
+    val sistEndretDato: String
 )
