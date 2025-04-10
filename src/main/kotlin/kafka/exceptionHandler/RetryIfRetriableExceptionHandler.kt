@@ -8,8 +8,11 @@ import org.apache.kafka.streams.errors.ProcessingExceptionHandler
 import org.apache.kafka.streams.errors.ProductionExceptionHandler
 import org.apache.kafka.streams.errors.ProductionExceptionHandler.ProductionExceptionHandlerResponse
 import org.apache.kafka.streams.processor.api.Record
+import org.slf4j.LoggerFactory
 
 class RetryIfRetriableExceptionHandler : ProcessingExceptionHandler {
+
+    val log = LoggerFactory.getLogger(RetryIfRetriableExceptionHandler::class.java)
 
     override fun configure(configs: MutableMap<String, *>?) {}
     override fun handle(
@@ -18,13 +21,13 @@ class RetryIfRetriableExceptionHandler : ProcessingExceptionHandler {
         exception: java.lang.Exception?
     ): ProcessingExceptionHandler.ProcessingHandlerResponse {
         return if (exception is RetriableException) {
-            println("Retrying due to transient error: ${exception.message}")
+            log.error("Retrying due to transient error: $exception", exception)
             return ProcessingExceptionHandler.ProcessingHandlerResponse.FAIL
         } else if (exception is FunksjonellFeilException) {
-            println("Fatal error, skipping message: ${exception?.message}")
+            log.error("Fatal error, skipping message: $exception", exception)
             return ProcessingExceptionHandler.ProcessingHandlerResponse.CONTINUE
         } else {
-            println("Intermittent error, retrying message: ${exception?.message}")
+            log.error("Intermittent error, retrying message: $exception", exception)
             return ProcessingExceptionHandler.ProcessingHandlerResponse.FAIL
         }
     }
