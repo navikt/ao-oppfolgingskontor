@@ -1,30 +1,25 @@
 package no.nav
 
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
 import io.ktor.server.application.*
 import io.ktor.server.testing.*
 import io.zonky.test.db.postgres.embedded.EmbeddedPostgres
 import no.nav.db.FlywayPlugin
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.kafka.EndringPaOppfolgingsBrukerConsumer
-import no.nav.kafka.KafkaStreamsPlugin
 import no.nav.kafka.config.configureTopology
 import no.nav.kafka.config.streamsErrorHandlerConfig
 import no.nav.kafka.processor.RecordProcessingResult
-import no.nav.kafka.processor.UnhandledRecordProcessingException
-import org.apache.kafka.common.errors.RetriableException
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.StreamsConfig
 import org.apache.kafka.streams.TestInputTopic
 import org.apache.kafka.streams.Topology
 import org.apache.kafka.streams.TopologyTestDriver
-import org.apache.kafka.streams.errors.StreamsException
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.Ignore
-import org.junit.jupiter.api.BeforeAll
 import java.util.*
 import javax.sql.DataSource
 import kotlin.test.Test
@@ -67,11 +62,13 @@ class ApplicationTest {
         class FailingConsumer {
             var runs = 0
             fun consume(record: Record<String, String>): RecordProcessingResult {
-                if (runs == 1) {
-                    println("Message processing ok")
-                }
                 runs++
-                throw RuntimeException("Test exception")
+                if (runs == 1) {
+                    throw RuntimeException("Test exception")
+                }
+                println("Message processed successfully on attempt $runs")
+                return RecordProcessingResult.COMMIT
+
             }
         }
 
@@ -85,10 +82,8 @@ class ApplicationTest {
 
             val topology = configureTopology(topic, consumer::consume)
             val kafkaMockTopic = setupKafkaMock(topology, topic)
-            shouldThrow<StreamsException> {
-                kafkaMockTopic.pipeInput(fnr, """{"oppfolgingsenhet":"ugyldigEnhet"}""")
-            }
-            kafkaMockTopic.pipeInput(fnr, """{"oppfolgingsenhet":"0101"}""")
+            kafkaMockTopic.pipeInput(fnr, """{"oppfolgingsenhet":"ugyldigEnhet"}""")
+            consumer.runs shouldBe 2
 
 
 

@@ -50,7 +50,7 @@ private fun Properties.streamsConfig(config: NaisKafkaEnv, appConfig: Applicatio
     return this
 }
 
-public fun Properties.streamsErrorHandlerConfig(): Properties {
+fun Properties.streamsErrorHandlerConfig(): Properties {
     put(StreamsConfig.PROCESSING_EXCEPTION_HANDLER_CLASS_CONFIG, RetryIfRetriableExceptionHandler::class.java.name)
     return this
 }
