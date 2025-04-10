@@ -1,8 +1,8 @@
 package no.nav.db.table
 
 import org.jetbrains.exposed.dao.id.IntIdTable
-import org.jetbrains.exposed.sql.kotlin.datetime.CurrentDateTime
-import org.jetbrains.exposed.sql.kotlin.datetime.datetime
+import org.jetbrains.exposed.sql.kotlin.datetime.CurrentTimestampWithTimeZone
+import org.jetbrains.exposed.sql.kotlin.datetime.timestampWithTimeZone
 
 object KontorhistorikkTable : IntIdTable("kontorhistorikk", "id") {
     val fnr = char("fnr", 11) // VARCHAR(11) PRIMARY KEY,
@@ -10,5 +10,5 @@ object KontorhistorikkTable : IntIdTable("kontorhistorikk", "id") {
     val endretAv = varchar("endretav", 20) // VARCHAR(20),
     val endretAvType = varchar("endretavtype", 20) // VARCHAR(20),
     val kontorendringstype = varchar("kontorendringstype", 255) // VARCHAR(20),
-    val createdAt = datetime("createdat").defaultExpression(CurrentDateTime) // TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    val createdAt = timestampWithTimeZone("createdat").defaultExpression(CurrentTimestampWithTimeZone) // TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 }
