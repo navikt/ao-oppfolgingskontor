@@ -3,12 +3,17 @@ package no.nav.kafka
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import no.nav.db.dto.EndretAvType
+import no.nav.db.entity.SistEndretKontorEntity
 import no.nav.db.table.ArenaKontorTable
+import no.nav.db.table.KontorhistorikkTable
+import no.nav.db.table.KontorhistorikkTable.fnr
 import no.nav.kafka.processor.RecordProcessingResult
-import org.slf4j.LoggerFactory
 import org.apache.kafka.streams.processor.api.Record
+import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.upsert
+import org.slf4j.LoggerFactory
+import java.time.LocalDateTime
 
 class EndringPaOppfolgingsBrukerConsumer(
 //    val dataSource: DataSource,
@@ -26,19 +31,44 @@ class EndringPaOppfolgingsBrukerConsumer(
             return RecordProcessingResult.COMMIT
         }
 
+        val sistEndretKontorEntity = transaction {
+            SistEndretKontorEntity
+                .find { fnr eq fnr }
+                .sortedByDescending { it.createdAt }.firstOrNull()
+        }
+
+        if (sistEndretKontorEntity == null) {
+            log.warn("Fant ikke sist endret kontor for fnr: $fnrString")
+            return RecordProcessingResult.SKIP
+        }
+
+        if(sistEndretKontorEntity.createdAt > endringPaOppfolgingsBruker.sistEndretDato) {
+            log.warn("Sist endret kontor er eldre enn endring på oppfølgingsbruker")
+            return RecordProcessingResult.SKIP
+        }
+
         transaction {
+            KontorhistorikkTable.insert {
+                it[fnr] = fnrString
+                it[kontorId] = endringPaOppfolgingsBruker.oppfolgingsenhet
+            }
+
             ArenaKontorTable.upsert {
                 it[id] = fnrString
                 it[kontorId] = endringPaOppfolgingsBruker.oppfolgingsenhet
                 it[endretAv] = "ukjent"
                 it[endretAvType] = EndretAvType.ARENA.name
+                it[updatedAt] = LocalDateTime.now()
             }
         }
+
+
         return RecordProcessingResult.COMMIT
     }
 }
 
 @Serializable
 data class EndringPaOppfolgingsBruker(
-    val oppfolgingsenhet: String?
+    val oppfolgingsenhet: String?,
+    val sistEndretDato: String?
 )
