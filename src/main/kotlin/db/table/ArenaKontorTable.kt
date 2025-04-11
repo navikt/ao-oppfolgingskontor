@@ -13,6 +13,6 @@ object ArenaKontorTable: IdTable<String>("arenakontor") {
     val createdAt = timestampWithTimeZone("created_at").defaultExpression(CurrentTimestampWithTimeZone) // TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     val updatedAt = timestampWithTimeZone("updated_at").defaultExpression(CurrentTimestampWithTimeZone) // TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     val sistEndretDatoArena = timestampWithTimeZone("sist_endret_dato_arena")
-    val offset = integer("offset")
-    val partition = integer("partition")
+    val kafkaOffset = integer("kafka_offset").nullable()
+    val kafkaPartition = integer("kafka_partition").nullable()
 }

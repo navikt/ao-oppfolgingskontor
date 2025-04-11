@@ -26,7 +26,8 @@ val KafkaStreamsPlugin: ApplicationPlugin<Unit> =
     createApplicationPlugin("KafkaStreams") {
         val consumer = EndringPaOppfolgingsBrukerConsumer()
         val oppfolgingsBrukerTopic = environment.config.property("topics.inn.endringPaOppfolgingsbruker").getString()
-        val topology = configureTopology(oppfolgingsBrukerTopic, consumer::consume)
+        val topology = configureTopology(oppfolgingsBrukerTopic, { record, maybeRecordMetadata ->
+            consumer.consume(record, maybeRecordMetadata) })
         val kafkaStreams = listOf(configureStream(topology, environment.config))
 
         val shutDownTimeout = Duration.ofSeconds(1)

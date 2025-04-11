@@ -8,6 +8,7 @@ import no.nav.db.table.ArenaKontorTable
 import no.nav.db.table.KontorhistorikkTable
 import no.nav.kafka.processor.RecordProcessingResult
 import org.apache.kafka.streams.processor.api.Record
+import org.apache.kafka.streams.processor.api.RecordMetadata
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.upsert
@@ -21,7 +22,7 @@ class EndringPaOppfolgingsBrukerConsumer(
 
     val json = Json { ignoreUnknownKeys = true }
 
-    fun consume(record: Record<String, String>): RecordProcessingResult {
+    fun consume(record: Record<String, String>, maybeRecordMetadata: RecordMetadata?): RecordProcessingResult {
         log.info("Consumed record")
         val fnrString = record.key()
         val endringPaOppfolgingsBruker = json.decodeFromString<EndringPaOppfolgingsBruker>(record.value())
@@ -54,6 +55,9 @@ class EndringPaOppfolgingsBrukerConsumer(
                 it[endretAvType] = EndretAvType.ARENA.name
                 it[updatedAt] = OffsetDateTime.now()
                 it[sistEndretDatoArena] = endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime()
+                it[kafkaOffset] = maybeRecordMetadata?.offset()?.toInt()
+                it[kafkaPartition] = maybeRecordMetadata?.partition()
+
             }
         }
 

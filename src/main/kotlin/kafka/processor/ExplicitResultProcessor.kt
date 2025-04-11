@@ -6,6 +6,7 @@ import org.apache.kafka.streams.processor.api.Processor
 import org.apache.kafka.streams.processor.api.ProcessorContext
 import org.apache.kafka.streams.processor.api.Record
 import org.slf4j.LoggerFactory
+import kotlin.jvm.optionals.getOrNull
 
 class UnhandledRecordProcessingException(cause: Throwable): Exception("Unhandled record processing exception", cause)
 
@@ -24,8 +25,8 @@ class ExplicitResultProcessor(val processRecord: ProcessRecord): Processor<Strin
     override fun process(record: Record<String, String>) {
 
         runCatching {
-            context.recordMetadata().map { log.info("Kafka partition: ${it.partition()}, offset: ${it.offset()}") }
-            processRecord(record)
+            context.recordMetadata().map { log.info("Kafka topic: ${it.topic()}, partition: ${it.partition()}, offset: ${it.offset()}") }
+            processRecord(record, context.recordMetadata().getOrNull())
         }
             .onSuccess {
                 when (it) {

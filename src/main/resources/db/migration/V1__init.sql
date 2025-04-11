@@ -14,7 +14,9 @@ CREATE TABLE arenakontor (
     endret_av_type VARCHAR(20),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    sist_endret_dato_arena TIMESTAMPTZ
+    sist_endret_dato_arena TIMESTAMPTZ,
+    kafka_offset BIGINT,
+    kafka_partition INT
 );
 
 CREATE TABLE geografisktilknytningkontor (
