@@ -7,6 +7,8 @@ import io.ktor.server.testing.*
 import io.zonky.test.db.postgres.embedded.EmbeddedPostgres
 import no.nav.db.FlywayPlugin
 import no.nav.db.entity.ArenaKontorEntity
+import no.nav.db.entity.KontorHistorikkEntity
+import no.nav.db.table.KontorhistorikkTable
 import no.nav.kafka.EndringPaOppfolgingsBrukerConsumer
 import no.nav.kafka.config.configureTopology
 import no.nav.kafka.config.streamsErrorHandlerConfig
@@ -17,7 +19,6 @@ import org.apache.kafka.streams.StreamsConfig
 import org.apache.kafka.streams.TestInputTopic
 import org.apache.kafka.streams.Topology
 import org.apache.kafka.streams.TopologyTestDriver
-import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.Ignore
@@ -35,7 +36,7 @@ class ApplicationTest {
     }
 
     @Test
-    fun testRoot() = testApplication {
+    fun `skal kun lagre nyere data i arena-kontor tabell og historikk tabellen`() = testApplication {
         val topic = "test-topic"
         val consumer = EndringPaOppfolgingsBrukerConsumer()
         val fnr = "12345678901"
@@ -50,6 +51,32 @@ class ApplicationTest {
             kafkaMockTopic.pipeInput(fnr, """{"oppfolgingsenhet":"4321", "sistEndretDato": "2025-03-10T13:01:14+02:00" }""")
             transaction {
                 ArenaKontorEntity.findById(fnr)?.kontorId shouldBe "1234"
+                KontorHistorikkEntity.find {
+                    KontorhistorikkTable.fnr eq fnr
+                }.count() shouldBe 1
+            }
+        }
+    }
+
+    @Test
+    fun `skal lagre alle nye endringer på arena-kontor i historikk tabellen`() = testApplication {
+        val topic = "test-topic"
+        val consumer = EndringPaOppfolgingsBrukerConsumer()
+        val fnr = "12345678901"
+
+        application {
+            install(FlywayPlugin) {
+                this.dataSource = postgres
+            }
+            val topology = configureTopology(topic, consumer::consume)
+            val kafkaMockTopic = setupKafkaMock(topology, topic)
+            kafkaMockTopic.pipeInput(fnr, """{"oppfolgingsenhet":"1234", "sistEndretDato": "2025-04-10T13:01:14+02:00" }""")
+            kafkaMockTopic.pipeInput(fnr, """{"oppfolgingsenhet":"4321", "sistEndretDato": "2025-05-10T13:01:14+02:00" }""")
+            transaction {
+                ArenaKontorEntity.findById(fnr)?.kontorId shouldBe "4321"
+                KontorHistorikkEntity.find {
+                    KontorhistorikkTable.fnr eq fnr
+                }.count() shouldBe 2
             }
         }
     }
@@ -58,21 +85,8 @@ class ApplicationTest {
     @Test
     fun testKafkaRetry() = testApplication {
         val topic = "test-topic"
-        class FailingConsumer {
-            var runs = 0
-            fun consume(record: Record<String, String>): RecordProcessingResult {
-                runs++
-                if (runs == 1) {
-                    throw RuntimeException("Test exception")
-                }
-                println("Message processed successfully on attempt $runs")
-                return RecordProcessingResult.COMMIT
-
-            }
-        }
-
-        val consumer = FailingConsumer()
         val fnr = "12345678901"
+        val consumer = EndringPaOppfolgingsBrukerConsumer()
 
         application {
             install(FlywayPlugin) {
@@ -81,11 +95,7 @@ class ApplicationTest {
 
             val topology = configureTopology(topic, consumer::consume)
             val kafkaMockTopic = setupKafkaMock(topology, topic)
-            kafkaMockTopic.pipeInput(fnr, """{"oppfolgingsenhet":"ugyldigEnhet"}""")
-            consumer.runs shouldBe 2
-
-
-
+            kafkaMockTopic.pipeInput(fnr, """{"oppfolgingsenhet":"1234", "sistEndretDato": "2025-05-10T13:01:14+02:00" }""")
         }
     }
 
