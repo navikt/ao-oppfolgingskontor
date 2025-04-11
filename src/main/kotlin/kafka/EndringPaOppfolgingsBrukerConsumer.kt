@@ -1,10 +1,9 @@
 package no.nav.kafka
 
-import kotlinx.datetime.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import no.nav.db.dto.EndretAvType
-import no.nav.db.entity.SistEndretKontorEntity
+import no.nav.db.entity.KontorHistorikkEntity
 import no.nav.db.table.ArenaKontorTable
 import no.nav.db.table.KontorhistorikkTable
 import no.nav.db.table.KontorhistorikkTable.fnr
@@ -33,7 +32,7 @@ class EndringPaOppfolgingsBrukerConsumer(
         }
 
         val sistEndretKontorEntity = transaction {
-            SistEndretKontorEntity
+            KontorHistorikkEntity
                 .find { fnr eq fnrString }
                 .maxByOrNull { it.createdAt }
         }

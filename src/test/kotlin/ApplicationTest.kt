@@ -13,7 +13,6 @@ import no.nav.kafka.EndringPaOppfolgingsBrukerConsumer
 import no.nav.kafka.config.configureTopology
 import no.nav.kafka.config.streamsErrorHandlerConfig
 import no.nav.kafka.convertToOffsetDatetime
-import no.nav.kafka.processor.RecordProcessingResult
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.StreamsConfig
 import org.apache.kafka.streams.TestInputTopic
