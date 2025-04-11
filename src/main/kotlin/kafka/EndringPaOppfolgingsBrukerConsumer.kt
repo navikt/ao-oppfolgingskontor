@@ -34,7 +34,7 @@ class EndringPaOppfolgingsBrukerConsumer(
 
         val sistEndretKontorEntity = transaction {
             SistEndretKontorEntity
-                .find { fnr eq fnr }
+                .find { fnr eq fnrString }
                 .maxByOrNull { it.createdAt }
         }
 
