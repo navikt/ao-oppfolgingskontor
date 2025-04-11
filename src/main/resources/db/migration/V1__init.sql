@@ -1,42 +1,42 @@
 CREATE TABLE arbeidsoppfolgingskontor (
     fnr VARCHAR(11) PRIMARY KEY,
-    kontorId VARCHAR(4),
-    endretAv VARCHAR(20),
-    endretAvType VARCHAR(20),
-    createdAt TIMESTAMPTZ DEFAULT NOW(),
-    updatedAt TIMESTAMPTZ DEFAULT NOW()
+    kontor_id VARCHAR(4),
+    endret_av VARCHAR(20),
+    endret_av_type VARCHAR(20),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE arenakontor (
     fnr VARCHAR(11) PRIMARY KEY,
-    kontorId VARCHAR(4),
-    endretAv VARCHAR(20),
-    endretAvType VARCHAR(20),
-    createdAt TIMESTAMPTZ DEFAULT NOW(),
-    updatedAt TIMESTAMPTZ DEFAULT NOW(),
-    sistEndretDatoArena TIMESTAMPTZ
+    kontor_id VARCHAR(4),
+    endret_av VARCHAR(20),
+    endret_av_type VARCHAR(20),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    sist_endret_dato_arena TIMESTAMPTZ
 );
 
 CREATE TABLE geografisktilknytningkontor (
     fnr VARCHAR(11) PRIMARY KEY,
-    kontorId VARCHAR(4),
-    endretAv VARCHAR(20),
-    endretAvType VARCHAR(20),
-    createdAt TIMESTAMPTZ DEFAULT NOW(),
-    updatedAt TIMESTAMPTZ DEFAULT NOW()
+    kontor_id VARCHAR(4),
+    endret_av VARCHAR(20),
+    endret_av_type VARCHAR(20),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE aktorid (
     fnr VARCHAR(11) PRIMARY KEY,
-    aktorid VARCHAR(13)
+    aktor_id VARCHAR(13)
 );
 
 CREATE TABLE kontorhistorikk (
     id SERIAL PRIMARY KEY,
     fnr VARCHAR(11),
-    kontorid VARCHAR(4),
-    endretAv VARCHAR(20),
-    endretAvType VARCHAR(20),
+    kontor_id VARCHAR(4),
+    endret_av VARCHAR(20),
+    endret_av_type VARCHAR(20),
     kontorendringstype VARCHAR(255),
     -- "Triggere" for at bruker for tildelt et kontor
     -- Automatisk fordeling ved Arbeidssøkerregistrering
@@ -44,5 +44,5 @@ CREATE TABLE kontorhistorikk (
     -- Endret i Arena
     -- Endret skjermingsstatus
     -- Endret addressebeskyttelse
-    createdAt TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );

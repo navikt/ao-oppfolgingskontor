@@ -7,10 +7,12 @@ import org.jetbrains.exposed.sql.kotlin.datetime.timestampWithTimeZone
 object ArenaKontorTable: IdTable<String>("arenakontor") {
     override val id = char("fnr", 11).entityId() // VARCHAR(11) PRIMARY KEY,
     override val primaryKey = PrimaryKey(id) // PRIMARY KEY (fnr),
-    val kontorId = char("kontorid", 4) // VARCHAR(4),
-    val endretAv = varchar("endretav", 20) // VARCHAR(20),
-    val endretAvType = varchar("endretavtype", 20) // VARCHAR(20),
-    val createdAt = timestampWithTimeZone("createdat").defaultExpression(CurrentTimestampWithTimeZone) // TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    val updatedAt = timestampWithTimeZone("updatedat").defaultExpression(CurrentTimestampWithTimeZone) // TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    val sistEndretDatoArena = timestampWithTimeZone("sistendretdatoarena")
+    val kontorId = char("kontor_id", 4) // VARCHAR(4),
+    val endretAv = varchar("endret_av", 20) // VARCHAR(20),
+    val endretAvType = varchar("endret_av_type", 20) // VARCHAR(20),
+    val createdAt = timestampWithTimeZone("created_at").defaultExpression(CurrentTimestampWithTimeZone) // TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    val updatedAt = timestampWithTimeZone("updated_at").defaultExpression(CurrentTimestampWithTimeZone) // TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    val sistEndretDatoArena = timestampWithTimeZone("sist_endret_dato_arena")
+    val offset = integer("offset")
+    val partition = integer("partition")
 }
