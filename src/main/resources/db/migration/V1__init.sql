@@ -13,7 +13,8 @@ CREATE TABLE arenakontor (
     endretAv VARCHAR(20),
     endretAvType VARCHAR(20),
     createdAt TIMESTAMPTZ DEFAULT NOW(),
-    updatedAt TIMESTAMPTZ DEFAULT NOW()
+    updatedAt TIMESTAMPTZ DEFAULT NOW(),
+    sistEndretDatoArena TIMESTAMPTZ
 );
 
 CREATE TABLE geografisktilknytningkontor (
