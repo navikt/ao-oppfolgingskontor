@@ -9,8 +9,6 @@ class ArenaKontorEntity(id: EntityID<String>): Entity<String>(id) {
     companion object : ImmutableEntityClass<String, ArenaKontorEntity>(ArenaKontorTable)
     val fnr by ArenaKontorTable.id
     val kontorId by ArenaKontorTable.kontorId
-    val endretAv by ArenaKontorTable.endretAv
-    val endretAvType by ArenaKontorTable.endretAvType
     val createdAt by ArenaKontorTable.createdAt
     val updatedAt by ArenaKontorTable.updatedAt
     val sistEndretDatoArena by ArenaKontorTable.sistEndretDatoArena

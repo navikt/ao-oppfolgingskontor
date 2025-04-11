@@ -51,8 +51,6 @@ class EndringPaOppfolgingsBrukerConsumer(
             ArenaKontorTable.upsert {
                 it[id] = fnrString
                 it[kontorId] = endringPaOppfolgingsBruker.oppfolgingsenhet
-                it[endretAv] = "ukjent"
-                it[endretAvType] = EndretAvType.ARENA.name
                 it[updatedAt] = OffsetDateTime.now()
                 it[sistEndretDatoArena] = endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime()
                 it[kafkaOffset] = maybeRecordMetadata?.offset()?.toInt()

@@ -13,9 +13,7 @@ fun ArbeidsOppfolgingKontorEntity.toArbeidsoppfolgingKontor(): Arbeidsoppfolging
         kontorId = this.kontorId,
         metadata = KontorMetadata(
             createdAt = this.createdAt,
-            updatedAt = this.updatedAt,
-            endretAv = this.endretAv,
-            endretAvType = this.endretAvType
+            updatedAt = this.updatedAt
         )
     )
 }

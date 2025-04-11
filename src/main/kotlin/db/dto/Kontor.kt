@@ -10,6 +10,4 @@ sealed class Kontor(
 data class KontorMetadata(
     val createdAt: OffsetDateTime,
     val updatedAt: OffsetDateTime,
-    val endretAv: String,
-    val endretAvType: String,
 )
