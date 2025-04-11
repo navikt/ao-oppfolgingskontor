@@ -12,5 +12,5 @@ object ArenaKontorTable: IdTable<String>("arenakontor") {
     val endretAvType = varchar("endretavtype", 20) // VARCHAR(20),
     val createdAt = timestampWithTimeZone("createdat").defaultExpression(CurrentTimestampWithTimeZone) // TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     val updatedAt = timestampWithTimeZone("updatedat").defaultExpression(CurrentTimestampWithTimeZone) // TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    val sistEndretDatoArena = timestampWithTimeZone("sistendretdatoarena").defaultExpression(CurrentTimestampWithTimeZone) // TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    val sistEndretDatoArena = timestampWithTimeZone("sistendretdatoarena")
 }

@@ -3,10 +3,9 @@ package no.nav.kafka
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import no.nav.db.dto.EndretAvType
-import no.nav.db.entity.KontorHistorikkEntity
+import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.table.ArenaKontorTable
 import no.nav.db.table.KontorhistorikkTable
-import no.nav.db.table.KontorhistorikkTable.fnr
 import no.nav.kafka.processor.RecordProcessingResult
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.insert
@@ -32,12 +31,12 @@ class EndringPaOppfolgingsBrukerConsumer(
         }
 
         val sistEndretKontorEntity = transaction {
-            KontorHistorikkEntity
-                .find { fnr eq fnrString }
-                .maxByOrNull { it.createdAt }
+            ArenaKontorEntity
+                .find { ArenaKontorTable.id eq fnrString }
+                .firstOrNull()
         }
 
-        if(sistEndretKontorEntity != null && sistEndretKontorEntity.createdAt > endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime()) {
+        if(sistEndretKontorEntity != null && sistEndretKontorEntity.sistEndretDatoArena > endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime()) {
             log.warn("Sist endret kontor er eldre enn endring på oppfølgingsbruker")
             return RecordProcessingResult.SKIP
         }
@@ -54,6 +53,7 @@ class EndringPaOppfolgingsBrukerConsumer(
                 it[endretAv] = "ukjent"
                 it[endretAvType] = EndretAvType.ARENA.name
                 it[updatedAt] = OffsetDateTime.now()
+                it[sistEndretDatoArena] = endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime()
             }
         }
 
