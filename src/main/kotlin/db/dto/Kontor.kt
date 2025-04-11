@@ -1,6 +1,6 @@
 package no.nav.db.dto
 
-import kotlinx.datetime.LocalDateTime
+import java.time.OffsetDateTime
 
 sealed class Kontor(
     val kontorId: String,
@@ -8,8 +8,8 @@ sealed class Kontor(
 )
 
 data class KontorMetadata(
-    val createdAt: LocalDateTime,
-    val updatedAt: LocalDateTime,
+    val createdAt: OffsetDateTime,
+    val updatedAt: OffsetDateTime,
     val endretAv: String,
     val endretAvType: String,
 )

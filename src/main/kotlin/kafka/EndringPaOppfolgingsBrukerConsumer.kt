@@ -14,7 +14,7 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.upsert
 import org.slf4j.LoggerFactory
-import java.time.format.DateTimeFormatter
+import java.time.OffsetDateTime
 
 class EndringPaOppfolgingsBrukerConsumer(
 //    val dataSource: DataSource,
@@ -38,7 +38,7 @@ class EndringPaOppfolgingsBrukerConsumer(
                 .maxByOrNull { it.createdAt }
         }
 
-        if(sistEndretKontorEntity != null && sistEndretKontorEntity.createdAt > endringPaOppfolgingsBruker.sistEndretDato.convertToLocalDateTime()) {
+        if(sistEndretKontorEntity != null && sistEndretKontorEntity.createdAt > endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime()) {
             log.warn("Sist endret kontor er eldre enn endring på oppfølgingsbruker")
             return RecordProcessingResult.SKIP
         }
@@ -54,7 +54,7 @@ class EndringPaOppfolgingsBrukerConsumer(
                 it[kontorId] = endringPaOppfolgingsBruker.oppfolgingsenhet
                 it[endretAv] = "ukjent"
                 it[endretAvType] = EndretAvType.ARENA.name
-                it[updatedAt] = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+                it[updatedAt] = OffsetDateTime.now()
             }
         }
 
@@ -65,8 +65,8 @@ class EndringPaOppfolgingsBrukerConsumer(
 
 // ""sistEndretDato":string"2025-04-10T13:01:14+02:00"
 
-fun String.convertToLocalDateTime(): LocalDateTime {
-    return Instant.parse(this).toLocalDateTime(TimeZone.currentSystemDefault())
+fun String.convertToOffsetDatetime(): OffsetDateTime {
+    return OffsetDateTime.parse(this)
 }
 
 @Serializable
