@@ -12,7 +12,7 @@ import no.nav.db.table.KontorhistorikkTable
 import no.nav.kafka.EndringPaOppfolgingsBrukerConsumer
 import no.nav.kafka.config.configureTopology
 import no.nav.kafka.config.streamsErrorHandlerConfig
-import no.nav.kafka.convertToLocalDateTime
+import no.nav.kafka.convertToOffsetDatetime
 import no.nav.kafka.processor.RecordProcessingResult
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.StreamsConfig
@@ -122,7 +122,7 @@ class ApplicationTest {
     @Test
     fun testDateTimeParse() {
         val dateTimeString = "2025-04-10T13:01:14+02"
-        val localDateTime = dateTimeString.convertToLocalDateTime()
+        val localDateTime = dateTimeString.convertToOffsetDatetime()
         localDateTime.shouldNotBeNull()
         println(localDateTime)
     }
