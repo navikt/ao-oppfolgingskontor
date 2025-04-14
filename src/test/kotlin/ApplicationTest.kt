@@ -39,10 +39,8 @@ import io.ktor.client.request.bearerAuth
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.config.MapApplicationConfig
 import kotlinx.serialization.Serializable
+import no.nav.graphql.queries.kontortypeAlias
 import no.nav.security.mock.oauth2.MockOAuth2Server
-import no.nav.security.mock.oauth2.OAuth2Config
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 
 class ApplicationTest {
@@ -185,7 +183,7 @@ class ApplicationTest {
 
         response.status shouldBe HttpStatusCode.OK
         val lol = response.body<GraphqlResponse>()
-        lol shouldBe GraphqlResponse(Data(KontorQueryDto(kontorId)))
+        lol shouldBe GraphqlResponse(Data(KontorQueryDto(kontorId, row[kontortypeAlias])))
         server.shutdown()
     }
 
