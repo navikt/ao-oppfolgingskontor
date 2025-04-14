@@ -10,11 +10,10 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
 
+enum class KontorKilde {ARBEIDSOPPFOLGING, ARENA, GEOGRAFISK_TILKNYTNING}
+
 val kontorAlias = ArbeidsOppfolgingKontorTable.kontorId.alias("kontorid")
-val kontortypeAlias = stringLiteral("kontortype").alias("kontortype")
-val arbeidsoppfolgingskontorAlias = stringLiteral("arbeidoppfolgingskontor").alias(kontortypeAlias.alias);
-val arenaKontorAlias = stringLiteral("arenakontor").alias(kontortypeAlias.alias);
-val geografiskTilknytningKontorAlias = stringLiteral("geografisktilknytningkontor").alias(kontortypeAlias.alias);
+val kontorkildeAlias = stringLiteral(KontorKilde.ARBEIDSOPPFOLGING.name).alias("kilde") // Tilfeldig valgt verdi
 val prioritetAlias = intLiteral(0).alias("prioritet")
 
 class KontorQuery : Query {
@@ -23,14 +22,14 @@ class KontorQuery : Query {
 
             val arbeidsoppfolgingKontorQuery = ArbeidsOppfolgingKontorTable.select(
                 ArbeidsOppfolgingKontorTable.kontorId.alias(kontorAlias.alias),
-                arbeidsoppfolgingskontorAlias,
+                stringLiteral(KontorKilde.ARBEIDSOPPFOLGING.name).alias(kontorkildeAlias.alias),
                 intLiteral(1).alias(prioritetAlias.alias)
             )
                 .where { ArbeidsOppfolgingKontorTable.id eq fnrParam }
 
             val arenaKontorQuery = ArenaKontorTable.select(
                 ArenaKontorTable.kontorId.alias(kontorAlias.alias),
-                arenaKontorAlias,
+                stringLiteral(KontorKilde.ARENA.name).alias(kontorkildeAlias.alias),
                 intLiteral(2).alias(prioritetAlias.alias)
             )
                 .where { ArenaKontorTable.id eq fnrParam }
@@ -38,7 +37,7 @@ class KontorQuery : Query {
             val geografiskTilknytningKontorQuery =
                 GeografiskTilknytningKontorTable.select(
                     GeografiskTilknytningKontorTable.kontorId.alias(kontorAlias.alias),
-                    geografiskTilknytningKontorAlias,
+                    stringLiteral(KontorKilde.GEOGRAFISK_TILKNYTNING.name).alias(kontorkildeAlias.alias),
                     intLiteral(3).alias(prioritetAlias.alias)
                 )
                     .where(GeografiskTilknytningKontorTable.id eq fnrParam)
@@ -50,7 +49,7 @@ class KontorQuery : Query {
                 .limit(1)
                 .firstOrNull()
 
-            resultRow?.let { row -> KontorQueryDto(row[kontorAlias], row[kontortypeAlias]) }
+            resultRow?.let { row -> KontorQueryDto(row[kontorAlias], KontorKilde.valueOf(row[kontorkildeAlias])) }
 
         }
     }

@@ -2,7 +2,7 @@ package no.nav
 
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import io.ktor.client.call.body
+import io.ktor.client.call.*
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
@@ -39,7 +39,7 @@ import io.ktor.client.request.bearerAuth
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.config.MapApplicationConfig
 import kotlinx.serialization.Serializable
-import no.nav.graphql.queries.kontortypeAlias
+import no.nav.graphql.queries.KontorKilde
 import no.nav.security.mock.oauth2.MockOAuth2Server
 import kotlin.test.Test
 
@@ -178,12 +178,12 @@ class ApplicationTest {
         val response = client.post("/graphql") {
             bearerAuth(token)
             contentType(ContentType.Application.Json)
-            setBody("""{"variables": { "fnr": $fnr }, "query": " { kontorForBruker (fnrParam: \"$fnr\") { kontorId } }"}""")
+            setBody("""{"variables": { "fnr": $fnr }, "query": " { kontorForBruker (fnrParam: \"$fnr\") { kontorId , kilde } }"}""")
         }
 
         response.status shouldBe HttpStatusCode.OK
         val lol = response.body<GraphqlResponse>()
-        lol shouldBe GraphqlResponse(Data(KontorQueryDto(kontorId, row[kontortypeAlias])))
+        lol shouldBe GraphqlResponse(Data(KontorQueryDto(kontorId, KontorKilde.ARENA)))
         server.shutdown()
     }
 
