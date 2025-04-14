@@ -12,7 +12,7 @@ hikari-version = "6.3.0"
 logstash-version = "8.0"
 embedded-postgres-version = "2.1.0"
 kotest-version = "5.9.1"
-graphql-kotlin-version = "8.4.0"
+graphql-kotlin-version = "8.5.0"
 
 [libraries]
 ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor-version" }
@@ -44,9 +44,11 @@ logstash = { module = "net.logstash.logback:logstash-logback-encoder", version.r
 embedded-postgres = {module = "io.zonky.test:embedded-postgres", version.ref = "embedded-postgres-version"}
 kafka-streams-test-utils = { module = "org.apache.kafka:kafka-streams-test-utils", version.ref = "kafka-streams" }
 kotest-assertions = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest-version" }
-graphql-kotlin = { module = "com.expediagroup:graphql-kotlin-ktor-server", version.ref = "graphql-kotlin-version" }
+graphql-kotlin-server = { module = "com.expediagroup:graphql-kotlin-ktor-server", version.ref = "graphql-kotlin-version" }
+graphql-kotlin-schema-generator = { module = "com.expediagroup:graphql-kotlin-schema-generator", version.ref = "graphql-kotlin-version" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-version" }
 ktor = { id = "io.ktor.plugin", version.ref = "ktor-version" }
 kotlin-plugin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin-version" }
+expedia-graphql = { id = "com.expediagroup.graphql", version.ref = "graphql-kotlin-version" }

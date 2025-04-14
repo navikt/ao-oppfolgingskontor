@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.ktor)
     alias(libs.plugins.kotlin.plugin.serialization)
+    alias(libs.plugins.expedia.graphql)
 }
 
 group = "dab.poao.nav.no"
@@ -49,10 +50,20 @@ dependencies {
     implementation(libs.logback.classic)
     implementation(libs.ktor.server.config.yaml)
     implementation(libs.kafka.streams)
-    implementation(libs.graphql.kotlin)
+    implementation(libs.graphql.kotlin.server)
+    implementation(libs.graphql.kotlin.schema.generator)
     testImplementation(libs.embedded.postgres)
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test.junit)
     testImplementation(libs.kafka.streams.test.utils)
     testImplementation(libs.kotest.assertions)
+}
+
+graphql {
+    schema {
+        packages = listOf(
+            "no.nav.graphql.queries",
+            "no.nav.graphql.schemas",
+        )
+    }
 }
