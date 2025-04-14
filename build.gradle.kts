@@ -52,6 +52,7 @@ dependencies {
     implementation(libs.kafka.streams)
     implementation(libs.graphql.kotlin.server)
     implementation(libs.graphql.kotlin.schema.generator)
+    implementation(libs.token.validation.ktor.v3)
     testImplementation(libs.embedded.postgres)
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.ktor.client.content.negotiation)

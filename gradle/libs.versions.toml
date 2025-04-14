@@ -13,6 +13,7 @@ logstash-version = "8.0"
 embedded-postgres-version = "2.1.0"
 kotest-version = "5.9.1"
 graphql-kotlin-version = "8.5.0"
+token-validation-ktor-v3-version = "5.0.24"
 
 [libraries]
 ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor-version" }
@@ -47,6 +48,7 @@ kafka-streams-test-utils = { module = "org.apache.kafka:kafka-streams-test-utils
 kotest-assertions = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest-version" }
 graphql-kotlin-server = { module = "com.expediagroup:graphql-kotlin-ktor-server", version.ref = "graphql-kotlin-version" }
 graphql-kotlin-schema-generator = { module = "com.expediagroup:graphql-kotlin-schema-generator", version.ref = "graphql-kotlin-version" }
+token-validation-ktor-v3 = { module = "no.nav.security:token-validation-ktor-v3", version.ref ="token-validation-ktor-v3-version" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-version" }
