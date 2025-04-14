@@ -54,6 +54,7 @@ dependencies {
     implementation(libs.graphql.kotlin.schema.generator)
     testImplementation(libs.embedded.postgres)
     testImplementation(libs.ktor.server.test.host)
+    testImplementation(libs.ktor.client.content.negotiation)
     testImplementation(libs.kotlin.test.junit)
     testImplementation(libs.kafka.streams.test.utils)
     testImplementation(libs.kotest.assertions)
