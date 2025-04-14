@@ -1,5 +1,3 @@
-import io.ktor.plugin.features.*
-
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.ktor)
@@ -19,6 +17,16 @@ application {
 
 repositories {
     mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(23))
+    }
+}
+
+kotlin {
+    jvmToolchain(23)
 }
 
 tasks.shadowJar {
@@ -56,6 +64,7 @@ dependencies {
     testImplementation(libs.embedded.postgres)
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.ktor.client.content.negotiation)
+    testImplementation(libs.mock.oauth2.server)
     testImplementation(libs.kotlin.test.junit)
     testImplementation(libs.kafka.streams.test.utils)
     testImplementation(libs.kotest.assertions)

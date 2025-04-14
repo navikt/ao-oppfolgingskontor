@@ -5,7 +5,6 @@ import io.kotest.matchers.shouldBe
 import io.ktor.client.call.body
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
@@ -35,11 +34,16 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.Ignore
 import java.util.*
 import javax.sql.DataSource
-import kotlin.test.Test
-import kotlin.test.todo
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.request.bearerAuth
 import io.ktor.serialization.kotlinx.json.json
+import io.ktor.server.config.MapApplicationConfig
 import kotlinx.serialization.Serializable
+import no.nav.security.mock.oauth2.MockOAuth2Server
+import no.nav.security.mock.oauth2.OAuth2Config
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
 
 class ApplicationTest {
     val postgres: DataSource by lazy {
@@ -143,20 +147,27 @@ class ApplicationTest {
             val topology = configureTopology(topic, consumer::consume)
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(fnr, """{"oppfolgingsenhet":"ugyldigEnhet"}""")
-            todo { "assert" }
 
         }
     }
 
     @Test
     fun `skal kunne hente kontor via graphql`() = testApplication {
+        server.start()
+        environment {
+            this.config = doConfig()
+        }
+
         val fnr = "12345678901"
         val kontorId = "4142"
+
+        val token = server.issueToken().serialize()
+
         application {
             install(FlywayPlugin) {
                 this.dataSource = postgres
             }
-
+            configureSecurity()
             graphQlModule()
             gittBrukerMedKontorIArena(fnr, kontorId)
         }
@@ -167,6 +178,7 @@ class ApplicationTest {
         }
 
         val response = client.post("/graphql") {
+            bearerAuth(token)
             contentType(ContentType.Application.Json)
             setBody("""{"variables": { "fnr": $fnr }, "query": " { kontorForBruker (fnrParam: \"$fnr\") { kontorId } }"}""")
         }
@@ -174,6 +186,7 @@ class ApplicationTest {
         response.status shouldBe HttpStatusCode.OK
         val lol = response.body<GraphqlResponse>()
         lol shouldBe GraphqlResponse(Data(KontorQueryDto(kontorId)))
+        server.shutdown()
     }
 
     @Test
@@ -190,6 +203,19 @@ class ApplicationTest {
                 it[id] = fnr
                 it[this.kontorId] = kontorId
             }
+        }
+    }
+
+    /* Default issuer is "default" and default aud is "default" */
+    val server = MockOAuth2Server()
+    private fun doConfig(
+        acceptedIssuer: String = "default",
+        acceptedAudience: String = "default"): MapApplicationConfig {
+        return MapApplicationConfig().apply {
+            put("no.nav.security.jwt.issuers.size", "1")
+            put("no.nav.security.jwt.issuers.0.issuer_name", acceptedIssuer)
+            put("no.nav.security.jwt.issuers.0.discoveryurl", "${server.wellKnownUrl(acceptedIssuer)}")
+            put("no.nav.security.jwt.issuers.0.accepted_audience", acceptedAudience)
         }
     }
 }
