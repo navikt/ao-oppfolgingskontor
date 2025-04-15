@@ -1,0 +1,6 @@
+query($fnr: String!) {
+    kontorForBruker(fnrParam: $fnr) {
+        kontorId
+        kilde
+    }
+}

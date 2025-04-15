@@ -10,6 +10,7 @@ import io.ktor.server.application.install
 import io.ktor.server.auth.authenticate
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.routing.routing
+import no.nav.graphql.queries.KontorHistorikkQuery
 import no.nav.graphql.queries.KontorQuery
 
 fun Application.graphQlModule() {
@@ -20,7 +21,8 @@ fun Application.graphQlModule() {
                 "no.nav.graphql.queries",
             )
             queries = listOf(
-                KontorQuery()
+                KontorQuery(),
+                KontorHistorikkQuery()
             )
         }
     }
