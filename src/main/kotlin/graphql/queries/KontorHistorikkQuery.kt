@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory
 class KontorHistorikkQuery : Query {
     val logger = LoggerFactory.getLogger(KontorHistorikkQuery::class.java)
 
-    fun kontorHistorikk(fnrParam: String, _: DataFetchingEnvironment): List<KontorHistorikkQueryDto> {
+    fun kontorHistorikk(fnrParam: String, dataFetchingEnvironment: DataFetchingEnvironment): List<KontorHistorikkQueryDto> {
         return runCatching {
             transaction {
                 KontorHistorikkEntity
