@@ -5,6 +5,7 @@ import graphql.schema.DataFetchingEnvironment
 import no.nav.db.entity.KontorHistorikkEntity
 import no.nav.db.table.KontorhistorikkTable
 import no.nav.domain.KontorEndringsType
+import no.nav.domain.getKilde
 import no.nav.graphql.schemas.KontorHistorikkQueryDto
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
@@ -12,7 +13,7 @@ import org.slf4j.LoggerFactory
 class KontorHistorikkQuery : Query {
     val logger = LoggerFactory.getLogger(KontorHistorikkQuery::class.java)
 
-    fun kontorHistorikk(fnrParam: String, dataFetchingEnvironment: DataFetchingEnvironment): List<KontorHistorikkQueryDto> {
+    fun kontorHistorikk(fnrParam: String, _: DataFetchingEnvironment): List<KontorHistorikkQueryDto> {
         return runCatching {
             transaction {
                 KontorHistorikkEntity.find { KontorhistorikkTable.fnr eq fnrParam }
@@ -34,14 +35,5 @@ class KontorHistorikkQuery : Query {
             }
             .onSuccess { return it }
             .getOrThrow()
-    }
-}
-
-fun KontorEndringsType.getKilde(): KontorKilde {
-    return when (this) {
-        KontorEndringsType.AutomatiskRutetTilNOE -> KontorKilde.ARBEIDSOPPFOLGING
-        KontorEndringsType.FlyttetAvVeileder -> KontorKilde.ARBEIDSOPPFOLGING
-        KontorEndringsType.BleSkjermer -> KontorKilde.GEOGRAFISK_TILKNYTNING
-        KontorEndringsType.FikkAddressebeskyttelse -> KontorKilde.GEOGRAFISK_TILKNYTNING
     }
 }
