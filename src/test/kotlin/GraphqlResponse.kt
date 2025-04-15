@@ -1,6 +1,8 @@
 package no.nav
 
 import kotlinx.serialization.Serializable
+import no.nav.graphql.schemas.KontorHistorikkQueryDto
+import no.nav.graphql.schemas.KontorQueryDto
 
 @Serializable
 data class GraphqlResponse<T> (
@@ -25,4 +27,14 @@ data class Extension(
 data class GraphqlErrorLocation(
     val line: Int,
     val column: Int,
+)
+
+@Serializable
+data class KontorForBruker(
+    val kontorForBruker: KontorQueryDto,
+)
+
+@Serializable
+data class KontorHistorikk(
+    val kontorHistorikk: List<KontorHistorikkQueryDto>,
 )

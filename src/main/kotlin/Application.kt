@@ -3,7 +3,7 @@ package no.nav
 import io.ktor.server.application.*
 import no.nav.db.FlywayPlugin
 import no.nav.db.PostgresDataSource
-import no.nav.graphql.graphQlModule
+import no.nav.graphql.configureGraphQlModule
 import no.nav.kafka.KafkaStreamsPlugin
 import org.jetbrains.exposed.sql.Database
 
@@ -23,5 +23,5 @@ fun Application.module() {
         this.dataSource = dataSource
     }
     install(KafkaStreamsPlugin)
-    graphQlModule()
+    configureGraphQlModule()
 }
