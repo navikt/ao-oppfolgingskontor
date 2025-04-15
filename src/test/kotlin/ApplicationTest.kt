@@ -1,5 +1,6 @@
 package no.nav
 
+import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.ktor.client.call.*
@@ -36,11 +37,15 @@ import java.util.*
 import javax.sql.DataSource
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.bearerAuth
+import io.ktor.client.statement.bodyAsText
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.config.MapApplicationConfig
 import kotlinx.serialization.Serializable
+import no.nav.domain.KontorEndringsType
 import no.nav.graphql.queries.KontorKilde
+import no.nav.graphql.schemas.KontorHistorikkQueryDto
 import no.nav.security.mock.oauth2.MockOAuth2Server
+import java.time.ZonedDateTime
 import kotlin.test.Test
 
 class ApplicationTest {
@@ -182,8 +187,58 @@ class ApplicationTest {
         }
 
         response.status shouldBe HttpStatusCode.OK
-        val lol = response.body<GraphqlResponse>()
-        lol shouldBe GraphqlResponse(Data(KontorQueryDto(kontorId, KontorKilde.ARENA)))
+        val lol = response.body<GraphqlResponse<KontorForBruker>>()
+        lol shouldBe GraphqlResponse(KontorForBruker(KontorQueryDto(kontorId, KontorKilde.ARENA)))
+        server.shutdown()
+    }
+
+    @Test
+    fun `skal kunne hente kontorhistorikk via graphql`() = testApplication {
+        server.start()
+        environment {
+            this.config = doConfig()
+        }
+
+        val fnr = "12345678901"
+        val kontorId = "4142"
+
+        val token = server.issueToken().serialize()
+
+        application {
+            install(FlywayPlugin) {
+                this.dataSource = postgres
+            }
+            configureSecurity()
+            graphQlModule()
+            gittBrukerMedKontorIArena(fnr, kontorId)
+        }
+        val client = createClient {
+            install(ContentNegotiation) {
+                json()
+            }
+        }
+
+        val response = client.post("/graphql") {
+            bearerAuth(token)
+            contentType(ContentType.Application.Json)
+            setBody("""{"variables": { "fnr": $fnr }, "query": " { kontorHistorikk (fnrParam: \"$fnr\") { kontorId , kilde, endretAv, endretAvType, endretTidspunkt, endringsType } }"}""")
+        }
+
+        response.status shouldBe HttpStatusCode.OK
+        val payload = response.body<GraphqlResponse<KontorHistorikk>>()
+        payload.errors shouldBe null
+        payload.data shouldBe KontorHistorikk(
+            listOf(
+                KontorHistorikkQueryDto(
+                    kontorId = "4142",
+                    kilde = KontorKilde.ARBEIDSOPPFOLGING,
+                    endringsType = KontorEndringsType.FlyttetAvVeileder,
+                    endretAv = "S515151",
+                    endretAvType = "veileder",
+                    endretTidspunkt = insertTime.toString()
+                )
+            )
+        )
         server.shutdown()
     }
 
@@ -195,11 +250,22 @@ class ApplicationTest {
         println(localDateTime)
     }
 
+    val insertTime = ZonedDateTime.parse("2025-04-15T07:12:14.307878Z")
     private fun gittBrukerMedKontorIArena(fnr: Fnr, kontorId: String) {
         transaction {
             ArenaKontorTable.insert {
                 it[id] = fnr
                 it[this.kontorId] = kontorId
+                it[this.createdAt] = insertTime.toOffsetDateTime()
+                it[this.updatedAt] = insertTime.toOffsetDateTime()
+            }
+            KontorhistorikkTable.insert {
+                it[this.fnr] = fnr
+                it[this.kontorId] = kontorId
+                it[this.kontorendringstype] = KontorEndringsType.FlyttetAvVeileder.name
+                it[this.endretAvType] = "veileder"
+                it[this.endretAv] = "S515151"
+                it[this.createdAt] = insertTime.toOffsetDateTime()
             }
         }
     }
@@ -219,13 +285,13 @@ class ApplicationTest {
 }
 
 @Serializable
-data class GraphqlResponse(
-    val data: Data
+data class KontorForBruker(
+    val kontorForBruker: KontorQueryDto,
 )
 
 @Serializable
-data class Data(
-    val kontorForBruker: KontorQueryDto,
+data class KontorHistorikk(
+    val kontorHistorikk: List<KontorHistorikkQueryDto>,
 )
 
 fun setupKafkaMock(topology: Topology, topic: String): TestInputTopic<String, String> {
