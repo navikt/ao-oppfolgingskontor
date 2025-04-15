@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.ktor)
     alias(libs.plugins.kotlin.plugin.serialization)
     alias(libs.plugins.expedia.graphql)
+    alias(libs.plugins.sonar)
 }
 
 group = "dab.poao.nav.no"
@@ -76,5 +77,13 @@ graphql {
             "no.nav.graphql.queries",
             "no.nav.graphql.schemas",
         )
+    }
+}
+
+sonar {
+    properties {
+        property("sonar.projectKey", "navikt_ao-oppfolgingskontor")
+        property("sonar.organization", "navikt")
+        property("sonar.host.url", "https://sonarcloud.io")
     }
 }
