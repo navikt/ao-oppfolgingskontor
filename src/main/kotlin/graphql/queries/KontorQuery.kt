@@ -17,7 +17,7 @@ val kontorkildeAlias = stringLiteral(KontorKilde.ARBEIDSOPPFOLGING.name).alias("
 val prioritetAlias = intLiteral(0).alias("prioritet")
 
 class KontorQuery : Query {
-    fun kontorForBruker(fnrParam: Fnr, _: DataFetchingEnvironment): KontorQueryDto? {
+    fun kontorForBruker(fnrParam: Fnr, dataFetchingEnvironment: DataFetchingEnvironment): KontorQueryDto? {
         return transaction {
 
             val arbeidsoppfolgingKontorQuery = ArbeidsOppfolgingKontorTable.select(
