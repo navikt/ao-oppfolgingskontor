@@ -13,7 +13,7 @@ import io.ktor.server.routing.routing
 import no.nav.graphql.queries.KontorHistorikkQuery
 import no.nav.graphql.queries.KontorQuery
 
-fun Application.graphQlModule() {
+fun Application.installGraphQl() {
     install(GraphQL) {
         schema {
             packages = listOf(
@@ -26,6 +26,10 @@ fun Application.graphQlModule() {
             )
         }
     }
+}
+
+fun Application.configureGraphQlModule() {
+    installGraphQl()
 
     routing {
         authenticate {
