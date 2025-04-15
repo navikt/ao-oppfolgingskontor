@@ -16,7 +16,8 @@ class KontorHistorikkQuery : Query {
     fun kontorHistorikk(fnrParam: String, _: DataFetchingEnvironment): List<KontorHistorikkQueryDto> {
         return runCatching {
             transaction {
-                KontorHistorikkEntity.find { KontorhistorikkTable.fnr eq fnrParam }
+                KontorHistorikkEntity
+                    .find { KontorhistorikkTable.fnr eq fnrParam }
                     .map {
                         val endringsType = KontorEndringsType.valueOf(it.kontorendringstype)
                         KontorHistorikkQueryDto(
@@ -28,7 +29,8 @@ class KontorHistorikkQuery : Query {
                             endretTidspunkt = it.createdAt.toZonedDateTime().toString(),
                         )
                     }
-            } }
+            }
+        }
             .onFailure {
                 logger.error("Feil ved henting av kontorhistorikk for fnr: $fnrParam", it)
                 throw it
