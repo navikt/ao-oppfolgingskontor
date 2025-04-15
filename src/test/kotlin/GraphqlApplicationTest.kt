@@ -18,8 +18,8 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import io.ktor.server.routing.routing
 import no.nav.domain.KontorEndringsType
+import no.nav.domain.KontorKilde
 import no.nav.graphql.installGraphQl
-import no.nav.graphql.queries.KontorKilde
 import no.nav.graphql.schemas.KontorHistorikkQueryDto
 import no.nav.utils.GraphqlResponse
 import no.nav.utils.KontorForBruker

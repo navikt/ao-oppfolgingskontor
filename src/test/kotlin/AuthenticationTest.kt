@@ -10,6 +10,7 @@ import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import no.nav.graphql.configureGraphQlModule
 import no.nav.security.mock.oauth2.MockOAuth2Server
+import no.nav.security.mock.oauth2.withMockOAuth2Server
 import no.nav.utils.getJsonClient
 import org.junit.Test
 
@@ -27,32 +28,38 @@ class AuthenticationTest {
 
     @Test
     fun `graphql endepunkter skal kreve gyldig token`() = testApplication {
-        server.start()
-        setupTestAppWithAuthAndGraphql()
-        val client = getJsonClient()
+        withMockOAuth2Server {
+            setupTestAppWithAuthAndGraphql()
+            val client = getJsonClient()
 
-        val response = client.post("/graphql") {
-            header("Authorization", "Bearer ${server.issueToken().serialize()}")
-            header("Content-Type", "application/json")
-            setBody("{\"query\":\"{kontorForBruker {kontorId}}\"}")
+            val response = client.post("/graphql") {
+                header("Authorization", "Bearer ${server.issueToken().serialize()}")
+                header("Content-Type", "application/json")
+                setBody("{\"query\":\"{kontorForBruker {kontorId}}\"}")
+            }
+
+            response.status shouldBe HttpStatusCode.OK
         }
-
-        response.status shouldBe HttpStatusCode.OK
-        server.shutdown()
     }
 
     @Test
     fun `skal gi 401 ved manglende token på graphql`() = testApplication {
-        server.start()
-        setupTestAppWithAuthAndGraphql()
-        val client = getJsonClient()
+        withMockOAuth2Server {
+            setupTestAppWithAuthAndGraphql()
+            val client = getJsonClient()
 
-        val response = client.post("/graphql") {
-            header("Content-Type", "application/json")
-            setBody("{\"query\":\"{kontorForBruker {kontorId}}\"}")
+            val response = client.post("/graphql") {
+                header("Content-Type", "application/json")
+                setBody("{\"query\":\"{kontorForBruker {kontorId}}\"}")
+            }
+
+            response.status shouldBe HttpStatusCode.Unauthorized
         }
+    }
 
-        response.status shouldBe HttpStatusCode.Unauthorized
+    suspend fun withMockOAuth2Server(block: suspend MockOAuth2Server.() -> Unit) {
+        server.start()
+        server.block()
         server.shutdown()
     }
 
