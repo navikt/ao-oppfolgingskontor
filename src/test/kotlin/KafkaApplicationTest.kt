@@ -16,6 +16,7 @@ import org.apache.kafka.streams.TopologyTestDriver
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.Ignore
 import org.junit.Test
+import java.time.ZonedDateTime
 import java.util.Properties
 
 class KafkaApplicationTest {
@@ -32,21 +33,20 @@ class KafkaApplicationTest {
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(
                 fnr,
-                """{"oppfolgingsenhet":"1234", "sistEndretDato": "2025-04-10T13:01:14+02:00" }"""
+                endringPaOppfolgingsBrukerMessage("1234", ZonedDateTime.parse("2025-04-10T13:01:14+02:00"))
             )
             kafkaMockTopic.pipeInput(
                 fnr,
-                """{"oppfolgingsenhet":"4321", "sistEndretDato": "2025-05-10T13:01:14+02:00" }"""
+                endringPaOppfolgingsBrukerMessage("4321", ZonedDateTime.parse("2025-05-10T13:01:14+02:00"))
             )
             transaction {
                 ArenaKontorEntity.findById(fnr)?.kontorId shouldBe "4321"
-                KontorHistorikkEntity.find {
-                    KontorhistorikkTable.fnr eq fnr
-                }.count() shouldBe 2
+                KontorHistorikkEntity
+                    .find { KontorhistorikkTable.fnr eq fnr }
+                    .count() shouldBe 2
             }
         }
     }
-
 
     @Test
     fun `skal kun lagre nyere data i arena-kontor tabell og historikk tabellen`() = testApplication {
@@ -57,18 +57,16 @@ class KafkaApplicationTest {
             val topology = configureTopology(topic, endringPaOppfolgingsBrukerConsumer::consume)
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(
-                fnr,
-                """{"oppfolgingsenhet":"1234", "sistEndretDato": "2025-04-10T13:01:14+02:00" }"""
+                fnr, endringPaOppfolgingsBrukerMessage("1234", ZonedDateTime.parse("2025-04-10T13:01:14+02:00"))
             )
             kafkaMockTopic.pipeInput(
-                fnr,
-                """{"oppfolgingsenhet":"4321", "sistEndretDato": "2025-03-10T13:01:14+02:00" }"""
+                fnr, endringPaOppfolgingsBrukerMessage("4321", ZonedDateTime.parse("2025-03-10T13:01:14+02:00"))
             )
             transaction {
                 ArenaKontorEntity.findById(fnr)?.kontorId shouldBe "1234"
-                KontorHistorikkEntity.find {
-                    KontorhistorikkTable.fnr eq fnr
-                }.count() shouldBe 1
+                KontorHistorikkEntity
+                    .find { KontorhistorikkTable.fnr eq fnr }
+                    .count() shouldBe 1
             }
         }
     }
@@ -76,37 +74,32 @@ class KafkaApplicationTest {
     @Ignore
     @Test
     fun testKafkaRetry() = testApplication {
-        val topic = "test-topic"
         val fnr = "12345678901"
-        val consumer = EndringPaOppfolgingsBrukerConsumer()
 
         application {
             flywayMigrationInTest()
 
-            val topology = configureTopology(topic, consumer::consume)
+            val topology = configureTopology(topic, endringPaOppfolgingsBrukerConsumer::consume)
             val kafkaMockTopic = setupKafkaMock(topology, topic)
-            kafkaMockTopic.pipeInput(
-                fnr,
-                """{"oppfolgingsenhet":"1234", "sistEndretDato": "2025-05-10T13:01:14+02:00" }"""
-            )
+            kafkaMockTopic.pipeInput(fnr, endringPaOppfolgingsBrukerMessage("1234", ZonedDateTime.now()))
         }
     }
 
     @Ignore
     @Test
     fun testKafkaSkipMessage() = testApplication {
-        val topic = "test-topic"
-        val consumer = EndringPaOppfolgingsBrukerConsumer()
         val fnr = "12345678901"
-
         application {
             flywayMigrationInTest()
 
-            val topology = configureTopology(topic, consumer::consume)
+            val topology = configureTopology(topic, endringPaOppfolgingsBrukerConsumer::consume)
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(fnr, """{"oppfolgingsenhet":"ugyldigEnhet"}""")
-
         }
+    }
+
+    fun endringPaOppfolgingsBrukerMessage(kontorId: String, sistEndretDato: ZonedDateTime): String {
+        return """{"oppfolgingsenhet":"$kontorId", "sistEndretDato": "$sistEndretDato" }"""
     }
 }
 
