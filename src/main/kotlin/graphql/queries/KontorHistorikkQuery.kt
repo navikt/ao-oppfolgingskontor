@@ -7,6 +7,7 @@ import no.nav.db.table.KontorhistorikkTable
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.getKilde
 import no.nav.graphql.schemas.KontorHistorikkQueryDto
+import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 
@@ -18,6 +19,7 @@ class KontorHistorikkQuery : Query {
             transaction {
                 KontorHistorikkEntity
                     .find { KontorhistorikkTable.fnr eq fnrParam }
+                    .orderBy(KontorhistorikkTable.id to SortOrder.ASC)
                     .map {
                         val endringsType = KontorEndringsType.valueOf(it.kontorendringstype)
                         KontorHistorikkQueryDto(
