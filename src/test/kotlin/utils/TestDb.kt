@@ -1,4 +1,4 @@
-package no.nav
+package no.nav.utils
 
 import io.ktor.server.application.Application
 import io.ktor.server.application.install

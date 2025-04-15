@@ -1,7 +1,6 @@
 package no.nav
 
 import com.expediagroup.graphql.server.ktor.graphQLPostRoute
-import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.ktor.client.call.*
 import io.ktor.client.request.post
@@ -12,31 +11,25 @@ import io.ktor.http.contentType
 import io.ktor.server.application.*
 import io.ktor.server.testing.*
 import no.nav.db.Fnr
-import no.nav.db.entity.ArenaKontorEntity
-import no.nav.db.entity.KontorHistorikkEntity
 import no.nav.db.table.ArenaKontorTable
 import no.nav.db.table.KontorhistorikkTable
 import no.nav.graphql.schemas.KontorQueryDto
-import no.nav.kafka.EndringPaOppfolgingsBrukerConsumer
-import no.nav.kafka.config.configureTopology
-import no.nav.kafka.config.streamsErrorHandlerConfig
-import org.apache.kafka.common.serialization.Serdes
-import org.apache.kafka.streams.StreamsConfig
-import org.apache.kafka.streams.TestInputTopic
-import org.apache.kafka.streams.Topology
-import org.apache.kafka.streams.TopologyTestDriver
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
-import java.util.*
 import io.ktor.server.routing.routing
 import no.nav.domain.KontorEndringsType
 import no.nav.graphql.installGraphQl
 import no.nav.graphql.queries.KontorKilde
 import no.nav.graphql.schemas.KontorHistorikkQueryDto
+import no.nav.utils.GraphqlResponse
+import no.nav.utils.KontorForBruker
+import no.nav.utils.KontorHistorikk
+import no.nav.utils.flywayMigrationInTest
+import no.nav.utils.getJsonClient
 import java.time.ZonedDateTime
 import kotlin.test.Test
 
-class ApplicationTest {
+class GraphqlApplicationTest {
 
     fun Application.graphqlServerInTest() {
         installGraphQl()

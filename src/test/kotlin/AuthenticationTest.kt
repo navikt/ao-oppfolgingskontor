@@ -10,6 +10,7 @@ import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import no.nav.graphql.configureGraphQlModule
 import no.nav.security.mock.oauth2.MockOAuth2Server
+import no.nav.utils.getJsonClient
 import org.junit.Test
 
 class AuthenticationTest {
