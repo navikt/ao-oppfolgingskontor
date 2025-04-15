@@ -8,6 +8,7 @@ import no.nav.db.table.KontorhistorikkTable
 import no.nav.kafka.EndringPaOppfolgingsBrukerConsumer
 import no.nav.kafka.config.configureTopology
 import no.nav.kafka.config.streamsErrorHandlerConfig
+import no.nav.utils.flywayMigrationInTest
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.StreamsConfig
 import org.apache.kafka.streams.TestInputTopic

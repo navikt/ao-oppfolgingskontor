@@ -1,4 +1,4 @@
-package no.nav
+package no.nav.utils
 
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation

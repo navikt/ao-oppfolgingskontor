@@ -1,4 +1,4 @@
-package no.nav
+package no.nav.utils
 
 import kotlinx.serialization.Serializable
 import no.nav.graphql.schemas.KontorHistorikkQueryDto
