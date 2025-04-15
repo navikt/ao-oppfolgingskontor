@@ -39,6 +39,7 @@ import io.ktor.client.request.bearerAuth
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.config.MapApplicationConfig
 import kotlinx.serialization.Serializable
+import no.nav.configureSecurity
 import no.nav.graphql.queries.KontorKilde
 import no.nav.security.mock.oauth2.MockOAuth2Server
 import kotlin.test.Test

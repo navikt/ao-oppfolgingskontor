@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.plugin.serialization)
     alias(libs.plugins.expedia.graphql)
     alias(libs.plugins.sonar)
+    jacoco
 }
 
 group = "dab.poao.nav.no"
@@ -78,6 +79,17 @@ graphql {
             "no.nav.graphql.schemas",
         )
     }
+}
+
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+    reports {
+        xml.required.set(true)
+    }
+}
+
+tasks.sonar {
+    dependsOn(tasks.jacocoTestReport)
 }
 
 sonar {
