@@ -42,7 +42,7 @@ class AuthenticationTest {
     }
 
     @Test
-    fun `skal gi 403 ved ugyldig token på graphql`() = testApplication {
+    fun `skal gi 401 ved manglende token på graphql`() = testApplication {
         server.start()
         setupTestAppWithAuthAndGraphql()
         val client = getJsonClient()
