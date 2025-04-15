@@ -1,7 +1,7 @@
 package no.nav.graphql.schemas
 
 import kotlinx.serialization.Serializable
-import no.nav.graphql.queries.KontorKilde
+import no.nav.domain.KontorKilde
 
 @Serializable
 data class KontorQueryDto(
