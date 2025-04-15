@@ -26,6 +26,8 @@ import no.nav.utils.KontorForBruker
 import no.nav.utils.KontorHistorikk
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.getJsonClient
+import no.nav.utils.kontorForBrukerQuery
+import no.nav.utils.kontorHistorikkQuery
 import java.time.ZonedDateTime
 import kotlin.test.Test
 
@@ -52,7 +54,7 @@ class GraphqlApplicationTest {
 
         val response = client.post("/graphql") {
             contentType(ContentType.Application.Json)
-            setBody("""{"variables": { "fnr": $fnr }, "query": " { kontorForBruker (fnrParam: \"$fnr\") { kontorId , kilde } }"}""")
+            setBody(kontorForBrukerQuery(fnr))
         }
 
         response.status shouldBe HttpStatusCode.OK
@@ -73,7 +75,7 @@ class GraphqlApplicationTest {
 
         val response = client.post("/graphql") {
             contentType(ContentType.Application.Json)
-            setBody("""{"variables": { "fnr": $fnr }, "query": " { kontorHistorikk (fnrParam: \"$fnr\") { kontorId , kilde, endretAv, endretAvType, endretTidspunkt, endringsType } }"}""")
+            setBody(kontorHistorikkQuery(fnr))
         }
 
         response.status shouldBe HttpStatusCode.OK
