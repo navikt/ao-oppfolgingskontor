@@ -21,7 +21,6 @@ class ExplicitResultProcessor(val processRecord: ProcessRecord): Processor<Strin
         this.context = context
     }
 
-
     override fun process(record: Record<String, String>) {
 
         runCatching {
