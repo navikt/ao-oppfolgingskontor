@@ -30,7 +30,7 @@ class Norg2Client(
 }
 
 data class MinimaltNorgKontor(
-    val kontorId: String,
+    val enhetNr: String,
     val navn: String
 )
 

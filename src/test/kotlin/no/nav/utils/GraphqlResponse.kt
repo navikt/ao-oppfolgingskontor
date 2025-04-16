@@ -2,7 +2,6 @@ package no.nav.utils
 
 import kotlinx.serialization.Serializable
 import no.nav.db.Fnr
-import no.nav.http.client.NorgKontor
 import no.nav.http.graphql.schemas.AlleKontorQueryDto
 import no.nav.http.graphql.schemas.KontorHistorikkQueryDto
 import no.nav.http.graphql.schemas.KontorQueryDto
@@ -60,7 +59,9 @@ fun kontorForBrukerQuery(fnr: Fnr): String {
 
 fun alleKontorQuery(): String {
     return """
-            { alleKontor { kontorId , kilde } }
+            {
+            "query": "{ alleKontor { kontorId , navn } }"
+            }
         """.trimIndent()
 }
 

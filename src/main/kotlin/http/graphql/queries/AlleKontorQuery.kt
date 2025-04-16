@@ -13,7 +13,7 @@ class AlleKontorQuery(
         return norg2Client.hentAlleEnheter()
             .map {
                 AlleKontorQueryDto(
-                    it.kontorId,
+                    it.enhetNr,
                     it.navn
                 )
             }

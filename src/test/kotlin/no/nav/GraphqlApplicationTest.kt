@@ -8,9 +8,9 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
-import io.ktor.serialization.kotlinx.json.json
-import io.ktor.server.application.Application
-import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.server.application.*
+import io.ktor.server.config.*
+import io.ktor.server.response.*
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
@@ -41,6 +41,9 @@ import java.time.ZonedDateTime
 class GraphqlApplicationTest {
 
     fun Application.graphqlServerInTest() {
+        (environment.config as MapApplicationConfig).apply {
+            put("apis.norg2.url", "https://norg2.intern.nav.no")
+        }
         installGraphQl()
         routing {
             graphQLPostRoute()
@@ -107,16 +110,17 @@ class GraphqlApplicationTest {
         application {
             flywayMigrationInTest()
             graphqlServerInTest()
+
 //            gittBrukerMedKontorIArena(fnr, kontorId)
         }
         externalServices {
             hosts("https://norg2.intern.nav.no") {
-                install(io.ktor.server.plugins.contentnegotiation.ContentNegotiation) {
-                    json()
-                }
                 routing {
-                    get("norg2/enhet") {
-                        call.respond(alleKontor)
+                    get("api/v1/enhet") {
+                        val fileContent = javaClass.getResource("/norg2enheter.json")?.readText()
+                            ?: throw IllegalStateException("File norg2enheter.json not found")
+                        call.respondText(fileContent, ContentType.Application.Json)
+
                     }
                 }
             }
