@@ -1,5 +1,12 @@
 package no.nav.utils
 
+import io.ktor.client.HttpClient
+import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.HttpResponse
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
 import kotlinx.serialization.Serializable
 import no.nav.db.Fnr
 import no.nav.http.client.NorgKontor
@@ -47,7 +54,30 @@ data class AlleKontor(
     val alleKontor: List<AlleKontorQueryDto>,
 )
 
-fun kontorHistorikkQuery(fnr: Fnr): String {
+private suspend fun HttpClient.graphqlRequest(block: HttpRequestBuilder.() -> Unit): HttpResponse {
+    return post("/graphql") {
+        contentType(ContentType.Application.Json)
+        this.block()
+    }
+}
+
+suspend fun HttpClient.kontorForBruker(fnr: Fnr): HttpResponse {
+    return graphqlRequest {
+        setBody(kontorForBrukerQuery(fnr))
+    }
+}
+suspend fun HttpClient.kontoHistorikk(fnr: Fnr): HttpResponse {
+    return graphqlRequest {
+        setBody(kontorHistorikkQuery(fnr))
+    }
+}
+suspend fun HttpClient.alleKontor(): HttpResponse {
+    return graphqlRequest {
+        setBody(alleKontorQuery())
+    }
+}
+
+private fun kontorHistorikkQuery(fnr: Fnr): String {
     return graphqlPayload(fnr, """
             { kontorHistorikk (fnrParam: \"$fnr\") { kontorId , kilde, endretAv, endretAvType, endretTidspunkt, endringsType } }
         """.trimIndent())
@@ -57,17 +87,20 @@ fun kontorForBrukerQuery(fnr: Fnr): String {
              { kontorForBruker (fnrParam: \"$fnr\") { kontorId , kilde } }
         """.trimIndent())
 }
-
-fun alleKontorQuery(): String {
-    return """
-            { alleKontor { kontorId , kilde } }
-        """.trimIndent()
+private fun alleKontorQuery(): String {
+    return graphqlPayload(null, """
+            { alleKontor { kontorId , navn } }
+        """.trimIndent())
 }
-
-fun graphqlPayload(fnr: String, query: String): String {
+private fun graphqlPayload(fnr: String?, query: String): String {
+    fun variablesClause(fnr: Fnr): String {
+        return """
+            "variables": { "fnr": "$fnr" },
+        """.trimIndent()
+    }
     return """
             {
-                "variables": { "fnr": "$fnr" },
+                ${fnr?.let(::variablesClause) ?: ""}
                 "query": "$query"
             }
         """.trimIndent()

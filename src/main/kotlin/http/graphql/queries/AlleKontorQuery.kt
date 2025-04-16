@@ -3,19 +3,28 @@ package no.nav.http.graphql.queries
 import com.expediagroup.graphql.server.operations.Query
 import no.nav.http.client.Norg2Client
 import no.nav.http.graphql.schemas.AlleKontorQueryDto
+import org.slf4j.LoggerFactory
 
 class AlleKontorQuery(
-    baseUrl: String
+    val norg2Client: Norg2Client
 ): Query {
-    val norg2Client = Norg2Client(baseUrl)
+    val logger = LoggerFactory.getLogger(AlleKontorQuery::class.java)
 
     suspend fun alleKontor(): List<AlleKontorQueryDto> {
-        return norg2Client.hentAlleEnheter()
-            .map {
-                AlleKontorQueryDto(
-                    it.kontorId,
-                    it.navn
-                )
+        return runCatching {
+            norg2Client.hentAlleEnheter()
+                .map {
+                    AlleKontorQueryDto(
+                        it.kontorId,
+                        it.navn
+                    )
+                }
+        }
+            .onSuccess { it }
+            .onFailure {
+                logger.error("Kunne ikke hent liste over kontor: ${it.cause} ${it.message}", it)
+                throw it
             }
+            .getOrThrow()
     }
 }

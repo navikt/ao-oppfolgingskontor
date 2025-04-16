@@ -8,7 +8,6 @@ import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.request.*
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.*
-import io.netty.util.internal.logging.Slf4JLoggerFactory
 import kotlinx.serialization.Serializable
 import no.nav.db.Fnr
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
@@ -20,16 +19,14 @@ import org.slf4j.LoggerFactory
 
 val logger = LoggerFactory.getLogger("Applcation.configureArbeidsoppfolgingskontorModule")
 
+
 fun Application.configureArbeidsoppfolgingskontorModule() {
-
-    install(ContentNegotiation) {
-        json()
-    }
-
-
     val issuer = environment.config.property("auth.entraIssuer").getString()
 
     routing {
+        install(ContentNegotiation) {
+            json()
+        }
         authenticate {
             post("/api/kontor") {
                 runCatching {

@@ -1,8 +1,12 @@
-package no.nav.no.nav
+package no.nav
 
 import com.expediagroup.graphql.server.ktor.graphQLPostRoute
 import io.kotest.matchers.shouldBe
+import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.defaultRequest
+import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
@@ -10,16 +14,19 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
-import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.server.routing.get
+import io.ktor.server.engine.applicationEnvironment
 import io.ktor.server.routing.routing
+import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import no.nav.db.Fnr
 import no.nav.db.table.ArenaKontorTable
 import no.nav.db.table.KontorhistorikkTable
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorKilde
-import no.nav.http.client.NorgKontor
+import no.nav.http.client.Norg2Client
+import no.nav.http.client.alleKontor
+import no.nav.http.client.mockNorg2Host
+import no.nav.http.graphql.getNorg2Url
 import no.nav.http.graphql.installGraphQl
 import no.nav.http.graphql.schemas.AlleKontorQueryDto
 import no.nav.http.graphql.schemas.KontorHistorikkQueryDto
@@ -28,41 +35,40 @@ import no.nav.utils.AlleKontor
 import no.nav.utils.GraphqlResponse
 import no.nav.utils.KontorForBruker
 import no.nav.utils.KontorHistorikk
-import no.nav.utils.alleKontorQuery
+import no.nav.utils.alleKontor
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.getJsonClient
-import no.nav.utils.kontorForBrukerQuery
-import no.nav.utils.kontorHistorikkQuery
+import no.nav.utils.kontoHistorikk
+import no.nav.utils.kontorForBruker
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.Test
 import java.time.ZonedDateTime
 
-class GraphqlApplicationTest {
-
-    fun Application.graphqlServerInTest() {
-        installGraphQl()
+fun ApplicationTestBuilder.graphqlServerInTest() {
+    val norg2Client = mockNorg2Host()
+    application {
+        flywayMigrationInTest()
+        installGraphQl(norg2Client)
         routing {
             graphQLPostRoute()
         }
     }
+}
+
+class GraphqlApplicationTest {
 
     @Test
     fun `skal kunne hente kontor via graphql`() = testApplication {
         val fnr = "22345678901"
         val kontorId = "4142"
-
+        val client = getJsonClient()
+        graphqlServerInTest()
         application {
-            flywayMigrationInTest()
-            graphqlServerInTest()
             gittBrukerMedKontorIArena(fnr, kontorId)
         }
-        val client = getJsonClient()
 
-        val response = client.post("/graphql") {
-            contentType(ContentType.Application.Json)
-            setBody(kontorForBrukerQuery(fnr))
-        }
+        val response = client.kontorForBruker(fnr)
 
         response.status shouldBe HttpStatusCode.Companion.OK
         val payload = response.body<GraphqlResponse<KontorForBruker>>()
@@ -73,17 +79,13 @@ class GraphqlApplicationTest {
     fun `skal kunne hente kontorhistorikk via graphql`() = testApplication {
         val fnr = "32345678901"
         val kontorId = "4142"
+        val client = getJsonClient()
+        graphqlServerInTest()
         application {
-            flywayMigrationInTest()
-            graphqlServerInTest()
             gittBrukerMedKontorIArena(fnr, kontorId)
         }
-        val client = getJsonClient()
 
-        val response = client.post("/graphql") {
-            contentType(ContentType.Application.Json)
-            setBody(kontorHistorikkQuery(fnr))
-        }
+        val response = client.kontoHistorikk(fnr)
 
         response.status shouldBe HttpStatusCode.Companion.OK
         val payload = response.body<GraphqlResponse<KontorHistorikk>>()
@@ -104,30 +106,10 @@ class GraphqlApplicationTest {
 
     @Test
     fun `skal kunne hente alle kontor via graphql`() = testApplication {
-        application {
-            flywayMigrationInTest()
-            graphqlServerInTest()
-//            gittBrukerMedKontorIArena(fnr, kontorId)
-        }
-        externalServices {
-            hosts("https://norg2.intern.nav.no") {
-                install(io.ktor.server.plugins.contentnegotiation.ContentNegotiation) {
-                    json()
-                }
-                routing {
-                    get("norg2/enhet") {
-                        call.respond(alleKontor)
-                    }
-                }
-            }
-        }
-
+        graphqlServerInTest()
         val client = getJsonClient()
 
-        val response = client.post("/graphql") {
-            contentType(ContentType.Application.Json)
-            setBody(alleKontorQuery())
-        }
+        val response = client.alleKontor()
 
         response.status shouldBe HttpStatusCode.Companion.OK
         val payload = response.body<GraphqlResponse<AlleKontor>>()
@@ -157,25 +139,3 @@ class GraphqlApplicationTest {
         }
     }
 }
-
-val alleKontor = listOf(
-    NorgKontor(
-        enhetId = 1,
-        enhetNr = "4142",
-        navn = "NAV Oslo",
-        type = "LOKAL",
-        antallRessurser = 10,
-        status = "AKTIV",
-        orgNivaa = "NAV_KONTOR",
-        organisasjonsnummer = "123456789",
-        underEtableringDato = null,
-        aktiveringsdato = null,
-        underAvviklingDato = null,
-        nedleggelsesdato = null,
-        oppgavebehandler = true,
-        versjon = 1,
-        sosialeTjenester = null,
-        kanalstrategi = null,
-        orgNrTilKommunaltNavKontor = null
-    )
-)

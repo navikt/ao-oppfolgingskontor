@@ -1,11 +1,8 @@
 package no.nav
 
-import com.codahale.metrics.*
 import io.ktor.server.application.*
-import io.ktor.server.metrics.dropwizard.*
 import io.ktor.server.plugins.calllogging.*
 import io.ktor.server.request.*
-import java.util.concurrent.TimeUnit
 import org.slf4j.event.*
 
 val excludedPaths = listOf("/isAlive", "/isReady", "/metrics")
