@@ -35,7 +35,7 @@ class AuthenticationTest {
 
             val response = client.post("/graphql") {
                 header("Authorization", "Bearer ${server.issueToken().serialize()}")
-//                header("Content-Type", "application/json")
+                header("Content-Type", "application/json")
                 setBody(kontorForBrukerQuery("8989889898"))
             }
 
