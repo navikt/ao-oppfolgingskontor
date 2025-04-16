@@ -42,7 +42,7 @@ class GraphqlApplicationTest {
 
     fun Application.graphqlServerInTest() {
         (environment.config as MapApplicationConfig).apply {
-            put("apis.norg2.url", "https://norg2.intern.nav.no")
+            put("apis.norg2.url", "https://norg2.intern.nav.no/norg2")
         }
         installGraphQl()
         routing {
@@ -116,7 +116,7 @@ class GraphqlApplicationTest {
         externalServices {
             hosts("https://norg2.intern.nav.no") {
                 routing {
-                    get("api/v1/enhet") {
+                    get("norg2/api/v1/enhet") {
                         val fileContent = javaClass.getResource("/norg2enheter.json")?.readText()
                             ?: throw IllegalStateException("File norg2enheter.json not found")
                         call.respondText(fileContent, ContentType.Application.Json)

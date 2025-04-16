@@ -22,7 +22,7 @@ class Norg2Client(
     }
 ) {
     suspend fun hentAlleEnheter(): List<MinimaltNorgKontor> {
-        val response = httpClient.get("/api/v1/enhet")
+        val response = httpClient.get("/norg2/api/v1/enhet")
         return response.body<List<NorgKontor>>()
             .filter { it.type == "LOKAL" }
             .map { MinimaltNorgKontor(it.enhetNr, it.navn) }
