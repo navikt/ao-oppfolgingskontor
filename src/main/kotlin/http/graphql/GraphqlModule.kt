@@ -10,10 +10,13 @@ import io.ktor.server.application.install
 import io.ktor.server.auth.authenticate
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.routing.routing
+import no.nav.http.graphql.queries.AlleKontorQuery
 import no.nav.http.graphql.queries.KontorHistorikkQuery
 import no.nav.http.graphql.queries.KontorQuery
 
 fun Application.installGraphQl() {
+    val norg2Url = environment.config.property("apis.norg2.url").getString()
+
     install(GraphQL) {
         schema {
             packages = listOf(
@@ -22,7 +25,8 @@ fun Application.installGraphQl() {
             )
             queries = listOf(
                 KontorQuery(),
-                KontorHistorikkQuery()
+                KontorHistorikkQuery(),
+                AlleKontorQuery(norg2Url)
             )
         }
     }
