@@ -75,8 +75,8 @@ dependencies {
 graphql {
     schema {
         packages = listOf(
-            "no.nav.graphql.queries",
-            "no.nav.graphql.schemas",
+            "no.nav.http.graphql.queries",
+            "no.nav.http.graphql.schemas",
         )
     }
 }

@@ -3,7 +3,8 @@ package no.nav
 import io.ktor.server.application.*
 import no.nav.db.FlywayPlugin
 import no.nav.db.PostgresDataSource
-import no.nav.graphql.configureGraphQlModule
+import no.nav.http.configureArbeidsoppfolgingskontorModule
+import no.nav.http.graphql.configureGraphQlModule
 import no.nav.kafka.KafkaStreamsPlugin
 import org.jetbrains.exposed.sql.Database
 
@@ -12,7 +13,6 @@ fun main(args: Array<String>) {
 }
 
 fun Application.module() {
-    configureSerialization()
     configureMonitoring()
     configureHTTP()
     configureSecurity()
@@ -24,4 +24,5 @@ fun Application.module() {
     }
     install(KafkaStreamsPlugin)
     configureGraphQlModule()
+    configureArbeidsoppfolgingskontorModule()
 }

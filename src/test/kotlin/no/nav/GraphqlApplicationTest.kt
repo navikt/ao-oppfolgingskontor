@@ -16,9 +16,9 @@ import no.nav.db.table.ArenaKontorTable
 import no.nav.db.table.KontorhistorikkTable
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorKilde
-import no.nav.graphql.installGraphQl
-import no.nav.graphql.schemas.KontorHistorikkQueryDto
-import no.nav.graphql.schemas.KontorQueryDto
+import no.nav.http.graphql.installGraphQl
+import no.nav.http.graphql.schemas.KontorHistorikkQueryDto
+import no.nav.http.graphql.schemas.KontorQueryDto
 import no.nav.utils.GraphqlResponse
 import no.nav.utils.KontorForBruker
 import no.nav.utils.KontorHistorikk

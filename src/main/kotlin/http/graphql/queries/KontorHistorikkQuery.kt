@@ -1,4 +1,4 @@
-package no.nav.graphql.queries
+package no.nav.http.graphql.queries
 
 import com.expediagroup.graphql.server.operations.Query
 import graphql.schema.DataFetchingEnvironment
@@ -6,7 +6,7 @@ import no.nav.db.entity.KontorHistorikkEntity
 import no.nav.db.table.KontorhistorikkTable
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.getKilde
-import no.nav.graphql.schemas.KontorHistorikkQueryDto
+import no.nav.http.graphql.schemas.KontorHistorikkQueryDto
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
