@@ -1,4 +1,4 @@
-package no.nav
+package no.nav.no.nav
 
 import io.kotest.matchers.shouldBe
 import io.ktor.server.testing.testApplication
@@ -41,8 +41,8 @@ class KafkaApplicationTest {
                 endringPaOppfolgingsBrukerMessage("4321", ZonedDateTime.parse("2025-05-10T13:01:14+02:00"))
             )
             transaction {
-                ArenaKontorEntity.findById(fnr)?.kontorId shouldBe "4321"
-                KontorHistorikkEntity
+                ArenaKontorEntity.Companion.findById(fnr)?.kontorId shouldBe "4321"
+                KontorHistorikkEntity.Companion
                     .find { KontorhistorikkTable.fnr eq fnr }
                     .count() shouldBe 2
             }
@@ -64,8 +64,8 @@ class KafkaApplicationTest {
                 fnr, endringPaOppfolgingsBrukerMessage("4321", ZonedDateTime.parse("2025-03-10T13:01:14+02:00"))
             )
             transaction {
-                ArenaKontorEntity.findById(fnr)?.kontorId shouldBe "1234"
-                KontorHistorikkEntity
+                ArenaKontorEntity.Companion.findById(fnr)?.kontorId shouldBe "1234"
+                KontorHistorikkEntity.Companion
                     .find { KontorhistorikkTable.fnr eq fnr }
                     .count() shouldBe 1
             }

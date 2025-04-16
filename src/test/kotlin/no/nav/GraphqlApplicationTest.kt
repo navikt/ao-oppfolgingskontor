@@ -1,26 +1,24 @@
-package no.nav
+package no.nav.no.nav
 
 import com.expediagroup.graphql.server.ktor.graphQLPostRoute
 import io.kotest.matchers.shouldBe
-import io.ktor.client.call.*
+import io.ktor.client.call.body
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
-import io.ktor.server.application.*
-import io.ktor.server.testing.*
+import io.ktor.server.application.Application
+import io.ktor.server.routing.routing
+import io.ktor.server.testing.testApplication
 import no.nav.db.Fnr
 import no.nav.db.table.ArenaKontorTable
 import no.nav.db.table.KontorhistorikkTable
-import no.nav.graphql.schemas.KontorQueryDto
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.transactions.transaction
-import io.ktor.server.routing.routing
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorKilde
 import no.nav.graphql.installGraphQl
 import no.nav.graphql.schemas.KontorHistorikkQueryDto
+import no.nav.graphql.schemas.KontorQueryDto
 import no.nav.utils.GraphqlResponse
 import no.nav.utils.KontorForBruker
 import no.nav.utils.KontorHistorikk
@@ -28,8 +26,10 @@ import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.getJsonClient
 import no.nav.utils.kontorForBrukerQuery
 import no.nav.utils.kontorHistorikkQuery
+import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.transactions.transaction
+import org.junit.Test
 import java.time.ZonedDateTime
-import kotlin.test.Test
 
 class GraphqlApplicationTest {
 
@@ -50,14 +50,14 @@ class GraphqlApplicationTest {
             graphqlServerInTest()
             gittBrukerMedKontorIArena(fnr, kontorId)
         }
-        val client =  getJsonClient()
+        val client = getJsonClient()
 
         val response = client.post("/graphql") {
             contentType(ContentType.Application.Json)
             setBody(kontorForBrukerQuery(fnr))
         }
 
-        response.status shouldBe HttpStatusCode.OK
+        response.status shouldBe HttpStatusCode.Companion.OK
         val payload = response.body<GraphqlResponse<KontorForBruker>>()
         payload shouldBe GraphqlResponse(KontorForBruker(KontorQueryDto(kontorId, KontorKilde.ARENA)))
     }
@@ -78,7 +78,7 @@ class GraphqlApplicationTest {
             setBody(kontorHistorikkQuery(fnr))
         }
 
-        response.status shouldBe HttpStatusCode.OK
+        response.status shouldBe HttpStatusCode.Companion.OK
         val payload = response.body<GraphqlResponse<KontorHistorikk>>()
         payload.errors shouldBe null
         payload.data shouldBe KontorHistorikk(

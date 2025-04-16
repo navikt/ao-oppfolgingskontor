@@ -1,4 +1,4 @@
-package no.nav
+package no.nav.no.nav
 
 import io.kotest.matchers.nulls.shouldNotBeNull
 import no.nav.kafka.convertToOffsetDatetime

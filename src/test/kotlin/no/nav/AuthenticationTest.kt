@@ -1,4 +1,4 @@
-package no.nav
+package no.nav.no.nav
 
 import io.kotest.matchers.shouldBe
 import io.ktor.client.request.header
@@ -8,10 +8,11 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.config.MapApplicationConfig
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
+import no.nav.configureSecurity
 import no.nav.graphql.configureGraphQlModule
 import no.nav.security.mock.oauth2.MockOAuth2Server
-import no.nav.security.mock.oauth2.withMockOAuth2Server
 import no.nav.utils.getJsonClient
+import no.nav.utils.kontorForBrukerQuery
 import org.junit.Test
 
 class AuthenticationTest {
@@ -34,11 +35,11 @@ class AuthenticationTest {
 
             val response = client.post("/graphql") {
                 header("Authorization", "Bearer ${server.issueToken().serialize()}")
-                header("Content-Type", "application/json")
-                setBody("{\"query\":\"{kontorForBruker {kontorId}}\"}")
+//                header("Content-Type", "application/json")
+                setBody(kontorForBrukerQuery("8989889898"))
             }
 
-            response.status shouldBe HttpStatusCode.OK
+            response.status shouldBe HttpStatusCode.Companion.OK
         }
     }
 
@@ -49,11 +50,11 @@ class AuthenticationTest {
             val client = getJsonClient()
 
             val response = client.post("/graphql") {
-                header("Content-Type", "application/json")
-                setBody("{\"query\":\"{kontorForBruker {kontorId}}\"}")
+//                header("Content-Type", "application/json")
+                setBody(kontorForBrukerQuery("8989889898"))
             }
 
-            response.status shouldBe HttpStatusCode.Unauthorized
+            response.status shouldBe HttpStatusCode.Companion.Unauthorized
         }
     }
 
