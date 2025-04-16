@@ -1,4 +1,4 @@
-package no.nav.graphql.queries
+package no.nav.http.graphql.queries
 
 import com.expediagroup.graphql.server.operations.Query
 import graphql.schema.DataFetchingEnvironment
@@ -7,7 +7,7 @@ import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.db.table.ArenaKontorTable
 import no.nav.db.table.GeografiskTilknytningKontorTable
 import no.nav.domain.KontorKilde
-import no.nav.graphql.schemas.KontorQueryDto
+import no.nav.http.graphql.schemas.KontorQueryDto
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction

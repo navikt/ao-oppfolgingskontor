@@ -2,8 +2,8 @@ package no.nav.utils
 
 import kotlinx.serialization.Serializable
 import no.nav.db.Fnr
-import no.nav.graphql.schemas.KontorHistorikkQueryDto
-import no.nav.graphql.schemas.KontorQueryDto
+import no.nav.http.graphql.schemas.KontorHistorikkQueryDto
+import no.nav.http.graphql.schemas.KontorQueryDto
 
 @Serializable
 data class GraphqlResponse<T> (

@@ -1,4 +1,4 @@
-package no.nav.no.nav
+package no.nav
 
 import io.kotest.matchers.shouldBe
 import io.ktor.client.request.header
@@ -8,54 +8,40 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.config.MapApplicationConfig
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
-import no.nav.configureSecurity
-import no.nav.http.graphql.configureGraphQlModule
+import no.nav.http.configureArbeidsoppfolgingskontorModule
 import no.nav.security.mock.oauth2.MockOAuth2Server
+import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.getJsonClient
-import no.nav.utils.kontorForBrukerQuery
 import org.junit.Test
 
-class AuthenticationTest {
+class SettArbeidsoppfolgingsKontorTest {
 
     fun ApplicationTestBuilder.setupTestAppWithAuthAndGraphql() {
         environment {
             config = getMockOauth2ServerConfig()
         }
         application {
+            flywayMigrationInTest()
             configureSecurity()
-            configureGraphQlModule()
+            configureArbeidsoppfolgingskontorModule()
         }
     }
 
     @Test
-    fun `graphql endepunkter skal kreve gyldig token`() = testApplication {
+    fun `skal kunne lese ut NAVIdent av token`() = testApplication {
         withMockOAuth2Server {
             setupTestAppWithAuthAndGraphql()
             val client = getJsonClient()
 
-            val response = client.post("/graphql") {
-                header("Authorization", "Bearer ${server.issueToken().serialize()}")
+            val response = client.post("/api/kontor") {
+                header("Authorization", "Bearer ${server.issueToken(
+                    claims = mapOf("NAVIdent" to "Z990000")
+                ).serialize()}")
                 header("Content-Type", "application/json")
-                setBody(kontorForBrukerQuery("8989889898"))
+                setBody("""{ "kontorId": "4444", "fnr": "12345678901" }""")
             }
 
-            response.status shouldBe HttpStatusCode.Companion.OK
-        }
-    }
-
-
-    @Test
-    fun `skal gi 401 ved manglende token på graphql`() = testApplication {
-        withMockOAuth2Server {
-            setupTestAppWithAuthAndGraphql()
-            val client = getJsonClient()
-
-            val response = client.post("/graphql") {
-                header("Content-Type", "application/json")
-                setBody(kontorForBrukerQuery("8989889898"))
-            }
-
-            response.status shouldBe HttpStatusCode.Companion.Unauthorized
+            response.status shouldBe HttpStatusCode.OK
         }
     }
 
@@ -75,6 +61,7 @@ class AuthenticationTest {
             put("no.nav.security.jwt.issuers.0.issuer_name", acceptedIssuer)
             put("no.nav.security.jwt.issuers.0.discoveryurl", "${server.wellKnownUrl(acceptedIssuer)}")
             put("no.nav.security.jwt.issuers.0.accepted_audience", acceptedAudience)
+            put("auth.entraIssuer", acceptedIssuer)
         }
     }
 }

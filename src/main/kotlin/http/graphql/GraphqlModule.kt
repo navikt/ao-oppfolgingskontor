@@ -1,4 +1,4 @@
-package no.nav.graphql
+package no.nav.http.graphql
 
 import com.expediagroup.graphql.server.ktor.GraphQL
 import com.expediagroup.graphql.server.ktor.graphQLPostRoute
@@ -10,15 +10,15 @@ import io.ktor.server.application.install
 import io.ktor.server.auth.authenticate
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.routing.routing
-import no.nav.graphql.queries.KontorHistorikkQuery
-import no.nav.graphql.queries.KontorQuery
+import no.nav.http.graphql.queries.KontorHistorikkQuery
+import no.nav.http.graphql.queries.KontorQuery
 
 fun Application.installGraphQl() {
     install(GraphQL) {
         schema {
             packages = listOf(
-                "no.nav.graphql.schemas",
-                "no.nav.graphql.queries",
+                "no.nav.http.graphql.schemas",
+                "no.nav.http.graphql.queries",
             )
             queries = listOf(
                 KontorQuery(),

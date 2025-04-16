@@ -1,4 +1,4 @@
-package no.nav.graphql.schemas
+package no.nav.http.graphql.schemas
 
 import kotlinx.serialization.Serializable
 import no.nav.domain.KontorKilde
