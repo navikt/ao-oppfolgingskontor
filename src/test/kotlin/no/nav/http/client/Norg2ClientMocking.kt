@@ -1,12 +1,11 @@
 package no.nav.http.client
 
-import io.ktor.client.HttpClient
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.plugins.logging.Logging
+import io.ktor.http.ContentType
 import io.ktor.serialization.kotlinx.json.json
-import io.ktor.server.config.MapApplicationConfig
-import io.ktor.server.response.respond
+import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
@@ -20,7 +19,9 @@ fun ApplicationTestBuilder.mockNorg2Host(): Norg2Client {
             configureContentNegotiation()
             routing {
                 get(Norg2Client.hentEnhetPath) {
-                    call.respond(alleKontor)
+                    val fileContent = javaClass.getResource("/norg2enheter.json")?.readText()
+                        ?: throw IllegalStateException("File norg2enheter.json not found")
+                    call.respondText(fileContent, ContentType.Application.Json)
                 }
             }
         }

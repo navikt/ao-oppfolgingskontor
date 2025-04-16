@@ -9,7 +9,6 @@ import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import kotlinx.serialization.Serializable
 import no.nav.db.Fnr
-import no.nav.http.client.NorgKontor
 import no.nav.http.graphql.schemas.AlleKontorQueryDto
 import no.nav.http.graphql.schemas.KontorHistorikkQueryDto
 import no.nav.http.graphql.schemas.KontorQueryDto

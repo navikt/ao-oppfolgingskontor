@@ -48,7 +48,7 @@ data class NorgKontor(
     val status: String,
     val orgNivaa: String,
     val type: String,
-    val organisasjonsnummer: String,
+    val organisasjonsnummer: String?,
     val underEtableringDato: String?,
     val aktiveringsdato: String?,
     val underAvviklingDato: String?,

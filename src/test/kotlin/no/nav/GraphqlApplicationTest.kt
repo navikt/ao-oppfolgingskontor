@@ -1,6 +1,7 @@
-package no.nav
+package no.nav.no.nav
 
 import com.expediagroup.graphql.server.ktor.graphQLPostRoute
+import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -114,9 +115,7 @@ class GraphqlApplicationTest {
         response.status shouldBe HttpStatusCode.Companion.OK
         val payload = response.body<GraphqlResponse<AlleKontor>>()
         payload.errors shouldBe null
-        payload.data shouldBe AlleKontor(
-            alleKontor.map { AlleKontorQueryDto(it.enhetNr, it.navn) }
-        )
+        payload.data!!.alleKontor shouldHaveSize 248
     }
 
     val insertTime = ZonedDateTime.parse("2025-04-15T07:12:14.307878Z")

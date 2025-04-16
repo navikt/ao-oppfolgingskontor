@@ -36,7 +36,6 @@ class SettArbeidsoppfolgingsKontorTest {
 
         val norg2Client = mockNorg2Host()
         application {
-//            configureContentNegotiation()
             flywayMigrationInTest()
             configureSecurity()
             installGraphQl(norg2Client)
