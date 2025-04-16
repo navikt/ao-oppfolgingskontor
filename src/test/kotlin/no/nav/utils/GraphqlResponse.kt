@@ -2,6 +2,8 @@ package no.nav.utils
 
 import kotlinx.serialization.Serializable
 import no.nav.db.Fnr
+import no.nav.http.client.NorgKontor
+import no.nav.http.graphql.schemas.AlleKontorQueryDto
 import no.nav.http.graphql.schemas.KontorHistorikkQueryDto
 import no.nav.http.graphql.schemas.KontorQueryDto
 
@@ -40,6 +42,11 @@ data class KontorHistorikk(
     val kontorHistorikk: List<KontorHistorikkQueryDto>,
 )
 
+@Serializable
+data class AlleKontor(
+    val alleKontor: List<AlleKontorQueryDto>,
+)
+
 fun kontorHistorikkQuery(fnr: Fnr): String {
     return graphqlPayload(fnr, """
             { kontorHistorikk (fnrParam: \"$fnr\") { kontorId , kilde, endretAv, endretAvType, endretTidspunkt, endringsType } }
@@ -49,6 +56,12 @@ fun kontorForBrukerQuery(fnr: Fnr): String {
     return graphqlPayload(fnr, """
              { kontorForBruker (fnrParam: \"$fnr\") { kontorId , kilde } }
         """.trimIndent())
+}
+
+fun alleKontorQuery(): String {
+    return """
+            { alleKontor { kontorId , kilde } }
+        """.trimIndent()
 }
 
 fun graphqlPayload(fnr: String, query: String): String {

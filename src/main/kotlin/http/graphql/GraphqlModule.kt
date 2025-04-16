@@ -10,6 +10,7 @@ import io.ktor.server.application.install
 import io.ktor.server.auth.authenticate
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.routing.routing
+import no.nav.http.client.Norg2Client
 import no.nav.http.graphql.queries.AlleKontorQuery
 import no.nav.http.graphql.queries.KontorHistorikkQuery
 import no.nav.http.graphql.queries.KontorQuery

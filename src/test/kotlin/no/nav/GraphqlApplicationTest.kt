@@ -8,7 +8,10 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
+import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
+import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
 import no.nav.db.Fnr
@@ -16,12 +19,16 @@ import no.nav.db.table.ArenaKontorTable
 import no.nav.db.table.KontorhistorikkTable
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorKilde
+import no.nav.http.client.NorgKontor
 import no.nav.http.graphql.installGraphQl
+import no.nav.http.graphql.schemas.AlleKontorQueryDto
 import no.nav.http.graphql.schemas.KontorHistorikkQueryDto
 import no.nav.http.graphql.schemas.KontorQueryDto
+import no.nav.utils.AlleKontor
 import no.nav.utils.GraphqlResponse
 import no.nav.utils.KontorForBruker
 import no.nav.utils.KontorHistorikk
+import no.nav.utils.alleKontorQuery
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.getJsonClient
 import no.nav.utils.kontorForBrukerQuery
@@ -95,6 +102,41 @@ class GraphqlApplicationTest {
         )
     }
 
+    @Test
+    fun `skal kunne hente alle kontor via graphql`() = testApplication {
+        application {
+            flywayMigrationInTest()
+            graphqlServerInTest()
+//            gittBrukerMedKontorIArena(fnr, kontorId)
+        }
+        externalServices {
+            hosts("https://norg2.intern.nav.no") {
+                install(io.ktor.server.plugins.contentnegotiation.ContentNegotiation) {
+                    json()
+                }
+                routing {
+                    get("norg2/enhet") {
+                        call.respond(alleKontor)
+                    }
+                }
+            }
+        }
+
+        val client = getJsonClient()
+
+        val response = client.post("/graphql") {
+            contentType(ContentType.Application.Json)
+            setBody(alleKontorQuery())
+        }
+
+        response.status shouldBe HttpStatusCode.Companion.OK
+        val payload = response.body<GraphqlResponse<AlleKontor>>()
+        payload.errors shouldBe null
+        payload.data shouldBe AlleKontor(
+            alleKontor.map { AlleKontorQueryDto(it.enhetNr, it.navn) }
+        )
+    }
+
     val insertTime = ZonedDateTime.parse("2025-04-15T07:12:14.307878Z")
     private fun gittBrukerMedKontorIArena(fnr: Fnr, kontorId: String) {
         transaction {
@@ -115,3 +157,25 @@ class GraphqlApplicationTest {
         }
     }
 }
+
+val alleKontor = listOf(
+    NorgKontor(
+        enhetId = 1,
+        enhetNr = "4142",
+        navn = "NAV Oslo",
+        type = "LOKAL",
+        antallRessurser = 10,
+        status = "AKTIV",
+        orgNivaa = "NAV_KONTOR",
+        organisasjonsnummer = "123456789",
+        underEtableringDato = null,
+        aktiveringsdato = null,
+        underAvviklingDato = null,
+        nedleggelsesdato = null,
+        oppgavebehandler = true,
+        versjon = 1,
+        sosialeTjenester = null,
+        kanalstrategi = null,
+        orgNrTilKommunaltNavKontor = null
+    )
+)
