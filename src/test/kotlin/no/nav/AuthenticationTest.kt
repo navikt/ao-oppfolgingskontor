@@ -9,6 +9,7 @@ import io.ktor.server.config.MapApplicationConfig
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import no.nav.configureSecurity
+import no.nav.http.client.norg2TestUrl
 import no.nav.http.graphql.configureGraphQlModule
 import no.nav.security.mock.oauth2.MockOAuth2Server
 import no.nav.utils.getJsonClient
@@ -75,6 +76,7 @@ class AuthenticationTest {
             put("no.nav.security.jwt.issuers.0.issuer_name", acceptedIssuer)
             put("no.nav.security.jwt.issuers.0.discoveryurl", "${server.wellKnownUrl(acceptedIssuer)}")
             put("no.nav.security.jwt.issuers.0.accepted_audience", acceptedAudience)
+            put("apis.norg2.url", norg2TestUrl)
         }
     }
 }
