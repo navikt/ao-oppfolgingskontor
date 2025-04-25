@@ -25,7 +25,7 @@ fun Application.module() {
     configureHTTP()
     configureSecurity()
     configureRouting()
-    configureContentNegotiation()
+//    configureContentNegotiation()
     val dataSource = PostgresDataSource.getDataSource(environment.config)
     Database.connect(dataSource)
     install(FlywayPlugin) {
