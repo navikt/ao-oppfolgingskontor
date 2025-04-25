@@ -20,7 +20,7 @@ import kotlin.test.assertTrue
 @ExperimentalCoroutinesApi // Nødvendig for test dispatcher
 class StreamsLifecycleManagerTest {
 
- private lateinit var streamsApp1Mock: KafkaStreams
+ private lateinit var streamMock: KafkaStreams
  private lateinit var manager: StreamsLifecycleManager
  private lateinit var kafkaStreamsInstance: KafkaStreamsInstance
 
@@ -28,8 +28,8 @@ class StreamsLifecycleManagerTest {
  private val testDispatcher = StandardTestDispatcher()
  private lateinit var testScope: TestScope // Håndterer test dispatcher
 
- private lateinit var stateListenerSlotApp1: CapturingSlot<(KafkaStreams.State, KafkaStreams.State) -> Unit>
- private lateinit var uncaughtExceptionHandlerSlotApp1: CapturingSlot<(Throwable) -> StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse>
+ private lateinit var stateListenerSlot: CapturingSlot<(KafkaStreams.State, KafkaStreams.State) -> Unit>
+ private lateinit var uncaughtExceptionHandlerSlot: CapturingSlot<(Throwable) -> StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse>
 
  @BeforeEach
  fun setUp() {
@@ -37,32 +37,32 @@ class StreamsLifecycleManagerTest {
   Dispatchers.setMain(testDispatcher) // Sett hoved-dispatcher (kan være relevant for noen Ktor/coroutine aspekter)
 
   // Mock KafkaStreams-instanser
-  streamsApp1Mock = mockk(relaxed = true) // relaxed = true ignorerer kall vi ikke har spikret
+  streamMock = mockk(relaxed = true) // relaxed = true ignorerer kall vi ikke har spikret
 
   // Capture listeners for å kunne trigge dem
-  stateListenerSlotApp1 = slot()
-  uncaughtExceptionHandlerSlotApp1 = slot()
+  stateListenerSlot = slot()
+  uncaughtExceptionHandlerSlot = slot()
 
 
-  //every { streamsApp1Mock.setStateListener(capture(stateListenerSlotApp1)) } just Runs
   /*
   Mocking med argument capture blir litt mer komplisert fordi setStateListener blir behandlet som en kotlin.jvm.functions.Function2,
   mens den faktiske metoden er en Java lambda, som ikke kan castes til Function2.
   Vi løser det med å bruke any() for å matche argumentet og deretter manuelt caste det til riktig type.
    */
-  every { streamsApp1Mock.setStateListener(any()) } answers {
+  //every { streamsApp1Mock.setStateListener(capture(stateListenerSlotApp1)) } just Runs
+  every { streamMock.setStateListener(any()) } answers {
    val listener = arg<KafkaStreams.StateListener>(0)
-   stateListenerSlotApp1.captured = { newState, oldState ->
+   stateListenerSlot.captured = { newState, oldState ->
     listener.onChange(newState, oldState)
    }
   }
-  //every { streamsApp1Mock.setUncaughtExceptionHandler(capture(uncaughtExceptionHandlerSlotApp1)) } returns Unit
   /*
   Samme problem som over
    */
-  every { streamsApp1Mock.setUncaughtExceptionHandler(any()) } answers {
+  //every { streamsApp1Mock.setUncaughtExceptionHandler(capture(uncaughtExceptionHandlerSlotApp1)) } returns Unit
+  every { streamMock.setUncaughtExceptionHandler(any()) } answers {
    val handler = arg<StreamsUncaughtExceptionHandler>(0)
-   uncaughtExceptionHandlerSlotApp1.captured = { throwable ->
+   uncaughtExceptionHandlerSlot.captured = { throwable ->
     handler.handle(throwable)
    }
   }
@@ -71,7 +71,7 @@ class StreamsLifecycleManagerTest {
   // Her bruker vi standard Dispatchers.IO, men kontrollerer tid med testDispatcher
   manager = spyk(StreamsLifecycleManager(testDispatcher), recordPrivateCalls = true) // Spy for å verifisere private metodekall
 
-  kafkaStreamsInstance = KafkaStreamsInstance("App1", streamsApp1Mock, AtomicBoolean(false))
+  kafkaStreamsInstance = KafkaStreamsInstance("App1", streamMock, AtomicBoolean(false))
 
   // La initialize opprette mocks (eller kall den manuelt hvis du ikke spionerer)
   manager.setupStreamsInstanceLifecycleHandler(kafkaStreamsInstance) // Kaller setStateListener etc. på mockene
@@ -86,29 +86,30 @@ class StreamsLifecycleManagerTest {
 
  @Test
  fun `initialize should set state listeners`() = testScope.runTest {
-  // initialize() ble kalt i setUp
-  verify { streamsApp1Mock.setStateListener(any()) }
-  verify { streamsApp1Mock.setUncaughtExceptionHandler(any()) }
+  // initialisering ble kalt i setUp
+  verify { streamMock.setStateListener(any()) }
+  verify { streamMock.setUncaughtExceptionHandler(any()) }
  }
 
  @Test
  fun `startStreamsApp should call start on streams`() = testScope.runTest {
   manager.startStreamsApp(kafkaStreamsInstance)
-  coVerify { streamsApp1Mock.start() }
-  // Verifiser isRunning flag (krever kanskje justering av spyk/mocking)
+  coVerify { streamMock.start() }
+  // Verifiser isRunning flag
   assertTrue(kafkaStreamsInstance.isRunningFlag.get())
  }
 
  @Test
  fun `stopStreamsApp should call close on streams and cancel scope`() = testScope.runTest {
   // Gi en mock state for å unngå NPE hvis state() kalles internt i closeStreamsInstance
-  every { streamsApp1Mock.state() } returns KafkaStreams.State.RUNNING
+  every { streamMock.state() } returns KafkaStreams.State.RUNNING
   kafkaStreamsInstance.isRunningFlag.set(true) // Simuler at den kjører
 
   manager.closeStreamsInstance(kafkaStreamsInstance)
 
   // Bruk timeout her siden close() kalles med Duration
-  verify(timeout = 1000) { streamsApp1Mock.close(any<Duration>()) }
+  verify(timeout = 1000) { streamMock.close(any<Duration>()) }
+  assertFalse(manager.lifecycleScope.isActive)
   // Verifiser at scope ble kansellert (indirekte ved å sjekke jobben eller via logikk)
  // assertFalse((manager invoke "lifecycleScope" as CoroutineScope).isActive)
  }
@@ -120,10 +121,9 @@ class StreamsLifecycleManagerTest {
   initialRunningFlag.set(true) // Anta at den kjører først
 
   // Simuler ERROR state
-  stateListenerSlotApp1.captured(KafkaStreams.State.ERROR, KafkaStreams.State.RUNNING)
+  stateListenerSlot.captured(KafkaStreams.State.ERROR, KafkaStreams.State.RUNNING)
 
   // Verifiser at scheduleRestart ble kalt (enten direkte eller via spy)
- // coVerify { manager invoke "scheduleRestart" withArguments listOf("App1", streamsApp1Mock, initialRunningFlag) }
   coVerify { manager.scheduleRestart(kafkaStreamsInstance) }
   assertFalse(initialRunningFlag.get()) // Skal være satt til false
  }
@@ -136,9 +136,9 @@ class StreamsLifecycleManagerTest {
   val maxRestarts = manager.maxRestarts
 
   // --- Første feil og restart ---
-  every { streamsApp1Mock.state() } returns KafkaStreams.State.ERROR // Gi en state for close
-  every { streamsApp1Mock.close(any<Duration>()) } returns true // Simuler vellykket close
-  every { streamsApp1Mock.start() } returns Unit // Simuler vellykket start
+  every { streamMock.state() } returns KafkaStreams.State.ERROR // Gi en state for close
+  every { streamMock.close(any<Duration>()) } returns true // Simuler vellykket close
+  every { streamMock.start() } returns Unit // Simuler vellykket start
 
   // Utløs restart
   manager.scheduleRestart(kafkaStreamsInstance)
@@ -148,15 +148,15 @@ class StreamsLifecycleManagerTest {
   runCurrent() // Kjør jobben som ble utsatt
 
   coVerifyOrder {
-   streamsApp1Mock.close(any<Duration>())
-   streamsApp1Mock.start()
+   streamMock.close(any<Duration>())
+   streamMock.start()
   }
   assertTrue(runningFlag.get()) // Skal være true etter vellykket start
   assertEquals(1, manager.restartCounters.get("App1")?.get())
 
   // --- Andre feil og restart (simuler at start feilet igjen) ---
   runningFlag.set(false) // Marker som ikke kjørende igjen
-  every { streamsApp1Mock.start() } throws IllegalStateException("Simulated start failure") // Få start til å feile
+  every { streamMock.start() } throws IllegalStateException("Simulated start failure") // Få start til å feile
 
   // Utløs restart igjen (enten via state listener eller direkte kall for test)
   manager.scheduleRestart(kafkaStreamsInstance)
@@ -167,8 +167,8 @@ class StreamsLifecycleManagerTest {
   runCurrent()
 
   // Close ble kalt igjen, start feilet (verifisert av exception i mock), prøver neste restart
-  coVerify(exactly = 2) { streamsApp1Mock.close(any<Duration>()) }
-  coVerify(exactly = 2) { streamsApp1Mock.start() } // Første gangen
+  coVerify(exactly = 2) { streamMock.close(any<Duration>()) }
+  coVerify(exactly = 2) { streamMock.start() } // Første gangen
   // Verifiser at start ble kalt en gang *til* som feilet (eller sjekk logikk)
   // Verifiser at scheduleRestart ble kalt på nytt pga feilen
   coVerify(exactly = 3) { manager.scheduleRestart(kafkaStreamsInstance) }

@@ -23,7 +23,7 @@ class StreamsLifecycleManager(
     val shutDownTimeout = Duration.ofSeconds(20)
 
     // Eget CoroutineScope for restart-jobber
-    private val lifecycleScope = CoroutineScope(dispatcher + SupervisorJob() + CoroutineName("StreamsLifecycleManager"))
+    val lifecycleScope = CoroutineScope(dispatcher + SupervisorJob() + CoroutineName("StreamsLifecycleManager"))
 
 //    fun startAll() {
 //    Skal vi holde alle streams instanser i en liste?
@@ -198,5 +198,6 @@ class StreamsLifecycleManager(
         } else {
             log.info("${kafkaStreamsInstance.name} streams already in state ${kafkaStreamsInstance.streams.state()}, no close action needed.")
         }
+        lifecycleScope.cancel() // Avslutt coroutine-scope for restart-jobber
     }
 }
