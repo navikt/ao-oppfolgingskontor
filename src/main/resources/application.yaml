@@ -10,12 +10,15 @@ ktor:
 auth:
   entraIssuer: "$AZURE_OPENID_CONFIG_ISSUER"
 
-no.nav.security.jwt:
-  issuers:
-    - entra:
-        issuer_name: "$AZURE_OPENID_CONFIG_ISSUER"
-        discoveryurl: "$AZURE_APP_WELL_KNOWN_URL"
-        accepted_audience: "$AZURE_APP_CLIENT_ID"
+no:
+  nav:
+    security:
+      jwt:
+        issuers:
+          - entra:
+              issuer_name: "$AZURE_OPENID_CONFIG_ISSUER"
+              discoveryurl: "$AZURE_APP_WELL_KNOWN_URL"
+              accepted_audience: "$AZURE_APP_CLIENT_ID"
 
 apis:
   norg2:
