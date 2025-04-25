@@ -2,7 +2,7 @@ package no.nav.no.nav
 
 import io.kotest.matchers.nulls.shouldNotBeNull
 import no.nav.kafka.convertToOffsetDatetime
-import org.junit.Test
+import kotlin.test.Test
 
 class DateTimeTest {
     @Test

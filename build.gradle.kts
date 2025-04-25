@@ -67,10 +67,12 @@ dependencies {
     implementation(libs.graphql.kotlin.server)
     implementation(libs.graphql.kotlin.schema.generator)
     implementation(libs.token.validation.ktor.v3)
+    testImplementation(kotlin("test"))
+    testImplementation(libs.kotlin.test.junit5)
     testImplementation(libs.embedded.postgres)
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.mock.oauth2.server)
-    testImplementation(libs.kotlin.test.junit)
+    testImplementation(libs.mockk)
     testImplementation(libs.kafka.streams.test.utils)
     testImplementation(libs.kotest.assertions)
 }
@@ -82,6 +84,10 @@ graphql {
             "no.nav.http.graphql.schemas",
         )
     }
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 tasks.jacocoTestReport {

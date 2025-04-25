@@ -1,13 +1,13 @@
 package no.nav.no.nav
 
 import com.expediagroup.graphql.server.ktor.graphQLPostRoute
-import io.kotest.matchers.collections.shouldHaveSize
-import io.kotest.matchers.shouldBe
 import io.ktor.client.call.body
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
+import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.shouldBe
 import no.nav.db.Fnr
 import no.nav.db.table.ArenaKontorTable
 import no.nav.db.table.KontorhistorikkTable
@@ -17,19 +17,11 @@ import no.nav.http.client.mockNorg2Host
 import no.nav.http.graphql.installGraphQl
 import no.nav.http.graphql.schemas.KontorHistorikkQueryDto
 import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
-import no.nav.utils.AlleKontor
-import no.nav.utils.GraphqlResponse
-import no.nav.utils.KontorTilhorighet
-import no.nav.utils.KontorHistorikk
-import no.nav.utils.alleKontor
-import no.nav.utils.flywayMigrationInTest
-import no.nav.utils.getJsonClient
-import no.nav.utils.kontoHistorikk
-import no.nav.utils.kontorTilhorighet
+import no.nav.utils.*
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.junit.Test
 import java.time.ZonedDateTime
+import kotlin.test.Test
 
 fun ApplicationTestBuilder.graphqlServerInTest() {
     val norg2Client = mockNorg2Host()
