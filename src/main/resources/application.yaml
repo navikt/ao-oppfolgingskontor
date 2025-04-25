@@ -15,10 +15,9 @@ no:
     security:
       jwt:
         issuers:
-          - entra:
-              issuer_name: "$AZURE_OPENID_CONFIG_ISSUER"
-              discoveryurl: "$AZURE_APP_WELL_KNOWN_URL"
-              accepted_audience: "$AZURE_APP_CLIENT_ID"
+          - issuer_name: "$AZURE_OPENID_CONFIG_ISSUER"
+            discoveryurl: "$AZURE_APP_WELL_KNOWN_URL"
+            accepted_audience: "$AZURE_APP_CLIENT_ID"
 
 apis:
   norg2:
