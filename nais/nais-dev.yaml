@@ -45,6 +45,11 @@ spec:
     autoInstrumentation:
       enabled: true
       runtime: java
+  accessPolicy:
+    inbound:
+      rules:
+        - application: veilarbpersonflate
+          namespace: poao
   azure:
     application:
       enabled: true
