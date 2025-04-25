@@ -21,7 +21,7 @@ no:
 
 apis:
   norg2:
-    url: "http://norg2.org"
+    url: "$NORG2_URL"
 
 postgres:
   host: "$NAIS_DATABASE_AO_OPPFOLGINGSKONTOR_AO_OPPFOLGINGSKONTOR_HOST"
