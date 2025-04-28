@@ -56,7 +56,8 @@ class EndringPaOppfolgingsBrukerConsumer(
                 it[kafkaPartition] = maybeRecordMetadata?.partition()
 
             }
-            throw RuntimeException("Simulerer feil i oppdatering av kontorhistorikk")
+            val envVar: String = System.getenv("NAIS_CLUSTER_NAME") ?: "NONE"
+            if (envVar == "dev-gcp") throw RuntimeException("Simulerer feil i oppdatering av kontorhistorikk")
         }
 
 
