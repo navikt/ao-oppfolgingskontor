@@ -35,6 +35,7 @@ class SettArbeidsoppfolgingsKontorTest {
             configureSecurity()
             installGraphQl(norg2Client)
             configureArbeidsoppfolgingskontorModule()
+            configureHTTP()
             routing {
                 authentication {
                     graphQLPostRoute()

@@ -19,7 +19,6 @@ import org.slf4j.LoggerFactory
 
 val logger = LoggerFactory.getLogger("Applcation.configureArbeidsoppfolgingskontorModule")
 
-
 fun Application.configureArbeidsoppfolgingskontorModule() {
     val issuer = environment.config.property("auth.entraIssuer").getString()
 
@@ -30,7 +29,7 @@ fun Application.configureArbeidsoppfolgingskontorModule() {
         authenticate {
             post("/api/kontor") {
                 runCatching {
-                    val kontor = call.receive<ArbeidsOppfolgingKontorDTO>()
+                    val kontor = call.receive<ArbeidsoppfolgingsKontorTilordningDTO>()
                     val principal = call.principal<TokenValidationContextPrincipal>()
                     val veilederIdent = principal?.context?.getClaims(issuer)?.getStringClaim("NAVIdent")
                         ?: throw IllegalStateException("NAVIdent not found in token")
@@ -58,7 +57,7 @@ fun Application.configureArbeidsoppfolgingskontorModule() {
 }
 
 @Serializable
-data class ArbeidsOppfolgingKontorDTO(
+data class ArbeidsoppfolgingsKontorTilordningDTO(
     val kontorId: String,
     val fnr: Fnr
 )

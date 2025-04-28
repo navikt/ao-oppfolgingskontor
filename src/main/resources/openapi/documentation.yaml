@@ -1,14 +1,20 @@
-openapi: "3.0.3"
+openapi: "3.1.0"
 info:
-  title: "Application API"
-  description: "Application API"
+  title: "ao_oppfolgingskontor API"
+  description: "ao_oppfolgingskontor API"
   version: "1.0.0"
 servers:
-  - url: "http://0.0.0.0:8080"
+  - url: "https://ao_oppfolgingskontor"
 paths:
-  /:
-    get:
-      description: "Hello World!"
+  /api/kontor:
+    post:
+      description: "Tilordne arbeidsoppfolgings-kontor til en bruker. Andre kontortyper kan ikke tilordnes manuelt."
+      requestBody:
+        content:
+          '*/*':
+            schema:
+              $ref: "#/components/schemas/ArbeidsOppfolgingKontorDTO"
+        required: true
       responses:
         "200":
           description: "OK"
@@ -18,6 +24,25 @@ paths:
                 type: "string"
               examples:
                 Example#1:
-                  value: "Hello World!"
+                  value: "OK"
+        "500":
+          description: "Internal Server Error"
+          content:
+            text/plain:
+              schema:
+                type: "string"
+              examples:
+                Example#1:
+                  value: "Kunne ikke oppdatere kontor"
 components:
-  schemas: {}
+  schemas:
+    ArbeidsOppfolgingKontorDTO:
+      type: "object"
+      properties:
+        kontorId:
+          type: "string"
+        fnr:
+          type: "string"
+      required:
+        - "kontorId"
+        - "fnr"
