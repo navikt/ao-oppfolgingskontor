@@ -2,7 +2,6 @@
 Oppfølgingskontor for Arbeidsrettet Oppfølging
 
 ## Inbound data
-
 | Endepunkt                              | Beskrivelse                                  |      
 |----------------------------------------|----------------------------------------------|
 | `POST /api/kontor`                     | Sett arbeidsoppfolgings-kontor for en bruker |
@@ -10,19 +9,16 @@ Oppfølgingskontor for Arbeidsrettet Oppfølging
 | `Liste over Kontor fra Norg`           | Henter liste over kontor fra Norg2           |
 
 ## Ubiquitous language
-
 - Arbeidsoppfolgingkontor kontor - Alltid satt manuelt av veileder (foreløpig)
 - Arena kontor - satt enten manuelt eller automatisk i Arena
 - Geografisk-tilknyttet kontor
   - Gitt en geografisk tilknytning (GT), sjekk i Norg2 hvilket kontor som er tilknyttet den GT-en
 
 ## Business rules
+- Arbeidsoppfølgings-kontor > Arena-kontor > GT-kontor. 
+- kontorForBruker gir ut kontoret med høyest prioritet.
 
-- Arbeidsoppfølgings-kontor har høyere prioritet enn Arena-kontor men er ikke alltid satt. 
-- GT-kontor har lavest prioritet.
-
-## Inbound data
-
+## Outbound data
 | Endepunkt                    | Beskrivelse                                                          |      
 |------------------------------|----------------------------------------------------------------------|
 | `/graphql (alleKontor)`      | Liste over alle kontor som kan velges når man skal sette kontor      |
