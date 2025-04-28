@@ -108,7 +108,7 @@ class StreamsLifecycleManager(
 
         lifecycleScope.launch {
             try {
-                delay(delayMillis)
+                delay(delayMillis - delayMillis/2)
 
                 // Dobbeltsjekk at vi fortsatt skal restarte (f.eks. at appen ikke er stoppet)
                 if (!isActive || kafkaStreamsInstance.isRunningFlag.get()) {
@@ -119,12 +119,13 @@ class StreamsLifecycleManager(
                 log.info("Restarting ${kafkaStreamsInstance.name} Streams (Attempt $attempt)...")
 
                 val closed = closeStreamsInstance(kafkaStreamsInstance, attempt)
-                delay(timeMillis = 5000L) // Vent litt før vi prøver å starte på nytt
 
                 if (!closed) {
                     log.error("${kafkaStreamsInstance.name} failed to close properly before restart. Aborting restart attempt $attempt.")
                     return@launch
                 }
+
+                delay(delayMillis - delayMillis/2) // Vent litt før vi prøver å starte på nytt
 
                 kafkaStreamsInstance.isRunningFlag.set(false) // Sørg for at den er markert som ikke-kjørende
 
