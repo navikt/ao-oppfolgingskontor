@@ -13,7 +13,7 @@ import no.nav.http.client.norg2TestUrl
 import no.nav.http.graphql.configureGraphQlModule
 import no.nav.security.mock.oauth2.MockOAuth2Server
 import no.nav.utils.getJsonClient
-import no.nav.utils.kontorForBrukerQuery
+import no.nav.utils.kontorTilhorighetQuery
 import kotlin.test.Test
 
 class AuthenticationTest {
