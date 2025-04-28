@@ -124,8 +124,9 @@ class StreamsLifecycleManager(
                     log.error("${kafkaStreamsInstance.name} failed to close properly before restart. Aborting restart attempt $attempt.")
                     return@launch
                 }
-
+                log.info("Streams state after close: ${kafkaStreamsInstance.streams.state()}")
                 delay(delayMillis - delayMillis/2) // Vent litt før vi prøver å starte på nytt
+                log.info("Streams state after delay: ${kafkaStreamsInstance.streams.state()}")
 
                 kafkaStreamsInstance.isRunningFlag.set(false) // Sørg for at den er markert som ikke-kjørende
 
