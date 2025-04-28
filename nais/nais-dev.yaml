@@ -51,8 +51,9 @@ spec:
         - application: veilarbpersonflate
           namespace: poao
     outbound:
-      external:
-        - host: norg2.dev-fss-pub.nais.io
+      rules:
+        - application: norg2
+          namespace: org
   azure:
     application:
       enabled: true
