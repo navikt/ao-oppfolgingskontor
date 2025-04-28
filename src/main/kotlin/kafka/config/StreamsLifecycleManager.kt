@@ -120,6 +120,11 @@ class StreamsLifecycleManager(
 
                 val closed = closeStreamsInstance(kafkaStreamsInstance, attempt)
 
+                if (!closed) {
+                    log.error("${kafkaStreamsInstance.name} failed to close properly before restart. Aborting restart attempt $attempt.")
+                    return@launch
+                }
+
                 kafkaStreamsInstance.isRunningFlag.set(false) // Sørg for at den er markert som ikke-kjørende
 
                 // Valgfritt: cleanUp() (VÆR FORSIKTIG)
@@ -127,12 +132,10 @@ class StreamsLifecycleManager(
                 // try { streams.cleanUp() } catch (e: Exception) { log.error("Cleanup failed during restart for $appName", e)}
 
                 // 2. Start på nytt
-                if (closed) {
-                    log.debug("${kafkaStreamsInstance.name}: Starting streams instance after close...")
-                    kafkaStreamsInstance.streams.start()
-                    kafkaStreamsInstance.isRunningFlag.set(true) // Optimistisk igjen
-                    log.info("${kafkaStreamsInstance.name} Streams restarted successfully on attempt $attempt.")
-                }
+                log.debug("${kafkaStreamsInstance.name}: Starting streams instance after close...")
+                kafkaStreamsInstance.streams.start()
+                kafkaStreamsInstance.isRunningFlag.set(true) // Optimistisk igjen
+                log.info("${kafkaStreamsInstance.name} Streams restarted successfully on attempt $attempt.")
                 // StateListener vil nullstille counter når RUNNING nås
 
             } catch (e: CancellationException) {
