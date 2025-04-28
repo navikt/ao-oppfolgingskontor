@@ -2,7 +2,6 @@ package no.nav.kafka
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import no.nav.db.dto.EndretAvType
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.table.ArenaKontorTable
 import no.nav.db.table.KontorhistorikkTable
@@ -57,6 +56,7 @@ class EndringPaOppfolgingsBrukerConsumer(
                 it[kafkaPartition] = maybeRecordMetadata?.partition()
 
             }
+            throw RuntimeException("Simulerer feil i oppdatering av kontorhistorikk")
         }
 
 
