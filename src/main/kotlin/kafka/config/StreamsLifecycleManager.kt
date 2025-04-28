@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.math.min
 import kotlin.math.pow
 
 class StreamsLifecycleManager(
@@ -17,8 +18,9 @@ class StreamsLifecycleManager(
     private val log = LoggerFactory.getLogger(javaClass)
 
     val restartCounters = ConcurrentHashMap<String, AtomicInteger>()
-    val maxRestarts = 5
+    val maxRestarts = 10000
     val initialDelayMillis = 5000L
+    val maxDelay = 60000L
     val backoffMultiplier = 2.0
     val shutDownTimeout = Duration.ofSeconds(20)
 
@@ -151,7 +153,7 @@ class StreamsLifecycleManager(
     }
 
     private fun calculateDelay(attempt: Int): Long {
-        return (initialDelayMillis * backoffMultiplier.pow(attempt - 1)).toLong()
+        return min((initialDelayMillis * backoffMultiplier.pow(attempt - 1)).toLong(), maxDelay)
     }
 
     private suspend fun closeStreamsInstance(kafkaStreamsInstance: KafkaStreamsInstance, attempt: Int): Boolean {
