@@ -27,7 +27,7 @@ Oppfølgingskontor for Arbeidsrettet Oppfølging
 | `topic for kontorendringer`  | Alle endringer? Bare "overstyringer"? Bare Arena + arbeidsoppfølging? |
 
 
-## Tech
+## Built with
 - Kotlin
 - [Ktor (v3)](https://ktor.io/docs/welcome.html)
 - [graphql-kotlin (expedia)](https://opensource.expediagroup.com/graphql-kotlin/docs/)
