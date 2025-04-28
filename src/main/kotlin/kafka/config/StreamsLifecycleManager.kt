@@ -119,6 +119,7 @@ class StreamsLifecycleManager(
                 log.info("Restarting ${kafkaStreamsInstance.name} Streams (Attempt $attempt)...")
 
                 val closed = closeStreamsInstance(kafkaStreamsInstance, attempt)
+                delay(timeMillis = 5000L) // Vent litt før vi prøver å starte på nytt
 
                 if (!closed) {
                     log.error("${kafkaStreamsInstance.name} failed to close properly before restart. Aborting restart attempt $attempt.")
