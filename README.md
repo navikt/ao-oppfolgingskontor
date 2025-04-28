@@ -14,6 +14,9 @@ Oppfølgingskontor for Arbeidsrettet Oppfølging
 - **Geografisk-tilknyttet kontor**: Kontor som tilhører brukers folkeregistrerte adresse
   - Gitt en geografisk tilknytning (GT), sjekk i Norg2 hvilket kontor som er tilknyttet den GT-en
 - **Kontortilhørighet**: hvilket kontror en bruker tilhører
+  - Kan være arbeidsoppfølging-kontor, arena-kontor eller GT-kontor
+  - Kan være flere kontortilhørigheter samtidig men kun én av hver type
+  - Har prioriteringsrekkefølge: arbeidsoppfølging-kontor (viktigst) > arena-kontor > GT-kontor
 - **Kontortilordning**: handling å sette kontoret til en bruker, kan være manuelt eller automatisk. Alle tre kontortyper kan settes.
 
 ## Business rules
@@ -21,12 +24,12 @@ Oppfølgingskontor for Arbeidsrettet Oppfølging
 - kontorForBruker gir ut kontoret med høyest prioritet.
 
 ## Outbound data
-| Endepunkt                    | Beskrivelse                                                           |      
-|------------------------------|-----------------------------------------------------------------------|
-| `/graphql (alleKontor)`      | Liste over alle kontor som kan velges når man skal sette kontor       |
-| `/graphql (kontorForBruker)` | Nåværende kontor for en bruker                                        |
-| `/graphql (kontorHistorikk)` | Alle historiske **Kontortilhørighet**-er                              |
-| `topic for kontorendringer`  | Alle endringer? Bare "overstyringer"? Bare Arena + arbeidsoppfølging? |
+| Endepunkt                    | Beskrivelse                                                                                                                 |      
+|------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
+| `/graphql (alleKontor)`      | Liste over alle kontor som kan velges når man skal sette kontor                                                             |
+| `/graphql (kontorForBruker)` | Nåværende, høyest prioriterte **Kontortilhørighet**. Returnerer ett en tilhørighet men kontoret kan være av alle tre typene |
+| `/graphql (kontorHistorikk)` | Alle historiske **Kontortilhørighet**-er                                                                                    |
+| `topic for kontorendringer`  | Alle endringer? Bare "overstyringer"? Bare Arena + arbeidsoppfølging?                                                       |
 
 
 ## Built with
