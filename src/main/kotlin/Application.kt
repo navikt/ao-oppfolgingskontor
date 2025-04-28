@@ -5,6 +5,7 @@ import io.ktor.server.application.*
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import no.nav.db.FlywayPlugin
 import no.nav.db.PostgresDataSource
+import no.nav.db.configureDatabase
 import no.nav.http.configureArbeidsoppfolgingskontorModule
 import no.nav.http.graphql.configureGraphQlModule
 import no.nav.kafka.KafkaStreamsPlugin
@@ -25,12 +26,7 @@ fun Application.module() {
     configureHTTP()
     configureSecurity()
     configureRouting()
-//    configureContentNegotiation()
-    val dataSource = PostgresDataSource.getDataSource(environment.config)
-    Database.connect(dataSource)
-    install(FlywayPlugin) {
-        this.dataSource = dataSource
-    }
+    configureDatabase()
     install(KafkaStreamsPlugin)
     configureGraphQlModule()
     configureArbeidsoppfolgingskontorModule()
