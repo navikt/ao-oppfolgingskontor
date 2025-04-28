@@ -3,14 +3,9 @@ package no.nav
 import com.expediagroup.graphql.server.ktor.graphQLPostRoute
 import io.kotest.matchers.shouldBe
 import io.ktor.client.call.body
-import io.ktor.client.request.header
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
 import io.ktor.http.HttpStatusCode
-import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.auth.authentication
 import io.ktor.server.config.MapApplicationConfig
-import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
@@ -21,10 +16,10 @@ import no.nav.http.configureArbeidsoppfolgingskontorModule
 import no.nav.http.graphql.installGraphQl
 import no.nav.security.mock.oauth2.MockOAuth2Server
 import no.nav.utils.GraphqlResponse
-import no.nav.utils.KontorForBruker
+import no.nav.utils.KontorTilhorighet
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.getJsonClient
-import no.nav.utils.kontorForBruker
+import no.nav.utils.kontorTilhorighet
 import org.junit.Test
 
 class SettArbeidsoppfolgingsKontorTest {
@@ -60,11 +55,11 @@ class SettArbeidsoppfolgingsKontorTest {
             val response = client.settKontor(server, fnr = fnr, kontorId = kontorId, navIdent = "Z990000")
             response.status shouldBe HttpStatusCode.OK
 
-            val readResponse = client.kontorForBruker(fnr)
+            val readResponse = client.kontorTilhorighet(fnr)
             readResponse.status shouldBe HttpStatusCode.OK
-            val kontorResponse = readResponse.body<GraphqlResponse<KontorForBruker>>()
+            val kontorResponse = readResponse.body<GraphqlResponse<KontorTilhorighet>>()
             kontorResponse.errors shouldBe null
-            kontorResponse.data?.kontorForBruker?.kontorId shouldBe kontorId
+            kontorResponse.data?.kontorTilhorighet?.kontorId shouldBe kontorId
         }
     }
 

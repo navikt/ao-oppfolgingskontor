@@ -2,11 +2,11 @@
 Oppfølgingskontor for Arbeidsrettet Oppfølging
 
 ## Inbound data
-| Endepunkt                              | Beskrivelse                                  |      
-|----------------------------------------|----------------------------------------------|
-| `POST /api/kontor`                     | Sett arbeidsoppfolgings-kontor for en bruker |
-| `pto.endring-paa-oppfolgingsbruker-v2` | Alle oppfolgingskontor fra arena             |
-| `Liste over Kontor fra Norg`           | Henter liste over kontor fra Norg2           |
+| Endepunkt                              | Beskrivelse                                                       |      
+|----------------------------------------|-------------------------------------------------------------------|
+| `POST /api/kontor`                     | Setter arbeidsoppfolgings-kontor for en bruker (Kontortilordning) |
+| `pto.endring-paa-oppfolgingsbruker-v2` | Alle oppfolgingskontor fra arena                                  |
+| `Liste over Kontor fra Norg`           | Henter liste over kontor fra Norg2                                |
 
 ## Ubiquitous language
 - **Arbeidsoppfolgingkontor kontor**: Alltid satt manuelt av veileder (foreløpig)
@@ -21,11 +21,11 @@ Oppfølgingskontor for Arbeidsrettet Oppfølging
 - kontorForBruker gir ut kontoret med høyest prioritet.
 
 ## Outbound data
-| Endepunkt                    | Beskrivelse                                                          |      
-|------------------------------|----------------------------------------------------------------------|
-| `/graphql (alleKontor)`      | Liste over alle kontor som kan velges når man skal sette kontor      |
-| `/graphql (kontorForBruker)` | Nåværende kontor for en bruker                                       |
-| `/graphql (kontorHistorikk)` | All historikk på kontor for en bruker                                |
+| Endepunkt                    | Beskrivelse                                                           |      
+|------------------------------|-----------------------------------------------------------------------|
+| `/graphql (alleKontor)`      | Liste over alle kontor som kan velges når man skal sette kontor       |
+| `/graphql (kontorForBruker)` | Nåværende kontor for en bruker                                        |
+| `/graphql (kontorHistorikk)` | Alle historiske **Kontortilhørighet**-er                              |
 | `topic for kontorendringer`  | Alle endringer? Bare "overstyringer"? Bare Arena + arbeidsoppfølging? |
 
 

@@ -11,7 +11,7 @@ import kotlinx.serialization.Serializable
 import no.nav.db.Fnr
 import no.nav.http.graphql.schemas.AlleKontorQueryDto
 import no.nav.http.graphql.schemas.KontorHistorikkQueryDto
-import no.nav.http.graphql.schemas.KontorQueryDto
+import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
 
 @Serializable
 data class GraphqlResponse<T> (
@@ -39,8 +39,8 @@ data class GraphqlErrorLocation(
 )
 
 @Serializable
-data class KontorForBruker(
-    val kontorForBruker: KontorQueryDto,
+data class KontorTilhorighet(
+    val kontorTilhorighet: KontorTilhorighetQueryDto,
 )
 
 @Serializable
@@ -60,9 +60,9 @@ private suspend fun HttpClient.graphqlRequest(block: HttpRequestBuilder.() -> Un
     }
 }
 
-suspend fun HttpClient.kontorForBruker(fnr: Fnr): HttpResponse {
+suspend fun HttpClient.kontorTilhorighet(fnr: Fnr): HttpResponse {
     return graphqlRequest {
-        setBody(kontorForBrukerQuery(fnr))
+        setBody(kontorTilhorighetQuery(fnr))
     }
 }
 suspend fun HttpClient.kontoHistorikk(fnr: Fnr): HttpResponse {
@@ -81,9 +81,9 @@ private fun kontorHistorikkQuery(fnr: Fnr): String {
             { kontorHistorikk (fnrParam: \"$fnr\") { kontorId , kilde, endretAv, endretAvType, endretTidspunkt, endringsType } }
         """.trimIndent())
 }
-fun kontorForBrukerQuery(fnr: Fnr): String {
+fun kontorTilhorighetQuery(fnr: Fnr): String {
     return graphqlPayload(fnr, """
-             { kontorForBruker (fnrParam: \"$fnr\") { kontorId , kilde } }
+             { kontorTilhorighet (fnrParam: \"$fnr\") { kontorId , kilde } }
         """.trimIndent())
 }
 private fun alleKontorQuery(): String {

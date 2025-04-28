@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 import no.nav.domain.KontorKilde
 
 @Serializable
-data class KontorQueryDto(
+data class KontorTilhorighetQueryDto(
     val kontorId: String,
     val kilde: KontorKilde,
 )

@@ -7,7 +7,7 @@ import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.db.table.ArenaKontorTable
 import no.nav.db.table.GeografiskTilknytningKontorTable
 import no.nav.domain.KontorKilde
-import no.nav.http.graphql.schemas.KontorQueryDto
+import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -17,7 +17,7 @@ val kontorkildeAlias = stringLiteral(KontorKilde.ARBEIDSOPPFOLGING.name).alias("
 val prioritetAlias = intLiteral(0).alias("prioritet")
 
 class KontorQuery : Query {
-    fun kontorForBruker(fnrParam: Fnr, dataFetchingEnvironment: DataFetchingEnvironment): KontorQueryDto? {
+    fun kontorTilhorighet(fnrParam: Fnr, dataFetchingEnvironment: DataFetchingEnvironment): KontorTilhorighetQueryDto? {
         return transaction {
 
             val arbeidsoppfolgingKontorQuery = ArbeidsOppfolgingKontorTable.select(
@@ -49,7 +49,7 @@ class KontorQuery : Query {
                 .limit(1)
                 .firstOrNull()
 
-            resultRow?.let { row -> KontorQueryDto(row[kontorAlias], KontorKilde.valueOf(row[kontorkildeAlias])) }
+            resultRow?.let { row -> KontorTilhorighetQueryDto(row[kontorAlias], KontorKilde.valueOf(row[kontorkildeAlias])) }
         }
     }
 }

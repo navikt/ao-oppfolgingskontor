@@ -3,19 +3,8 @@ package no.nav.no.nav
 import com.expediagroup.graphql.server.ktor.graphQLPostRoute
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
-import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.defaultRequest
-import io.ktor.client.plugins.logging.Logging
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
-import io.ktor.http.contentType
-import io.ktor.serialization.kotlinx.json.json
-import io.ktor.server.application.Application
-import io.ktor.server.engine.applicationEnvironment
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
@@ -24,23 +13,19 @@ import no.nav.db.table.ArenaKontorTable
 import no.nav.db.table.KontorhistorikkTable
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorKilde
-import no.nav.http.client.Norg2Client
-import no.nav.http.client.alleKontor
 import no.nav.http.client.mockNorg2Host
-import no.nav.http.graphql.getNorg2Url
 import no.nav.http.graphql.installGraphQl
-import no.nav.http.graphql.schemas.AlleKontorQueryDto
 import no.nav.http.graphql.schemas.KontorHistorikkQueryDto
-import no.nav.http.graphql.schemas.KontorQueryDto
+import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
 import no.nav.utils.AlleKontor
 import no.nav.utils.GraphqlResponse
-import no.nav.utils.KontorForBruker
+import no.nav.utils.KontorTilhorighet
 import no.nav.utils.KontorHistorikk
 import no.nav.utils.alleKontor
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.getJsonClient
 import no.nav.utils.kontoHistorikk
-import no.nav.utils.kontorForBruker
+import no.nav.utils.kontorTilhorighet
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.Test
@@ -69,11 +54,11 @@ class GraphqlApplicationTest {
             gittBrukerMedKontorIArena(fnr, kontorId)
         }
 
-        val response = client.kontorForBruker(fnr)
+        val response = client.kontorTilhorighet(fnr)
 
         response.status shouldBe HttpStatusCode.Companion.OK
-        val payload = response.body<GraphqlResponse<KontorForBruker>>()
-        payload shouldBe GraphqlResponse(KontorForBruker(KontorQueryDto(kontorId, KontorKilde.ARENA)))
+        val payload = response.body<GraphqlResponse<KontorTilhorighet>>()
+        payload shouldBe GraphqlResponse(KontorTilhorighet(KontorTilhorighetQueryDto(kontorId, KontorKilde.ARENA)))
     }
 
     @Test

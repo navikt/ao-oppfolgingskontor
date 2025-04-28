@@ -16,13 +16,13 @@ class KontorRepo(val dataSource: DataSource) {
         Database.connect(dataSource)
     }
 
-    suspend fun getKontor(fnr: Fnr): BrukersKontor {
+    suspend fun getKontor(fnr: Fnr): KontorTilhorighet {
         val (arenaKontor, arbeidsoppfolgingKontor) = coroutineScope {
             val arenaKontor = async { ArenaKontorEntity.findById(fnr) }
             val arbeidsoppfolgingKontor = async { ArbeidsOppfolgingKontorEntity.findById(fnr) }
             Pair(arenaKontor.await(), arbeidsoppfolgingKontor.await())
         }
-        return BrukersKontor(
+        return KontorTilhorighet(
             fnr,
             arenaKontor = arenaKontor?.toArenaKontor(),
             arbeidsoppfolgingKontor = arbeidsoppfolgingKontor?.toArbeidsoppfolgingKontor()
@@ -30,7 +30,7 @@ class KontorRepo(val dataSource: DataSource) {
     }
 }
 
-data class BrukersKontor(
+data class KontorTilhorighet(
     val fnr: Fnr,
     val arenaKontor: ArenaKontor?,
     val arbeidsoppfolgingKontor: ArbeidsoppfolgingKontor?,
