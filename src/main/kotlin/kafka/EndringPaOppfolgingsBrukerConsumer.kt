@@ -13,6 +13,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.upsert
 import org.slf4j.LoggerFactory
 import java.time.OffsetDateTime
+import kotlin.random.Random
 
 class EndringPaOppfolgingsBrukerConsumer(
 //    val dataSource: DataSource,
@@ -57,7 +58,7 @@ class EndringPaOppfolgingsBrukerConsumer(
 
             }
             val envVar: String = System.getenv("NAIS_CLUSTER_NAME") ?: "NONE"
-            if (envVar == "dev-gcp") throw RuntimeException("Simulerer feil i oppdatering av kontorhistorikk")
+            if (envVar == "dev-gcp" && Random.nextBoolean())  throw RuntimeException("Simulerer feil i oppdatering av kontorhistorikk")
         }
 
 
