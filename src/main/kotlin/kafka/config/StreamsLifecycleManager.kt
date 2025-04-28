@@ -18,7 +18,7 @@ class StreamsLifecycleManager(
     private val log = LoggerFactory.getLogger(javaClass)
 
     val restartCounters = ConcurrentHashMap<String, AtomicInteger>()
-    val maxRestarts = 10000
+    var maxRestarts = 10000
     val initialDelayMillis = 5000L
     val maxDelay = 60000L
     val backoffMultiplier = 2.0
@@ -152,7 +152,7 @@ class StreamsLifecycleManager(
         return false
     }
 
-    private fun calculateDelay(attempt: Int): Long {
+    fun calculateDelay(attempt: Int): Long {
         return min((initialDelayMillis * backoffMultiplier.pow(attempt - 1)).toLong(), maxDelay)
     }
 

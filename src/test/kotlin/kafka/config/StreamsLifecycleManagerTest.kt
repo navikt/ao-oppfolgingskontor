@@ -12,7 +12,6 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.time.Duration
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.math.pow
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -43,7 +42,6 @@ class StreamsLifecycleManagerTest {
   stateListenerSlot = slot()
   uncaughtExceptionHandlerSlot = slot()
 
-
   /*
   Mocking med argument capture blir litt mer komplisert fordi setStateListener blir behandlet som en kotlin.jvm.functions.Function2,
   mens den faktiske metoden er en Java lambda, som ikke kan castes til Function2.
@@ -65,6 +63,8 @@ class StreamsLifecycleManagerTest {
    uncaughtExceptionHandlerSlot.captured = { throwable ->
     handler.handle(throwable)
    }
+
+   manager.maxRestarts = 10 // Sett max restarts for å unngå for mange looper i testene
   }
 
   // Opprett manageren (bruk testScope for dens interne scope for å ha kontroll på tiden i dispatcheren),
@@ -162,7 +162,7 @@ class StreamsLifecycleManagerTest {
   manager.scheduleRestart(kafkaStreamsInstance)
 
   // Hopp frem i tid forbi den *andre* delayen (med backoff)
-  val secondDelay = (initialDelay * manager.backoffMultiplier).toLong()
+  val secondDelay = manager.calculateDelay(2)
   advanceTimeBy(secondDelay + 100)
   runCurrent()
 
@@ -175,7 +175,7 @@ class StreamsLifecycleManagerTest {
 
   // --- Gi opp etter max restarts ---
   for (i in 3..maxRestarts + 1) {
-   advanceTimeBy((initialDelay * manager.backoffMultiplier.pow(i - 1)).toLong() + 100)
+   advanceTimeBy(manager.calculateDelay(i - 1) + 100)
    runCurrent()
   }
 
