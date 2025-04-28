@@ -13,7 +13,7 @@ paths:
         content:
           '*/*':
             schema:
-              $ref: "#/components/schemas/ArbeidsOppfolgingKontorDTO"
+              $ref: "#/components/schemas/ArbeidsoppfolgingsKontorTilordningDTO"
         required: true
       responses:
         "200":
@@ -36,7 +36,7 @@ paths:
                   value: "Kunne ikke oppdatere kontor"
 components:
   schemas:
-    ArbeidsOppfolgingKontorDTO:
+    ArbeidsoppfolgingsKontorTilordningDTO:
       type: "object"
       properties:
         kontorId:
