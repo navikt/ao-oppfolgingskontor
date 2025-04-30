@@ -56,6 +56,7 @@ jobs:
     name: Deploy to NAIS
     needs: build
     runs-on: ubuntu-latest
+    environment: ${{ inputs.env }}
     steps:
       - uses: actions/checkout@v4
       - uses: nais/deploy/actions/deploy@v2
