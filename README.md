@@ -17,7 +17,7 @@ Oppfølgingskontor for Arbeidsrettet Oppfølging
   - Kan være arbeidsoppfølging-kontor, arena-kontor eller GT-kontor
   - Kan være flere kontortilhørigheter samtidig men kun én av hver type
   - Har prioriteringsrekkefølge: arbeidsoppfølging-kontor (viktigst) > arena-kontor > GT-kontor
-- **Kontortilordning**: handling å sette kontoret til en bruker, kan være manuelt eller automatisk. Alle tre kontortyper kan settes.
+- **Kontortilordning**: handlingen å sette kontoret til en bruker, kan være manuelt eller automatisk. Alle tre kontortyper kan settes. Inneholder hvem som utførte handlingen (system eller veileder-ident) og tidspunkt for når kontoret ble satt.
 
 ## Business rules
 - Arbeidsoppfølgings-kontor > Arena-kontor > GT-kontor. 
