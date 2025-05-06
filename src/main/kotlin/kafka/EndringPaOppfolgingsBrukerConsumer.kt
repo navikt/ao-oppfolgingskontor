@@ -2,7 +2,6 @@ package no.nav.kafka
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import no.nav.db.dto.EndretAvType
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.table.ArenaKontorTable
 import no.nav.db.table.KontorhistorikkTable
@@ -60,7 +59,7 @@ class EndringPaOppfolgingsBrukerConsumer(
 
             }
             val envVar: String = System.getenv("NAIS_CLUSTER_NAME") ?: "NONE"
-            if (envVar == "dev-gcp" && counter++ < 5)  throw RuntimeException("Simulerer feil i oppdatering av kontorhistorikk")
+            if (envVar == "dev-gcp" && counter++ < 20)  throw RuntimeException("Simulerer feil i oppdatering av kontorhistorikk")
         }
 
         return RecordProcessingResult.COMMIT
