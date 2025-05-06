@@ -80,7 +80,10 @@ class StreamsLifecycleManager(
             return
         }
         // Valgfritt: Rydd opp state før *første* start (VÆR FORSIKTIG!)
-        try { kafkaStreamsInstance.streams.cleanUp() } catch (e: Exception) { log.warn("Cleanup failed for ${kafkaStreamsInstance.name} (maybe not needed): ${e.message}")}
+        try {
+            log.info("${kafkaStreamsInstance.name} Streams cleanup.")
+            kafkaStreamsInstance.streams.cleanUp()
+        } catch (e: Exception) { log.warn("Cleanup failed for ${kafkaStreamsInstance.name} (maybe not needed): ${e.message}")}
 
         try {
             log.info("Attempting to start ${kafkaStreamsInstance.name} Streams...")
