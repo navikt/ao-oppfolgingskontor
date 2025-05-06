@@ -3,6 +3,7 @@ package no.nav.kafka.config
 import io.ktor.server.config.ApplicationConfig
 import no.nav.kafka.processor.ProcessRecord
 import no.nav.kafka.exceptionHandler.RetryIfRetriableExceptionHandler
+import no.nav.kafka.exceptionHandler.StreamsCustomUncaughtExceptionHandler
 import no.nav.kafka.processor.ExplicitResultProcessor
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.producer.ProducerConfig
@@ -36,7 +37,9 @@ fun configureStream(topology: Topology, config: ApplicationConfig): KafkaStreams
         .streamsErrorHandlerConfig()
         .securityConfig(naisKafkaEnv)
 
-    return KafkaStreams(topology, config)
+    val streams = KafkaStreams(topology, config)
+    streams.setUncaughtExceptionHandler(StreamsCustomUncaughtExceptionHandler())
+    return streams
 }
 
 private fun Properties.streamsConfig(config: NaisKafkaEnv, appConfig: ApplicationConfig): Properties {
