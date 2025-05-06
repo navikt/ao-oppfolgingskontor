@@ -9,7 +9,7 @@ class StreamsCustomUncaughtExceptionHandler : StreamsUncaughtExceptionHandler {
     override fun handle(exception: Throwable): StreamThreadExceptionResponse {
         if (exception is StreamsException) {
             val originalException = exception.cause
-            logger.error("Unhandled exception in stream processor. Retrying processing", exception)
+            logger.error("Unhandled exception in stream processor. Retrying processing", originalException)
             Thread.sleep(5000)
             return StreamThreadExceptionResponse.REPLACE_THREAD
         }
