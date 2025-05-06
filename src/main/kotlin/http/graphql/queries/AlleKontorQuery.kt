@@ -22,7 +22,7 @@ class AlleKontorQuery(
         }
             .onSuccess { it }
             .onFailure {
-                logger.error("Kunne ikke hent liste over kontor: ${it.cause} ${it.message}", it)
+                logger.error("Kunne ikke hent liste over kontor.", it)
                 throw it
             }
             .getOrThrow()

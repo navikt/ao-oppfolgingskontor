@@ -34,7 +34,7 @@ class KontorHistorikkQuery : Query {
             }
         }
             .onFailure {
-                logger.error("Feil ved henting av kontorhistorikk for fnr: $fnrParam", it)
+                logger.error("Feil ved henting av kontorhistorikk", it)
                 throw it
             }
             .onSuccess { return it }
