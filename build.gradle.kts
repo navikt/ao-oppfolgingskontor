@@ -61,7 +61,12 @@ dependencies {
     implementation(libs.flyway.core)
     implementation(libs.flyway.postgres)
     implementation(libs.hikaricp)
+    // LOGGING START
     implementation(libs.logback.classic)
+    implementation(libs.logback.core)
+    implementation(libs.slf4j.api)
+    implementation(libs.log4j.over.slf4j)
+    // LOGGING END
     implementation(libs.ktor.server.config.yaml)
     implementation(libs.kafka.streams)
     implementation(libs.graphql.kotlin.server)
