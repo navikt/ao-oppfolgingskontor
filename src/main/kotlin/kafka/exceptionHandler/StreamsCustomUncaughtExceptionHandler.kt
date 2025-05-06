@@ -16,7 +16,7 @@ class StreamsCustomUncaughtExceptionHandler : StreamsUncaughtExceptionHandler {
     override fun handle(exception: Throwable): StreamThreadExceptionResponse {
         if (exception is StreamsException) {
             val currentTime = System.currentTimeMillis()
-            if (lastExceptionTimeMillis != 0L && currentTime - lastExceptionTimeMillis + 100L> calculateDelay(exceptionCounter)) {
+            if (lastExceptionTimeMillis != 0L && currentTime - lastExceptionTimeMillis > calculateDelay(exceptionCounter) + 100L) {
                 logger.info("Exception occurred after delay. Resetting exception counter.")
                 exceptionCounter = 0
             }
