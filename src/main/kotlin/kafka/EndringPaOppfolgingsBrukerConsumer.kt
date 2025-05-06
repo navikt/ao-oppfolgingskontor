@@ -25,7 +25,7 @@ class EndringPaOppfolgingsBrukerConsumer(
     var counter = 0
 
     fun consume(record: Record<String, String>, maybeRecordMetadata: RecordMetadata?): RecordProcessingResult {
-        log.info("Consumed record")
+        log.info("Consuming record topic: {} partition: {}, offset: {}", maybeRecordMetadata?.topic(), maybeRecordMetadata?.partition(), maybeRecordMetadata?.offset())
         val fnrString = record.key()
         val endringPaOppfolgingsBruker = json.decodeFromString<EndringPaOppfolgingsBruker>(record.value())
         if (endringPaOppfolgingsBruker.oppfolgingsenhet.isNullOrBlank()) {
