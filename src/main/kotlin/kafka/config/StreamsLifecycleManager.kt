@@ -69,7 +69,7 @@ class StreamsLifecycleManager(
         kafkaStreamsInstance.streams.setUncaughtExceptionHandler { throwable ->
             log.error("Uncaught exception in ${kafkaStreamsInstance.name} Streams thread. State should transition to ERROR.", throwable)
             kafkaStreamsInstance.isRunningFlag.set(false)
-            StreamThreadExceptionResponse.SHUTDOWN_APPLICATION
+            StreamThreadExceptionResponse.REPLACE_THREAD
             // StateListener vil normalt ta over her når tilstanden blir ERROR
         }
     }
@@ -80,7 +80,7 @@ class StreamsLifecycleManager(
             return
         }
         // Valgfritt: Rydd opp state før *første* start (VÆR FORSIKTIG!)
-        // try { streams.cleanUp() } catch (e: Exception) { log.warn("Cleanup failed for $appName (maybe not needed): ${e.message}")}
+        try { kafkaStreamsInstance.streams.cleanUp() } catch (e: Exception) { log.warn("Cleanup failed for ${kafkaStreamsInstance.name} (maybe not needed): ${e.message}")}
 
         try {
             log.info("Attempting to start ${kafkaStreamsInstance.name} Streams...")
@@ -131,8 +131,8 @@ class StreamsLifecycleManager(
                 kafkaStreamsInstance.isRunningFlag.set(false) // Sørg for at den er markert som ikke-kjørende
 
                 // Valgfritt: cleanUp() (VÆR FORSIKTIG)
-                // log.warn("$appName: Cleaning up local state store before restart.")
-                // try { streams.cleanUp() } catch (e: Exception) { log.error("Cleanup failed during restart for $appName", e)}
+                log.warn("${kafkaStreamsInstance.name}: Cleaning up local state store before restart.")
+                try { kafkaStreamsInstance.streams.cleanUp() } catch (e: Exception) { log.error("Cleanup failed during restart for ${kafkaStreamsInstance.name}", e)}
 
                 // 2. Start på nytt
                 log.debug("${kafkaStreamsInstance.name}: Starting streams instance after close...")

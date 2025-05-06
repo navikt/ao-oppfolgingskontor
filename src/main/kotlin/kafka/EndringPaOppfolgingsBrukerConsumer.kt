@@ -22,6 +22,8 @@ class EndringPaOppfolgingsBrukerConsumer(
 
     val json = Json { ignoreUnknownKeys = true }
 
+    var counter = 0
+
     fun consume(record: Record<String, String>, maybeRecordMetadata: RecordMetadata?): RecordProcessingResult {
         log.info("Consumed record")
         val fnrString = record.key()
@@ -58,7 +60,7 @@ class EndringPaOppfolgingsBrukerConsumer(
 
             }
             val envVar: String = System.getenv("NAIS_CLUSTER_NAME") ?: "NONE"
-            if (envVar == "dev-gcp" && Random.nextBoolean())  throw RuntimeException("Simulerer feil i oppdatering av kontorhistorikk")
+            if (envVar == "dev-gcp" && counter++ < 5)  throw RuntimeException("Simulerer feil i oppdatering av kontorhistorikk")
         }
 
 
