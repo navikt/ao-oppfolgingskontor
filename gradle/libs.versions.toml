@@ -6,6 +6,7 @@ kotlin-version = "2.1.20"
 kafka-streams = "4.0.0"
 ktor-version = "3.1.1"
 logback-version = "1.4.14"
+slf4j-version = "2.0.9"
 postgres-version = "42.7.5"
 flyway-version = "11.5.0"
 hikari-version = "6.3.0"
@@ -40,6 +41,7 @@ ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor-ve
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor-version" }
 ktor-client-logging = { module = "io.ktor:ktor-client-logging", version.ref = "ktor-version" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback-version" }
+slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j-version" }
 ktor-server-config-yaml = { module = "io.ktor:ktor-server-config-yaml", version.ref = "ktor-version" }
 kafka-streams = { module = "org.apache.kafka:kafka-streams", version.ref = "kafka-streams" }
 flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway-version" }
