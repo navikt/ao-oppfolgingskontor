@@ -18,13 +18,13 @@ class RetryIfRetriableExceptionHandler : ProcessingExceptionHandler {
         exception: java.lang.Exception?
     ): ProcessingExceptionHandler.ProcessingHandlerResponse {
         return if (exception is RetriableException) {
-            log.error("Retrying due to transient error: $exception", exception)
+            log.error("Retrying due to transient error:", exception)
             return ProcessingExceptionHandler.ProcessingHandlerResponse.FAIL
         } else if (exception is FunksjonellFeilException) {
-            log.error("Fatal error, skipping message: $exception", exception)
+            log.error("Fatal error, skipping message:", exception)
             return ProcessingExceptionHandler.ProcessingHandlerResponse.CONTINUE
         } else {
-            log.error("Intermittent error, retrying message: $exception", exception)
+            log.error("Intermittent error, retrying message:", exception)
             return ProcessingExceptionHandler.ProcessingHandlerResponse.FAIL
         }
     }
