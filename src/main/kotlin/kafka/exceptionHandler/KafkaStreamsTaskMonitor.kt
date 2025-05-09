@@ -73,6 +73,7 @@ class KafkaStreamsTaskMonitor(
             log.info("[$applicationId] Kafka Streams instance already initialized. Skipping setup.")
             return
         }
+        log.info("[$applicationId] Setting up Kafka Streams monitoring.")
         val currentStreams = this.internalStreams ?: return
 
         currentStreams.setStateListener { newState, oldState ->
