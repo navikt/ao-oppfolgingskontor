@@ -6,12 +6,14 @@ kotlin-version = "2.1.20"
 kafka-streams = "4.0.0"
 ktor-version = "3.1.1"
 logback-version = "1.4.14"
+slf4j-version = "2.0.9"
 postgres-version = "42.7.5"
 flyway-version = "11.5.0"
 hikari-version = "6.3.0"
 logstash-version = "8.0"
 embedded-postgres-version = "2.1.0"
 kotest-version = "5.9.1"
+mockk-version = "1.14.0"
 graphql-kotlin-version = "8.5.0"
 token-validation-ktor-v3-version = "5.0.24"
 mock-oauth2-server-version = "2.1.10"
@@ -39,9 +41,8 @@ ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor-ve
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor-version" }
 ktor-client-logging = { module = "io.ktor:ktor-client-logging", version.ref = "ktor-version" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback-version" }
+slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j-version" }
 ktor-server-config-yaml = { module = "io.ktor:ktor-server-config-yaml", version.ref = "ktor-version" }
-ktor-server-test-host = { module = "io.ktor:ktor-server-test-host", version.ref = "ktor-version" }
-kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin-version" }
 kafka-streams = { module = "org.apache.kafka:kafka-streams", version.ref = "kafka-streams" }
 flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway-version" }
 flyway-postgres = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway-version"}
@@ -49,10 +50,13 @@ hikaricp = { module = "com.zaxxer:HikariCP", version.ref = "hikari-version" }
 logstash = { module = "net.logstash.logback:logstash-logback-encoder", version.ref = "logstash-version" }
 embedded-postgres = {module = "io.zonky.test:embedded-postgres", version.ref = "embedded-postgres-version"}
 kafka-streams-test-utils = { module = "org.apache.kafka:kafka-streams-test-utils", version.ref = "kafka-streams" }
-kotest-assertions = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest-version" }
 graphql-kotlin-server = { module = "com.expediagroup:graphql-kotlin-ktor-server", version.ref = "graphql-kotlin-version" }
 graphql-kotlin-schema-generator = { module = "com.expediagroup:graphql-kotlin-schema-generator", version.ref = "graphql-kotlin-version" }
 token-validation-ktor-v3 = { module = "no.nav.security:token-validation-ktor-v3", version.ref ="token-validation-ktor-v3-version" }
+kotest-assertions = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest-version" }
+kotlin-test-junit5 = { module = "org.jetbrains.kotlin:kotlin-test-junit5", version.ref = "kotlin-version" }
+mockk = { module = "io.mockk:mockk", version.ref = "mockk-version" }
+ktor-server-test-host = { module = "io.ktor:ktor-server-test-host", version.ref = "ktor-version" }
 mock-oauth2-server = { module = "no.nav.security:mock-oauth2-server", version.ref ="mock-oauth2-server-version" }
 
 [plugins]

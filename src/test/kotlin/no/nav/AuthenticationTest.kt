@@ -14,7 +14,7 @@ import no.nav.http.graphql.configureGraphQlModule
 import no.nav.security.mock.oauth2.MockOAuth2Server
 import no.nav.utils.getJsonClient
 import no.nav.utils.kontorTilhorighetQuery
-import org.junit.Test
+import kotlin.test.Test
 
 class AuthenticationTest {
 

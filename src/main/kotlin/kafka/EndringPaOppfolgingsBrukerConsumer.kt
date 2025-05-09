@@ -2,7 +2,6 @@ package no.nav.kafka
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import no.nav.db.dto.EndretAvType
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.table.ArenaKontorTable
 import no.nav.db.table.KontorhistorikkTable
@@ -14,6 +13,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.upsert
 import org.slf4j.LoggerFactory
 import java.time.OffsetDateTime
+import kotlin.random.Random
 
 class EndringPaOppfolgingsBrukerConsumer(
 //    val dataSource: DataSource,
@@ -21,6 +21,8 @@ class EndringPaOppfolgingsBrukerConsumer(
     val log = LoggerFactory.getLogger(EndringPaOppfolgingsBrukerConsumer::class.java)
 
     val json = Json { ignoreUnknownKeys = true }
+
+    var counter = 0
 
     fun consume(record: Record<String, String>, maybeRecordMetadata: RecordMetadata?): RecordProcessingResult {
         log.info("Consumed record")
@@ -57,6 +59,8 @@ class EndringPaOppfolgingsBrukerConsumer(
                 it[kafkaPartition] = maybeRecordMetadata?.partition()
 
             }
+            val envVar: String = System.getenv("NAIS_CLUSTER_NAME") ?: "NONE"
+            if (envVar == "dev-gcp" && counter++ < 5)  throw RuntimeException("Simulerer feil i oppdatering av kontorhistorikk")
         }
 
 

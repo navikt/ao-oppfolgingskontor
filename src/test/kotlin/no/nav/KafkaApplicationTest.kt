@@ -17,6 +17,7 @@ import org.apache.kafka.streams.TopologyTestDriver
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.Ignore
 import org.junit.Test
+import org.junit.jupiter.api.Disabled
 import java.time.ZonedDateTime
 import java.util.Properties
 
@@ -86,7 +87,7 @@ class KafkaApplicationTest {
         }
     }
 
-    @Ignore
+    @Disabled
     @Test
     fun testKafkaSkipMessage() = testApplication {
         val fnr = "12345678901"
@@ -95,7 +96,8 @@ class KafkaApplicationTest {
 
             val topology = configureTopology(topic, endringPaOppfolgingsBrukerConsumer::consume)
             val kafkaMockTopic = setupKafkaMock(topology, topic)
-            kafkaMockTopic.pipeInput(fnr, """{"oppfolgingsenhet":"ugyldigEnhet"}""")
+            val sistEndretDato = ZonedDateTime.parse("2025-04-10T13:01:14+02:00")
+            kafkaMockTopic.pipeInput(fnr, """{"oppfolgingsenhet":"ugyldigEnhet", "sistEndretDato": "$sistEndretDato" }""")
         }
     }
 
