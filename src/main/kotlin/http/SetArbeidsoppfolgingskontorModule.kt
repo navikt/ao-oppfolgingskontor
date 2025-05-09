@@ -61,5 +61,6 @@ fun Application.configureArbeidsoppfolgingskontorModule() {
 @Serializable
 data class ArbeidsoppfolgingsKontorTilordningDTO(
     val kontorId: String,
+    val begrunnelse: String?,
     val fnr: Fnr
 )
