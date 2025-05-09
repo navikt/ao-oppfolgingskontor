@@ -90,7 +90,8 @@ class KafkaStreamsTaskMonitor(
                 taskRetryTracker.clear()
             } else if (newState == KafkaStreams.State.RUNNING && oldState == KafkaStreams.State.REBALANCING) {
                 log.info("[$applicationId] KafkaStreams finished REBALANCING. Triggering stale task metrics cleanup.")
-                cleanupStaleTaskMetrics()
+                // TODO uncomment when retry logic is stable
+                //cleanupStaleTaskMetrics()
             }
         }
 
