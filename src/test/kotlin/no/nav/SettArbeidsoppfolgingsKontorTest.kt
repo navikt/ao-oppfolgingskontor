@@ -18,7 +18,7 @@ import no.nav.security.mock.oauth2.MockOAuth2Server
 import no.nav.utils.GraphqlResponse
 import no.nav.utils.KontorTilhorighet
 import no.nav.utils.flywayMigrationInTest
-import no.nav.utils.getJsonClient
+import no.nav.utils.getJsonHttpClient
 import no.nav.utils.kontorTilhorighet
 import org.junit.Test
 
@@ -51,12 +51,12 @@ class SettArbeidsoppfolgingsKontorTest {
             val kontorId = "4444"
             setupTestAppWithAuthAndGraphql()
 
-            val client = getJsonClient()
+            val httpClient = getJsonHttpClient()
 
-            val response = client.settKontor(server, fnr = fnr, kontorId = kontorId, navIdent = "Z990000")
+            val response = httpClient.settKontor(server, fnr = fnr, kontorId = kontorId, navIdent = "Z990000")
             response.status shouldBe HttpStatusCode.OK
 
-            val readResponse = client.kontorTilhorighet(fnr)
+            val readResponse = httpClient.kontorTilhorighet(fnr)
             readResponse.status shouldBe HttpStatusCode.OK
             val kontorResponse = readResponse.body<GraphqlResponse<KontorTilhorighet>>()
             kontorResponse.errors shouldBe null

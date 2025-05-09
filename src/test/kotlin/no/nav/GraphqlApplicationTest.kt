@@ -23,7 +23,7 @@ import no.nav.utils.KontorTilhorighet
 import no.nav.utils.KontorHistorikk
 import no.nav.utils.alleKontor
 import no.nav.utils.flywayMigrationInTest
-import no.nav.utils.getJsonClient
+import no.nav.utils.getJsonHttpClient
 import no.nav.utils.kontoHistorikk
 import no.nav.utils.kontorTilhorighet
 import org.jetbrains.exposed.sql.insert
@@ -48,7 +48,7 @@ class GraphqlApplicationTest {
     fun `skal kunne hente kontor via graphql`() = testApplication {
         val fnr = "22345678901"
         val kontorId = "4142"
-        val client = getJsonClient()
+        val client = getJsonHttpClient()
         graphqlServerInTest()
         application {
             gittBrukerMedKontorIArena(fnr, kontorId)
@@ -65,7 +65,7 @@ class GraphqlApplicationTest {
     fun `skal kunne hente kontorhistorikk via graphql`() = testApplication {
         val fnr = "32345678901"
         val kontorId = "4142"
-        val client = getJsonClient()
+        val client = getJsonHttpClient()
         graphqlServerInTest()
         application {
             gittBrukerMedKontorIArena(fnr, kontorId)
@@ -93,7 +93,7 @@ class GraphqlApplicationTest {
     @Test
     fun `skal kunne hente alle kontor via graphql`() = testApplication {
         graphqlServerInTest()
-        val client = getJsonClient()
+        val client = getJsonHttpClient()
 
         val response = client.alleKontor()
 

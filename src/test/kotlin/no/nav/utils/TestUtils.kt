@@ -6,7 +6,7 @@ import io.ktor.client.plugins.logging.Logging
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.testing.*
 
-fun ApplicationTestBuilder.getJsonClient(): HttpClient {
+fun ApplicationTestBuilder.getJsonHttpClient(): HttpClient {
     return createClient {
         install(ContentNegotiation) { json() }
         install(Logging)

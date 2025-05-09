@@ -12,7 +12,7 @@ import no.nav.configureSecurity
 import no.nav.http.client.norg2TestUrl
 import no.nav.http.graphql.configureGraphQlModule
 import no.nav.security.mock.oauth2.MockOAuth2Server
-import no.nav.utils.getJsonClient
+import no.nav.utils.getJsonHttpClient
 import no.nav.utils.kontorTilhorighetQuery
 import org.junit.Test
 
@@ -32,7 +32,7 @@ class AuthenticationTest {
     fun `graphql endepunkter skal kreve gyldig token`() = testApplication {
         withMockOAuth2Server {
             setupTestAppWithAuthAndGraphql()
-            val client = getJsonClient()
+            val client = getJsonHttpClient()
 
             val response = client.post("/graphql") {
                 header("Authorization", "Bearer ${server.issueToken().serialize()}")
@@ -49,7 +49,7 @@ class AuthenticationTest {
     fun `skal gi 401 ved manglende token på graphql`() = testApplication {
         withMockOAuth2Server {
             setupTestAppWithAuthAndGraphql()
-            val client = getJsonClient()
+            val client = getJsonHttpClient()
 
             val response = client.post("/graphql") {
                 header("Content-Type", "application/json")

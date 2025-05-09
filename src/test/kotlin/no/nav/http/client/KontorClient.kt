@@ -11,9 +11,9 @@ import no.nav.security.mock.oauth2.MockOAuth2Server
 suspend fun HttpClient.settKontor(server: MockOAuth2Server, kontorId: String, fnr: Fnr, navIdent: String): HttpResponse {
     return post("/api/kontor") {
         header("Authorization", "Bearer ${server.issueToken(
-            claims = mapOf("NAVIdent" to "$navIdent")
+            claims = mapOf("NAVident" to "$navIdent")
         ).serialize()}")
         header("Content-Type", "application/json")
-        setBody("""{ "kontorId": "$kontorId", "fnr": "$fnr" }""")
+        setBody("""{ "kontorId": "$kontorId", "fnr": "$fnr", "begrunnelse": null }""")
     }
 }
