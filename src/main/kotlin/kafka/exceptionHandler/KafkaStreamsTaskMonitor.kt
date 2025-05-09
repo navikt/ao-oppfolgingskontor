@@ -49,6 +49,10 @@ class KafkaStreamsTaskMonitor(
     private var internalStreams: KafkaStreams? = null
 
     fun lateInitializeStreams(streams: KafkaStreams) {
+        if (this.internalStreams != null) {
+            log.info("[$applicationId] Kafka Streams instance already initialized. Skipping setup.")
+            return
+        }
         this.internalStreams = streams
         setupMonitoringInternal()
     }
@@ -69,10 +73,6 @@ class KafkaStreamsTaskMonitor(
     val uehLoopDetectionThreshold: Int = 5
 
     private fun setupMonitoringInternal() {
-        if (this.internalStreams != null) {
-            log.info("[$applicationId] Kafka Streams instance already initialized. Skipping setup.")
-            return
-        }
         log.info("[$applicationId] Setting up Kafka Streams monitoring.")
         val currentStreams = this.internalStreams ?: return
 
