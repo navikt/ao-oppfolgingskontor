@@ -63,4 +63,4 @@ spec:
           - "NAVident"
   env:
     - name: NORG2_URL
-      value: "http://norg2.org"
+      value: http://norg2.org
