@@ -25,7 +25,7 @@ fun Application.module() {
     configureSecurity()
     configureDatabase()
     install(KafkaStreamsPlugin) {
-        monitor = KafkaStreamsTaskMonitor(environment.config.property("kafka.application-id").toString(), meterRegistry)
+        monitor = KafkaStreamsTaskMonitor(environment.config.property("kafka.application-id").getString(), meterRegistry)
     }
     configureGraphQlModule()
     configureArbeidsoppfolgingskontorModule()
