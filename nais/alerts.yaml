@@ -1,0 +1,49 @@
+apiVersion: "nais.io/v1"
+kind: "Alert"
+metadata:
+  name: dab-streams-status
+  namespace: dab
+  labels:
+    team: dab
+spec:
+  receivers:
+    slack:
+      channel: '#team_dab_alerts'
+      prependText: '<!here> | '
+  alerts:
+    - alert: KafkaStreamThreadLooping
+      expr: kafka_streams_task_health_status{namespace="dab"} == 1
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Kafka Streams task '{{ $labels.stream_task_id }}' in application '{{ $labels.application_id }}' is looping."
+        description: >
+          Kafka Streams task '{{ $labels.task_id }}' for application '{{ $labels.application }}'
+          is in a looping state. Check application logs for details.
+
+    - alert: KafkaStreamThreadStopped
+      expr: kafka_streams_task_health_status{namespace="dab"} == 2
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Kafka Streams thread '{{ $labels.stream_thread_id }}' in application '{{ $labels.application_id }}' has stopped."
+        description: >
+          Kafka Streams task '{{ $labels.task_id }}' for application '{{ $labels.application }}'
+          has stopped or encountered an error. Immediate action is required.
+
+    # Optional: Alert if a stream metric disappears (meaning app might be down or task gone without reporting ERROR)
+    # This requires you to know which streams *should* be running.
+    # This example assumes you have a job label in your scrape config.
+    # And that your app always exports a 0 if it's ok, so absence means it's not even reporting OK.
+    # - alert: KafkaStreamThreadMissing
+    #   expr: absent(kafka_streams_task_health_status{job="your-kafka-streams-app-job"}) unless ON(application_id) (count(kafka_streams_task_health_status{job="your-kafka-streams-app-job"}) BY (application_id) > 0)
+    #   for: 10m
+    #   labels:
+    #     severity: critical
+    #   annotations:
+    #     summary: "Metrics for Kafka Streams application '{{ $labels.application_id }}' are missing."
+    #     description: >
+    #       No kafka_streams_task_health_status metrics have been scraped for application '{{ $labels.application_id }}'
+    #       from job '{{ $labels.job }}' for the last 10 minutes. The application or its stream tasks might be down.

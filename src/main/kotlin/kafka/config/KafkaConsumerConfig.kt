@@ -1,9 +1,9 @@
 package no.nav.kafka.config
 
 import io.ktor.server.config.ApplicationConfig
+import no.nav.kafka.exceptionHandler.KafkaStreamsTaskMonitor
 import no.nav.kafka.processor.ProcessRecord
 import no.nav.kafka.exceptionHandler.RetryIfRetriableExceptionHandler
-import no.nav.kafka.exceptionHandler.StreamsCustomUncaughtExceptionHandler
 import no.nav.kafka.processor.ExplicitResultProcessor
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.producer.ProducerConfig
@@ -17,33 +17,34 @@ import org.apache.kafka.streams.processor.api.Processor
 import org.apache.kafka.streams.processor.api.ProcessorSupplier
 import java.util.Properties
 
-fun configureTopology(topic: String, processRecord: ProcessRecord): Topology {
+fun configureTopology(topic: String, processRecord: ProcessRecord, monitor: KafkaStreamsTaskMonitor): Topology {
     val builder = StreamsBuilder()
     val sourceStream = builder.stream<String, String>(topic)
 
     sourceStream.process(object : ProcessorSupplier<String, String, String, String> {
         override fun get(): Processor<String, String, String, String> {
-            return ExplicitResultProcessor(processRecord)
+            return ExplicitResultProcessor(processRecord, monitor)
         }
     })
     return builder.build()
 }
 
-fun configureStream(topology: Topology, config: ApplicationConfig): KafkaStreams {
-    val naisKafkaEnv = config.toKafkaEnv()
+fun configureStream(topology: Topology, applicationConfig: ApplicationConfig, monitor: KafkaStreamsTaskMonitor): KafkaStreams {
+    val naisKafkaEnv = applicationConfig.toKafkaEnv()
 
     val config = Properties()
-        .streamsConfig(naisKafkaEnv, config)
+        .streamsConfig(naisKafkaEnv)
         .streamsErrorHandlerConfig()
         .securityConfig(naisKafkaEnv)
 
     val streams = KafkaStreams(topology, config)
-    streams.setUncaughtExceptionHandler(StreamsCustomUncaughtExceptionHandler())
+
+    monitor.lateInitializeStreams(streams)
     return streams
 }
 
-private fun Properties.streamsConfig(config: NaisKafkaEnv, appConfig: ApplicationConfig): Properties {
-    put(StreamsConfig.APPLICATION_ID_CONFIG, appConfig.property("kafka.application-id").getString())
+private fun Properties.streamsConfig(config: NaisKafkaEnv): Properties {
+    put(StreamsConfig.APPLICATION_ID_CONFIG, config.KAKFA_STREAMS_APPLICATION_ID)
     put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, config.KAFKA_BROKERS)
     put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().javaClass.name)
     put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().javaClass.name)

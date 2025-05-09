@@ -16,6 +16,7 @@ data class NaisKafkaEnv(
     val KAFKA_CREDSTORE_PASSWORD: String, // Password needed to use the keystore and truststore
     val KAFKA_KEYSTORE_PATH: String, // PKCS#12 keystore for use with Java clients, as file
     val KAFKA_TRUSTSTORE_PATH: String, // JKS truststore for use with Java clients, as file
+    val KAKFA_STREAMS_APPLICATION_ID: String, // Application ID for Kafka Streams
 )
 
 fun ApplicationConfig.toKafkaEnv() : NaisKafkaEnv {
@@ -33,5 +34,6 @@ fun ApplicationConfig.toKafkaEnv() : NaisKafkaEnv {
         KAFKA_CREDSTORE_PASSWORD = property("kafka.credstore-password").getString(),
         KAFKA_KEYSTORE_PATH = property("kafka.keystore-path").getString(),
         KAFKA_TRUSTSTORE_PATH = property("kafka.truststore-path").getString(),
+        KAKFA_STREAMS_APPLICATION_ID = property("kafka.application-id").getString()
     )
 }

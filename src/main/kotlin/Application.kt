@@ -7,6 +7,7 @@ import no.nav.db.configureDatabase
 import no.nav.http.configureArbeidsoppfolgingskontorModule
 import no.nav.http.graphql.configureGraphQlModule
 import no.nav.kafka.KafkaStreamsPlugin
+import no.nav.kafka.exceptionHandler.KafkaStreamsTaskMonitor
 
 fun main(args: Array<String>) {
     io.ktor.server.netty.EngineMain.main(args)
@@ -19,11 +20,13 @@ fun Application.configureContentNegotiation() {
 }
 
 fun Application.module() {
-    configureMonitoring()
+    val meterRegistry = configureMonitoring()
     configureHTTP()
     configureSecurity()
     configureDatabase()
-    install(KafkaStreamsPlugin)
+    install(KafkaStreamsPlugin) {
+        monitor = KafkaStreamsTaskMonitor(environment.config.property("kafka.application-id").toString(), meterRegistry)
+    }
     configureGraphQlModule()
     configureArbeidsoppfolgingskontorModule()
 }

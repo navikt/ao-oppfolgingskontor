@@ -59,7 +59,7 @@ class EndringPaOppfolgingsBrukerConsumer(
 
             }
             val envVar: String = System.getenv("NAIS_CLUSTER_NAME") ?: "NONE"
-            if (envVar == "dev-gcp" && counter++ < 20)  throw RuntimeException("Simulerer feil i oppdatering av kontorhistorikk")
+            if (envVar == "dev-gcp" && counter++ < 50)  throw RuntimeException("Simulerer feil i oppdatering av kontorhistorikk")
         }
 
         return RecordProcessingResult.COMMIT

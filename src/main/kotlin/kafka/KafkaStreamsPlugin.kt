@@ -10,6 +10,7 @@ import io.ktor.server.application.hooks.MonitoringEvent
 import io.ktor.server.application.log
 import no.nav.kafka.config.configureStream
 import no.nav.kafka.config.configureTopology
+import no.nav.kafka.exceptionHandler.KafkaStreamsTaskMonitor
 import java.time.Duration
 import javax.sql.DataSource
 
@@ -19,16 +20,19 @@ val KafkaStreamsStopping: EventDefinition<Application> = EventDefinition()
 val KafkaStreamsStopped: EventDefinition<Application> = EventDefinition()
 
 class KafkaStreamsPluginConfig(
-    var dataSource: DataSource? = null
+    var dataSource: DataSource? = null,
+    var monitor: KafkaStreamsTaskMonitor? = null,
 )
 
-val KafkaStreamsPlugin: ApplicationPlugin<Unit> =
-    createApplicationPlugin("KafkaStreams") {
+val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
+    createApplicationPlugin("KafkaStreams", ::KafkaStreamsPluginConfig) {
+        val monitor = pluginConfig.monitor ?: throw IllegalStateException("Monitor must be set in the plugin config")
         val consumer = EndringPaOppfolgingsBrukerConsumer()
         val oppfolgingsBrukerTopic = environment.config.property("topics.inn.endringPaOppfolgingsbruker").getString()
         val topology = configureTopology(oppfolgingsBrukerTopic, { record, maybeRecordMetadata ->
-            consumer.consume(record, maybeRecordMetadata) })
-        val kafkaStreams = listOf(configureStream(topology, environment.config))
+            consumer.consume(record, maybeRecordMetadata)
+        }, monitor = monitor)
+        val kafkaStreams = listOf(configureStream(topology, environment.config, monitor))
 
         val shutDownTimeout = Duration.ofSeconds(1)
 
