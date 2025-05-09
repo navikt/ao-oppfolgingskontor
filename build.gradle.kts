@@ -77,6 +77,7 @@ dependencies {
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.mock.oauth2.server)
     testImplementation(libs.kotlin.test.junit)
+    testImplementation(libs.mockk)
     testImplementation(libs.kafka.streams.test.utils)
     testImplementation(libs.kotest.assertions)
 }
