@@ -31,10 +31,8 @@ fun Application.configureArbeidsoppfolgingskontorModule() {
                 runCatching {
                     val kontor = call.receive<ArbeidsoppfolgingsKontorTilordningDTO>()
                     val principal = call.principal<TokenValidationContextPrincipal>()
-                    log.info("Issuers : ${principal?.context?.issuers?.joinToString(", ") { it }}")
-                    log.info("claims : ${principal?.context?.getClaims(issuer)?.allClaims?.keys?.joinToString(", ") }")
-                    val veilederIdent = principal?.context?.getClaims(issuer)?.getStringClaim("NAVIdent")
-                        ?: throw IllegalStateException("NAVIdent not found in token")
+                    val veilederIdent = principal?.context?.getClaims(issuer)?.getStringClaim("NAVident")
+                        ?: throw IllegalStateException("NAVident not found in token")
 
                     transaction {
                         ArbeidsOppfolgingKontorTable.upsert {
