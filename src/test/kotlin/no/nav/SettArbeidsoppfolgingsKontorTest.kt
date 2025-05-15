@@ -9,12 +9,15 @@ import io.ktor.server.config.MapApplicationConfig
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
+import no.nav.domain.KontorKilde
 import no.nav.http.client.mockNorg2Host
 import no.nav.http.client.norg2TestUrl
 import no.nav.http.client.settKontor
 import no.nav.http.configureArbeidsoppfolgingskontorModule
 import no.nav.http.graphql.installGraphQl
 import no.nav.security.mock.oauth2.MockOAuth2Server
+import no.nav.services.KontorNavnService
+import no.nav.services.KontorTilhorighetService
 import no.nav.utils.GraphqlResponse
 import no.nav.utils.KontorTilhorighet
 import no.nav.utils.flywayMigrationInTest
@@ -30,11 +33,16 @@ class SettArbeidsoppfolgingsKontorTest {
         }
 
         val norg2Client = mockNorg2Host()
+        val kontorNavnService = KontorNavnService(norg2Client)
+        val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService)
         application {
             flywayMigrationInTest()
             configureSecurity()
-            installGraphQl(norg2Client)
-            configureArbeidsoppfolgingskontorModule()
+            installGraphQl(norg2Client, KontorTilhorighetService(KontorNavnService(norg2Client)))
+            configureArbeidsoppfolgingskontorModule(
+                kontorNavnService,
+                kontorTilhorighetService
+            )
             configureHTTP()
             routing {
                 authentication {
@@ -61,6 +69,7 @@ class SettArbeidsoppfolgingsKontorTest {
             val kontorResponse = readResponse.body<GraphqlResponse<KontorTilhorighet>>()
             kontorResponse.errors shouldBe null
             kontorResponse.data?.kontorTilhorighet?.kontorId shouldBe kontorId
+            kontorResponse.data?.kontorTilhorighet?.kilde shouldBe KontorKilde.ARBEIDSOPPFOLGING
         }
     }
 

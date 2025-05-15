@@ -2,8 +2,8 @@ package no.nav.db
 
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import no.nav.db.dto.ArbeidsoppfolgingKontor
-import no.nav.db.dto.ArenaKontor
+import no.nav.db.dto.ArbeidsoppfolgingDBKontor
+import no.nav.db.dto.ArenaDBKontor
 import no.nav.db.dto.toArbeidsoppfolgingKontor
 import no.nav.db.dto.toArenaKontor
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
@@ -32,7 +32,7 @@ class KontorRepo(val dataSource: DataSource) {
 
 data class KontorTilhorighet(
     val fnr: Fnr,
-    val arenaKontor: ArenaKontor?,
-    val arbeidsoppfolgingKontor: ArbeidsoppfolgingKontor?,
+    val arenaKontor: ArenaDBKontor?,
+    val arbeidsoppfolgingKontor: ArbeidsoppfolgingDBKontor?,
 )
 

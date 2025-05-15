@@ -17,6 +17,8 @@ import no.nav.http.client.mockNorg2Host
 import no.nav.http.graphql.installGraphQl
 import no.nav.http.graphql.schemas.KontorHistorikkQueryDto
 import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
+import no.nav.services.KontorNavnService
+import no.nav.services.KontorTilhorighetService
 import no.nav.utils.AlleKontor
 import no.nav.utils.GraphqlResponse
 import no.nav.utils.KontorTilhorighet
@@ -35,7 +37,7 @@ fun ApplicationTestBuilder.graphqlServerInTest() {
     val norg2Client = mockNorg2Host()
     application {
         flywayMigrationInTest()
-        installGraphQl(norg2Client)
+        installGraphQl(norg2Client, KontorTilhorighetService(KontorNavnService(norg2Client)))
         routing {
             graphQLPostRoute()
         }

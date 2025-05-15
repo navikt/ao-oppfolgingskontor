@@ -7,8 +7,12 @@ import io.ktor.client.plugins.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.logging.*
 import io.ktor.client.request.*
+import io.ktor.http.ContentType
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
+import no.nav.domain.KontorId
 
 class Norg2Client(
     val baseUrl: String,
@@ -23,14 +27,28 @@ class Norg2Client(
     }
 ) {
     suspend fun hentAlleEnheter(): List<MinimaltNorgKontor> {
-        val response = httpClient.get(hentEnhetPath)
+        val response = httpClient.get(hentEnheterPath) {
+            accept(ContentType.Application.Json)
+        }
         return response.body<List<NorgKontor>>()
             .filter { it.type == "LOKAL" }
             .map { MinimaltNorgKontor(it.enhetNr, it.navn) }
     }
 
+    suspend fun hentKontor(kontorId: KontorId): MinimaltNorgKontor {
+        val response = httpClient.get(hentEnhetPath(kontorId)) {
+            accept(ContentType.Application.Json)
+        }
+        if (response.status != HttpStatusCode.OK)
+            throw RuntimeException("Kunne ikke hente kontor med id $kontorId fra Norg2. Status: ${response.status}")
+        return response.body<NorgKontor>()
+            .let { MinimaltNorgKontor(it.enhetNr, it.navn) }
+    }
+
     companion object {
-        const val hentEnhetPath = "/norg2/api/v1/enhet"
+        const val hentEnheterPath = "/norg2/api/v1/enhet"
+        const val hentEnhetPathWithParam = "/norg2/api/v1/enhet/{enhetId}"
+        fun hentEnhetPath(kontorId: KontorId): (String) = "/norg2/api/v1/enhet/${kontorId.id}"
     }
 }
 

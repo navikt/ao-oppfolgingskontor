@@ -2,7 +2,8 @@ package no.nav.db.dto
 
 import java.time.OffsetDateTime
 
-sealed class Kontor(
+/* Data carrier from DB to services or controllers. Not dto exposed through http-APIs */
+sealed class DBKontor(
     val kontorId: String,
     val metadata: KontorMetadata
 )
