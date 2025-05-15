@@ -9,6 +9,7 @@ import io.ktor.server.request.*
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import no.nav.db.Fnr
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.db.table.KontorhistorikkTable.fnr
@@ -24,7 +25,10 @@ fun Application.configureArbeidsoppfolgingskontorModule() {
 
     routing {
         install(ContentNegotiation) {
-            json()
+            json(Json {
+                ignoreUnknownKeys = true
+                explicitNulls = false
+            })
         }
         authenticate {
             post("/api/kontor") {
