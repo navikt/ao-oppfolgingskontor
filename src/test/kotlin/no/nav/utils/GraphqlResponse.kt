@@ -40,7 +40,7 @@ data class GraphqlErrorLocation(
 
 @Serializable
 data class KontorTilhorighet(
-    val kontorTilhorighet: KontorTilhorighetQueryDto,
+    val kontorTilhorighet: KontorTilhorighetQueryDto?,
 )
 
 @Serializable
@@ -78,12 +78,12 @@ suspend fun HttpClient.alleKontor(): HttpResponse {
 
 private fun kontorHistorikkQuery(fnr: Fnr): String {
     return graphqlPayload(fnr, """
-            { kontorHistorikk (fnrParam: \"$fnr\") { kontorId , kilde, endretAv, endretAvType, endretTidspunkt, endringsType } }
+            { kontorHistorikk (fnr: \"$fnr\") { kontorId , kilde, endretAv, endretAvType, endretTidspunkt, endringsType } }
         """.trimIndent())
 }
 fun kontorTilhorighetQuery(fnr: Fnr): String {
     return graphqlPayload(fnr, """
-             { kontorTilhorighet (fnrParam: \"$fnr\") { kontorId , kilde } }
+             { kontorTilhorighet (fnr: \"$fnr\") { kontorId , kilde, registrant, registrantType, kontorNavn } }
         """.trimIndent())
 }
 private fun alleKontorQuery(): String {

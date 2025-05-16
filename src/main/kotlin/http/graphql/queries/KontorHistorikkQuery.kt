@@ -14,11 +14,11 @@ import org.slf4j.LoggerFactory
 class KontorHistorikkQuery : Query {
     val logger = LoggerFactory.getLogger(KontorHistorikkQuery::class.java)
 
-    fun kontorHistorikk(fnrParam: String, dataFetchingEnvironment: DataFetchingEnvironment): List<KontorHistorikkQueryDto> {
+    fun kontorHistorikk(fnr: String, dataFetchingEnvironment: DataFetchingEnvironment): List<KontorHistorikkQueryDto> {
         return runCatching {
             transaction {
                 KontorHistorikkEntity
-                    .find { KontorhistorikkTable.fnr eq fnrParam }
+                    .find { KontorhistorikkTable.fnr eq fnr }
                     .orderBy(KontorhistorikkTable.id to SortOrder.ASC)
                     .map {
                         val endringsType = KontorEndringsType.valueOf(it.kontorendringstype)
@@ -34,7 +34,7 @@ class KontorHistorikkQuery : Query {
             }
         }
             .onFailure {
-                logger.error("Feil ved henting av kontorhistorikk for fnr: $fnrParam", it)
+                logger.error("Feil ved henting av kontorhistorikk")
                 throw it
             }
             .onSuccess { return it }

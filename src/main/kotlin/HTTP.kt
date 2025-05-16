@@ -5,7 +5,7 @@ import io.ktor.server.application.*
 import io.ktor.server.plugins.compression.*
 import io.ktor.server.routing.routing
 
-fun Application.configureHTTP() {
+fun Application.configureHealthAndCompression() {
     install(Compression)
     routing {
         healthEndpoints()

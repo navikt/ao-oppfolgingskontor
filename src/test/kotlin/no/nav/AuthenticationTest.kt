@@ -9,9 +9,14 @@ import io.ktor.server.config.MapApplicationConfig
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import no.nav.configureSecurity
+import no.nav.http.client.Norg2Client
+import no.nav.http.client.mockNorg2Host
 import no.nav.http.client.norg2TestUrl
 import no.nav.http.graphql.configureGraphQlModule
+import no.nav.http.graphql.getNorg2Url
 import no.nav.security.mock.oauth2.MockOAuth2Server
+import no.nav.services.KontorNavnService
+import no.nav.services.KontorTilhorighetService
 import no.nav.utils.getJsonHttpClient
 import no.nav.utils.kontorTilhorighetQuery
 import org.junit.Test
@@ -23,8 +28,12 @@ class AuthenticationTest {
             config = getMockOauth2ServerConfig()
         }
         application {
+            val norg2Client = Norg2Client(environment.getNorg2Url())
             configureSecurity()
-            configureGraphQlModule()
+            configureGraphQlModule(
+                norg2Client,
+                KontorTilhorighetService(KontorNavnService(norg2Client))
+            )
         }
     }
 

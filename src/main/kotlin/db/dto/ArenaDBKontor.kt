@@ -2,13 +2,13 @@ package no.nav.db.dto
 
 import no.nav.db.entity.ArenaKontorEntity
 
-class ArenaKontor (
+class ArenaDBKontor (
     kontorId: String,
     metadata: KontorMetadata,
-): Kontor(kontorId, metadata)
+): DBKontor(kontorId, metadata)
 
-fun ArenaKontorEntity.toArenaKontor(): ArenaKontor {
-    return ArenaKontor(
+fun ArenaKontorEntity.toArenaKontor(): ArenaDBKontor {
+    return ArenaDBKontor(
         kontorId = this.kontorId,
         metadata = KontorMetadata(
             createdAt = this.createdAt,
