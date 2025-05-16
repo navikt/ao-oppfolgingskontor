@@ -5,7 +5,7 @@ import org.jetbrains.exposed.dao.Entity
 import org.jetbrains.exposed.dao.ImmutableEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 
-class GeografiskTilknyttetKontorEntity(id: EntityID<String>): Entity<String>(id), KontorEntity {
+class GeografiskTilknyttetKontorEntity(id: EntityID<String>): Entity<String>(id) {
     companion object : ImmutableEntityClass<String, GeografiskTilknyttetKontorEntity>(GeografiskTilknytningKontorTable)
     val fnr by GeografiskTilknytningKontorTable.id
     val kontorId by GeografiskTilknytningKontorTable.kontorId

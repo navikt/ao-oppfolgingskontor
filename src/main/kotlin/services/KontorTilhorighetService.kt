@@ -1,17 +1,12 @@
 package no.nav.services
 
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import no.nav.db.Fnr
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.GeografiskTilknyttetKontorEntity
-import no.nav.db.entity.KontorEntity
-import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.domain.ArbeidsoppfolgingsKontor
 import no.nav.domain.KontorId
 import no.nav.domain.KontorKilde
@@ -52,30 +47,37 @@ class KontorTilhorighetService(
             kontorer.firstOrNull { it != null }
                 .let { kontor ->
                     when (kontor) {
-                        is ArbeidsOppfolgingKontorEntity ->
-                            KontorTilhorighetQueryDto(
-                                kontorId = kontor.kontorId,
-                                kilde = KontorKilde.ARBEIDSOPPFOLGING,
-                                registrant = kontor.endretAv,
-                                registrantType = RegistrantTypeDto.valueOf(kontor.endretAvType),
-                            )
-                        is ArenaKontorEntity ->
-                            KontorTilhorighetQueryDto(
-                                kontorId = kontor.kontorId,
-                                kilde = KontorKilde.ARENA,
-                                registrant = "Arena",
-                                registrantType = RegistrantTypeDto.ARENA,
-                            )
-                        is GeografiskTilknyttetKontorEntity ->
-                            KontorTilhorighetQueryDto(
-                                kontorId = kontor.kontorId,
-                                kilde = KontorKilde.GEOGRAFISK_TILKNYTNING,
-                                registrant = "FREG",
-                                registrantType = RegistrantTypeDto.SYSTEM,
-                            )
+                        is ArbeidsOppfolgingKontorEntity -> kontor.toKontorTilhorighetQueryDto()
+                        is ArenaKontorEntity -> kontor.toKontorTilhorighetQueryDto()
+                        is GeografiskTilknyttetKontorEntity -> kontor.toKontorTilhorighetQueryDto()
                         else -> null
                     }
                 }
         }
     }
+}
+
+fun ArbeidsOppfolgingKontorEntity.toKontorTilhorighetQueryDto(): KontorTilhorighetQueryDto {
+    return KontorTilhorighetQueryDto(
+        kontorId = this.kontorId,
+        kilde = KontorKilde.ARBEIDSOPPFOLGING,
+        registrant = this.endretAv,
+        registrantType = RegistrantTypeDto.valueOf(this.endretAvType),
+    )
+}
+fun ArenaKontorEntity.toKontorTilhorighetQueryDto(): KontorTilhorighetQueryDto {
+    return KontorTilhorighetQueryDto(
+        kontorId = this.kontorId,
+        kilde = KontorKilde.ARENA,
+        registrant = "Arena",
+        registrantType = RegistrantTypeDto.ARENA,
+    )
+}
+fun GeografiskTilknyttetKontorEntity.toKontorTilhorighetQueryDto(): KontorTilhorighetQueryDto {
+    return KontorTilhorighetQueryDto(
+        kontorId = this.kontorId,
+        kilde = KontorKilde.GEOGRAFISK_TILKNYTNING,
+        registrant = "FREG",
+        registrantType = RegistrantTypeDto.SYSTEM,
+    )
 }
