@@ -6,6 +6,7 @@ import no.nav.domain.KontorKilde
 @Serializable
 data class KontorTilhorighetQueryDto(
     val kontorId: String,
+    val kontorNavn: String,
     val kilde: KontorKilde,
     val registrant: String,
     val registrantType: RegistrantTypeDto

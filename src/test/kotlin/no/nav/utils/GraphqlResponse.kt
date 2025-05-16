@@ -83,7 +83,7 @@ private fun kontorHistorikkQuery(fnr: Fnr): String {
 }
 fun kontorTilhorighetQuery(fnr: Fnr): String {
     return graphqlPayload(fnr, """
-             { kontorTilhorighet (fnrParam: \"$fnr\") { kontorId , kilde, registrant, registrantType } }
+             { kontorTilhorighet (fnrParam: \"$fnr\") { kontorId , kilde, registrant, registrantType, kontorNavn } }
         """.trimIndent())
 }
 private fun alleKontorQuery(): String {

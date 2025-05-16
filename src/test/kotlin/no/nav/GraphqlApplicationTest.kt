@@ -62,7 +62,7 @@ class GraphqlApplicationTest {
         response.status shouldBe HttpStatusCode.Companion.OK
         val payload = response.body<GraphqlResponse<KontorTilhorighet>>()
         payload shouldBe GraphqlResponse(KontorTilhorighet(
-            KontorTilhorighetQueryDto(kontorId, KontorKilde.ARENA, "Arena", RegistrantTypeDto.ARENA))
+            KontorTilhorighetQueryDto(kontorId, "NAV test", KontorKilde.ARENA, "Arena", RegistrantTypeDto.ARENA))
         )
     }
 
