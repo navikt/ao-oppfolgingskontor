@@ -1,3 +1,7 @@
 package no.nav.db.entity
 
-sealed interface KontorEntity
+import no.nav.domain.KontorId
+
+sealed interface KontorEntity {
+    fun getKontorId(): KontorId
+}

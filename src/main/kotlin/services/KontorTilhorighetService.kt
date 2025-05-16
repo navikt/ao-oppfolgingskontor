@@ -47,8 +47,7 @@ class KontorTilhorighetService(
             }
             kontorer.firstOrNull { it != null }
                 ?.let {
-                    val kontorId = it.id.value
-                    val kontorMedNavn = kontorNavnService.getKontorNavn(KontorId(kontorId))
+                    val kontorMedNavn = kontorNavnService.getKontorNavn(it.getKontorId())
                     it to kontorMedNavn.kontorNavn
                 }
                 ?.let { (kontor, kontorNavn) ->
