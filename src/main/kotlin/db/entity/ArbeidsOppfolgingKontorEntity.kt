@@ -6,7 +6,7 @@ import org.jetbrains.exposed.dao.ImmutableEntityClass
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.id.EntityID
 
-class ArbeidsOppfolgingKontorEntity(id: EntityID<String>): Entity<String>(id) {
+class ArbeidsOppfolgingKontorEntity(id: EntityID<String>): Entity<String>(id), KontorEntity {
     companion object : ImmutableEntityClass<String, ArbeidsOppfolgingKontorEntity>(ArbeidsOppfolgingKontorTable)
     val fnr by ArbeidsOppfolgingKontorTable.id
     val kontorId by ArbeidsOppfolgingKontorTable.kontorId

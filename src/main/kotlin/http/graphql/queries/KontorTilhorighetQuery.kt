@@ -9,14 +9,10 @@ import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
 import no.nav.services.KontorTilhorighetService
 import org.jetbrains.exposed.sql.*
 
-val kontorAlias = ArbeidsOppfolgingKontorTable.kontorId.alias("kontorid")
-val kontorkildeAlias = stringLiteral(KontorKilde.ARBEIDSOPPFOLGING.name).alias("kilde") // Tilfeldig valgt verdi
-val prioritetAlias = intLiteral(0).alias("prioritet")
-
 class KontorQuery(
     val kontorTilhorighetService: KontorTilhorighetService
 ) : Query {
-    fun kontorTilhorighet(fnrParam: Fnr, dataFetchingEnvironment: DataFetchingEnvironment): KontorTilhorighetQueryDto? {
+    suspend fun kontorTilhorighet(fnrParam: Fnr, dataFetchingEnvironment: DataFetchingEnvironment): KontorTilhorighetQueryDto? {
         return kontorTilhorighetService.getKontorTilhorighet(fnrParam)
     }
 }

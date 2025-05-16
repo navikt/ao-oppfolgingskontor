@@ -23,10 +23,10 @@ fun ApplicationTestBuilder.mockNorg2Host(): Norg2Client {
     logger.info("Mocking norg2 host: $norg2TestUrl${Norg2Client.hentEnhetPathWithParam}")
     externalServices {
         hosts(norg2TestUrl) {
-            install(io.ktor.server.plugins.contentnegotiation.ContentNegotiation) {
-                json()
-            }
             routing {
+                install(io.ktor.server.plugins.contentnegotiation.ContentNegotiation) {
+                    json()
+                }
                 get(Norg2Client.hentEnheterPath) {
                     val fileContent = javaClass.getResource("/norg2enheter.json")?.readText()
                         ?: throw IllegalStateException("File norg2enheter.json not found")

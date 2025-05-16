@@ -17,6 +17,7 @@ import no.nav.http.client.mockNorg2Host
 import no.nav.http.graphql.installGraphQl
 import no.nav.http.graphql.schemas.KontorHistorikkQueryDto
 import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
+import no.nav.http.graphql.schemas.RegistrantTypeDto
 import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
 import no.nav.utils.AlleKontor
@@ -60,7 +61,9 @@ class GraphqlApplicationTest {
 
         response.status shouldBe HttpStatusCode.Companion.OK
         val payload = response.body<GraphqlResponse<KontorTilhorighet>>()
-        payload shouldBe GraphqlResponse(KontorTilhorighet(KontorTilhorighetQueryDto(kontorId, KontorKilde.ARENA)))
+        payload shouldBe GraphqlResponse(KontorTilhorighet(
+            KontorTilhorighetQueryDto(kontorId, KontorKilde.ARENA, "Arena", RegistrantTypeDto.ARENA))
+        )
     }
 
     @Test

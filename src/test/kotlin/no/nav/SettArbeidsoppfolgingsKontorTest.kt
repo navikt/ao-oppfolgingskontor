@@ -3,6 +3,7 @@ package no.nav
 import com.expediagroup.graphql.server.ktor.graphQLPostRoute
 import io.kotest.matchers.shouldBe
 import io.ktor.client.call.body
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.authentication
 import io.ktor.server.config.MapApplicationConfig
@@ -10,6 +11,7 @@ import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import no.nav.domain.KontorKilde
+import no.nav.http.client.logger
 import no.nav.http.client.mockNorg2Host
 import no.nav.http.client.norg2TestUrl
 import no.nav.http.client.settKontor
@@ -43,7 +45,6 @@ class SettArbeidsoppfolgingsKontorTest {
                 kontorNavnService,
                 kontorTilhorighetService
             )
-            configureHTTP()
             routing {
                 authentication {
                     graphQLPostRoute()
@@ -66,6 +67,8 @@ class SettArbeidsoppfolgingsKontorTest {
 
             val readResponse = httpClient.kontorTilhorighet(fnr)
             readResponse.status shouldBe HttpStatusCode.OK
+            val text = readResponse.bodyAsText()
+            logger.info("BODY: $text")
             val kontorResponse = readResponse.body<GraphqlResponse<KontorTilhorighet>>()
             kontorResponse.errors shouldBe null
             kontorResponse.data?.kontorTilhorighet?.kontorId shouldBe kontorId

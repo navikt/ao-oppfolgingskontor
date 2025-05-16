@@ -40,7 +40,7 @@ data class GraphqlErrorLocation(
 
 @Serializable
 data class KontorTilhorighet(
-    val kontorTilhorighet: KontorTilhorighetQueryDto,
+    val kontorTilhorighet: KontorTilhorighetQueryDto?,
 )
 
 @Serializable
@@ -83,7 +83,7 @@ private fun kontorHistorikkQuery(fnr: Fnr): String {
 }
 fun kontorTilhorighetQuery(fnr: Fnr): String {
     return graphqlPayload(fnr, """
-             { kontorTilhorighet (fnrParam: \"$fnr\") { kontorId , kilde } }
+             { kontorTilhorighet (fnrParam: \"$fnr\") { kontorId , kilde, registrant, registrantType } }
         """.trimIndent())
 }
 private fun alleKontorQuery(): String {

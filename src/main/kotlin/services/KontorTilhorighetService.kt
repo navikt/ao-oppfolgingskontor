@@ -1,27 +1,24 @@
 package no.nav.services
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import no.nav.db.Fnr
-import no.nav.db.dto.ArbeidsoppfolgingDBKontor
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
+import no.nav.db.entity.ArenaKontorEntity
+import no.nav.db.entity.GeografiskTilknyttetKontorEntity
+import no.nav.db.entity.KontorEntity
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
-import no.nav.db.table.ArenaKontorTable
-import no.nav.db.table.GeografiskTilknytningKontorTable
 import no.nav.domain.ArbeidsoppfolgingsKontor
 import no.nav.domain.KontorId
 import no.nav.domain.KontorKilde
-import no.nav.domain.KontorNavn
-import no.nav.http.graphql.queries.kontorAlias
-import no.nav.http.graphql.queries.kontorkildeAlias
-import no.nav.http.graphql.queries.prioritetAlias
 import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
-import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.alias
-import org.jetbrains.exposed.sql.intLiteral
-import org.jetbrains.exposed.sql.stringLiteral
+import no.nav.http.graphql.schemas.RegistrantTypeDto
+import no.nav.http.logger
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.unionAll
 
 class KontorTilhorighetService(
     val kontorNavnService: KontorNavnService
@@ -39,44 +36,49 @@ class KontorTilhorighetService(
         }
     }
 
-    fun getKontorTilhorighet(fnr: Fnr): KontorTilhorighetQueryDto? {
-        return transaction {
+    fun getGTKontor(fnr: Fnr) = GeografiskTilknyttetKontorEntity.findById(fnr)
+    fun getArenaKontor(fnr: Fnr) = ArenaKontorEntity.findById(fnr)
+    fun getAOKontor(fnr: Fnr) = ArbeidsOppfolgingKontorEntity.findById(fnr)
 
-            val arbeidsoppfolgingKontorQuery = ArbeidsOppfolgingKontorTable.select(
-                ArbeidsOppfolgingKontorTable.kontorId.alias(kontorAlias.alias),
-                stringLiteral(KontorKilde.ARBEIDSOPPFOLGING.name).alias(kontorkildeAlias.alias),
-                intLiteral(1).alias(prioritetAlias.alias)
-            )
-                .where { ArbeidsOppfolgingKontorTable.id eq fnr }
-
-            val arenaKontorQuery = ArenaKontorTable.select(
-                ArenaKontorTable.kontorId.alias(kontorAlias.alias),
-                stringLiteral(KontorKilde.ARENA.name).alias(kontorkildeAlias.alias),
-                intLiteral(2).alias(prioritetAlias.alias)
-            )
-                .where { ArenaKontorTable.id eq fnr }
-
-            val geografiskTilknytningKontorQuery =
-                GeografiskTilknytningKontorTable.select(
-                    GeografiskTilknytningKontorTable.kontorId.alias(kontorAlias.alias),
-                    stringLiteral(KontorKilde.GEOGRAFISK_TILKNYTNING.name).alias(kontorkildeAlias.alias),
-                    intLiteral(3).alias(prioritetAlias.alias)
-                )
-                    .where(GeografiskTilknytningKontorTable.id eq fnr)
-
-            val resultRow = arbeidsoppfolgingKontorQuery
-                .unionAll(arenaKontorQuery)
-                .unionAll(geografiskTilknytningKontorQuery)
-                .orderBy(prioritetAlias to SortOrder.ASC)
-                .limit(1)
-                .firstOrNull()
-
-            resultRow?.let { row ->
-                KontorTilhorighetQueryDto(
-                row[kontorAlias],
-                KontorKilde.valueOf(row[kontorkildeAlias])
+    suspend fun getKontorTilhorighet(fnr: Fnr): KontorTilhorighetQueryDto? {
+        return newSuspendedTransaction {
+            val kontorer = coroutineScope {
+                awaitAll( /* The ordering is important! */
+                    async { getAOKontor(fnr) },
+                    async { getArenaKontor(fnr) },
+                    async { getGTKontor(fnr) },
                 )
             }
+            logger.info("kontorer liste: ${kontorer.size}")
+            logger.info("kontorer liste: ${kontorer.filterNotNull().size}")
+            logger.info("kontorer liste: ${kontorer}")
+            kontorer.firstOrNull { it != null }
+                .let { kontor ->
+                    when (kontor) {
+                        is ArbeidsOppfolgingKontorEntity ->
+                            KontorTilhorighetQueryDto(
+                                kontorId = kontor.kontorId,
+                                kilde = KontorKilde.ARBEIDSOPPFOLGING,
+                                registrant = kontor.endretAv,
+                                registrantType = RegistrantTypeDto.valueOf(kontor.endretAvType),
+                            )
+                        is ArenaKontorEntity ->
+                            KontorTilhorighetQueryDto(
+                                kontorId = kontor.kontorId,
+                                kilde = KontorKilde.ARENA,
+                                registrant = "Arena",
+                                registrantType = RegistrantTypeDto.ARENA,
+                            )
+                        is GeografiskTilknyttetKontorEntity ->
+                            KontorTilhorighetQueryDto(
+                                kontorId = kontor.kontorId,
+                                kilde = KontorKilde.GEOGRAFISK_TILKNYTNING,
+                                registrant = "FREG",
+                                registrantType = RegistrantTypeDto.SYSTEM,
+                            )
+                        else -> null
+                    }
+                }
         }
     }
 }
