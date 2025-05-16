@@ -17,23 +17,23 @@ import no.nav.domain.KontorId
 import no.nav.domain.KontorKilde
 import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
 import no.nav.http.graphql.schemas.RegistrantTypeDto
-import no.nav.http.logger
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
+import org.jetbrains.exposed.sql.transactions.transaction
 
 class KontorTilhorighetService(
     val kontorNavnService: KontorNavnService
 ) {
     suspend fun getArbeidsoppfolgingKontorTilhorighet(fnr: Fnr): ArbeidsoppfolgingsKontor? {
-        return newSuspendedTransaction {
+        return transaction {
             ArbeidsOppfolgingKontorEntity.findById(fnr)
-                ?.let { kontorNavnService.getKontorNavn(KontorId(it.kontorId)) }
-                ?.let {
-                    ArbeidsoppfolgingsKontor(
-                        it.kontorNavn,
-                        it.kontorId,
-                    )
-                }
         }
+            ?.let { kontorNavnService.getKontorNavn(KontorId(it.kontorId)) }
+            ?.let {
+                ArbeidsoppfolgingsKontor(
+                    it.kontorNavn,
+                    it.kontorId,
+                )
+            }
     }
 
     fun getGTKontor(fnr: Fnr) = GeografiskTilknyttetKontorEntity.findById(fnr)
@@ -49,9 +49,6 @@ class KontorTilhorighetService(
                     async { getGTKontor(fnr) },
                 )
             }
-            logger.info("kontorer liste: ${kontorer.size}")
-            logger.info("kontorer liste: ${kontorer.filterNotNull().size}")
-            logger.info("kontorer liste: ${kontorer}")
             kontorer.firstOrNull { it != null }
                 .let { kontor ->
                     when (kontor) {
