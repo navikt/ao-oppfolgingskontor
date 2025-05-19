@@ -8,6 +8,8 @@ import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.GeografiskTilknyttetKontorEntity
 import no.nav.domain.ArbeidsoppfolgingsKontor
+import no.nav.domain.ArenaKontor
+import no.nav.domain.GeografiskTilknyttetKontor
 import no.nav.domain.KontorId
 import no.nav.domain.KontorKilde
 import no.nav.domain.KontorNavn
@@ -26,6 +28,32 @@ class KontorTilhorighetService(
             ?.let { kontorNavnService.getKontorNavn(KontorId(it.kontorId)) }
             ?.let {
                 ArbeidsoppfolgingsKontor(
+                    it.kontorNavn,
+                    it.kontorId,
+                )
+            }
+    }
+
+    suspend fun getArenaKontorTilhorighet(fnr: Fnr): ArenaKontor? {
+        return transaction {
+            ArenaKontorEntity.findById(fnr)
+        }
+            ?.let { kontorNavnService.getKontorNavn(KontorId(it.kontorId)) }
+            ?.let {
+                ArenaKontor(
+                    it.kontorNavn,
+                    it.kontorId,
+                )
+            }
+    }
+
+    suspend fun getGeografiskTilknyttetKontorTilhorighet(fnr: Fnr): GeografiskTilknyttetKontor? {
+        return transaction {
+            GeografiskTilknyttetKontorEntity.findById(fnr)
+        }
+            ?.let { kontorNavnService.getKontorNavn(KontorId(it.kontorId)) }
+            ?.let {
+                GeografiskTilknyttetKontor(
                     it.kontorNavn,
                     it.kontorId,
                 )

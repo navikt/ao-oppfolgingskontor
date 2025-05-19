@@ -9,7 +9,12 @@ import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import kotlinx.serialization.Serializable
 import no.nav.db.Fnr
+import no.nav.domain.KontorNavn
+import no.nav.http.client.logger
 import no.nav.http.graphql.schemas.AlleKontorQueryDto
+import no.nav.http.graphql.schemas.ArbeidsoppfolgingKontorDto
+import no.nav.http.graphql.schemas.ArenaKontorDto
+import no.nav.http.graphql.schemas.GeografiskTilknyttetKontorDto
 import no.nav.http.graphql.schemas.KontorHistorikkQueryDto
 import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
 
@@ -44,6 +49,17 @@ data class KontorTilhorighet(
 )
 
 @Serializable
+data class AlleKontorTilhorigheter(
+    val arena: ArenaKontorDto?,
+    val geografiskTilknytning: GeografiskTilknyttetKontorDto?,
+    val arbeidsoppfolging: ArbeidsoppfolgingKontorDto?,
+)
+@Serializable
+data class KontorTilhorigheter(
+    val kontorTilhorigheter: AlleKontorTilhorigheter,
+)
+
+@Serializable
 data class KontorHistorikk(
     val kontorHistorikk: List<KontorHistorikkQueryDto>,
 )
@@ -65,6 +81,11 @@ suspend fun HttpClient.kontorTilhorighet(fnr: Fnr): HttpResponse {
         setBody(kontorTilhorighetQuery(fnr))
     }
 }
+suspend fun HttpClient.alleKontorTilhorigheter(fnr: Fnr): HttpResponse {
+    return graphqlRequest {
+        setBody(alleKontorTilhorigheterQuery(fnr).also { logger.info("GRAPHQL-query: $it") })
+    }
+}
 suspend fun HttpClient.kontoHistorikk(fnr: Fnr): HttpResponse {
     return graphqlRequest {
         setBody(kontorHistorikkQuery(fnr))
@@ -76,6 +97,9 @@ suspend fun HttpClient.alleKontor(): HttpResponse {
     }
 }
 
+val pesos = "$"
+val fnrArg = "${pesos}fnr"
+
 private fun kontorHistorikkQuery(fnr: Fnr): String {
     return graphqlPayload(fnr, """
             { kontorHistorikk (fnr: \"$fnr\") { kontorId , kilde, endretAv, endretAvType, endretTidspunkt, endringsType } }
@@ -86,9 +110,21 @@ fun kontorTilhorighetQuery(fnr: Fnr): String {
              { kontorTilhorighet (fnr: \"$fnr\") { kontorId , kilde, registrant, registrantType, kontorNavn } }
         """.trimIndent())
 }
+
+fun alleKontorTilhorigheterQuery(fnr: Fnr): String {
+    return graphqlPayload(fnr, """
+             query kontorTilhorigheterQuery($fnrArg: String!) {
+                kontorTilhorigheter (fnr: $fnrArg) {
+                     arena { kontorId, kontorNavn }
+                     arbeidsoppfolging { kontorId, kontorNavn }
+                     geografiskTilknytning { kontorId, kontorNavn }
+                }
+            }
+        """.replace("\n", "").trimIndent())
+}
 private fun alleKontorQuery(): String {
     return graphqlPayload(null, """
-            { alleKontor { kontorId , navn } }
+            { alleKontor { kontorId , kontorNavn } }
         """.trimIndent())
 }
 private fun graphqlPayload(fnr: String?, query: String): String {
