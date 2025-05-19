@@ -84,10 +84,6 @@ graphql {
     }
 }
 
-tasks.build {
-    dependsOn(tasks.compileKotlin)
-}
-
 tasks.jacocoTestReport {
     dependsOn(tasks.test)
     reports {

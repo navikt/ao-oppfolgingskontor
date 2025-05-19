@@ -32,6 +32,9 @@ jobs:
           gradle-version: "8.13"
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
+      - name: ao-oppfolgingskontor - Generate graphql schema
+        run: ./gradlew graphqlGenerateSDL
+
       - name: ao-oppfolgingskontor - Test and build
         run: ./gradlew build
 
