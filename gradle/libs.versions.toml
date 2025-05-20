@@ -12,7 +12,7 @@ hikari-version = "6.3.0"
 logstash-version = "8.0"
 embedded-postgres-version = "2.1.0"
 kotest-version = "5.9.1"
-graphql-kotlin-version = "8.7.0"
+graphql-kotlin-version = "8.5.0"
 token-validation-ktor-v3-version = "5.0.24"
 mock-oauth2-server-version = "2.1.10"
 
