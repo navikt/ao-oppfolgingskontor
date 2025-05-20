@@ -118,6 +118,24 @@ class GraphqlApplicationTest {
     }
 
     @Test
+    fun `skal få GT kontor på tilhørighet hvis ingen andre kontor er satt via graphql`() = testApplication {
+        val fnr = "32345678901"
+        val kontorId = "4142"
+        val client = getJsonHttpClient()
+        graphqlServerInTest()
+        application {
+            gittBrukerMedGeografiskTilknyttetKontor(fnr, kontorId)
+        }
+
+        val response = client.kontorTilhorighet(fnr)
+
+        response.status shouldBe HttpStatusCode.Companion.OK
+        val payload = response.body<GraphqlResponse<KontorTilhorighet>>()
+        payload.errors shouldBe null
+        payload.data!!.kontorTilhorighet?.kontorId shouldBe kontorId
+    }
+
+    @Test
     fun `skal kunne hente ao-kontor, arena-kontor og gt-kontor samtidig`() = testApplication {
         val fnr = "62345678901"
         val GTkontorId = "4151"
