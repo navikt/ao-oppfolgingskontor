@@ -22,40 +22,34 @@ class KontorTilhorighetService(
     val kontorNavnService: KontorNavnService
 ) {
     suspend fun getArbeidsoppfolgingKontorTilhorighet(fnr: Fnr): ArbeidsoppfolgingsKontor? {
-        return transaction {
-            ArbeidsOppfolgingKontorEntity.findById(fnr)
-        }
-            ?.let { kontorNavnService.getKontorNavn(KontorId(it.kontorId)) }
-            ?.let {
+        return transaction { ArbeidsOppfolgingKontorEntity.findById(fnr) }
+            ?.let { it to kontorNavnService.getKontorNavn(KontorId(it.kontorId)) }
+            ?.let { (kontor, kontorNavn) ->
                 ArbeidsoppfolgingsKontor(
-                    it.kontorNavn,
-                    it.kontorId,
+                    kontorNavn,
+                    kontor.getKontorId(),
                 )
             }
     }
 
     suspend fun getArenaKontorTilhorighet(fnr: Fnr): ArenaKontor? {
-        return transaction {
-            ArenaKontorEntity.findById(fnr)
-        }
-            ?.let { kontorNavnService.getKontorNavn(KontorId(it.kontorId)) }
-            ?.let {
+        return transaction { ArenaKontorEntity.findById(fnr) }
+            ?.let { it to kontorNavnService.getKontorNavn(KontorId(it.kontorId)) }
+            ?.let { (kontor, kontorNavn) ->
                 ArenaKontor(
-                    it.kontorNavn,
-                    it.kontorId,
+                    kontorNavn,
+                    kontor.getKontorId(),
                 )
             }
     }
 
     suspend fun getGeografiskTilknyttetKontorTilhorighet(fnr: Fnr): GeografiskTilknyttetKontor? {
-        return transaction {
-            GeografiskTilknyttetKontorEntity.findById(fnr)
-        }
-            ?.let { kontorNavnService.getKontorNavn(KontorId(it.kontorId)) }
-            ?.let {
+        return transaction { GeografiskTilknyttetKontorEntity.findById(fnr) }
+            ?.let { it to kontorNavnService.getKontorNavn(KontorId(it.kontorId)) }
+            ?.let { (kontor, kontorNavn) ->
                 GeografiskTilknyttetKontor(
-                    it.kontorNavn,
-                    it.kontorId,
+                    kontorNavn,
+                    kontor.getKontorId(),
                 )
             }
     }
@@ -75,15 +69,14 @@ class KontorTilhorighetService(
             }
             kontorer.firstOrNull { it != null }
                 ?.let {
-                    val kontorMedNavn = kontorNavnService.getKontorNavn(it.getKontorId())
-                    it to kontorMedNavn.kontorNavn
+                    val kontorNavn = kontorNavnService.getKontorNavn(it.getKontorId())
+                    it to kontorNavn
                 }
                 ?.let { (kontor, kontorNavn) ->
                     when (kontor) {
                         is ArbeidsOppfolgingKontorEntity -> kontor.toKontorTilhorighetQueryDto(kontorNavn)
                         is ArenaKontorEntity -> kontor.toKontorTilhorighetQueryDto(kontorNavn)
                         is GeografiskTilknyttetKontorEntity -> kontor.toKontorTilhorighetQueryDto(kontorNavn)
-                        else -> null
                     }
                 }
 

@@ -32,7 +32,7 @@ class Norg2Client(
         }
         return response.body<List<NorgKontor>>()
             .filter { it.type == "LOKAL" }
-            .map { MinimaltNorgKontor(it.enhetNr, it.navn) }
+            .map { it.toMinimaltKontor() }
     }
 
     suspend fun hentKontor(kontorId: KontorId): MinimaltNorgKontor {
@@ -41,8 +41,7 @@ class Norg2Client(
         }
         if (response.status != HttpStatusCode.OK)
             throw RuntimeException("Kunne ikke hente kontor med id $kontorId fra Norg2. Status: ${response.status}")
-        return response.body<NorgKontor>()
-            .let { MinimaltNorgKontor(it.enhetNr, it.navn) }
+        return response.body<NorgKontor>().toMinimaltKontor()
     }
 
     companion object {
@@ -55,6 +54,11 @@ class Norg2Client(
 data class MinimaltNorgKontor(
     val kontorId: String,
     val navn: String
+)
+
+fun NorgKontor.toMinimaltKontor() = MinimaltNorgKontor(
+    kontorId = this.enhetNr,
+    navn = this.navn
 )
 
 @Serializable

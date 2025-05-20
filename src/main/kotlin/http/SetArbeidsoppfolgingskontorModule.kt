@@ -56,7 +56,7 @@ fun Application.configureArbeidsoppfolgingskontorModule(
                     }.let { KontorId(it[ArbeidsOppfolgingKontorTable.kontorId]) to gammeltKontor }
                 }
                     .onSuccess { (kontorId, gammeltKontor) ->
-                        val kontor = kontorNavnService.getKontorNavn(kontorId)
+                        val kontorNavn = kontorNavnService.getKontorNavn(kontorId)
                         call.respond(KontorByttetOkResponseDto(
                             fraKontor = gammeltKontor?.let {
                                 Kontor(
@@ -65,8 +65,8 @@ fun Application.configureArbeidsoppfolgingskontorModule(
                                 )
                             },
                             tilKontor = Kontor(
-                                kontorNavn = kontor.kontorNavn.navn,
-                                kontorId = kontor.kontorId.id
+                                kontorNavn = kontorNavn.navn,
+                                kontorId = kontorId.id
                             )
                         ))
                         call.respondText("OK", status = HttpStatusCode.OK)
