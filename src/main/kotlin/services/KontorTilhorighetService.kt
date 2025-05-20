@@ -22,41 +22,26 @@ class KontorTilhorighetService(
     val kontorNavnService: KontorNavnService
 ) {
     suspend fun getArbeidsoppfolgingKontorTilhorighet(fnr: Fnr): ArbeidsoppfolgingsKontor? {
-        return transaction { ArbeidsOppfolgingKontorEntity.findById(fnr) }
+        return transaction { getAOKontor(fnr) }
             ?.let { it to kontorNavnService.getKontorNavn(KontorId(it.kontorId)) }
-            ?.let { (kontor, kontorNavn) ->
-                ArbeidsoppfolgingsKontor(
-                    kontorNavn,
-                    kontor.getKontorId(),
-                )
-            }
+            ?.let { (kontor, kontorNavn) -> ArbeidsoppfolgingsKontor(kontorNavn,kontor.getKontorId()) }
     }
 
     suspend fun getArenaKontorTilhorighet(fnr: Fnr): ArenaKontor? {
-        return transaction { ArenaKontorEntity.findById(fnr) }
+        return transaction { getArenaKontor(fnr) }
             ?.let { it to kontorNavnService.getKontorNavn(KontorId(it.kontorId)) }
-            ?.let { (kontor, kontorNavn) ->
-                ArenaKontor(
-                    kontorNavn,
-                    kontor.getKontorId(),
-                )
-            }
+            ?.let { (kontor, kontorNavn) -> ArenaKontor(kontorNavn, kontor.getKontorId()) }
     }
 
     suspend fun getGeografiskTilknyttetKontorTilhorighet(fnr: Fnr): GeografiskTilknyttetKontor? {
-        return transaction { GeografiskTilknyttetKontorEntity.findById(fnr) }
+        return transaction { getGTKontor(fnr) }
             ?.let { it to kontorNavnService.getKontorNavn(KontorId(it.kontorId)) }
-            ?.let { (kontor, kontorNavn) ->
-                GeografiskTilknyttetKontor(
-                    kontorNavn,
-                    kontor.getKontorId(),
-                )
-            }
+            ?.let { (kontor, kontorNavn) -> GeografiskTilknyttetKontor(kontorNavn,kontor.getKontorId()) }
     }
 
-    fun getGTKontor(fnr: Fnr) = GeografiskTilknyttetKontorEntity.findById(fnr)
-    fun getArenaKontor(fnr: Fnr) = ArenaKontorEntity.findById(fnr)
-    fun getAOKontor(fnr: Fnr) = ArbeidsOppfolgingKontorEntity.findById(fnr)
+    private fun getGTKontor(fnr: Fnr) = GeografiskTilknyttetKontorEntity.findById(fnr)
+    private fun getArenaKontor(fnr: Fnr) = ArenaKontorEntity.findById(fnr)
+    private fun getAOKontor(fnr: Fnr) = ArbeidsOppfolgingKontorEntity.findById(fnr)
 
     suspend fun getKontorTilhorighet(fnr: Fnr): KontorTilhorighetQueryDto? {
         return newSuspendedTransaction {
