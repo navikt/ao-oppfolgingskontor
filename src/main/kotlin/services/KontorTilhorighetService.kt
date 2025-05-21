@@ -7,16 +7,26 @@ import no.nav.db.Fnr
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.GeografiskTilknyttetKontorEntity
+import no.nav.db.table.KontorhistorikkTable.fnr
 import no.nav.domain.ArbeidsoppfolgingsKontor
 import no.nav.domain.ArenaKontor
 import no.nav.domain.GeografiskTilknyttetKontor
 import no.nav.domain.KontorId
 import no.nav.domain.KontorKilde
 import no.nav.domain.KontorNavn
+import no.nav.domain.KontorTilhorighet
+import no.nav.domain.Registrant
 import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
 import no.nav.http.graphql.schemas.RegistrantTypeDto
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.upsert
+import no.nav.db.table.ArbeidsOppfolgingKontorTable
+import no.nav.db.table.ArenaKontorTable
+import no.nav.db.table.GeografiskTilknytningKontorTable
+import no.nav.db.table.KontorhistorikkTable
+import no.nav.domain.Kontor
+import org.jetbrains.exposed.sql.statements.UpsertStatement
 
 class KontorTilhorighetService(
     val kontorNavnService: KontorNavnService
@@ -37,6 +47,48 @@ class KontorTilhorighetService(
         return transaction { getGTKontor(fnr) }
             ?.let { it to kontorNavnService.getKontorNavn(KontorId(it.kontorId)) }
             ?.let { (kontor, kontorNavn) -> GeografiskTilknyttetKontor(kontorNavn,kontor.getKontorId()) }
+    }
+
+    suspend fun settKontorTilhorighet(kontorTilhorighet: KontorTilhorighet, registrant: Registrant) {
+        transaction {
+            when (kontorTilhorighet.kontor) {
+                is ArbeidsoppfolgingsKontor -> {
+                    ArbeidsOppfolgingKontorTable.upsert {
+                        it[kontorId] = kontorTilhorighet.kontor.kontorId.id
+                        it[fnr] = kontorTilhorighet.fnr
+                        it[endretAv] = registrant.getIdent()
+                        it[endretAvType] = registrant.getType()
+                    }
+
+                    settKontorIHistorikk(kontorTilhorighet.kontor, kontorTilhorighet, registrant)
+                }
+                is ArenaKontor -> {
+                    ArenaKontorTable.upsert {
+                        it[kontorId] = kontorTilhorighet.kontor.kontorId.id
+                        it[fnr] = kontorTilhorighet.fnr
+                    }
+                }
+                is GeografiskTilknyttetKontor -> {
+                    GeografiskTilknytningKontorTable.upsert {
+                        it[kontorId] = kontorTilhorighet.kontor.kontorId.id
+                        it[fnr] = kontorTilhorighet.fnr
+                    }
+
+                    settKontorIHistorikk(kontorTilhorighet.kontor, kontorTilhorighet, registrant)
+                }
+            }
+        }
+    }
+
+    private fun settKontorIHistorikk(
+        kontor: Kontor,
+        kontorTilhorighet: KontorTilhorighet,
+        registrant: Registrant
+    ): UpsertStatement<Long> = KontorhistorikkTable.upsert {
+        it[kontorId] = kontor.kontorId.id
+        it[fnr] = kontorTilhorighet.fnr
+        it[endretAv] = registrant.getIdent()
+        it[endretAvType] = registrant.getType()
     }
 
     private fun getGTKontor(fnr: Fnr) = GeografiskTilknyttetKontorEntity.findById(fnr)
