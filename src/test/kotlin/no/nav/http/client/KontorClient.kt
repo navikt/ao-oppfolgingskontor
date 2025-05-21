@@ -14,6 +14,7 @@ suspend fun HttpClient.settKontor(server: MockOAuth2Server, kontorId: String, fn
             claims = mapOf("NAVident" to "$navIdent")
         ).serialize()}")
         header("Content-Type", "application/json")
+        header("Accept", "application/json")
         setBody("""{ "kontorId": "$kontorId", "fnr": "$fnr", "begrunnelse": null }""")
     }
 }

@@ -1,5 +1,5 @@
 query($fnr: String!) {
-    kontorForBruker(fnrParam: $fnr) {
+    kontorForBruker(fnr: $fnr) {
         kontorId
         kilde
     }

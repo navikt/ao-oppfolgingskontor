@@ -15,8 +15,9 @@ import no.nav.http.client.Norg2Client
 import no.nav.http.graphql.queries.AlleKontorQuery
 import no.nav.http.graphql.queries.KontorHistorikkQuery
 import no.nav.http.graphql.queries.KontorQuery
+import no.nav.services.KontorTilhorighetService
 
-fun Application.installGraphQl(norg2Client: Norg2Client) {
+fun Application.installGraphQl(norg2Client: Norg2Client, kontorTilhorighetService: KontorTilhorighetService) {
     install(GraphQL) {
         schema {
             packages = listOf(
@@ -24,7 +25,7 @@ fun Application.installGraphQl(norg2Client: Norg2Client) {
                 "no.nav.http.graphql.queries",
             )
             queries = listOf(
-                KontorQuery(),
+                KontorQuery(kontorTilhorighetService),
                 KontorHistorikkQuery(),
                 AlleKontorQuery(norg2Client)
             )
@@ -36,10 +37,8 @@ fun ApplicationEnvironment.getNorg2Url(): String {
     return config.property("apis.norg2.url").getString()
 }
 
-fun Application.configureGraphQlModule() {
-    val norg2Client = Norg2Client(environment.getNorg2Url())
-
-    installGraphQl(norg2Client)
+fun Application.configureGraphQlModule(norg2Client: Norg2Client, kontorTilhorighetService: KontorTilhorighetService) {
+    installGraphQl(norg2Client, kontorTilhorighetService)
 
     routing {
         authenticate {

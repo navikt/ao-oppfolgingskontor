@@ -3,13 +3,13 @@ package no.nav.db.dto
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 
 
-class ArbeidsoppfolgingKontor(
+class ArbeidsoppfolgingDBKontor(
     kontorId: String,
     metadata: KontorMetadata,
-): Kontor(kontorId, metadata)
+): DBKontor(kontorId, metadata)
 
-fun ArbeidsOppfolgingKontorEntity.toArbeidsoppfolgingKontor(): ArbeidsoppfolgingKontor {
-    return ArbeidsoppfolgingKontor(
+fun ArbeidsOppfolgingKontorEntity.toArbeidsoppfolgingKontor(): ArbeidsoppfolgingDBKontor {
+    return ArbeidsoppfolgingDBKontor(
         kontorId = this.kontorId,
         metadata = KontorMetadata(
             createdAt = this.createdAt,
