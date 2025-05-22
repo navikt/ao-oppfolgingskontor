@@ -68,7 +68,7 @@ dependencies {
     implementation(libs.graphql.kotlin.server)
     implementation(libs.graphql.kotlin.schema.generator)
     implementation(libs.token.validation.ktor.v3)
-    implementation(libs.nav.poaotilgang.client)
+//    implementation(libs.nav.poaotilgang.client)
     testImplementation(libs.embedded.postgres)
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.mock.oauth2.server)
