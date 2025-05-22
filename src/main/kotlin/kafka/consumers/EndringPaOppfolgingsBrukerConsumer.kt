@@ -1,4 +1,4 @@
-package no.nav.kafka
+package no.nav.kafka.consumers
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json

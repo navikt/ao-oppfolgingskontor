@@ -10,9 +10,9 @@ import io.ktor.server.application.hooks.MonitoringEvent
 import io.ktor.server.application.log
 import no.nav.kafka.config.configureStream
 import no.nav.kafka.config.configureTopology
-import no.nav.services.KontorTilhorighetService
+import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerConsumer
+import no.nav.kafka.consumers.OppfolgingsPeriodeConsumer
 import java.time.Duration
-import javax.sql.DataSource
 
 val KafkaStreamsStarting: EventDefinition<Application> = EventDefinition()
 val KafkaStreamsStarted: EventDefinition<Application> = EventDefinition()
@@ -25,11 +25,21 @@ class KafkaStreamsPluginConfig(
 
 val KafkaStreamsPlugin: ApplicationPlugin<Unit> =
     createApplicationPlugin("KafkaStreams") {
-        val consumer = EndringPaOppfolgingsBrukerConsumer()
+
+        val endringPaOppfolgingsBrukerConsumer = EndringPaOppfolgingsBrukerConsumer()
         val oppfolgingsBrukerTopic = environment.config.property("topics.inn.endringPaOppfolgingsbruker").getString()
-        val topology = configureTopology(oppfolgingsBrukerTopic, { record, maybeRecordMetadata ->
-            consumer.consume(record, maybeRecordMetadata) })
-        val kafkaStreams = listOf(configureStream(topology, environment.config))
+        val oppdaterArenaKontorTopology = configureTopology(oppfolgingsBrukerTopic, { record, maybeRecordMetadata ->
+            endringPaOppfolgingsBrukerConsumer.consume(record, maybeRecordMetadata) })
+
+        val oppfolgingsPeriodeConsumer = OppfolgingsPeriodeConsumer()
+        val oppfolgingsPeriodeTopic = environment.config.property("topics.inn.endringPaOppfolgingsbruker").getString()
+        val kontorRutingTopology = configureTopology(oppfolgingsPeriodeTopic, { record, maybeRecordMetadata ->
+            oppfolgingsPeriodeConsumer.consume(record, maybeRecordMetadata) })
+
+        val kafkaStreams = configureStream(listOf(
+            oppdaterArenaKontorTopology,
+            kontorRutingTopology
+        ), environment.config)
 
         val shutDownTimeout = Duration.ofSeconds(1)
 
