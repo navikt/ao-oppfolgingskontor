@@ -54,6 +54,8 @@ spec:
       rules:
         - application: norg2
           namespace: org
+        - application: poao-tilgang
+          namespace: poao
   azure:
     application:
       enabled: true
