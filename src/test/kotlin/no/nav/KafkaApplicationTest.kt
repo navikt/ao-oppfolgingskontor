@@ -5,7 +5,7 @@ import io.ktor.server.testing.testApplication
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.KontorHistorikkEntity
 import no.nav.db.table.KontorhistorikkTable
-import no.nav.kafka.EndringPaOppfolgingsBrukerConsumer
+import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerConsumer
 import no.nav.kafka.config.configureTopology
 import no.nav.kafka.config.streamsErrorHandlerConfig
 import no.nav.utils.flywayMigrationInTest

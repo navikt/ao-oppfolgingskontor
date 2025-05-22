@@ -7,16 +7,34 @@ import no.nav.db.Fnr
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.GeografiskTilknyttetKontorEntity
+import no.nav.db.table.KontorhistorikkTable.fnr
 import no.nav.domain.ArbeidsoppfolgingsKontor
 import no.nav.domain.ArenaKontor
 import no.nav.domain.GeografiskTilknyttetKontor
 import no.nav.domain.KontorId
 import no.nav.domain.KontorKilde
 import no.nav.domain.KontorNavn
+import no.nav.domain.KontorTilhorighet
+import no.nav.domain.Registrant
 import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
 import no.nav.http.graphql.schemas.RegistrantTypeDto
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.upsert
+import no.nav.db.table.ArbeidsOppfolgingKontorTable
+import no.nav.db.table.ArbeidsOppfolgingKontorTable.updatedAt
+import no.nav.db.table.ArenaKontorTable
+import no.nav.db.table.GeografiskTilknytningKontorTable
+import no.nav.db.table.KontorhistorikkTable
+import no.nav.domain.Kontor
+import no.nav.domain.events.AOKontorEndret
+import no.nav.domain.events.ArenaKontorEndret
+import no.nav.domain.events.GTKontorEndret
+import no.nav.domain.events.KontorEndretEvent
+import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.statements.InsertStatement
+import org.jetbrains.exposed.sql.statements.UpsertStatement
+import java.time.ZonedDateTime
 
 class KontorTilhorighetService(
     val kontorNavnService: KontorNavnService

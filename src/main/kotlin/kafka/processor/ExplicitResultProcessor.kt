@@ -1,7 +1,6 @@
 package no.nav.kafka.processor
 
 import kotlinx.serialization.SerializationException
-import no.nav.kafka.EndringPaOppfolgingsBrukerConsumer
 import org.apache.kafka.streams.processor.api.Processor
 import org.apache.kafka.streams.processor.api.ProcessorContext
 import org.apache.kafka.streams.processor.api.Record

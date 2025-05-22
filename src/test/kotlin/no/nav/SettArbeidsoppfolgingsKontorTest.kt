@@ -3,7 +3,6 @@ package no.nav
 import com.expediagroup.graphql.server.ktor.graphQLPostRoute
 import io.kotest.matchers.shouldBe
 import io.ktor.client.call.body
-import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.authentication
 import io.ktor.server.config.MapApplicationConfig
@@ -11,12 +10,12 @@ import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import no.nav.domain.KontorKilde
-import no.nav.http.client.logger
 import no.nav.http.client.mockNorg2Host
 import no.nav.http.client.norg2TestUrl
 import no.nav.http.client.settKontor
 import no.nav.http.configureArbeidsoppfolgingskontorModule
 import no.nav.http.graphql.installGraphQl
+import no.nav.http.graphql.schemas.RegistrantTypeDto
 import no.nav.security.mock.oauth2.MockOAuth2Server
 import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
@@ -54,24 +53,24 @@ class SettArbeidsoppfolgingsKontorTest {
     }
 
     @Test
-    fun `skal kunne lese ut NAVIdent av token`() = testApplication {
+    fun `skal kunne sette arbeidsoppfølgingskontor`() = testApplication {
         withMockOAuth2Server {
             val fnr = "72345678901"
             val kontorId = "4444"
+            val veilederIdent = "Z990000"
             setupTestAppWithAuthAndGraphql()
-
             val httpClient = getJsonHttpClient()
 
-            val response = httpClient.settKontor(server, fnr = fnr, kontorId = kontorId, navIdent = "Z990000")
-            response.status shouldBe HttpStatusCode.OK
+            val response = httpClient.settKontor(server, fnr = fnr, kontorId = kontorId, navIdent = veilederIdent)
 
+            response.status shouldBe HttpStatusCode.OK
             val readResponse = httpClient.kontorTilhorighet(fnr)
             readResponse.status shouldBe HttpStatusCode.OK
-            val text = readResponse.bodyAsText()
-            logger.info("BODY: $text")
             val kontorResponse = readResponse.body<GraphqlResponse<KontorTilhorighet>>()
             kontorResponse.errors shouldBe null
             kontorResponse.data?.kontorTilhorighet?.kontorId shouldBe kontorId
+            kontorResponse.data?.kontorTilhorighet?.registrant shouldBe veilederIdent
+            kontorResponse.data?.kontorTilhorighet?.registrantType shouldBe RegistrantTypeDto.VEILEDER
             kontorResponse.data?.kontorTilhorighet?.kilde shouldBe KontorKilde.ARBEIDSOPPFOLGING
         }
     }
