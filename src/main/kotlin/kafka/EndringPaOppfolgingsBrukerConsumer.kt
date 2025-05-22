@@ -2,22 +2,20 @@ package no.nav.kafka
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import no.nav.db.dto.EndretAvType
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.table.ArenaKontorTable
-import no.nav.db.table.KontorhistorikkTable
+import no.nav.domain.KontorId
+import no.nav.domain.KontorTilordning
+import no.nav.domain.events.EndringPaaOppfolgingsBrukerFraArena
 import no.nav.kafka.processor.RecordProcessingResult
+import no.nav.services.KontorTilordningService
 import org.apache.kafka.streams.processor.api.Record
 import org.apache.kafka.streams.processor.api.RecordMetadata
-import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.upsert
 import org.slf4j.LoggerFactory
 import java.time.OffsetDateTime
 
-class EndringPaOppfolgingsBrukerConsumer(
-//    val dataSource: DataSource,
-) {
+class EndringPaOppfolgingsBrukerConsumer() {
     val log = LoggerFactory.getLogger(EndringPaOppfolgingsBrukerConsumer::class.java)
 
     val json = Json { ignoreUnknownKeys = true }
@@ -42,24 +40,17 @@ class EndringPaOppfolgingsBrukerConsumer(
             return RecordProcessingResult.SKIP
         }
 
-        transaction {
-            KontorhistorikkTable.insert {
-                it[fnr] = fnrString
-                it[kontorId] = endringPaOppfolgingsBruker.oppfolgingsenhet
-            }
-
-            ArenaKontorTable.upsert {
-                it[id] = fnrString
-                it[kontorId] = endringPaOppfolgingsBruker.oppfolgingsenhet
-                it[updatedAt] = OffsetDateTime.now()
-                it[sistEndretDatoArena] = endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime()
-                it[kafkaOffset] = maybeRecordMetadata?.offset()?.toInt()
-                it[kafkaPartition] = maybeRecordMetadata?.partition()
-
-            }
-        }
-
-
+        KontorTilordningService.settKontorTilhorighet(
+            EndringPaaOppfolgingsBrukerFraArena(
+                tilordning = KontorTilordning(
+                    fnr = fnrString,
+                    kontorId = KontorId(endringPaOppfolgingsBruker.oppfolgingsenhet),
+                ),
+                sistEndretDatoArena = endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime(),
+                offset = maybeRecordMetadata!!.offset(),
+                partition = maybeRecordMetadata.partition(),
+            )
+        )
         return RecordProcessingResult.COMMIT
     }
 }

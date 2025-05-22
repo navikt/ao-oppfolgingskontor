@@ -5,9 +5,12 @@ import io.ktor.server.testing.testApplication
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.KontorHistorikkEntity
 import no.nav.db.table.KontorhistorikkTable
+import no.nav.http.client.Norg2Client
 import no.nav.kafka.EndringPaOppfolgingsBrukerConsumer
 import no.nav.kafka.config.configureTopology
 import no.nav.kafka.config.streamsErrorHandlerConfig
+import no.nav.services.KontorNavnService
+import no.nav.services.KontorTilhorighetService
 import no.nav.utils.flywayMigrationInTest
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.StreamsConfig

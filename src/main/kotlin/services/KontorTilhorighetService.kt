@@ -57,53 +57,6 @@ class KontorTilhorighetService(
             ?.let { (kontor, kontorNavn) -> GeografiskTilknyttetKontor(kontorNavn,kontor.getKontorId()) }
     }
 
-    suspend fun settKontorTilhorighet(kontorEndring: KontorEndretEvent) {
-        val kontorTilhorighet = kontorEndring.tilhorighet
-        transaction {
-            when (kontorEndring) {
-                is AOKontorEndret -> {
-                    ArbeidsOppfolgingKontorTable.upsert {
-                        it[kontorId] = kontorTilhorighet.kontorId.id
-                        it[fnr] = kontorTilhorighet.fnr
-                        it[endretAv] = kontorEndring.registrant.getIdent()
-                        it[endretAvType] = kontorEndring.registrant.getType()
-                        it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
-                    }
-                }
-                is ArenaKontorEndret -> {
-                    ArenaKontorTable.upsert {
-                        it[kontorId] = kontorTilhorighet.kontorId.id
-                        it[fnr] = kontorTilhorighet.fnr
-                        it[kafkaOffset] = kontorEndring.offset.toInt()
-                        it[kafkaPartition] = kontorEndring.partition.toInt()
-                        it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
-                    }
-                }
-                is GTKontorEndret -> {
-                    GeografiskTilknytningKontorTable.upsert {
-                        it[kontorId] = kontorTilhorighet.kontorId.id
-                        it[fnr] = kontorTilhorighet.fnr
-                        it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
-                    }
-                }
-            }
-            settKontorIHistorikk(kontorEndring)
-        }
-    }
-
-    private fun settKontorIHistorikk(
-        kontorEndring: KontorEndretEvent
-    ): InsertStatement<Number> {
-        val historikkInnslag = kontorEndring.toHistorikkInnslag()
-        return KontorhistorikkTable.insert {
-            it[kontorId] = historikkInnslag.kontorId.id
-            it[fnr] = historikkInnslag.fnr
-            it[endretAv] = historikkInnslag.registrant.getIdent()
-            it[endretAvType] = historikkInnslag.registrant.getType()
-            it[kontorendringstype] = historikkInnslag.kontorendringstype.name
-        }
-    }
-
     private fun getGTKontor(fnr: Fnr) = GeografiskTilknyttetKontorEntity.findById(fnr)
     private fun getArenaKontor(fnr: Fnr) = ArenaKontorEntity.findById(fnr)
     private fun getAOKontor(fnr: Fnr) = ArbeidsOppfolgingKontorEntity.findById(fnr)

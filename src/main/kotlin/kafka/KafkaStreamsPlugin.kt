@@ -10,6 +10,7 @@ import io.ktor.server.application.hooks.MonitoringEvent
 import io.ktor.server.application.log
 import no.nav.kafka.config.configureStream
 import no.nav.kafka.config.configureTopology
+import no.nav.services.KontorTilhorighetService
 import java.time.Duration
 import javax.sql.DataSource
 
@@ -19,7 +20,7 @@ val KafkaStreamsStopping: EventDefinition<Application> = EventDefinition()
 val KafkaStreamsStopped: EventDefinition<Application> = EventDefinition()
 
 class KafkaStreamsPluginConfig(
-    var dataSource: DataSource? = null
+//    var kontorTilhorighetService: KontorTilhorighetService? = null,
 )
 
 val KafkaStreamsPlugin: ApplicationPlugin<Unit> =

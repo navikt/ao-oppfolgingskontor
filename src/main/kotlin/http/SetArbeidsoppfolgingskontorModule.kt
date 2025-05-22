@@ -23,6 +23,7 @@ import no.nav.domain.events.KontorSattAvVeileder
 import no.nav.security.token.support.v3.TokenValidationContextPrincipal
 import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
+import no.nav.services.KontorTilordningService
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.upsert
 import org.slf4j.LoggerFactory
@@ -52,7 +53,7 @@ fun Application.configureArbeidsoppfolgingskontorModule(
                     val gammeltKontor = kontorTilhorighetService.getArbeidsoppfolgingKontorTilhorighet(kontorTilordning.fnr)
                     val kontorId = KontorId(kontorTilordning.kontorId)
 
-                    kontorTilhorighetService.settKontorTilhorighet(
+                    KontorTilordningService.settKontorTilhorighet(
                         KontorSattAvVeileder(
                             tilhorighet = KontorTilordning(
                                 fnr = kontorTilordning.fnr,
