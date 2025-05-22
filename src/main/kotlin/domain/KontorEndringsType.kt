@@ -2,6 +2,7 @@ package no.nav.domain
 
 enum class KontorEndringsType {
     AutomatiskRutetTilNOE,
+    AutomatiskRutetTilLokalkontor,
     FlyttetAvVeileder,
     BleSkjermet,
     FikkAddressebeskyttelse,
@@ -13,5 +14,6 @@ fun KontorEndringsType.getKilde(): KontorKilde {
         KontorEndringsType.FlyttetAvVeileder -> KontorKilde.ARBEIDSOPPFOLGING
         KontorEndringsType.BleSkjermet -> KontorKilde.GEOGRAFISK_TILKNYTNING
         KontorEndringsType.FikkAddressebeskyttelse -> KontorKilde.GEOGRAFISK_TILKNYTNING
+        KontorEndringsType.AutomatiskRutetTilLokalkontor -> KontorKilde.ARBEIDSOPPFOLGING
     }
 }

@@ -15,6 +15,11 @@ import no.nav.db.Fnr
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.db.table.KontorhistorikkTable.fnr
 import no.nav.domain.KontorId
+import no.nav.domain.KontorTilhorighet
+import no.nav.domain.KontorTilordning
+import no.nav.domain.NavIdent
+import no.nav.domain.Veileder
+import no.nav.domain.events.KontorSattAvVeileder
 import no.nav.security.token.support.v3.TokenValidationContextPrincipal
 import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
@@ -40,20 +45,23 @@ fun Application.configureArbeidsoppfolgingskontorModule(
         authenticate {
             post("/api/kontor") {
                 runCatching {
-                    val kontor = call.receive<ArbeidsoppfolgingsKontorTilordningDTO>()
+                    val kontorTilordning = call.receive<ArbeidsoppfolgingsKontorTilordningDTO>()
                     val principal = call.principal<TokenValidationContextPrincipal>()
                     val veilederIdent = principal?.context?.getClaims(issuer)?.getStringClaim("NAVident")
                         ?: throw IllegalStateException("NAVident not found in token")
-                    val gammeltKontor = kontorTilhorighetService.getArbeidsoppfolgingKontorTilhorighet(kontor.fnr)
+                    val gammeltKontor = kontorTilhorighetService.getArbeidsoppfolgingKontorTilhorighet(kontorTilordning.fnr)
+                    val kontorId = KontorId(kontorTilordning.kontorId)
 
-                    transaction {
-                        ArbeidsOppfolgingKontorTable.upsert {
-                            it[kontorId] = kontor.kontorId
-                            it[fnr] = kontor.fnr
-                            it[endretAv] = veilederIdent
-                            it[endretAvType] = "VEILEDER"
-                        }
-                    }.let { KontorId(it[ArbeidsOppfolgingKontorTable.kontorId]) to gammeltKontor }
+                    kontorTilhorighetService.settKontorTilhorighet(
+                        KontorSattAvVeileder(
+                            tilhorighet = KontorTilordning(
+                                fnr = kontorTilordning.fnr,
+                                kontorId = kontorId,
+                            ),
+                            registrant = Veileder(NavIdent(veilederIdent))
+                        )
+                    )
+                    kontorId to gammeltKontor
                 }
                     .onSuccess { (kontorId, gammeltKontor) ->
                         val kontorNavn = kontorNavnService.getKontorNavn(kontorId)
