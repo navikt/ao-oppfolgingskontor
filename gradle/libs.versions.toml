@@ -15,7 +15,7 @@ kotest-version = "5.9.1"
 graphql-kotlin-version = "8.5.0"
 token-validation-ktor-v3-version = "5.0.24"
 mock-oauth2-server-version = "2.1.10"
-poaotilgang-version = "2025.04.07_12.31-9f6c0070a56e"
+poao-tilgang-version = "2025.04.07_12.31-9f6c0070a56e"
 
 [libraries]
 ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor-version" }
@@ -55,7 +55,7 @@ graphql-kotlin-server = { module = "com.expediagroup:graphql-kotlin-ktor-server"
 graphql-kotlin-schema-generator = { module = "com.expediagroup:graphql-kotlin-schema-generator", version.ref = "graphql-kotlin-version" }
 token-validation-ktor-v3 = { module = "no.nav.security:token-validation-ktor-v3", version.ref ="token-validation-ktor-v3-version" }
 mock-oauth2-server = { module = "no.nav.security:mock-oauth2-server", version.ref ="mock-oauth2-server-version" }
-nav-poaotilgang-client = { module = "no.nav.poaotilgang:client", version.ref = "poaotilgang-version" }
+nav-poaotilgang-client = { module = "no.nav.poao-tilgang:client", version.ref = "poao-tilgang-version" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-version" }
