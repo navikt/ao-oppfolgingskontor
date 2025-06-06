@@ -12,10 +12,7 @@ import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import no.nav.db.Fnr
-import no.nav.db.table.ArbeidsOppfolgingKontorTable
-import no.nav.db.table.KontorhistorikkTable.fnr
 import no.nav.domain.KontorId
-import no.nav.domain.KontorTilhorighet
 import no.nav.domain.KontorTilordning
 import no.nav.domain.NavIdent
 import no.nav.domain.Veileder
@@ -24,8 +21,6 @@ import no.nav.security.token.support.v3.TokenValidationContextPrincipal
 import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
 import no.nav.services.KontorTilordningService
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.upsert
 import org.slf4j.LoggerFactory
 
 val logger = LoggerFactory.getLogger("Applcation.configureArbeidsoppfolgingskontorModule")
@@ -53,7 +48,7 @@ fun Application.configureArbeidsoppfolgingskontorModule(
                     val gammeltKontor = kontorTilhorighetService.getArbeidsoppfolgingKontorTilhorighet(kontorTilordning.fnr)
                     val kontorId = KontorId(kontorTilordning.kontorId)
 
-                    KontorTilordningService.settKontorTilhorighet(
+                    KontorTilordningService.tilordneKontor(
                         KontorSattAvVeileder(
                             tilhorighet = KontorTilordning(
                                 fnr = kontorTilordning.fnr,

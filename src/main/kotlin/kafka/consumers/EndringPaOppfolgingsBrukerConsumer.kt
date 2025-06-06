@@ -40,7 +40,7 @@ class EndringPaOppfolgingsBrukerConsumer() {
             return RecordProcessingResult.SKIP
         }
 
-        KontorTilordningService.settKontorTilhorighet(
+        KontorTilordningService.tilordneKontor(
             EndringPaaOppfolgingsBrukerFraArena(
                 tilordning = KontorTilordning(
                     fnr = fnrString,

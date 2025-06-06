@@ -16,7 +16,7 @@ import org.jetbrains.exposed.sql.upsert
 import java.time.ZonedDateTime
 
 object KontorTilordningService {
-    fun settKontorTilhorighet(kontorEndring: KontorEndretEvent) {
+    fun tilordneKontor(kontorEndring: KontorEndretEvent) {
         val kontorTilhorighet = kontorEndring.tilhorighet
         transaction {
             when (kontorEndring) {
