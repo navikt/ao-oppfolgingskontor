@@ -1,6 +1,5 @@
 package no.nav.kafka.exceptionHandler
 
-import no.nav.no.nav.kafka.exceptionHandler.FunksjonellFeilException
 import org.apache.kafka.common.errors.RetriableException
 import org.apache.kafka.streams.errors.ErrorHandlerContext
 import org.apache.kafka.streams.errors.ProcessingExceptionHandler

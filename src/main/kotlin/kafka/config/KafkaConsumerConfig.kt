@@ -12,6 +12,7 @@ import org.apache.kafka.streams.KafkaStreams
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
 import org.apache.kafka.streams.Topology
+import org.apache.kafka.streams.TopologyConfig
 import org.apache.kafka.streams.processor.api.Processor
 import org.apache.kafka.streams.processor.api.ProcessorSupplier
 import java.util.Properties
@@ -28,7 +29,7 @@ fun configureTopology(topic: String, processRecord: ProcessRecord): Topology {
     return builder.build()
 }
 
-fun configureStream(topology: Topology, config: ApplicationConfig): KafkaStreams {
+fun configureStream(topologies: List<Topology>, config: ApplicationConfig): List<KafkaStreams> {
     val naisKafkaEnv = config.toKafkaEnv()
 
     val config = Properties()
@@ -36,7 +37,9 @@ fun configureStream(topology: Topology, config: ApplicationConfig): KafkaStreams
         .streamsErrorHandlerConfig()
         .securityConfig(naisKafkaEnv)
 
-    return KafkaStreams(topology, config)
+    return topologies.map { topology ->
+        KafkaStreams(topology, config)
+    }
 }
 
 private fun Properties.streamsConfig(config: NaisKafkaEnv, appConfig: ApplicationConfig): Properties {
