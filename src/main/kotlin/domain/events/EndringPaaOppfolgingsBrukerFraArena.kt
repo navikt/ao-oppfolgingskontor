@@ -4,6 +4,7 @@ import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorHIstorikkInnslag
 import no.nav.domain.KontorTilordning
 import no.nav.domain.System
+import no.nav.http.logger
 import java.time.OffsetDateTime
 
 class EndringPaaOppfolgingsBrukerFraArena(
@@ -25,5 +26,9 @@ class EndringPaaOppfolgingsBrukerFraArena(
             registrant = registrant,
             kontorendringstype = KontorEndringsType.EndretIArena,
         )
+    }
+
+    override fun logg() {
+        logger.info("ArenaKontorTilordning: kontorId=${tilhorighet.kontorId}, offset=$offset, partition=$partition")
     }
 }

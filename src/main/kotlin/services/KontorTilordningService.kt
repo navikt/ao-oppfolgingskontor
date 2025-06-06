@@ -19,6 +19,7 @@ object KontorTilordningService {
     fun tilordneKontor(kontorEndring: KontorEndretEvent) {
         val kontorTilhorighet = kontorEndring.tilhorighet
         transaction {
+            kontorEndring.logg()
             when (kontorEndring) {
                 is AOKontorEndret -> {
                     ArbeidsOppfolgingKontorTable.upsert {

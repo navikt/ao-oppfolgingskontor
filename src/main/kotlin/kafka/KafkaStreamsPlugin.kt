@@ -8,10 +8,12 @@ import io.ktor.server.application.ApplicationStopping
 import io.ktor.server.application.createApplicationPlugin
 import io.ktor.server.application.hooks.MonitoringEvent
 import io.ktor.server.application.log
+import no.nav.http.client.PoaoTilgangKtorHttpClient
 import no.nav.kafka.config.configureStream
 import no.nav.kafka.config.configureTopology
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerConsumer
 import no.nav.kafka.consumers.OppfolgingsPeriodeConsumer
+import no.nav.services.KontorTilhorighetService
 import java.time.Duration
 
 val KafkaStreamsStarting: EventDefinition<Application> = EventDefinition()
@@ -20,7 +22,8 @@ val KafkaStreamsStopping: EventDefinition<Application> = EventDefinition()
 val KafkaStreamsStopped: EventDefinition<Application> = EventDefinition()
 
 class KafkaStreamsPluginConfig(
-//    var kontorTilhorighetService: KontorTilhorighetService? = null,
+    val poaoTilgangKtorHttpClient: PoaoTilgangKtorHttpClient,
+    var kontorTilhorighetService: KontorTilhorighetService,
 )
 
 val KafkaStreamsPlugin: ApplicationPlugin<Unit> =
@@ -31,7 +34,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<Unit> =
         val oppdaterArenaKontorTopology = configureTopology(oppfolgingsBrukerTopic, { record, maybeRecordMetadata ->
             endringPaOppfolgingsBrukerConsumer.consume(record, maybeRecordMetadata) })
 
-        val oppfolgingsPeriodeConsumer = OppfolgingsPeriodeConsumer()
+        val oppfolgingsPeriodeConsumer = OppfolgingsPeriodeConsumer(poaoTilgangKtorHttpClient, kontorTilhorighetService)
         val oppfolgingsPeriodeTopic = environment.config.property("topics.inn.endringPaOppfolgingsbruker").getString()
         val kontorRutingTopology = configureTopology(oppfolgingsPeriodeTopic, { record, maybeRecordMetadata ->
             oppfolgingsPeriodeConsumer.consume(record, maybeRecordMetadata) })

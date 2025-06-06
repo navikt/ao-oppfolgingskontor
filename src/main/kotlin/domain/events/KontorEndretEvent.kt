@@ -9,6 +9,7 @@ sealed class KontorEndretEvent(
     val tilhorighet: KontorTilordning
 ) {
     abstract fun toHistorikkInnslag(): KontorHIstorikkInnslag
+    abstract fun logg(): Unit
 }
 
 sealed class GTKontorEndret(tilhorighet: KontorTilordning) : KontorEndretEvent(tilhorighet)
