@@ -42,6 +42,10 @@ fun ApplicationEnvironment.getPoaoTilgangUrl(): String {
     return config.property("apis.poaoTilgang.url").getString()
 }
 
+fun ApplicationEnvironment.getPDLUrl(): String {
+    return config.property("apis.pdl.url").getString()
+}
+
 fun Application.configureGraphQlModule(norg2Client: Norg2Client, kontorTilhorighetService: KontorTilhorighetService) {
     installGraphQl(norg2Client, kontorTilhorighetService)
 

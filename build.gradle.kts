@@ -65,6 +65,7 @@ dependencies {
     implementation(libs.logback.classic)
     implementation(libs.ktor.server.config.yaml)
     implementation(libs.kafka.streams)
+    implementation(libs.graphql.kotlin.client)
     implementation(libs.graphql.kotlin.server)
     implementation(libs.graphql.kotlin.schema.generator)
     implementation(libs.token.validation.ktor.v3)
@@ -83,6 +84,10 @@ graphql {
             "no.nav.http.graphql.queries",
             "no.nav.http.graphql.schemas",
         )
+    }
+    client {
+        endpoint = "https://pdl-playground.dev.intern.nav.no/graphql"
+        packageName = "no.nav.http.graphql.generated.client"
     }
 }
 

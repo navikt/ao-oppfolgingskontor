@@ -24,6 +24,8 @@ apis:
     url: "$NORG2_URL"
   poaoTilgang:
     url: "$POAO_TILGANG_URL"
+  pdl:
+    url: "$PDL_URL"
 
 
 postgres:

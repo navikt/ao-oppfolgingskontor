@@ -61,3 +61,5 @@ spec:
       value: http://norg2.org
     - name: POAO_TILGANG_URL
       value: http://poao-tilgang.poao
+    - name: PDL_URL
+      value: https://pdl-api.prod-fss-pub.nais.io

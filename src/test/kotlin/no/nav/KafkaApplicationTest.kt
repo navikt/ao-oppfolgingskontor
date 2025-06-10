@@ -1,5 +1,6 @@
 package no.nav.no.nav
 
+import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
 import io.ktor.server.testing.testApplication
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
@@ -7,6 +8,7 @@ import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.KontorHistorikkEntity
 import no.nav.db.table.KontorhistorikkTable
 import no.nav.domain.KontorId
+import no.nav.http.client.AlderFunnet
 import no.nav.http.client.GTKontorFunnet
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerConsumer
 import no.nav.kafka.config.configureTopology
@@ -64,7 +66,7 @@ class KafkaApplicationTest {
             flywayMigrationInTest()
             val aktorId = "1234567890123"
             val periodeStart = ZonedDateTime.now().minusDays(2)
-            val consumer = OppfolgingsPeriodeConsumer(AutomatiskKontorRutingService({ GTKontorFunnet(kontor) }))
+            val consumer = OppfolgingsPeriodeConsumer(AutomatiskKontorRutingService({ GTKontorFunnet(kontor) }, { AlderFunnet(40) }))
             val topology = configureTopology(topic, consumer::consume)
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(
@@ -75,7 +77,11 @@ class KafkaApplicationTest {
                 ArbeidsOppfolgingKontorEntity.Companion.findById(fnr)?.kontorId shouldBe "4154"
                 KontorHistorikkEntity.Companion
                     .find { KontorhistorikkTable.fnr eq fnr }
-                    .count() shouldBe 1
+                    .count().let {
+                        withClue("Antall historikkinnslag skal være 1") {
+                            it shouldBe 1
+                        }
+                    }
             }
         }
     }
