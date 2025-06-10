@@ -66,3 +66,5 @@ spec:
   env:
     - name: NORG2_URL
       value: http://norg2.org
+    - name: POAO_TILGANG_URL
+      value: http://poao-tilgang.poao

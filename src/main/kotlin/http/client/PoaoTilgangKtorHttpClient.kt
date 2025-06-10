@@ -17,6 +17,7 @@ import no.nav.poao_tilgang.client_core.api.ResponseDataApiException
 import org.slf4j.LoggerFactory
 
 class PoaoTilgangKtorHttpClient(
+    private val baseUrl: String,
     private val client: HttpClient = HttpClient(),
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -45,7 +46,7 @@ class PoaoTilgangKtorHttpClient(
     }
 
     private val poaoTilgangKtorHttpClient = PoaoTilgangHttpClient(
-        baseUrl = "https://poao-tilgang-api.dev.nav.no",
+        baseUrl,
         httpFetch = ::fetch,
         bodyParser = object : PoaoTilgangClient.BodyParser {
 

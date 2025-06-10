@@ -1,9 +1,11 @@
 package no.nav.kafka.consumers
 
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.services.AutomatiskKontorRutingService
+import no.nav.utils.ZonedDateTimeSerializer
 import org.apache.kafka.streams.processor.api.Record
 import org.apache.kafka.streams.processor.api.RecordMetadata
 import java.time.ZonedDateTime
@@ -26,7 +28,9 @@ class OppfolgingsPeriodeConsumer(
     @Serializable
     data class OppfolgingsperiodeDTO(
         val uuid: String,
+        @Serializable(with = ZonedDateTimeSerializer::class)
         val startDato: ZonedDateTime,
+        @Serializable(with = ZonedDateTimeSerializer::class)
         val sluttDato: ZonedDateTime?,
         val aktorId: String
     )

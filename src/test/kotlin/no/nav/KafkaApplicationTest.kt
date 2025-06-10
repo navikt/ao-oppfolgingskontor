@@ -58,13 +58,14 @@ class KafkaApplicationTest {
     fun `skal tilordne kontor til brukere som har fått startet oppfølging`() = testApplication {
         val fnr = "12345678901"
         val kontor = "1234"
-        val client = mockPoaoTilgangHost(kontorId = kontor)
+        val poaoClient = mockPoaoTilgangHost(kontorId = kontor)
+
         application {
             flywayMigrationInTest()
             val fnr = "12345678901"
             val aktorId = "1234567890123"
             val periodeStart = ZonedDateTime.now().minusDays(2)
-            val consumer = OppfolgingsPeriodeConsumer(AutomatiskKontorRutingService(client))
+            val consumer = OppfolgingsPeriodeConsumer(AutomatiskKontorRutingService(poaoClient))
             val topology = configureTopology(topic, consumer::consume)
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(

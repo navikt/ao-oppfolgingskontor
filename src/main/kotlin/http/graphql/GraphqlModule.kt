@@ -16,6 +16,7 @@ import no.nav.http.graphql.queries.AlleKontorQuery
 import no.nav.http.graphql.queries.KontorHistorikkQuery
 import no.nav.http.graphql.queries.KontorQuery
 import no.nav.services.KontorTilhorighetService
+import org.rocksdb.util.Environment
 
 fun Application.installGraphQl(norg2Client: Norg2Client, kontorTilhorighetService: KontorTilhorighetService) {
     install(GraphQL) {
@@ -35,6 +36,10 @@ fun Application.installGraphQl(norg2Client: Norg2Client, kontorTilhorighetServic
 
 fun ApplicationEnvironment.getNorg2Url(): String {
     return config.property("apis.norg2.url").getString()
+}
+
+fun ApplicationEnvironment.getPoaoTilgangUrl(): String {
+    return config.property("apis.poaoTilgang.url").getString()
 }
 
 fun Application.configureGraphQlModule(norg2Client: Norg2Client, kontorTilhorighetService: KontorTilhorighetService) {
