@@ -13,7 +13,7 @@ class EndringPaaOppfolgingsBrukerFraArena(
     offset: Long,
     partition: Int
 ): ArenaKontorEndret(
-    tilhorighet = tilordning,
+    tilordning = tilordning,
     sistEndretDatoArena = sistEndretDatoArena,
     offset = offset,
     partition = partition
@@ -21,14 +21,14 @@ class EndringPaaOppfolgingsBrukerFraArena(
     override fun toHistorikkInnslag(): KontorHIstorikkInnslag {
         val registrant = System()
         return KontorHIstorikkInnslag(
-            kontorId = tilhorighet.kontorId,
-            fnr = tilhorighet.fnr,
+            kontorId = tilordning.kontorId,
+            fnr = tilordning.fnr,
             registrant = registrant,
             kontorendringstype = KontorEndringsType.EndretIArena,
         )
     }
 
     override fun logg() {
-        logger.info("ArenaKontorTilordning: kontorId=${tilhorighet.kontorId}, offset=$offset, partition=$partition")
+        logger.info("ArenaKontorTilordning: kontorId=${tilordning.kontorId}, offset=$offset, partition=$partition")
     }
 }

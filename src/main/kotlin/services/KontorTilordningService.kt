@@ -17,7 +17,7 @@ import java.time.ZonedDateTime
 
 object KontorTilordningService {
     fun tilordneKontor(kontorEndring: KontorEndretEvent) {
-        val kontorTilhorighet = kontorEndring.tilhorighet
+        val kontorTilhorighet = kontorEndring.tilordning
         transaction {
             kontorEndring.logg()
             when (kontorEndring) {

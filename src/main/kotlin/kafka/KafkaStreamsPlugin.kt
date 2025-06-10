@@ -13,7 +13,9 @@ import no.nav.kafka.config.configureStream
 import no.nav.kafka.config.configureTopology
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerConsumer
 import no.nav.kafka.consumers.OppfolgingsPeriodeConsumer
+import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.KontorTilhorighetService
+import no.nav.services.KontorTilordningService
 import java.time.Duration
 
 val KafkaStreamsStarting: EventDefinition<Application> = EventDefinition()
@@ -22,19 +24,19 @@ val KafkaStreamsStopping: EventDefinition<Application> = EventDefinition()
 val KafkaStreamsStopped: EventDefinition<Application> = EventDefinition()
 
 class KafkaStreamsPluginConfig(
-    val poaoTilgangKtorHttpClient: PoaoTilgangKtorHttpClient,
-    var kontorTilhorighetService: KontorTilhorighetService,
+    var automatiskKontorRutingService: AutomatiskKontorRutingService? = null,
 )
 
-val KafkaStreamsPlugin: ApplicationPlugin<Unit> =
-    createApplicationPlugin("KafkaStreams") {
+val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
+    createApplicationPlugin("KafkaStreams", ::KafkaStreamsPluginConfig) {
+        val automatiskKontorRutingService = requireNotNull(this.pluginConfig.automatiskKontorRutingService)
 
         val endringPaOppfolgingsBrukerConsumer = EndringPaOppfolgingsBrukerConsumer()
         val oppfolgingsBrukerTopic = environment.config.property("topics.inn.endringPaOppfolgingsbruker").getString()
         val oppdaterArenaKontorTopology = configureTopology(oppfolgingsBrukerTopic, { record, maybeRecordMetadata ->
             endringPaOppfolgingsBrukerConsumer.consume(record, maybeRecordMetadata) })
 
-        val oppfolgingsPeriodeConsumer = OppfolgingsPeriodeConsumer(poaoTilgangKtorHttpClient, kontorTilhorighetService)
+        val oppfolgingsPeriodeConsumer = OppfolgingsPeriodeConsumer(automatiskKontorRutingService)
         val oppfolgingsPeriodeTopic = environment.config.property("topics.inn.endringPaOppfolgingsbruker").getString()
         val kontorRutingTopology = configureTopology(oppfolgingsPeriodeTopic, { record, maybeRecordMetadata ->
             oppfolgingsPeriodeConsumer.consume(record, maybeRecordMetadata) })

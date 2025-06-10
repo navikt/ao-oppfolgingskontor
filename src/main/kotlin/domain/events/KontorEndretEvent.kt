@@ -6,12 +6,12 @@ import no.nav.domain.Registrant
 import java.time.OffsetDateTime
 
 sealed class KontorEndretEvent(
-    val tilhorighet: KontorTilordning
+    val tilordning: KontorTilordning
 ) {
     abstract fun toHistorikkInnslag(): KontorHIstorikkInnslag
     abstract fun logg(): Unit
 }
 
-sealed class GTKontorEndret(tilhorighet: KontorTilordning) : KontorEndretEvent(tilhorighet)
-sealed class AOKontorEndret(tilhorighet: KontorTilordning, val registrant: Registrant) : KontorEndretEvent(tilhorighet)
-sealed class ArenaKontorEndret(tilhorighet: KontorTilordning, val sistEndretDatoArena: OffsetDateTime, val offset: Long, val partition: Int) : KontorEndretEvent(tilhorighet)
+sealed class GTKontorEndret(tilordning: KontorTilordning) : KontorEndretEvent(tilordning)
+sealed class AOKontorEndret(tilordning: KontorTilordning, val registrant: Registrant) : KontorEndretEvent(tilordning)
+sealed class ArenaKontorEndret(tilordning: KontorTilordning, val sistEndretDatoArena: OffsetDateTime, val offset: Long, val partition: Int) : KontorEndretEvent(tilordning)

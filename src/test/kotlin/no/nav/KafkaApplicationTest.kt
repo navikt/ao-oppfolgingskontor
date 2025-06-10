@@ -5,9 +5,13 @@ import io.ktor.server.testing.testApplication
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.KontorHistorikkEntity
 import no.nav.db.table.KontorhistorikkTable
+import no.nav.http.client.PoaoTilgangKtorHttpClient
+import no.nav.http.client.mockPoaoTilgangHost
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerConsumer
 import no.nav.kafka.config.configureTopology
 import no.nav.kafka.config.streamsErrorHandlerConfig
+import no.nav.kafka.consumers.OppfolgingsPeriodeConsumer
+import no.nav.services.AutomatiskKontorRutingService
 import no.nav.utils.flywayMigrationInTest
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.StreamsConfig
@@ -19,6 +23,7 @@ import org.junit.Ignore
 import org.junit.Test
 import java.time.ZonedDateTime
 import java.util.Properties
+import java.util.UUID
 
 class KafkaApplicationTest {
     val topic = "test-topic"
@@ -39,6 +44,32 @@ class KafkaApplicationTest {
             kafkaMockTopic.pipeInput(
                 fnr,
                 endringPaOppfolgingsBrukerMessage("4321", ZonedDateTime.parse("2025-05-10T13:01:14+02:00"))
+            )
+            transaction {
+                ArenaKontorEntity.Companion.findById(fnr)?.kontorId shouldBe "4321"
+                KontorHistorikkEntity.Companion
+                    .find { KontorhistorikkTable.fnr eq fnr }
+                    .count() shouldBe 2
+            }
+        }
+    }
+
+    @Test
+    fun `skal tilordne kontor til brukere som har fått startet oppfølging`() = testApplication {
+        val fnr = "12345678901"
+        val kontor = "1234"
+        val client = mockPoaoTilgangHost(kontorId = kontor)
+        application {
+            flywayMigrationInTest()
+            val fnr = "12345678901"
+            val aktorId = "1234567890123"
+            val periodeStart = ZonedDateTime.now().minusDays(2)
+            val consumer = OppfolgingsPeriodeConsumer(AutomatiskKontorRutingService(client))
+            val topology = configureTopology(topic, consumer::consume)
+            val kafkaMockTopic = setupKafkaMock(topology, topic)
+            kafkaMockTopic.pipeInput(
+                fnr,
+                oppfolgingsperiodeMessage(UUID.randomUUID().toString(), periodeStart, null, aktorId)
             )
             transaction {
                 ArenaKontorEntity.Companion.findById(fnr)?.kontorId shouldBe "4321"
@@ -101,6 +132,15 @@ class KafkaApplicationTest {
 
     fun endringPaOppfolgingsBrukerMessage(kontorId: String, sistEndretDato: ZonedDateTime): String {
         return """{"oppfolgingsenhet":"$kontorId", "sistEndretDato": "$sistEndretDato" }"""
+    }
+
+    fun oppfolgingsperiodeMessage(
+        uuid: String,
+        startDato: ZonedDateTime,
+        sluttDato: ZonedDateTime?,
+        aktorId: String
+    ): String {
+        return """{"uuid":"$uuid", "startDato":"$startDato", "sluttDato":${sluttDato?.let { "\"$it\"" } ?: "null"}, "aktorId":"$aktorId"}"""
     }
 }
 
