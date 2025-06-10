@@ -2,11 +2,12 @@ package no.nav.no.nav
 
 import io.kotest.matchers.shouldBe
 import io.ktor.server.testing.testApplication
+import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.KontorHistorikkEntity
 import no.nav.db.table.KontorhistorikkTable
-import no.nav.http.client.PoaoTilgangKtorHttpClient
-import no.nav.http.client.mockPoaoTilgangHost
+import no.nav.domain.KontorId
+import no.nav.http.client.GTKontorFunnet
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerConsumer
 import no.nav.kafka.config.configureTopology
 import no.nav.kafka.config.streamsErrorHandlerConfig
@@ -57,15 +58,13 @@ class KafkaApplicationTest {
     @Test
     fun `skal tilordne kontor til brukere som har fått startet oppfølging`() = testApplication {
         val fnr = "12345678901"
-        val kontor = "1234"
-        val poaoClient = mockPoaoTilgangHost(kontorId = kontor)
+        val kontor = KontorId("1234")
 
         application {
             flywayMigrationInTest()
-            val fnr = "12345678901"
             val aktorId = "1234567890123"
             val periodeStart = ZonedDateTime.now().minusDays(2)
-            val consumer = OppfolgingsPeriodeConsumer(AutomatiskKontorRutingService(poaoClient))
+            val consumer = OppfolgingsPeriodeConsumer(AutomatiskKontorRutingService({ GTKontorFunnet(kontor) }))
             val topology = configureTopology(topic, consumer::consume)
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(
@@ -73,10 +72,10 @@ class KafkaApplicationTest {
                 oppfolgingsperiodeMessage(UUID.randomUUID().toString(), periodeStart, null, aktorId)
             )
             transaction {
-                ArenaKontorEntity.Companion.findById(fnr)?.kontorId shouldBe "4321"
+                ArbeidsOppfolgingKontorEntity.Companion.findById(fnr)?.kontorId shouldBe "4154"
                 KontorHistorikkEntity.Companion
                     .find { KontorhistorikkTable.fnr eq fnr }
-                    .count() shouldBe 2
+                    .count() shouldBe 1
             }
         }
     }

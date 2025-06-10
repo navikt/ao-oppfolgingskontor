@@ -1,5 +1,6 @@
 package no.nav.kafka.consumers
 
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -20,7 +21,9 @@ class OppfolgingsPeriodeConsumer(
         if (oppfolgingsperiode.sluttDato != null) {
             return RecordProcessingResult.SKIP
         } else {
-            automatiskKontorRutingService.tilordneKontorAutomatisk(aktorId)
+            runBlocking {
+                automatiskKontorRutingService.tilordneKontorAutomatisk(aktorId)
+            }
             return RecordProcessingResult.COMMIT
         }
     }

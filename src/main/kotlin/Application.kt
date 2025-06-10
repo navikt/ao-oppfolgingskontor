@@ -26,7 +26,9 @@ fun Application.module() {
     val kontorNavnService = KontorNavnService(norg2Client)
     val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService)
     val poaoTilgangHttpClient = PoaoTilgangKtorHttpClient(environment.getPoaoTilgangUrl())
-    val automatiskKontorRutingService = AutomatiskKontorRutingService(poaoTilgangHttpClient)
+    val automatiskKontorRutingService = AutomatiskKontorRutingService { fnr ->
+        poaoTilgangHttpClient.hentTilgangsattributter(fnr)
+    }
     install(KafkaStreamsPlugin) {
         this.automatiskKontorRutingService = automatiskKontorRutingService
     }

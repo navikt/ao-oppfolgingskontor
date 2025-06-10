@@ -6,6 +6,7 @@ import io.ktor.client.statement.*
 import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import no.nav.domain.KontorId
 import no.nav.poao_tilgang.api.dto.request.ErSkjermetPersonBulkRequest
 import no.nav.poao_tilgang.api.dto.request.EvaluatePoliciesRequest
 import no.nav.poao_tilgang.api.dto.request.HentAdGrupperForBrukerRequest
@@ -16,6 +17,10 @@ import no.nav.poao_tilgang.client_core.api.ApiResult
 import no.nav.poao_tilgang.client_core.api.ResponseDataApiException
 import org.slf4j.LoggerFactory
 
+sealed class GTKontorResultat
+data class GTKontorFunnet(val kontorId: KontorId) : GTKontorResultat()
+data class GTKontorFeil(val melding: String) : GTKontorResultat()
+
 class PoaoTilgangKtorHttpClient(
     private val baseUrl: String,
     private val client: HttpClient = HttpClient(),
@@ -23,6 +28,13 @@ class PoaoTilgangKtorHttpClient(
     private val log = LoggerFactory.getLogger(javaClass)
 
     fun hentTilgangsattributter(ident: String) = poaoTilgangKtorHttpClient.hentTilgangsAttributter(ident)
+        .let {
+            when (it.isSuccess) {
+                true -> it.get()?.kontor?.let { kontorId -> GTKontorFunnet(KontorId(kontorId)) }
+                    ?: GTKontorFeil("Ingen kontor funnet for fnr: $ident")
+                false -> GTKontorFeil("Feil ved henting av tilgangsattributter for fnr: $ident, ${it.exception?.message}")
+            }
+        }
 
     private fun fetch(
         fullUrl: String,
@@ -30,8 +42,9 @@ class PoaoTilgangKtorHttpClient(
         body: String? = null
     ): ApiResult<String> {
         return runBlocking {
-            val response = client.request(fullUrl) {
+            val response = client.request (fullUrl.replace(baseUrl, "")) {
                 this.method = HttpMethod.Post
+                accept(ContentType.Application.Json)
                 contentType(ContentType.Application.Json)
                 setBody(body)
             }

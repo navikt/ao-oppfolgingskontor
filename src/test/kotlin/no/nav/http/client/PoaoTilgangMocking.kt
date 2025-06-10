@@ -8,10 +8,11 @@ import io.ktor.server.application.install
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.testing.*
+import kotlinx.coroutines.runBlocking
 import no.nav.poao_tilgang.api.dto.response.Diskresjonskode
 import no.nav.poao_tilgang.api.dto.response.TilgangsattributterResponse
 
-val poaoTilgangTestUrl = "https://poao-tilgang.test.no"
+val poaoTilgangTestUrl = "http://poao.tilgang.test.no"
 private const val tilgangsattributterPath = "/api/v1/tilgangsattributter"
 
 fun ApplicationTestBuilder.mockPoaoTilgangHost(kontorId: String?): PoaoTilgangKtorHttpClient {
@@ -39,12 +40,14 @@ fun ApplicationTestBuilder.mockPoaoTilgangHost(kontorId: String?): PoaoTilgangKt
         createClient {
             install(ContentNegotiation) { json() }
             install(Logging)
-//            install(HttpTimeout) {
-//                requestTimeoutMillis = 1000
-//            }
+            install(HttpTimeout) {
+                requestTimeoutMillis = 1000
+            }
             defaultRequest {
                 url(poaoTilgangTestUrl)
             }
         }
     )
+
+
 }

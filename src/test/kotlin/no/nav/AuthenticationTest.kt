@@ -10,7 +10,6 @@ import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import no.nav.configureSecurity
 import no.nav.http.client.Norg2Client
-import no.nav.http.client.mockNorg2Host
 import no.nav.http.client.norg2TestUrl
 import no.nav.http.graphql.configureGraphQlModule
 import no.nav.http.graphql.getNorg2Url
