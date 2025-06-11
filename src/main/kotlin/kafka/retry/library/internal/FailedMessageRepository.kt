@@ -1,10 +1,13 @@
 package no.nav.kafka.retry.library.internal
 
 import org.jdbi.v3.core.Jdbi
+import org.jdbi.v3.core.kotlin.KotlinPlugin
 import javax.sql.DataSource
 
 class FailedMessageRepository(dataSource: DataSource) {
-    private val jdbi = Jdbi.create(dataSource)
+    private val jdbi = Jdbi.create(dataSource).apply {
+        installPlugin(KotlinPlugin())
+    }
 
     fun hasFailedMessages(key: String): Boolean = jdbi.withHandle<Boolean, Exception> { handle ->
         handle.createQuery("SELECT EXISTS (SELECT 1 FROM failed_messages WHERE message_key = :key)")
