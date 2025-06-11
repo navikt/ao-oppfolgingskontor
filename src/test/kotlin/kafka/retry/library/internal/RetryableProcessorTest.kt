@@ -1,0 +1,184 @@
+package kafka.retry.library.internal
+
+import io.mockk.*
+import no.nav.kafka.retry.library.RetryConfig
+import no.nav.kafka.retry.library.internal.FailedMessage
+import no.nav.kafka.retry.library.internal.PostgresRetryStore
+import no.nav.kafka.retry.library.internal.RetryMetrics
+import no.nav.kafka.retry.library.internal.RetryableProcessor
+import org.apache.kafka.common.serialization.Serdes
+import org.apache.kafka.streams.processor.Punctuator
+import org.apache.kafka.streams.processor.StateStore
+import org.apache.kafka.streams.processor.api.ProcessorContext
+import org.apache.kafka.streams.processor.api.Record
+import org.junit.Before
+import org.junit.Test
+import java.time.Duration
+import java.time.OffsetDateTime
+
+/**
+ * Enhetstester for RetryableProcessor.
+ *
+ * Denne klassen tester prosessoren i full isolasjon ved å mocke alle dens avhengigheter
+ * (ProcessorContext, PostgresRetryStore, RetryMetrics). Dette er den robuste måten å
+ * teste en Processor på, og unngår problemene med TopologyTestDriver for custom state stores.
+ */
+class RetryableProcessorTest {
+
+ // Mocks for alle avhengigheter
+ private lateinit var mockedContext: ProcessorContext<Void, Void>
+ private lateinit var mockedStore: PostgresRetryStore
+ private lateinit var mockedMetrics: RetryMetrics
+
+ // Selve prosessoren som testes
+ private lateinit var processor: RetryableProcessor<String, String>
+
+ // For å fange opp den scheduled Punctuation-lambdaen
+ private val punctuationCallback = slot<Punctuator>()
+
+ private val config = RetryConfig(retryInterval = Duration.ofMinutes(1), maxRetries = 2)
+ private val inputTopicName = "input-topic"
+
+ @Before
+ fun setup() {
+  // --- 1. Lag Mocks ---
+  mockedContext = mockk(relaxed = true)
+  mockedStore = mockk(relaxed = true)
+
+  // --- 2. Konfigurer Mock-oppførsel (den kritiske delen) ---
+
+  // Når context.getStateStore(ANY_STRING) kalles, returner vår mock.
+  // Dette er den KORREKTE måten å mocke dette kallet på.
+  every { mockedContext.getStateStore<StateStore>(any<String>()) } returns mockedStore
+
+  // Når context.schedule blir kalt, fang opp lambdaen (Consumer) som sendes inn
+  every { mockedContext.schedule(any(), any(), capture(punctuationCallback)) } returns mockk()
+
+  // --- 3. Lag en instans av prosessoren som skal testes ---
+  processor = RetryableProcessor(
+   config = config,
+   keySerializer = Serdes.String().serializer(),
+   valueSerializer = Serdes.String().serializer(),
+   valueDeserializer = Serdes.String().deserializer(),
+   topic = inputTopicName,
+   repository = mockk(relaxed = true), // Dummy mock, ikke brukt direkte av prosessoren
+   // Definer en kontrollerbar forretningslogikk for testen
+   businessLogic = { record ->
+    if (record.value().contains("FAIL")) {
+     throw RuntimeException("Simulated failure")
+    }
+   }
+  )
+
+  // --- 4. Initialiser prosessoren ---
+  // Dette kallet vil nå lykkes fordi mockedContext er riktig konfigurert.
+  processor.init(mockedContext)
+
+  // --- 5. (Valgfritt men anbefalt) Bytt ut metrikk-instans med en mock ---
+  // Dette gjør verifisering av metrikk-kall mye enklere.
+  mockedMetrics = mockk(relaxed = true)
+  val metricsField = processor.javaClass.getDeclaredField("metrics")
+  metricsField.isAccessible = true
+  metricsField.set(processor, mockedMetrics)
+ }
+
+ @Test
+ fun `should process successfully when store is empty and logic succeeds`() {
+  // Arrange
+  every { mockedStore.hasFailedMessages("key1") } returns false
+
+  // Act
+  processor.process(Record("key1", "good-value", 0L))
+
+  // Assert
+  verify(exactly = 0) { mockedStore.enqueue(any(), any(), any()) }
+  verify(exactly = 0) { mockedMetrics.messageEnqueued() }
+ }
+
+ @Test
+ fun `should enqueue when business logic fails`() {
+  // Arrange
+  every { mockedStore.hasFailedMessages("key1") } returns false
+
+  // Act
+  processor.process(Record("key1", "value-with-FAIL", 0L))
+
+  // Assert
+  verify(exactly = 1) { mockedStore.enqueue(
+   eq("key1"),
+   any(),
+   match { it.contains("Simulated failure") }
+  )
+  }
+  verify(exactly = 1) { mockedMetrics.messageEnqueued() }
+ }
+
+ @Test
+ fun `should enqueue when store already has failures for the key`() {
+  // Arrange
+  every { mockedStore.hasFailedMessages("key1") } returns true
+
+  // Act
+  processor.process(Record("key1", "good-value-but-blocked", 0L))
+
+  // Assert
+  verify { mockedStore.enqueue(eq("key1"), any(), match { it.contains("Queued behind") }) }
+  verify { mockedMetrics.messageEnqueued() }
+ }
+
+ @Test
+ fun `punctuation should attempt to retry and succeed`() {
+  // Arrange
+  // KORREKSJON: Bruk et ekte tidsstempel, ikke en mock!
+  val realTimestamp = OffsetDateTime.now()
+  val failedMessage = FailedMessage(1L, "key1", "value".toByteArray(), realTimestamp, 0)
+  every { mockedStore.getBatchToRetry(any()) } returns listOf(failedMessage)
+
+  // Act
+  if (punctuationCallback.isCaptured) {
+   punctuationCallback.captured.punctuate(System.currentTimeMillis())
+  } else {
+   throw AssertionError("Punctuation callback was not captured")
+  }
+
+  // Assert: Nå vil verifiseringen lykkes!
+  verify { mockedMetrics.updateCurrentFailedMessagesGauge() }
+  verify { mockedMetrics.retryAttempted() }
+  verify { mockedStore.delete(1L) }
+  verify { mockedMetrics.retrySucceeded() }
+ }
+
+ @Test
+ fun `punctuation should attempt to retry and fail again`() {
+  // Arrange
+  val realTimestamp = OffsetDateTime.now()
+  // Meldingen inneholder "FAIL" for å trigge feil i businessLogic
+  val failedMessage = FailedMessage(1L, "key1", "value-with-FAIL".toByteArray(), realTimestamp, 1)
+  every { mockedStore.getBatchToRetry(any()) } returns listOf(failedMessage)
+
+  // Act
+  punctuationCallback.captured.punctuate(System.currentTimeMillis())
+
+  // Assert
+  verify { mockedMetrics.retryAttempted() }
+  verify { mockedStore.updateAfterFailedAttempt(1L, any()) }
+  verify { mockedMetrics.retryFailed() }
+ }
+
+ @Test
+ fun `punctuation should dead-letter message if max retries is exceeded`() {
+  // Arrange
+  val realTimestamp = OffsetDateTime.now()
+  val failedMessage = FailedMessage(1L, "key1", "value".toByteArray(), realTimestamp, retryCount = 2)
+  every { mockedStore.getBatchToRetry(any()) } returns listOf(failedMessage)
+
+  // Act
+  punctuationCallback.captured.punctuate(System.currentTimeMillis())
+
+  // Assert
+  verify { mockedMetrics.retryAttempted() }
+  verify { mockedMetrics.messageDeadLettered() }
+  verify { mockedStore.delete(1L) }
+ }
+}
+

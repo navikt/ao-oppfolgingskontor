@@ -75,6 +75,7 @@ dependencies {
     testImplementation(libs.kotlin.test.junit)
     testImplementation(libs.kafka.streams.test.utils)
     testImplementation(libs.kotest.assertions)
+    testImplementation(libs.mockk)
 }
 
 graphql {
