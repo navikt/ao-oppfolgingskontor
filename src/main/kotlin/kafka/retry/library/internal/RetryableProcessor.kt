@@ -75,7 +75,7 @@ internal class RetryableProcessor<K, V>(
         for (msg in messagesToRetry) {
             metrics.retryAttempted()
 
-            if (msg.retryCount >= config.maxRetries) {
+            if (config.maxRetries != -1 && msg.retryCount >= config.maxRetries) {
                 // Meldingen har feilet for mange ganger. Betraktes som "dead-letter".
                 metrics.messageDeadLettered()
                 logger.error("Message ${msg.id} for key '${msg.messageKey}' has exceeded max retries (${config.maxRetries}). Deleting from queue.")
