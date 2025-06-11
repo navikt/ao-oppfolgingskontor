@@ -1,9 +1,9 @@
 package no.nav.http.client
 
-import no.nav.http.graphql.generated.client.HentAlder
 import com.expediagroup.graphql.client.ktor.GraphQLKtorClient
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
+import no.nav.http.graphql.generated.client.HentAlderQuery
 import no.nav.http.graphql.generated.client.HentFnrQuery
 import no.nav.http.graphql.generated.client.enums.IdentGruppe
 import java.net.URI
@@ -25,7 +25,7 @@ class PdlClient(
         httpClient = ktorHttpClient
     )
     suspend fun hentAlder(fnr: String): AlderResult {
-        val query = HentAlder(HentAlder.Variables(fnr))
+        val query = HentAlderQuery(HentAlderQuery.Variables(fnr))
         val result = client.execute(query)
         if (result.errors != null && result.errors!!.isNotEmpty()) {
             return AlderIkkeFunnet(result.errors!!.joinToString { it.message })

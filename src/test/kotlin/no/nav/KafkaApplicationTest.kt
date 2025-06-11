@@ -10,11 +10,13 @@ import no.nav.db.table.KontorhistorikkTable
 import no.nav.domain.KontorId
 import no.nav.http.client.AlderFunnet
 import no.nav.http.client.GTKontorFunnet
+import no.nav.http.client.arbeidssogerregisteret.ProfileringEnum
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerConsumer
 import no.nav.kafka.config.configureTopology
 import no.nav.kafka.config.streamsErrorHandlerConfig
 import no.nav.kafka.consumers.OppfolgingsPeriodeConsumer
 import no.nav.services.AutomatiskKontorRutingService
+import no.nav.services.ProfileringFunnet
 import no.nav.utils.flywayMigrationInTest
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.StreamsConfig
@@ -69,7 +71,8 @@ class KafkaApplicationTest {
             val consumer = OppfolgingsPeriodeConsumer(AutomatiskKontorRutingService(
                 { GTKontorFunnet(kontor) },
                 { AlderFunnet(40) },
-                { fnr }
+                { fnr },
+                { ProfileringFunnet(ProfileringEnum.ANTATT_GODE_MULIGHETER)}
             ))
             val topology = configureTopology(topic, consumer::consume)
             val kafkaMockTopic = setupKafkaMock(topology, topic)

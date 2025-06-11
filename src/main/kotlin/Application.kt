@@ -1,10 +1,13 @@
 package no.nav
 
 import io.ktor.server.application.*
+import io.ktor.server.netty.*
 import no.nav.db.configureDatabase
 import no.nav.http.client.Norg2Client
 import no.nav.http.client.PdlClient
 import no.nav.http.client.PoaoTilgangKtorHttpClient
+import no.nav.http.client.arbeidssogerregisteret.ArbeidssokerregisterClient
+import no.nav.http.client.arbeidssogerregisteret.getArbeidssokerregisteretUrl
 import no.nav.http.configureArbeidsoppfolgingskontorModule
 import no.nav.http.graphql.configureGraphQlModule
 import no.nav.http.graphql.getNorg2Url
@@ -16,7 +19,7 @@ import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
 
 fun main(args: Array<String>) {
-    io.ktor.server.netty.EngineMain.main(args)
+    EngineMain.main(args)
 }
 
 fun Application.module() {
@@ -26,13 +29,18 @@ fun Application.module() {
     configureDatabase()
     val norg2Client = Norg2Client(environment.getNorg2Url())
     val pdlClient = PdlClient(environment.getPDLUrl())
+    val arbeidssokerregisterClient = ArbeidssokerregisterClient(
+        environment.getArbeidssokerregisteretUrl(),
+        azureTokenProvider = TODO()
+    )
     val kontorNavnService = KontorNavnService(norg2Client)
     val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService)
     val poaoTilgangHttpClient = PoaoTilgangKtorHttpClient(environment.getPoaoTilgangUrl())
     val automatiskKontorRutingService = AutomatiskKontorRutingService(
         { poaoTilgangHttpClient.hentTilgangsattributter(it) },
         { pdlClient.hentAlder(it) },
-        { pdlClient.hentFnrFraAktorId(it) }
+        { pdlClient.hentFnrFraAktorId(it) },
+        { arbeidssokerregisterClient.hentAggregertPerioder(it, true) }
     )
     install(KafkaStreamsPlugin) {
         this.automatiskKontorRutingService = automatiskKontorRutingService
