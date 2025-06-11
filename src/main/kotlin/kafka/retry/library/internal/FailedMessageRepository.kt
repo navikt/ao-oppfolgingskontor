@@ -1,4 +1,4 @@
-package no.nav.kafka.failed_messages_store
+package no.nav.kafka.retry.library.internal
 
 import org.jdbi.v3.core.Jdbi
 import javax.sql.DataSource
@@ -33,7 +33,7 @@ class FailedMessageRepository(dataSource: DataSource) {
             LIMIT :limit
         """)
             .bind("limit", limit)
-            .mapTo(FailedMessage::class.java) // JDBI kan mappe direkte til data class
+            .mapTo(FailedMessage::class.java)
             .list()
     }
 
@@ -54,5 +54,11 @@ class FailedMessageRepository(dataSource: DataSource) {
             .bind("reason", newReason)
             .bind("id", messageId)
             .execute()
+    }
+
+    fun countTotalFailedMessages(): Long = jdbi.withHandle<Long, Exception> { handle ->
+        handle.createQuery("SELECT COUNT(*) FROM failed_messages")
+            .mapTo(Long::class.java)
+            .one()
     }
 }

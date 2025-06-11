@@ -1,14 +1,19 @@
-package no.nav.kafka.failed_messages_store
+package no.nav.kafka.retry.library.internal
 
 
 import org.apache.kafka.streams.state.StoreBuilder
+import org.slf4j.LoggerFactory
 
 
 internal class PostgresRetryStoreBuilder(
     private val storeName: String,
     private val repository: FailedMessageRepository
 ) : StoreBuilder<PostgresRetryStore> {
-
+    val logger = LoggerFactory.getLogger(PostgresRetryStoreBuilder::class.java)
+    /**
+     * Navnet på state store som brukes i Kafka Streams.
+     * Dette må være unikt i applikasjonen.
+     */
     override fun name(): String = storeName
 
     /**
@@ -24,7 +29,7 @@ internal class PostgresRetryStoreBuilder(
 
     override fun withCachingEnabled(): StoreBuilder<PostgresRetryStore> {
         // Caching håndteres ikke av Kafka Streams for en ekstern store.
-        println("WARN: Caching is not supported for PostgresRetryStore and the call will be ignored.")
+        logger.warn("Caching is not supported for PostgresRetryStore and the call will be ignored.")
         return this
     }
 
@@ -34,7 +39,7 @@ internal class PostgresRetryStoreBuilder(
 
     override fun withLoggingEnabled(config: Map<String, String>): StoreBuilder<PostgresRetryStore> {
         // Endringslogg til et Kafka-topic er for RocksDB-stores, ikke relevant for oss.
-        println("WARN: Changelogging is not supported for PostgresRetryStore and the call will be ignored.")
+        logger.warn("Changelogging is not supported for PostgresRetryStore and the call will be ignored.")
         return this
     }
 

@@ -1,4 +1,4 @@
-package no.nav.kafka.failed_messages_store
+package no.nav.kafka.retry.library.internal
 
 import java.time.OffsetDateTime
 
