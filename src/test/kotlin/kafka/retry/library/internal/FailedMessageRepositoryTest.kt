@@ -13,12 +13,23 @@ class FailedMessageRepositoryTest {
   private var dataSource: DataSource = TestDb.postgres
   private var repository: FailedMessageRepository = FailedMessageRepository(TestDb.postgres)
 
-    @Before
+  @Before
   fun createTable() {
-     // Sørg for at tabellen er ren før hver test
-     dataSource.connection.use { conn ->
-      conn.createStatement().execute("DROP TABLE IF EXISTS failed_messages")
-      conn.createStatement().execute("""
+
+     /* Flyway migrering hvis vi ikke legge denne koden i et ekstern bibliotek */
+        Flyway.configure()
+            .dataSource(dataSource)
+            .load()
+            .migrate()
+
+      // Sørg for at tabellen er ren før hver test
+      dataSource.connection.use { conn ->
+          conn.createStatement().execute("DELETE FROM failed_messages")
+      }
+      /*
+      dataSource.connection.use { conn ->
+          conn.createStatement().execute("DROP TABLE IF EXISTS failed_messages")
+          conn.createStatement().execute("""
                 CREATE TABLE failed_messages (
                     id BIGSERIAL PRIMARY KEY,
                     message_key VARCHAR(255) NOT NULL,
@@ -29,13 +40,9 @@ class FailedMessageRepositoryTest {
                     failure_reason TEXT
                 )
             """)
-     }
-     /* Flyway migrering hvis vi ikke legge denne koden i et ekstern bibliotek
-        Flyway.configure()
-            .dataSource(dataSource)
-            .load()
-            .migrate()
+      }
       */
+
   }
 
   @Test
