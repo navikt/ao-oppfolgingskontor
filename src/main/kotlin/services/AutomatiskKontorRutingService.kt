@@ -1,6 +1,6 @@
 package no.nav.services
 
-import io.ktor.http.IllegalHeaderNameException
+import no.nav.db.Fnr
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.events.AOKontorEndret
@@ -14,9 +14,11 @@ import no.nav.http.client.GTKontorResultat
 class AutomatiskKontorRutingService(
     private val gtKontorProvider: suspend (fnr: String) -> GTKontorResultat,
     private val aldersProvider: suspend (fnr: String) -> AlderResult,
+    private val fnrProvider: suspend (aktorId: String) -> Fnr?,
 ) {
     suspend fun tilordneKontorAutomatisk(aktorId: String) {
-        val fnr = hentFnrFraPDL(aktorId)
+        val fnr = fnrProvider(aktorId)
+            ?: throw IllegalArgumentException("Fant ikke fnr for aktorId: $aktorId")
         val gtKontorResultat = gtKontorProvider(fnr)
         val aldersResultat = aldersProvider(fnr)
         val kontorTilordning = hentTilordning(
@@ -27,9 +29,7 @@ class AutomatiskKontorRutingService(
         KontorTilordningService.tilordneKontor(kontorTilordning)
     }
 
-    private fun hentFnrFraPDL(fnr: String) = "12345678901"
     private fun hentProfilering(fnr: String) = "Bra"
-    private fun hentAlder(fnr: String) = 35
 
     private fun hentTilordning(
         fnr: String,

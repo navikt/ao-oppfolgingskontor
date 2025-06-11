@@ -4,6 +4,8 @@ import no.nav.http.graphql.generated.client.HentAlder
 import com.expediagroup.graphql.client.ktor.GraphQLKtorClient
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
+import no.nav.http.graphql.generated.client.HentFnrQuery
+import no.nav.http.graphql.generated.client.enums.IdentGruppe
 import java.net.URI
 import java.time.LocalDate
 import java.time.Period
@@ -37,5 +39,13 @@ class PdlClient(
                 AlderFunnet(alder)
             }
         }
+    }
+
+    suspend fun hentFnrFraAktorId(aktorId: String): String? {
+        val query = HentFnrQuery(HentFnrQuery.Variables(ident = aktorId, historikk = false))
+        val result = client.execute(query)
+        return result.data?.hentIdenter?.identer
+            ?.firstOrNull { it.gruppe == IdentGruppe.FOLKEREGISTERIDENT }
+            ?.ident
     }
 }
