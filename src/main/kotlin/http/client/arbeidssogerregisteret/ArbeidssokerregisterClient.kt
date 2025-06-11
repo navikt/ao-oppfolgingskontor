@@ -7,7 +7,8 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
-import kotlinx.serialization.json.Json
+import no.nav.http.client.TexasTokenResponse
+import no.nav.http.client.TexasTokenSuccessResult
 import no.nav.services.ProfileringFunnet
 import no.nav.services.ProfileringIkkeFunnet
 import no.nav.services.ProfileringsResultat
@@ -19,35 +20,33 @@ fun ApplicationEnvironment.getArbeidssokerregisteretUrl(): String {
 
 class ArbeidssokerregisterClient(
     private val baseUrl: String,
-    private val azureTokenProvider: () -> String,
+    private val azureTokenProvider: suspend () -> TexasTokenResponse,
     private val client: HttpClient = HttpClient {
         install(ContentNegotiation) {
-            json(Json {
-                ignoreUnknownKeys = true
-                prettyPrint = false
-                isLenient = true
-            })
+            json()
         }
     }
 ) {
 
-
-    suspend fun hentAggregertPerioder(
-        identitetsnummer: String,
-        siste: Boolean? = null
+    suspend fun hentProfilering(
+        identitetsnummer: String
     ): ProfileringsResultat {
         try {
             val result = client.post("$baseUrl/api/v1/veileder/arbeidssoekerperioder-aggregert") {
                 contentType(ContentType.Application.Json)
                 setBody(ArbeidssoekerperiodeRequest(identitetsnummer))
 
-                headers {
-                    append(HttpHeaders.Authorization, "Bearer ${azureTokenProvider()}")
+                when (azureTokenProvider()) {
+                    is TexasTokenSuccessResult -> {
+                        headers {
+                            append(HttpHeaders.Authorization, "Bearer ${azureTokenProvider()}")
+                        }
+                    }
+
+                    else -> throw IllegalStateException("Ugyldig token type mottatt fra Azure")
                 }
 
-                if (siste != null) {
-                    url.parameters.append("siste", siste.toString())
-                }
+                url.parameters.append("siste", "true")
             }.body<List<ArbeidssoekerperiodeAggregertResponse>>()
 
             return result.first { it.tom == null }.profilering?.let { ProfileringFunnet(it.profilertTil) }
