@@ -4,7 +4,7 @@ package no.nav.kafka.retry.library.internal
 import org.apache.kafka.streams.state.StoreBuilder
 import org.slf4j.LoggerFactory
 
-
+@PublishedApi
 internal class PostgresRetryStoreBuilder(
     private val storeName: String,
     private val repository: FailedMessageRepository

@@ -4,6 +4,7 @@ import io.ktor.server.config.ApplicationConfig
 import no.nav.kafka.processor.ProcessRecord
 import no.nav.kafka.exceptionHandler.RetryIfRetriableExceptionHandler
 import no.nav.kafka.processor.ExplicitResultProcessor
+import no.nav.kafka.retry.library.RetryableTopology
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.config.SslConfigs
@@ -15,9 +16,19 @@ import org.apache.kafka.streams.Topology
 import org.apache.kafka.streams.processor.api.Processor
 import org.apache.kafka.streams.processor.api.ProcessorSupplier
 import java.util.Properties
+import javax.sql.DataSource
 
-fun configureTopology(topic: String, processRecord: ProcessRecord): Topology {
+fun configureTopology(topic: String, dataSource: DataSource, processRecord: ProcessRecord): Topology {
     val builder = StreamsBuilder()
+    RetryableTopology.addTerminalRetryableProcessor(
+        builder = builder,
+        inputTopic = topic,
+        dataSource = dataSource,
+        keySerde = Serdes.String(),
+        valueSerde = Serdes.String(),
+        businessLogic = processRecord
+    )
+
     val sourceStream = builder.stream<String, String>(topic)
 
     sourceStream.process(object : ProcessorSupplier<String, String, String, String> {

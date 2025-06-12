@@ -22,14 +22,16 @@ class KafkaStreamsPluginConfig(
     var dataSource: DataSource? = null
 )
 
-val KafkaStreamsPlugin: ApplicationPlugin<Unit> =
-    createApplicationPlugin("KafkaStreams") {
+val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
+    createApplicationPlugin("KafkaStreams", ::KafkaStreamsPluginConfig) {
+        require(this.pluginConfig.dataSource != null)
         val consumer = EndringPaOppfolgingsBrukerConsumer()
         val oppfolgingsBrukerTopic = environment.config.property("topics.inn.endringPaOppfolgingsbruker").getString()
-        val topology = configureTopology(oppfolgingsBrukerTopic, { record, maybeRecordMetadata ->
+        require(this.pluginConfig.dataSource != null) { "DataSource must be configured for KafkaStreamsPlugin" }
+        val dataSource = this.pluginConfig.dataSource!!
+        val topology = configureTopology(oppfolgingsBrukerTopic, dataSource, { record, maybeRecordMetadata ->
             consumer.consume(record, maybeRecordMetadata) })
         val kafkaStreams = listOf(configureStream(topology, environment.config))
-
         val shutDownTimeout = Duration.ofSeconds(1)
 
         on(MonitoringEvent(ApplicationStarted)) { application ->

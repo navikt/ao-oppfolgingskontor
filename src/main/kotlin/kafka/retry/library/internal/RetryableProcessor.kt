@@ -19,85 +19,95 @@ import org.slf4j.LoggerFactory
  * 4.  Håndterer logikk for maksimalt antall forsøk ("dead-lettering").
  * 5.  Oppdaterer alle relevante metrikker via RetryMetrics-klassen.
  */
-internal class RetryableProcessor<K, V>(
+@PublishedApi
+internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
     private val config: RetryConfig,
-    private val keySerializer: Serializer<K>,
-    private val valueSerializer: Serializer<V>,
-    private val valueDeserializer: Deserializer<V>,
+    private val keyInSerializer: Serializer<KIn>,
+    private val valueInSerializer: Serializer<VIn>,
+    private val keyInDeserializer: Deserializer<KIn>,
+    private val valueInDeserializer: Deserializer<VIn>,
     private val topic: String, // Nødvendig for SerDes
-    private val repository: FailedMessageRepository, // Nødvendig for metrikk-initialisering
-    private val businessLogic: (Record<K, V>) -> Unit // Selve forretningslogikken fra brukeren
-) : Processor<K, V, Void, Void> {
-    val logger = LoggerFactory.getLogger(RetryableProcessor::class.java)
+    private val repository: FailedMessageRepository, // Nødvendig for metrikk-initialiserin
+    /* businessLogig er selve forretningslogikken fra brukeren. Kan returnere Record<KOut,VOut> eller Unit.     */
+    private val businessLogic: (Record<KIn, VIn>) -> Any?
+) : Processor<KIn, VIn, KOut, VOut> {
 
-    private lateinit var context: ProcessorContext<Void, Void>
+    private lateinit var context: ProcessorContext<KOut, VOut>
     private lateinit var store: PostgresRetryStore
     private lateinit var metrics: RetryMetrics
 
-    override fun init(context: ProcessorContext<Void, Void>) {
+    private val logger = LoggerFactory.getLogger(RetryableProcessor::class.java)
+
+    override fun init(context: ProcessorContext<KOut, VOut>) {
         this.context = context
         this.store = context.getStateStore(config.stateStoreName)
         this.metrics = RetryMetrics(context, repository)
-
-        // Schedule punctuation til å kjøre periodisk for å håndtere reprosessering.
         context.schedule(config.retryInterval, PunctuationType.WALL_CLOCK_TIME, this::runReprocessing)
     }
 
-    override fun process(record: Record<K, V>) {
-        val keyString = record.key()?.toString() ?: "null-key"
+    override fun process(record: Record<KIn, VIn>) {
+        // Vi krever en ikke-null nøkkel for å kunne garantere rekkefølge
+        val key = record.key()
+            ?: throw IllegalArgumentException("RetryableProcessor requires a non-null key. Cannot process message with null key.")
 
-        // 1. Sjekk om det allerede finnes feilede meldinger for denne nøkkelen
+        val keyString = key.toString()
+        context.recordMetadata().map { logger.debug("Processing record with key $keyString from Kafka topic: ${it.topic()}, partition: ${it.partition()}, offset: ${it.offset()}") }
+
         if (store.hasFailedMessages(keyString)) {
             enqueue(record, "Queued behind a previously failed message.")
             return
         }
 
-        // 2. Forsøk å prosessere meldingen med brukerens logikk
         try {
-            businessLogic(record)
+            val result = businessLogic(record)
+            forwardResult(result)
         } catch (e: Exception) {
-            // 3. Hvis prosessering feiler, legg den i feilkøen
             val reason = "Initial processing failed: ${e.javaClass.simpleName} - ${e.message}"
             enqueue(record, reason)
         }
     }
 
-    /**
-     * Denne metoden kalles periodisk av Kafka Streams (via Punctuation).
-     * Den henter en batch med meldinger fra databasen og prøver å prosessere dem på nytt.
-     */
     private fun runReprocessing(timestamp: Long) {
-        // VIKTIG: Oppdater gaugen for nåværende antall feilede meldinger manuelt.
         metrics.updateCurrentFailedMessagesGauge()
-
         val messagesToRetry = store.getBatchToRetry(config.retryBatchSize)
 
         for (msg in messagesToRetry) {
             metrics.retryAttempted()
 
-            if (config.maxRetries != -1 && msg.retryCount >= config.maxRetries) {
-                // Meldingen har feilet for mange ganger. Betraktes som "dead-letter".
+            if (msg.retryCount >= config.maxRetries) {
                 metrics.messageDeadLettered()
-                logger.error("Message ${msg.id} for key '${msg.messageKeyText}' has exceeded max retries (${config.maxRetries}). Deleting from queue.")
+                logger.error("Message ${msg.id} for key '${msg.messageKeyText}' has exceeded max retries. Deleting from queue.")
                 store.delete(msg.id)
-                continue // Gå til neste melding
+                continue
             }
 
             try {
-                // Rekonstruer meldingen og prøv brukerens logikk på nytt.
-                val value = valueDeserializer.deserialize(topic, msg.messageValue)
-                // Nøkkelen er `null` her siden vi ikke serialiserte den. Brukerens logikk må kunne håndtere dette ved retry.
-                val reconstructedRecord = Record(null as K, value, msg.queueTimestamp.toInstant().toEpochMilli())
+                // Håndter feil under deserialisering
+                val keyBytes = msg.messageKeyBytes ?: run {
+                    handleUnrecoverableDeserialization(msg.id, "messageKeyBytes is null in database")
+                    return@runReprocessing
+                }
+                val key = keyInDeserializer.deserialize(topic, keyBytes)
+                val value = valueInDeserializer.deserialize(topic, msg.messageValue)
 
-                businessLogic(reconstructedRecord)
+                if (key == null || value == null) {
+                    handleUnrecoverableDeserialization(msg.id, "key or value was null after deserialization")
+                    continue
+                }
 
-                // Vellykket! Slett fra databasen og oppdater metrikk.
+                val reconstructedRecord = Record(key, value, msg.queueTimestamp.toInstant().toEpochMilli())
+
+                // Kjør den samme logikken på nytt
+                val result = businessLogic(reconstructedRecord)
+
+                // Håndter suksess
                 store.delete(msg.id)
                 metrics.retrySucceeded()
+                forwardResult(result)
                 logger.info("Successfully reprocessed message ${msg.id} for key '${msg.messageKeyText}'.")
 
             } catch (e: Exception) {
-                // Feilet igjen. Oppdater databasen og metrikken.
+                // Håndter feil under retry
                 val reason = "Reprocessing failed: ${e.javaClass.simpleName} - ${e.message}"
                 store.updateAfterFailedAttempt(msg.id, reason)
                 metrics.retryFailed()
@@ -106,22 +116,36 @@ internal class RetryableProcessor<K, V>(
         }
     }
 
-    /**
-     * Hjelpemetode for å serialisere og lagre en feilet melding i databasen.
-     */
-    private fun enqueue(record: Record<K, V>, reason: String) {
-        val keyString = record.key()?.toString() ?: "null-key"
-        val keyBytes = record.key()?.let { keySerializer.serialize(topic, it) } // Serialiser nøkkelen
-        val valueBytes = valueSerializer.serialize(topic, record.value())
+    private fun enqueue(record: Record<KIn, VIn>, reason: String) {
+        val key = record.key()!! // Vi har allerede sjekket for null i process()
+        val keyString = key.toString()
+        val keyBytes = keyInSerializer.serialize(topic, key)
+        val valueBytes = valueInSerializer.serialize(topic, record.value())
+
         store.enqueue(keyString, keyBytes, valueBytes, reason)
         metrics.messageEnqueued()
         logger.info("Message for key '$keyString' was enqueued for retry. Reason: $reason")
     }
 
+    /** Hjelpemetode for å sende resultatet videre hvis det finnes. */
+    private fun forwardResult(result: Any?) {
+        if (result != null && result != Unit) {
+            @Suppress("UNCHECKED_CAST")
+            context.forward(result as Record<KOut, VOut>)
+        }
+    }
+
+    /** Hjelpemetode for å håndtere ugjenopprettelige deserialiseringsfeil. */
+    private fun handleUnrecoverableDeserialization(messageId: Long, reason: String) {
+        metrics.messageDeadLettered()
+        store.delete(messageId)
+        logger.error("Message $messageId could not be deserialized ($reason). Moving to dead-letter.")
+    }
+
     override fun close() {
-        // Rydd opp i ressursene som denne prosessor-instansen eier.
-        keySerializer.close()
-        valueSerializer.close()
-        valueDeserializer.close()
+        keyInSerializer.close()
+        valueInSerializer.close()
+        keyInDeserializer.close()
+        valueInDeserializer.close()
     }
 }

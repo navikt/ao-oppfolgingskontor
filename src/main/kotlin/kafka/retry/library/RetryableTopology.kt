@@ -5,109 +5,109 @@ import no.nav.kafka.retry.library.internal.RetryableProcessor
 import org.apache.kafka.common.serialization.Serde
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.kstream.Consumed
+import org.apache.kafka.streams.kstream.KStream
 import org.apache.kafka.streams.processor.api.ProcessorSupplier
 import org.apache.kafka.streams.processor.api.Record
 import javax.sql.DataSource
 
+/**
+ * Legger til en gjenbrukbar, feiltolerant prosessor i en Kafka Streams-topologi.
+ * Meldinger som feiler, eller som kommer bak en feilet melding for samme nøkkel,
+ * blir lagret i PostgreSQL for periodisk reprosessering.
+ *
+ * RetryableTopology kan brykes på denne måten:
+ * ```kotlin
+// Terminal node eksempel - hvis du ikke ønsker å sende videre
+val builder = StreamsBuilder()
+RetryableTopology.addTerminalRetryableProcessor<String, String>(
+builder = builder,
+inputTopic = "input-topic",
+// ...
+businessLogic = { record -> /* gjør noe, returner Unit */ }
+)
+// Bygg topologien: val topology = builder.build()
+
+// Transformerende eksempel - hvis du ønsker å sende videre
+val builder = StreamsBuilder()
+val outputStream = RetryableTopology.addTransformingRetryableProcessor<String, String, String, Long>(
+builder = builder,
+inputTopic = "input-topic",
+// ...
+businessLogic = { record -> Record(record.key(), record.value().length.toLong(), record.timestamp()) }
+)
+
+outputStream.to("output-topic")
+// Bygg topologien: val topology = builder.build()
+```
+ */
 object RetryableTopology {
 
+
     /**
-     * Legger til en gjenbrukbar, feiltolerant prosessor i en Kafka Streams-topologi.
-     * Meldinger som feiler, eller som kommer bak en feilet melding for samme nøkkel,
-     * blir lagret i PostgreSQL for periodisk reprosessering.
-     *
-     * RetryabbleTopology kan brykes på denne måten:
-     * ```kotlin
-    // MainApplication.kt
-    import org.apache.kafka.common.serialization.Serdes
-    import org.apache.kafka.streams.KafkaStreams
-    import org.apache.kafka.streams.StreamsBuilder
-    import java.util.*
-    import com.zaxxer.hikari.HikariDataSource // Eksempel på DataSource
-
-    fun main() {
-    // 1. Sett opp avhengigheter (Kafka-props, DataSource)
-    val props: Properties = //... dine kafka-konfigurasjoner
-
-    val dataSource = HikariDataSource().apply {
-    jdbcUrl = "jdbc:postgresql://localhost:5432/mydatabase"
-    username = "user"
-    password = "password"
-    }
-
-    val builder = StreamsBuilder()
-
-    // 2. Definer din forretningslogikk som en lambda
-    val myProcessingLogic: (Record<String, String>) -> Unit = { record ->
-    println("Trying to process key=${record.key()}, value=${record.value()}")
-
-    // Simuler en feil for visse meldinger
-    if (record.value().contains("FAIL")) {
-    throw RuntimeException("Simulated processing error!")
-    }
-
-    println("Successfully processed key=${record.key()}")
-    // Her ville du f.eks. sendt resultatet videre til et annet topic
-    }
-
-    // 3. Bruk biblioteket til å bygge topologien
-    RetryableTopology.addRetryableProcessor(
-    builder = builder,
-    inputTopic = "my-input-topic",
-    dataSource = dataSource,
-    keySerde = Serdes.String(),
-    valueSerde = Serdes.String(),
-    // config kan utelates for å bruke default
-    businessLogic = myProcessingLogic
-    )
-
-    // 4. Start applikasjonen
-    val topology = builder.build()
-    println(topology.describe())
-
-    val streams = KafkaStreams(topology, props)
-    streams.start()
-
-    Runtime.getRuntime().addShutdownHook(Thread {
-    streams.close()
-    dataSource.close()
-    })
-    }
-    ```
+     * Versjon for "terminal node"-bruk.
+     * Prosesserer meldinger av enhver type <K, V> og håndterer feil,
+     * men sender ingenting videre i topologien.
      */
-    fun <K, V> addRetryableProcessor(
+    inline fun <reified K, reified V> addTerminalRetryableProcessor(
         builder: StreamsBuilder,
         inputTopic: String,
         dataSource: DataSource,
         keySerde: Serde<K>,
         valueSerde: Serde<V>,
         config: RetryConfig = RetryConfig(),
-        businessLogic: (record: Record<K, V>) -> Unit
+        noinline businessLogic: (record: Record<K, V>) -> Unit
     ) {
-        // 1. Initialiser repository
+        // Liten lambda wrapper for å håndtere transformasjonen
+        val transformingLogic: (Record<K, V>) -> Record<Void, Void>? = { record ->
+            businessLogic(record) // Kall den originale logikken
+            null // Returner null for å signalisere at ingenting skal sendes videre
+        }
+
+        addTransformingRetryableProcessor<K, V, Void, Void>(
+            builder, inputTopic, dataSource,
+            keyInSerde = keySerde,
+            valueInSerde = valueSerde,
+            config = config,
+            businessLogic = transformingLogic
+        )
+    }
+
+    /**
+     * Legger til en transformerende retry-prosessor i topologien.
+     * Den konsumerer fra 'inputTopic', prosesserer, og returnerer en ny KStream
+     * med de vellykkede resultatene.
+     */
+    inline fun <reified KIn, reified VIn, reified KOut, reified VOut> addTransformingRetryableProcessor(
+        builder: StreamsBuilder,
+        inputTopic: String,
+        dataSource: DataSource,
+        keyInSerde: Serde<KIn>, // Kun input-SerDes er nødvendig
+        valueInSerde: Serde<VIn>,
+        config: RetryConfig = RetryConfig(),
+        noinline businessLogic: (record: Record<KIn, VIn>) -> Record<KOut, VOut>?
+    ): KStream<KOut, VOut> {
+
         val repository = FailedMessageRepository(dataSource)
-
-        // 2. Lag en StoreBuilder for vår custom state store
         val storeBuilder = PostgresRetryStoreBuilder(config.stateStoreName, repository)
-
-        // 3. Legg state store-en til topologien ved hjelp av StoreBuilder
         builder.addStateStore(storeBuilder)
 
-        // 4. Lag ProcessorSupplier
-        val processorSupplier = ProcessorSupplier<K, V, Void, Void> {
+        val processorSupplier = ProcessorSupplier<KIn, VIn, KOut, VOut> {
             RetryableProcessor(
                 config = config,
-                keySerializer = keySerde.serializer(),
-                valueSerializer = valueSerde.serializer(),
-                valueDeserializer = valueSerde.deserializer(),
+                keyInSerializer = keyInSerde.serializer(),
+                valueInSerializer = valueInSerde.serializer(),
+                keyInDeserializer = keyInSerde.deserializer(),
+                valueInDeserializer = valueInSerde.deserializer(),
                 topic = inputTopic,
                 repository = repository,
                 businessLogic = businessLogic
             )
         }
 
-        // 5. Koble alt sammen i topologien (uendret)
-        builder.stream(inputTopic, Consumed.with(keySerde, valueSerde))
-            .process(processorSupplier, config.stateStoreName)
+        val inputStream = builder.stream(inputTopic, Consumed.with(keyInSerde, valueInSerde))
+        val processedStream =  inputStream.process(processorSupplier, config.stateStoreName)
+        // Vi må filtrere ut null-verdiene som terminal-versjonen introduserer.
+        @Suppress("UNCHECKED_CAST")
+        return processedStream.filterNot { _, value -> value == null } as KStream<KOut, VOut>
     }
 }

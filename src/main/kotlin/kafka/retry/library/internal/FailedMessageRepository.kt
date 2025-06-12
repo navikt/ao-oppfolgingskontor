@@ -16,7 +16,7 @@ class FailedMessageRepository(dataSource: DataSource) {
             .one()
     }
 
-    fun enqueue(keyString: String, keyBytes: ByteArray?, value: ByteArray, reason: String) = jdbi.useHandle<Exception> { handle ->
+    fun enqueue(keyString: String, keyBytes: ByteArray, value: ByteArray, reason: String) = jdbi.useHandle<Exception> { handle ->
         handle.createUpdate("""
             INSERT INTO failed_messages (message_key_text, message_key_bytes, message_value, failure_reason)
             VALUES (:keyString, :keyBytes, :value, :reason)

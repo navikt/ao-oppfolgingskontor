@@ -18,8 +18,10 @@ fun Application.module() {
     configureMonitoring()
     configureHealthAndCompression()
     configureSecurity()
-    configureDatabase()
-    install(KafkaStreamsPlugin)
+    val dataSource = configureDatabase()
+    install(KafkaStreamsPlugin) {
+        this.dataSource = dataSource
+    }
     val norg2Client = Norg2Client(environment.getNorg2Url())
     val kontorNavnService = KontorNavnService(norg2Client)
     val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService)
