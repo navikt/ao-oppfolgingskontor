@@ -88,7 +88,7 @@ graphql {
         )
     }
     client {
-        endpoint = "https://pdl-playground.dev.intern.nav.no/graphql"
+        schemaFile = file("src/main/resources/graphql/schema.graphql")
         packageName = "no.nav.http.graphql.generated.client"
     }
 }
