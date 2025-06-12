@@ -37,12 +37,12 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
             endringPaOppfolgingsBrukerConsumer.consume(record, maybeRecordMetadata) })
 
         val oppfolgingsPeriodeConsumer = OppfolgingsPeriodeConsumer(automatiskKontorRutingService)
-        val oppfolgingsPeriodeTopic = environment.config.property("topics.inn.oppfolgingsperiodeV2").getString()
+        val oppfolgingsPeriodeTopic = environment.config.property("topics.inn.oppfolgingsperiodeV1").getString()
         val kontorRutingTopology = configureTopology(oppfolgingsPeriodeTopic, { record, maybeRecordMetadata ->
             oppfolgingsPeriodeConsumer.consume(record, maybeRecordMetadata) })
 
         val kafkaStreams = configureStream(listOf(
-            oppdaterArenaKontorTopology,
+//            oppdaterArenaKontorTopology,
             kontorRutingTopology
         ), environment.config)
 
