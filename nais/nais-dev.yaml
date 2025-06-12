@@ -58,6 +58,8 @@ spec:
           namespace: org
         - application: poao-tilgang
           namespace: poao
+        - application: paw-arbeidssoekerregisteret-api-oppslag
+          namespace: paw
   azure:
     application:
       enabled: true
