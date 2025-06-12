@@ -5,7 +5,7 @@ import org.apache.kafka.streams.processor.StateStoreContext
 
 interface PostgresRetryStore : StateStore {
     fun hasFailedMessages(key: String): Boolean
-    fun enqueue(key: String, value: ByteArray, reason: String)
+    fun enqueue(keyString: String, keyBytes: ByteArray?, value: ByteArray, reason: String)
     fun getBatchToRetry(limit: Int): List<FailedMessage>
     fun delete(messageId: Long)
     fun updateAfterFailedAttempt(messageId: Long, newReason: String)
@@ -33,7 +33,7 @@ internal class PostgresRetryStoreImpl(
 
     // Deleger kall til repository
     override fun hasFailedMessages(key: String) = repository.hasFailedMessages(key)
-    override fun enqueue(key: String, value: ByteArray, reason: String) = repository.enqueue(key, value, reason)
+    override fun enqueue(keyString: String, keyBytes: ByteArray?, value: ByteArray, reason: String) = repository.enqueue(keyString, keyBytes, value, reason)
     override fun getBatchToRetry(limit: Int): List<FailedMessage> = repository.getBatchToRetry(limit)
     override fun delete(messageId: Long) = repository.delete(messageId)
     override fun updateAfterFailedAttempt(messageId: Long, newReason: String) =

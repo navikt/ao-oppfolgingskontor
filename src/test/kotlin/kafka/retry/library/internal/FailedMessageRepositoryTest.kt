@@ -8,6 +8,7 @@ import org.flywaydb.core.Flyway
 import org.junit.Before
 import org.junit.Test
 import javax.sql.DataSource
+import kotlin.text.toByteArray
 
 class FailedMessageRepositoryTest {
   private var dataSource: DataSource = TestDb.postgres
@@ -55,7 +56,7 @@ class FailedMessageRepositoryTest {
    repository.countTotalFailedMessages() shouldBe 0
 
 
-   repository.enqueue(key, value, "Initial failure")
+   repository.enqueue(key, value, key.toByteArray(),"Initial failure")
 
    repository.hasFailedMessages(key) shouldBe true
    repository.hasFailedMessages(otherKey) shouldBe false
@@ -65,20 +66,20 @@ class FailedMessageRepositoryTest {
 
   @Test
   fun `should retrieve batch to retry in FIFO order`() {
-   repository.enqueue("key1", "val1".toByteArray(), "fail1")
+   repository.enqueue("key1", "key1".toByteArray(), "val1".toByteArray(), "fail1")
    Thread.sleep(10) // Sørg for unik timestamp
-   repository.enqueue("key2", "val2".toByteArray(), "fail2")
+   repository.enqueue("key2", "key2".toByteArray(), "val2".toByteArray(), "fail2")
 
    val batch = repository.getBatchToRetry(5)
 
    batch.size shouldBe 2
-   batch[0].messageKey shouldBe "key1"
-   batch[1].messageKey shouldBe "key2"
+   batch[0].messageKeyText shouldBe "key1"
+   batch[1].messageKeyText shouldBe "key2"
   }
 
   @Test
   fun `should delete a message by id`() {
-   repository.enqueue("key-to-delete", "val".toByteArray(), "failure")
+   repository.enqueue("key-to-delete", "key-to-delete".toByteArray(), "val".toByteArray(), "failure")
    val message = repository.getBatchToRetry(1).first()
 
    repository.delete(message.id)
@@ -89,7 +90,7 @@ class FailedMessageRepositoryTest {
 
   @Test
   fun `should update a message after a failed attempt`() {
-   repository.enqueue("key-to-update", "val".toByteArray(), "Initial failure")
+   repository.enqueue("key-to-update", "key-to-update".toByteArray(), "val".toByteArray(), "Initial failure")
    val message = repository.getBatchToRetry(1).first()
 
    repository.updateAfterFailedAttempt(message.id, "Second failure")

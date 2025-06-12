@@ -10,18 +10,19 @@ class FailedMessageRepository(dataSource: DataSource) {
     }
 
     fun hasFailedMessages(key: String): Boolean = jdbi.withHandle<Boolean, Exception> { handle ->
-        handle.createQuery("SELECT EXISTS (SELECT 1 FROM failed_messages WHERE message_key = :key)")
+        handle.createQuery("SELECT EXISTS (SELECT 1 FROM failed_messages WHERE message_key_text = :key)")
             .bind("key", key)
             .mapTo(Boolean::class.java)
             .one()
     }
 
-    fun enqueue(key: String, value: ByteArray, reason: String) = jdbi.useHandle<Exception> { handle ->
+    fun enqueue(keyString: String, keyBytes: ByteArray?, value: ByteArray, reason: String) = jdbi.useHandle<Exception> { handle ->
         handle.createUpdate("""
-            INSERT INTO failed_messages (message_key, message_value, failure_reason)
-            VALUES (:key, :value, :reason)
+            INSERT INTO failed_messages (message_key_text, message_key_bytes, message_value, failure_reason)
+            VALUES (:keyString, :keyBytes, :value, :reason)
         """)
-            .bind("key", key)
+            .bind("keyString", keyString)
+            .bind("keyBytes", keyBytes)
             .bind("value", value)
             .bind("reason", reason)
             .execute()
@@ -30,7 +31,7 @@ class FailedMessageRepository(dataSource: DataSource) {
     // Henter en batch med meldinger klare for reprosessering
     fun getBatchToRetry(limit: Int): List<FailedMessage> = jdbi.withHandle<List<FailedMessage>, Exception> { handle ->
         handle.createQuery("""
-            SELECT id, message_key, message_value, queue_timestamp, retry_count, last_attempt_timestamp, failure_reason
+            SELECT id, message_key_text, message_key_bytes, message_value, queue_timestamp, retry_count, last_attempt_timestamp, failure_reason
             FROM failed_messages
             ORDER BY queue_timestamp
             LIMIT :limit

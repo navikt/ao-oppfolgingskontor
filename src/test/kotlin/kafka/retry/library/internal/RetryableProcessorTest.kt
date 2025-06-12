@@ -87,7 +87,7 @@ class RetryableProcessorTest {
   processor.process(Record("key1", "good-value", 0L))
 
   // Assert
-  verify(exactly = 0) { mockedStore.enqueue(any(), any(), any()) }
+  verify(exactly = 0) { mockedStore.enqueue(any(), any(), any(), any()) }
   verify(exactly = 0) { mockedMetrics.messageEnqueued() }
  }
 
@@ -102,6 +102,7 @@ class RetryableProcessorTest {
   // Assert
   verify(exactly = 1) { mockedStore.enqueue(
    eq("key1"),
+   any(),
    any(),
    match { it.contains("Simulated failure") }
   )
@@ -118,7 +119,7 @@ class RetryableProcessorTest {
   processor.process(Record("key1", "good-value-but-blocked", 0L))
 
   // Assert
-  verify { mockedStore.enqueue(eq("key1"), any(), match { it.contains("Queued behind") }) }
+  verify { mockedStore.enqueue(eq("key1"), any(), any(), match { it.contains("Queued behind") }) }
   verify { mockedMetrics.messageEnqueued() }
  }
 
@@ -126,7 +127,7 @@ class RetryableProcessorTest {
  fun `punctuation should attempt to retry and succeed`() {
   // Arrange
   val realTimestamp = OffsetDateTime.now()
-  val failedMessage = FailedMessage(1L, "key1", "value".toByteArray(), realTimestamp, 0)
+  val failedMessage = FailedMessage(1L, "key1", "key1".toByteArray(), "value".toByteArray(), realTimestamp, 0)
   every { mockedStore.getBatchToRetry(any()) } returns listOf(failedMessage)
 
   // Act
@@ -148,7 +149,7 @@ class RetryableProcessorTest {
   // Arrange
   val realTimestamp = OffsetDateTime.now()
   // Meldingen inneholder "FAIL" for å trigge feil i businessLogic
-  val failedMessage = FailedMessage(1L, "key1", "value-with-FAIL".toByteArray(), realTimestamp, 1)
+  val failedMessage = FailedMessage(1L, "key1", "key1".toByteArray(), "value-with-FAIL".toByteArray(), realTimestamp, 1)
   every { mockedStore.getBatchToRetry(any()) } returns listOf(failedMessage)
 
   // Act
@@ -164,7 +165,7 @@ class RetryableProcessorTest {
  fun `punctuation should dead-letter message if max retries is exceeded`() {
   // Arrange
   val realTimestamp = OffsetDateTime.now()
-  val failedMessage = FailedMessage(1L, "key1", "value".toByteArray(), realTimestamp, retryCount = 2)
+  val failedMessage = FailedMessage(1L, "key1", "key1".toByteArray(), "value".toByteArray(), realTimestamp, retryCount = 2)
   every { mockedStore.getBatchToRetry(any()) } returns listOf(failedMessage)
 
   // Act

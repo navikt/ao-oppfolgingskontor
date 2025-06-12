@@ -78,7 +78,7 @@ internal class RetryableProcessor<K, V>(
             if (config.maxRetries != -1 && msg.retryCount >= config.maxRetries) {
                 // Meldingen har feilet for mange ganger. Betraktes som "dead-letter".
                 metrics.messageDeadLettered()
-                logger.error("Message ${msg.id} for key '${msg.messageKey}' has exceeded max retries (${config.maxRetries}). Deleting from queue.")
+                logger.error("Message ${msg.id} for key '${msg.messageKeyText}' has exceeded max retries (${config.maxRetries}). Deleting from queue.")
                 store.delete(msg.id)
                 continue // Gå til neste melding
             }
@@ -94,14 +94,14 @@ internal class RetryableProcessor<K, V>(
                 // Vellykket! Slett fra databasen og oppdater metrikk.
                 store.delete(msg.id)
                 metrics.retrySucceeded()
-                logger.info("Successfully reprocessed message ${msg.id} for key '${msg.messageKey}'.")
+                logger.info("Successfully reprocessed message ${msg.id} for key '${msg.messageKeyText}'.")
 
             } catch (e: Exception) {
                 // Feilet igjen. Oppdater databasen og metrikken.
                 val reason = "Reprocessing failed: ${e.javaClass.simpleName} - ${e.message}"
                 store.updateAfterFailedAttempt(msg.id, reason)
                 metrics.retryFailed()
-                logger.warn("Reprocessing message ${msg.id} for key '${msg.messageKey}' failed again. Reason: $reason")
+                logger.warn("Reprocessing message ${msg.id} for key '${msg.messageKeyText}' failed again. Reason: $reason")
             }
         }
     }
@@ -111,8 +111,9 @@ internal class RetryableProcessor<K, V>(
      */
     private fun enqueue(record: Record<K, V>, reason: String) {
         val keyString = record.key()?.toString() ?: "null-key"
+        val keyBytes = record.key()?.let { keySerializer.serialize(topic, it) } // Serialiser nøkkelen
         val valueBytes = valueSerializer.serialize(topic, record.value())
-        store.enqueue(keyString, valueBytes, reason)
+        store.enqueue(keyString, keyBytes, valueBytes, reason)
         metrics.messageEnqueued()
         logger.info("Message for key '$keyString' was enqueued for retry. Reason: $reason")
     }
