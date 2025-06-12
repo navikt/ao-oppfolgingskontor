@@ -19,9 +19,7 @@ import java.time.OffsetDateTime
 /**
  * Enhetstester for RetryableProcessor.
  *
- * Denne klassen tester prosessoren i full isolasjon ved å mocke alle dens avhengigheter
- * (ProcessorContext, PostgresRetryStore, RetryMetrics). Dette er den robuste måten å
- * teste en Processor på, og unngår problemene med TopologyTestDriver for custom state stores.
+ * Det viste seg vanskelig å bruke TopologyTestDriver på grunn av manglende støtte for custom state stores.
  */
 class RetryableProcessorTest {
 
@@ -45,10 +43,9 @@ class RetryableProcessorTest {
   mockedContext = mockk(relaxed = true)
   mockedStore = mockk(relaxed = true)
 
-  // --- 2. Konfigurer Mock-oppførsel (den kritiske delen) ---
+  // --- 2. Konfigurer Mock-oppførsel  ---
 
   // Når context.getStateStore(ANY_STRING) kalles, returner vår mock.
-  // Dette er den KORREKTE måten å mocke dette kallet på.
   every { mockedContext.getStateStore<StateStore>(any<String>()) } returns mockedStore
 
   // Når context.schedule blir kalt, fang opp lambdaen (Consumer) som sendes inn
@@ -71,10 +68,9 @@ class RetryableProcessorTest {
   )
 
   // --- 4. Initialiser prosessoren ---
-  // Dette kallet vil nå lykkes fordi mockedContext er riktig konfigurert.
   processor.init(mockedContext)
 
-  // --- 5. (Valgfritt men anbefalt) Bytt ut metrikk-instans med en mock ---
+  // --- 5. Bytt ut metrikk-instans med en mock ---
   // Dette gjør verifisering av metrikk-kall mye enklere.
   mockedMetrics = mockk(relaxed = true)
   val metricsField = processor.javaClass.getDeclaredField("metrics")
@@ -129,7 +125,6 @@ class RetryableProcessorTest {
  @Test
  fun `punctuation should attempt to retry and succeed`() {
   // Arrange
-  // KORREKSJON: Bruk et ekte tidsstempel, ikke en mock!
   val realTimestamp = OffsetDateTime.now()
   val failedMessage = FailedMessage(1L, "key1", "value".toByteArray(), realTimestamp, 0)
   every { mockedStore.getBatchToRetry(any()) } returns listOf(failedMessage)
