@@ -5,6 +5,8 @@ metadata:
   namespace: dab
   labels:
     team: dab
+  annotations:
+    texas.nais.io/enabled: "true"
 spec:
   image: {{ image }}
   ingresses:
