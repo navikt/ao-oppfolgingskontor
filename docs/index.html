@@ -689,7 +689,7 @@
   <script>
     // Script section to load models into a JS Var
     var defs = {}
-            defs["ArbeidsOppfolgingKontorDTO"] = {
+            defs["ArbeidsoppfolgingsKontorTilordningDTO"] = {
   "required" : [ "fnr", "kontorId" ],
   "properties" : {
     "kontorId" : { },
@@ -746,7 +746,7 @@
                         <div class="pull-right"></div>
                         <div class="clearfix"></div>
                         <p></p>
-                        <p class="marked"></p>
+                        <p class="marked">Tilordne arbeidsoppfolgings-kontor til en bruker. Andre kontortyper kan ikke tilordnes manuelt.</p>
                         <p></p>
                         <br />
                         <pre class="prettyprint language-html prettyprinted" data-type="post"><code><span class="pln">/api/kontor</span></code></pre>
@@ -788,7 +788,7 @@ public class DefaultApiExample {
     public static void main(String[] args) {
         
         DefaultApi apiInstance = new DefaultApi();
-        ArbeidsOppfolgingKontorDTO body = ; // ArbeidsOppfolgingKontorDTO | 
+        ArbeidsoppfolgingsKontorTilordningDTO body = ; // ArbeidsoppfolgingsKontorTilordningDTO | 
         try {
             apiInstance.apiKontorPost(body);
         } catch (ApiException e) {
@@ -806,7 +806,7 @@ public class DefaultApiExample {
 
     public static void main(String[] args) {
         DefaultApi apiInstance = new DefaultApi();
-        ArbeidsOppfolgingKontorDTO body = ; // ArbeidsOppfolgingKontorDTO | 
+        ArbeidsoppfolgingsKontorTilordningDTO body = ; // ArbeidsoppfolgingsKontorTilordningDTO | 
         try {
             apiInstance.apiKontorPost(body);
         } catch (ApiException e) {
@@ -821,7 +821,7 @@ public class DefaultApiExample {
   <pre class="prettyprint language-json prettyprinted" data-type="json"><code>Coming Soon!</code></pre>
   </div> -->
                             <div class="tab-pane" id="examples-Default-apiKontorPost-0-objc">
-                              <pre class="prettyprint"><code class="language-cpp">ArbeidsOppfolgingKontorDTO *body = ; // 
+                              <pre class="prettyprint"><code class="language-cpp">ArbeidsoppfolgingsKontorTilordningDTO *body = ; // 
 
 DefaultApi *apiInstance = [[DefaultApi alloc] init];
 
@@ -838,7 +838,7 @@ DefaultApi *apiInstance = [[DefaultApi alloc] init];
                               <pre class="prettyprint"><code class="language-js">var AoOppfolgingskontorApi = require('ao_oppfolgingskontor_api');
 
 var api = new AoOppfolgingskontorApi.DefaultApi()
-var body = ; // {{ArbeidsOppfolgingKontorDTO}} 
+var body = ; // {{ArbeidsoppfolgingsKontorTilordningDTO}} 
 
 var callback = function(error, data, response) {
   if (error) {
@@ -869,7 +869,7 @@ namespace Example
         {
 
             var apiInstance = new DefaultApi();
-            var body = new ArbeidsOppfolgingKontorDTO(); // ArbeidsOppfolgingKontorDTO | 
+            var body = new ArbeidsoppfolgingsKontorTilordningDTO(); // ArbeidsoppfolgingsKontorTilordningDTO | 
 
             try
             {
@@ -890,7 +890,7 @@ namespace Example
 require_once(__DIR__ . '/vendor/autoload.php');
 
 $api_instance = new Swagger\Client\ApiDefaultApi();
-$body = ; // ArbeidsOppfolgingKontorDTO | 
+$body = ; // ArbeidsoppfolgingsKontorTilordningDTO | 
 
 try {
     $api_instance->apiKontorPost($body);
@@ -906,7 +906,7 @@ use WWW::SwaggerClient::Configuration;
 use WWW::SwaggerClient::DefaultApi;
 
 my $api_instance = WWW::SwaggerClient::DefaultApi->new();
-my $body = WWW::SwaggerClient::Object::ArbeidsOppfolgingKontorDTO->new(); # ArbeidsOppfolgingKontorDTO | 
+my $body = WWW::SwaggerClient::Object::ArbeidsoppfolgingsKontorTilordningDTO->new(); # ArbeidsoppfolgingsKontorTilordningDTO | 
 
 eval { 
     $api_instance->apiKontorPost(body => $body);
@@ -925,7 +925,7 @@ from pprint import pprint
 
 # create an instance of the API class
 api_instance = swagger_client.DefaultApi()
-body =  # ArbeidsOppfolgingKontorDTO | 
+body =  # ArbeidsoppfolgingsKontorTilordningDTO | 
 
 try: 
     api_instance.api_kontor_post(body)
@@ -954,7 +954,7 @@ except ApiException as e:
   "content" : {
     "*/*" : {
       "schema" : {
-        "$ref" : "#/components/schemas/ArbeidsOppfolgingKontorDTO"
+        "$ref" : "#/components/schemas/ArbeidsoppfolgingsKontorTilordningDTO"
       }
     }
   },

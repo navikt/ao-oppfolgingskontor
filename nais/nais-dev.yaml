@@ -5,6 +5,8 @@ metadata:
   namespace: dab
   labels:
     team: dab
+  annotations:
+    texas.nais.io/enabled: "true"
 spec:
   image: {{ image }}
   ingresses:
@@ -54,6 +56,10 @@ spec:
       rules:
         - application: norg2
           namespace: org
+        - application: poao-tilgang
+          namespace: poao
+        - application: paw-arbeidssoekerregisteret-api-oppslag
+          namespace: paw
   azure:
     application:
       enabled: true
@@ -64,3 +70,11 @@ spec:
   env:
     - name: NORG2_URL
       value: http://norg2.org
+    - name: POAO_TILGANG_URL
+      value: http://poao-tilgang.poao
+    - name: PDL_URL
+      value: https://pdl-api.dev-fss-pub.nais.io
+    - name: ARBEIDSSOKERREGISTERET_URL
+      value: https://arbeidssokerregisteret.dev-fss-pub.nais.io
+    - name: ARBEIDSSOKERREGISTERET_SCOPE
+      value: api://dev-gcp.paw.paw-arbeidssoekerregisteret-api-oppslag/.default

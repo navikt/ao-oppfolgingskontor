@@ -1,13 +1,22 @@
 package no.nav.no.nav
 
+import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
 import io.ktor.server.testing.testApplication
+import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.KontorHistorikkEntity
 import no.nav.db.table.KontorhistorikkTable
-import no.nav.kafka.EndringPaOppfolgingsBrukerConsumer
+import no.nav.domain.KontorId
+import no.nav.http.client.AlderFunnet
+import no.nav.http.client.GTKontorFunnet
+import no.nav.http.client.arbeidssogerregisteret.ProfileringEnum
+import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerConsumer
 import no.nav.kafka.config.configureTopology
 import no.nav.kafka.config.streamsErrorHandlerConfig
+import no.nav.kafka.consumers.OppfolgingsPeriodeConsumer
+import no.nav.services.AutomatiskKontorRutingService
+import no.nav.services.ProfileringFunnet
 import no.nav.utils.flywayMigrationInTest
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.StreamsConfig
@@ -19,6 +28,7 @@ import org.junit.Ignore
 import org.junit.Test
 import java.time.ZonedDateTime
 import java.util.Properties
+import java.util.UUID
 
 class KafkaApplicationTest {
     val topic = "test-topic"
@@ -45,6 +55,40 @@ class KafkaApplicationTest {
                 KontorHistorikkEntity.Companion
                     .find { KontorhistorikkTable.fnr eq fnr }
                     .count() shouldBe 2
+            }
+        }
+    }
+
+    @Test
+    fun `skal tilordne kontor til brukere som har fått startet oppfølging`() = testApplication {
+        val fnr = "22325678901"
+        val kontor = KontorId("2228")
+
+        application {
+            flywayMigrationInTest()
+            val aktorId = "1234567890123"
+            val periodeStart = ZonedDateTime.now().minusDays(2)
+            val consumer = OppfolgingsPeriodeConsumer(AutomatiskKontorRutingService(
+                { GTKontorFunnet(kontor) },
+                { AlderFunnet(40) },
+                { fnr },
+                { ProfileringFunnet(ProfileringEnum.ANTATT_GODE_MULIGHETER)}
+            ))
+            val topology = configureTopology(topic, consumer::consume)
+            val kafkaMockTopic = setupKafkaMock(topology, topic)
+            kafkaMockTopic.pipeInput(
+                fnr,
+                oppfolgingsperiodeMessage(UUID.randomUUID().toString(), periodeStart, null, aktorId)
+            )
+            transaction {
+                ArbeidsOppfolgingKontorEntity.Companion.findById(fnr)?.kontorId shouldBe "4154"
+                KontorHistorikkEntity.Companion
+                    .find { KontorhistorikkTable.fnr eq fnr }
+                    .count().let {
+                        withClue("Antall historikkinnslag skal være 1") {
+                            it shouldBe 1
+                        }
+                    }
             }
         }
     }
@@ -101,6 +145,15 @@ class KafkaApplicationTest {
 
     fun endringPaOppfolgingsBrukerMessage(kontorId: String, sistEndretDato: ZonedDateTime): String {
         return """{"oppfolgingsenhet":"$kontorId", "sistEndretDato": "$sistEndretDato" }"""
+    }
+
+    fun oppfolgingsperiodeMessage(
+        uuid: String,
+        startDato: ZonedDateTime,
+        sluttDato: ZonedDateTime?,
+        aktorId: String
+    ): String {
+        return """{"uuid":"$uuid", "startDato":"$startDato", "sluttDato":${sluttDato?.let { "\"$it\"" } ?: "null"}, "startetBegrunnelse": "SYKEMELDT_MER_OPPFOLGING" "aktorId":"$aktorId"}"""
     }
 }
 

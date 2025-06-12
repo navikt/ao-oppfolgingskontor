@@ -28,7 +28,7 @@ fun configureTopology(topic: String, processRecord: ProcessRecord): Topology {
     return builder.build()
 }
 
-fun configureStream(topology: Topology, config: ApplicationConfig): KafkaStreams {
+fun configureStream(topologies: List<Topology>, config: ApplicationConfig): List<KafkaStreams> {
     val naisKafkaEnv = config.toKafkaEnv()
 
     val config = Properties()
@@ -36,7 +36,9 @@ fun configureStream(topology: Topology, config: ApplicationConfig): KafkaStreams
         .streamsErrorHandlerConfig()
         .securityConfig(naisKafkaEnv)
 
-    return KafkaStreams(topology, config)
+    return topologies.map { topology ->
+        KafkaStreams(topology, config)
+    }
 }
 
 private fun Properties.streamsConfig(config: NaisKafkaEnv, appConfig: ApplicationConfig): Properties {
