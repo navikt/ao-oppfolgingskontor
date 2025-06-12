@@ -2,6 +2,9 @@ package no.nav.http.client.arbeidssogerregisteret
 
 import io.ktor.client.*
 import io.ktor.client.call.*
+import io.ktor.client.engine.cio.*
+import io.ktor.client.plugins.auth.*
+import io.ktor.client.plugins.auth.providers.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.http.*
@@ -18,10 +21,25 @@ fun ApplicationEnvironment.getArbeidssokerregisteretUrl(): String {
     return config.property("apis.arbeidssokerregisteret.url").getString()
 }
 
+fun ApplicationEnvironment.getArbeidssokerregisteretScope(): String {
+    return config.property("apis.arbeidssokerregisteret.scope").getString()
+}
+
 class ArbeidssokerregisterClient(
     private val baseUrl: String,
     private val azureTokenProvider: suspend () -> TexasTokenResponse,
-    private val client: HttpClient = HttpClient {
+    private val client: HttpClient = HttpClient(CIO) {
+        install(Auth) {
+            bearer {
+                loadTokens {
+                    val result = azureTokenProvider()
+                    when (result) {
+                        is TexasTokenSuccessResult -> BearerTokens(result.accessToken, null)
+                        else -> throw IllegalStateException("Kunne ikke hente token fra Azure: $result")
+                    }
+                }
+            }
+        }
         install(ContentNegotiation) {
             json()
         }
@@ -32,21 +50,18 @@ class ArbeidssokerregisterClient(
         identitetsnummer: String
     ): ProfileringsResultat {
         try {
+            val oboTokenResult = azureTokenProvider()
+            val token: TexasTokenSuccessResult = when (oboTokenResult) {
+                is TexasTokenSuccessResult -> oboTokenResult
+                else -> return ProfileringsResultatFeil(IllegalStateException("Ugyldig token type mottatt fra Azure"))
+            }
             val result = client.post("$baseUrl/api/v1/veileder/arbeidssoekerperioder-aggregert") {
                 contentType(ContentType.Application.Json)
                 setBody(ArbeidssoekerperiodeRequest(identitetsnummer))
-
-                when (azureTokenProvider()) {
-                    is TexasTokenSuccessResult -> {
-                        headers {
-                            append(HttpHeaders.Authorization, "Bearer ${azureTokenProvider()}")
-                        }
-                    }
-
-                    else -> throw IllegalStateException("Ugyldig token type mottatt fra Azure")
-                }
-
                 url.parameters.append("siste", "true")
+                headers {
+                    append(HttpHeaders.Authorization, "Bearer ${token}")
+                }
             }.body<List<ArbeidssoekerperiodeAggregertResponse>>()
 
             return result.first { it.tom == null }.profilering?.let { ProfileringFunnet(it.profilertTil) }

@@ -5,6 +5,7 @@ import io.ktor.server.netty.*
 import no.nav.db.configureDatabase
 import no.nav.http.client.*
 import no.nav.http.client.arbeidssogerregisteret.ArbeidssokerregisterClient
+import no.nav.http.client.arbeidssogerregisteret.getArbeidssokerregisteretScope
 import no.nav.http.client.arbeidssogerregisteret.getArbeidssokerregisteretUrl
 import no.nav.http.configureArbeidsoppfolgingskontorModule
 import no.nav.http.graphql.configureGraphQlModule
@@ -31,7 +32,7 @@ fun Application.module() {
     val texasTokenClient = TexasClient(environment.getNaisTokenExchangeEndpoint())
     val arbeidssokerregisterClient = ArbeidssokerregisterClient(
         environment.getArbeidssokerregisteretUrl(),
-        { texasTokenClient.getToken() })
+        { texasTokenClient.getToken(environment.getArbeidssokerregisteretScope()) })
 
     val kontorNavnService = KontorNavnService(norg2Client)
     val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService)

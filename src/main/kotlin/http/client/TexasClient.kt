@@ -1,56 +1,135 @@
 package no.nav.http.client
 
+import com.github.benmanes.caffeine.cache.Caffeine
+import com.github.benmanes.caffeine.cache.Expiry
 import io.ktor.client.*
 import io.ktor.client.call.*
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.auth.*
+import io.ktor.client.plugins.auth.providers.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.logging.*
 import io.ktor.client.request.*
+import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
-import io.ktor.server.application.ApplicationEnvironment
+import io.ktor.server.application.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import org.slf4j.LoggerFactory
 
 
 fun ApplicationEnvironment.getNaisTokenExchangeEndpoint(): String {
     return config.property("auth.naisTokenExchangeEndpoint").getString()
 }
 
+class ExpirableToken(
+    val token: String,
+    val expiresAt: Long,
+    val tokenType: String
+)
+
+val expiry: Expiry<String, ExpirableToken> = object : Expiry<String, ExpirableToken> {
+    val leeway = 1000L // 1 second leeway to avoid issues with clock skew
+    override fun expireAfterCreate(
+        key: String,
+        token: ExpirableToken,
+        currentTime: Long // Nanoseconds since epoch
+    ): Long {
+        return (token.expiresAt + leeway) - currentTime
+    }
+
+    override fun expireAfterUpdate(
+        key: String,
+        token: ExpirableToken,
+        currentTime: Long,
+        currentDuration: Long // Nanoseconds since epoch
+    ): Long {
+        return (token.expiresAt + leeway) - currentTime
+    }
+
+    override fun expireAfterRead(
+        key: String,
+        token: ExpirableToken,
+        currentTime: Long,
+        currentDuration: Long // Nanoseconds since epoch
+    ): Long {
+        return (token.expiresAt + leeway) - currentTime
+    }
+}
+
+
+fun TexasTokenSuccessResult.toExpirableToken(): ExpirableToken {
+    return ExpirableToken(
+        token = this.accessToken,
+        expiresAt = System.currentTimeMillis() + (expiresIn * 1000),
+        tokenType = tokenType
+    )
+}
+fun ExpirableToken.toTexasTokenResponse(): TexasTokenSuccessResult {
+    return TexasTokenSuccessResult(
+        accessToken = this.token,
+        expiresIn = ((this.expiresAt - System.currentTimeMillis()) / 1000).toInt(),
+        tokenType = this.tokenType
+    )
+}
+
 class TexasClient(
     private val tokenEndpoint: String,
-    private val httpClient: HttpClient = HttpClient() {
+    private val httpClient: HttpClient = HttpClient(CIO) {
         install(Logging)
         install(ContentNegotiation) {
             json()
         }
-    }
+    },
 ) {
-    suspend fun getToken(): TexasTokenResponse {
-        val texasTokenRequest = TexasTokenRequest(
-            identityProvider = "azuread"
-        )
-        val response =
-            httpClient.post(tokenEndpoint) {
-                header(HttpHeaders.ContentType, ContentType.Application.Json)
-                setBody(texasTokenRequest)
-            }
+    private val cache = Caffeine.newBuilder()
+        .expireAfter(expiry)
+        .build<String, ExpirableToken>()
 
-        if (!response.status.isSuccess()) {
-            return TexasTokenFailedResult("Kall for autentisering mot Texas feilet")
+    val logger = LoggerFactory.getLogger(this::class.java)
+
+    suspend fun getToken(target: String): TexasTokenResponse {
+        val cachedValue = cache.getIfPresent(target)
+        if (cachedValue != null) return cachedValue.toTexasTokenResponse()
+
+        val texasTokenRequest = TexasTokenRequest(
+            identityProvider = "azuread",
+            target = target,
+        )
+        try {
+            val response =
+                httpClient.post(tokenEndpoint) {
+                    header(HttpHeaders.ContentType, ContentType.Application.Json)
+                    setBody(texasTokenRequest)
+                }
+
+            if (!response.status.isSuccess()) {
+                logger.error("Kall for autentisering mot Texas feilet - HTTP ${response.status.value} - ${response.bodyAsText()}")
+                return TexasTokenFailedResult("Kall for autentisering mot Texas feilet - HTTP ${response.status.value} - ${response.bodyAsText()} ")
+            }
+            return response.body<TexasTokenSuccessResult>()
+                .also {
+                    cache.put(target, it.toExpirableToken())
+                }
+        } catch (e: Throwable) {
+            logger.error("Kall for autentisering mot Texas feilet: ${e.message ?: "Ukjent feil"}", e)
+            return TexasTokenFailedResult("Kall for autentisering mot Texas feilet: ${e.message ?: "Ukjent feil"}")
         }
-        return response.body<TexasTokenSuccessResult>()
+
     }
 }
 
 @Serializable
 data class TexasTokenRequest(
-    @SerialName("identity_provider") val identityProvider: String
+    @SerialName("identity_provider") val identityProvider: String,
+    val target: String
 )
 
 sealed class TexasTokenResponse
 data class TexasTokenFailedResult(val errorMessage: String) : TexasTokenResponse()
 data class TexasTokenSuccessResult(
     @SerialName("access_token") val accessToken: String,
-    @SerialName("expires_in") val expiresIn: Int,
+    @SerialName("expires_in") val expiresIn: Int, // in seconds
     @SerialName("token_type") val tokenType: String,
 ) : TexasTokenResponse()
