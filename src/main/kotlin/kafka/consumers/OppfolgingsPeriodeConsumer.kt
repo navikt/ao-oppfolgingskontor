@@ -43,6 +43,13 @@ class OppfolgingsPeriodeConsumer(
         val startDato: ZonedDateTime,
         @Serializable(with = ZonedDateTimeSerializer::class)
         val sluttDato: ZonedDateTime?,
-        val aktorId: String
+        val aktorId: String,
+        val startetBegrunnelse: StartetBegrunnelse
     )
+
+    enum class StartetBegrunnelse {
+        ARBEIDSSOKER,
+        SYKEMELDT_MER_OPPFOLGING,
+        MANUELL_REGISTRERING_VEILEDER // Ikke brukt enda
+    }
 }
