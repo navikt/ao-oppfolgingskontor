@@ -43,6 +43,8 @@ dependencies {
     implementation(libs.exposed.datetime)
     implementation(libs.exposed.jdbc)
     implementation(libs.exposed.dao)
+    implementation(libs.jdbi3.core)
+    implementation(libs.jdbi3.kotlin)
     implementation(libs.h2)
     implementation(libs.postgresql)
     implementation(libs.ktor.server.metrics)
@@ -73,6 +75,7 @@ dependencies {
     testImplementation(libs.kotlin.test.junit)
     testImplementation(libs.kafka.streams.test.utils)
     testImplementation(libs.kotest.assertions)
+    testImplementation(libs.mockk)
 }
 
 graphql {
