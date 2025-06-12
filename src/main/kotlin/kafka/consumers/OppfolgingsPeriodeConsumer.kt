@@ -9,22 +9,30 @@ import no.nav.services.AutomatiskKontorRutingService
 import no.nav.utils.ZonedDateTimeSerializer
 import org.apache.kafka.streams.processor.api.Record
 import org.apache.kafka.streams.processor.api.RecordMetadata
+import org.slf4j.LoggerFactory
 import java.time.ZonedDateTime
 
 class OppfolgingsPeriodeConsumer(
     private val automatiskKontorRutingService: AutomatiskKontorRutingService
 ) {
+    val log = LoggerFactory.getLogger(this::class.java)
     fun consume(record: Record<String, String>, maybeRecordMetadata: RecordMetadata?): RecordProcessingResult {
         val aktorId = record.key()
-        val oppfolgingsperiode = Json.decodeFromString<OppfolgingsperiodeDTO>(record.value())
 
-        if (oppfolgingsperiode.sluttDato != null) {
-            return RecordProcessingResult.SKIP
-        } else {
-            runBlocking {
-                automatiskKontorRutingService.tilordneKontorAutomatisk(aktorId)
+        try {
+            val oppfolgingsperiode = Json.decodeFromString<OppfolgingsperiodeDTO>(record.value())
+            if (oppfolgingsperiode.sluttDato != null) {
+                return RecordProcessingResult.SKIP
+            } else {
+                runBlocking {
+                    automatiskKontorRutingService.tilordneKontorAutomatisk(aktorId)
+                }
+                return RecordProcessingResult.COMMIT
             }
-            return RecordProcessingResult.COMMIT
+        } catch (e: Exception) {
+            log.error("Klarte ikke behandle oppfolgingsperiode melding", e)
+            // Log the error and skip processing this record
+            return RecordProcessingResult.SKIP
         }
     }
 
