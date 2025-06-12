@@ -63,4 +63,4 @@ kafka:
 topics:
   inn:
     endringPaOppfolgingsbruker: "pto.endring-paa-oppfolgingsbruker-v2"
-    oppfolgingsperiodeTopic=pto: "pto.oppfolgingsperiode-v1"
+    oppfolgingsperiodeV2: "pto.oppfolgingsperiode-v1"
