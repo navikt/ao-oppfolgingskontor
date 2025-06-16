@@ -1,20 +1,16 @@
 package no.nav.http.client
 
-import com.expediagroup.graphql.client.Generated
 import com.expediagroup.graphql.client.ktor.GraphQLKtorClient
 import com.expediagroup.graphql.client.types.GraphQLClientRequest
-import com.fasterxml.jackson.annotation.JsonProperty
-import io.ktor.client.HttpClient
-import io.ktor.client.HttpClientEngineContainer
-import io.ktor.client.engine.cio.CIO
-import kotlinx.serialization.Contextual
+import io.ktor.client.*
+import io.ktor.client.engine.cio.*
 import kotlinx.serialization.Serializable
 import no.nav.http.graphql.generated.client.HENT_ALDER_QUERY
-import no.nav.http.graphql.generated.client.HentAlderQuery
-import no.nav.http.graphql.generated.client.HentFnrQuery
+import no.nav.http.graphql.generated.client.HENT_FNR_QUERY
 import no.nav.http.graphql.generated.client.ID
 import no.nav.http.graphql.generated.client.enums.IdentGruppe
 import no.nav.http.graphql.generated.client.hentalderquery.Person
+import no.nav.http.graphql.generated.client.hentfnrquery.Identliste
 import java.net.URI
 import java.time.LocalDate
 import java.time.Period
@@ -34,6 +30,16 @@ data class HentAlderQuerySerializable(
     override val operationName: String = "hentAlderQuery"
     @Serializable data class Variables(val ident: ID)
     data class Result(val hentPerson: Person? = null)
+    override fun responseType(): KClass<Result> = Result::class
+}
+
+@Serializable
+data class HentFnrQuerySerializable(
+    override val variables: Variables,
+): GraphQLClientRequest<HentFnrQuerySerializable.Result> {
+    override val query: String = HENT_FNR_QUERY
+    @Serializable data class Variables(val ident: ID, val grupper: List<IdentGruppe>? = null, val historikk: Boolean)
+    data class Result(val hentIdenter: Identliste? = null)
     override fun responseType(): KClass<Result> = Result::class
 }
 
@@ -63,7 +69,7 @@ class PdlClient(
     }
 
     suspend fun hentFnrFraAktorId(aktorId: String): String? {
-        val query = HentFnrQuery(HentFnrQuery.Variables(ident = aktorId, historikk = false))
+        val query = HentFnrQuerySerializable(HentFnrQuerySerializable.Variables(ident = aktorId, historikk = false))
         val result = client.execute(query)
         return result.data?.hentIdenter?.identer
             ?.firstOrNull { it.gruppe == IdentGruppe.FOLKEREGISTERIDENT }
