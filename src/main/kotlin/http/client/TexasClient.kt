@@ -145,4 +145,9 @@ data class TexasTokenSuccessResult(
     val accessToken: String,
     val expiresIn: Int, // in seconds
     val tokenType: String,
-) : TexasTokenResponse()
+) : TexasTokenResponse() {
+    init {
+        require(!accessToken.startsWith("Bearer")) { "accessToken must not be prefixed with bearer" }
+        require(accessToken.isEmpty()) { "accessToken must not be empty" }
+    }
+}
