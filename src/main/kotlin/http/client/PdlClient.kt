@@ -1,20 +1,39 @@
 package no.nav.http.client
 
+import com.expediagroup.graphql.client.Generated
 import com.expediagroup.graphql.client.ktor.GraphQLKtorClient
+import com.expediagroup.graphql.client.types.GraphQLClientRequest
+import com.fasterxml.jackson.annotation.JsonProperty
 import io.ktor.client.HttpClient
+import io.ktor.client.HttpClientEngineContainer
 import io.ktor.client.engine.cio.CIO
+import kotlinx.serialization.Contextual
+import kotlinx.serialization.Serializable
+import no.nav.http.graphql.generated.client.HENT_ALDER_QUERY
 import no.nav.http.graphql.generated.client.HentAlderQuery
 import no.nav.http.graphql.generated.client.HentFnrQuery
+import no.nav.http.graphql.generated.client.ID
 import no.nav.http.graphql.generated.client.enums.IdentGruppe
+import no.nav.http.graphql.generated.client.hentalderquery.Person
 import java.net.URI
 import java.time.LocalDate
 import java.time.Period
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import kotlin.reflect.KClass
 
 sealed class AlderResult
 data class AlderFunnet(val alder: Int) : AlderResult()
 data class AlderIkkeFunnet(val message: String) : AlderResult()
+
+@Serializable
+class HentAlderQuerySerializable(
+    @Contextual
+    val delegate: HentAlderQuery
+): GraphQLClientRequest<HentAlderQuery.Result> by delegate {
+    override val variables: HentAlderQuery.Variables
+        get() = delegate.variables
+}
 
 class PdlClient(
     pdlGraphqlUrl: String,
@@ -25,7 +44,7 @@ class PdlClient(
         httpClient = ktorHttpClient
     )
     suspend fun hentAlder(fnr: String): AlderResult {
-        val query = HentAlderQuery(HentAlderQuery.Variables(fnr))
+        val query = HentAlderQuerySerializable(HentAlderQuery(HentAlderQuery.Variables(fnr)))
         val result = client.execute(query)
         if (result.errors != null && result.errors!!.isNotEmpty()) {
             return AlderIkkeFunnet(result.errors!!.joinToString { it.message })
