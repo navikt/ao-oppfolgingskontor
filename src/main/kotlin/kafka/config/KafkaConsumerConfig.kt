@@ -8,7 +8,6 @@ import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.config.SslConfigs
 import org.apache.kafka.common.serialization.Serdes
-import org.apache.kafka.streams.KafkaStreams
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
 import org.apache.kafka.streams.Topology
@@ -29,15 +28,12 @@ fun configureTopology(topicAndConsumers: List<Pair<String, ProcessRecord>>): Top
     return builder.build()
 }
 
-fun configureStream(topology: Topology, config: ApplicationConfig): KafkaStreams {
+fun configureKafkaStreams(config: ApplicationConfig): Properties {
     val naisKafkaEnv = config.toKafkaEnv()
-
-    val config = Properties()
+    return Properties()
         .streamsConfig(naisKafkaEnv, config)
         .streamsErrorHandlerConfig()
         .securityConfig(naisKafkaEnv)
-
-    return KafkaStreams(topology, config)
 }
 
 private fun Properties.streamsConfig(config: NaisKafkaEnv, appConfig: ApplicationConfig): Properties {

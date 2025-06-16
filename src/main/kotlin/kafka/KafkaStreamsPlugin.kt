@@ -8,11 +8,12 @@ import io.ktor.server.application.ApplicationStopping
 import io.ktor.server.application.createApplicationPlugin
 import io.ktor.server.application.hooks.MonitoringEvent
 import io.ktor.server.application.log
-import no.nav.kafka.config.configureStream
+import no.nav.kafka.config.configureKafkaStreams
 import no.nav.kafka.config.configureTopology
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerConsumer
 import no.nav.kafka.consumers.OppfolgingsPeriodeConsumer
 import no.nav.services.AutomatiskKontorRutingService
+import org.apache.kafka.streams.KafkaStreams
 import java.time.Duration
 
 val KafkaStreamsStarting: EventDefinition<Application> = EventDefinition()
@@ -41,7 +42,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
                 oppfolgingsPeriodeConsumer.consume(record, maybeRecordMetadata) }),
         )
 
-        val kafkaStream = configureStream(topology, environment.config)
+        val kafkaStream = KafkaStreams(topology, configureKafkaStreams(environment.config))
 
         val shutDownTimeout = Duration.ofSeconds(1)
 
