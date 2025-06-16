@@ -4,6 +4,12 @@ import com.expediagroup.graphql.client.ktor.GraphQLKtorClient
 import com.expediagroup.graphql.client.types.GraphQLClientRequest
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
+import io.ktor.client.plugins.auth.Auth
+import io.ktor.client.plugins.auth.providers.BearerTokens
+import io.ktor.client.plugins.auth.providers.bearer
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.serialization.kotlinx.json.json
+import io.ktor.server.application.ApplicationEnvironment
 import kotlinx.serialization.Serializable
 import no.nav.http.graphql.generated.client.HENT_ALDER_QUERY
 import no.nav.http.graphql.generated.client.HENT_FNR_QUERY
@@ -43,9 +49,29 @@ data class HentFnrQuerySerializable(
     override fun responseType(): KClass<Result> = Result::class
 }
 
+fun ApplicationEnvironment.getPdlScope(): String {
+    return config.property("apis.arbeidssokerregisteret.scope").getString()
+}
+
 class PdlClient(
     pdlGraphqlUrl: String,
-    ktorHttpClient: HttpClient = HttpClient(engineFactory = CIO),
+    private val azureTokenProvider: suspend () -> TexasTokenResponse,
+    ktorHttpClient: HttpClient = HttpClient(CIO) {
+        install(Auth) {
+            bearer {
+                loadTokens {
+                    val result = azureTokenProvider()
+                    when (result) {
+                        is TexasTokenSuccessResult -> BearerTokens(result.accessToken, null)
+                        else -> throw IllegalStateException("Kunne ikke hente token fra Azure: $result")
+                    }
+                }
+            }
+        }
+        install(ContentNegotiation) {
+            json()
+        }
+    }
 ) {
     val client = GraphQLKtorClient(
         url = URI.create(pdlGraphqlUrl).toURL(),

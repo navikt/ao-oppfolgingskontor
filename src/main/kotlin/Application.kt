@@ -28,8 +28,8 @@ fun Application.module() {
     configureDatabase()
     val norg2Client = Norg2Client(environment.getNorg2Url())
     val poaoTilgangHttpClient = PoaoTilgangKtorHttpClient(environment.getPoaoTilgangUrl())
-    val pdlClient = PdlClient(environment.getPDLUrl())
     val texasTokenClient = TexasClient(environment.getNaisTokenExchangeEndpoint())
+    val pdlClient = PdlClient(environment.getPDLUrl(), { texasTokenClient.getToken(environment.getPdlScope()) })
     val arbeidssokerregisterClient = ArbeidssokerregisterClient(
         environment.getArbeidssokerregisteretUrl(),
         { texasTokenClient.getToken(environment.getArbeidssokerregisteretScope()) })

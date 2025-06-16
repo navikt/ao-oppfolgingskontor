@@ -77,6 +77,8 @@ spec:
       value: http://poao-tilgang.poao
     - name: PDL_URL
       value: https://pdl-api.dev-fss-pub.nais.io
+    - name: PDL_SCOPE
+      value: api://dev-fss.pdl.pdl-api/.default
     - name: ARBEIDSSOKERREGISTERET_URL
       value: https://arbeidssokerregisteret.dev-fss-pub.nais.io
     - name: ARBEIDSSOKERREGISTERET_SCOPE

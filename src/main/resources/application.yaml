@@ -27,6 +27,7 @@ apis:
     url: "$POAO_TILGANG_URL"
   pdl:
     url: "$PDL_URL"
+    scope: "$PDL_SCOPE"
   arbeidssokerregisteret:
     url: "$ARBEIDSSOKERREGISTERET_URL"
     scope: "$ARBEIDSSOKERREGISTERET_SCOPE"
