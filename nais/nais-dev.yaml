@@ -60,6 +60,9 @@ spec:
           namespace: poao
         - application: paw-arbeidssoekerregisteret-api-oppslag
           namespace: paw
+      external:
+        - host: norg2.dev-fss-pub.nais.io
+        - host: pdl-api.dev-fss-pub.nais.io
   azure:
     application:
       enabled: true
