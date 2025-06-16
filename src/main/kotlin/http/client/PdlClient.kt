@@ -27,12 +27,14 @@ data class AlderFunnet(val alder: Int) : AlderResult()
 data class AlderIkkeFunnet(val message: String) : AlderResult()
 
 @Serializable
-class HentAlderQuerySerializable(
-    @Contextual
-    val delegate: HentAlderQuery
-): GraphQLClientRequest<HentAlderQuery.Result> by delegate {
-    override val variables: HentAlderQuery.Variables
-        get() = delegate.variables
+data class HentAlderQuerySerializable(
+    override val variables: Variables,
+    ) : GraphQLClientRequest<HentAlderQuerySerializable.Result> {
+    override val query: String = HENT_ALDER_QUERY
+    override val operationName: String = "hentAlderQuery"
+    @Serializable data class Variables(val ident: ID)
+    data class Result(val hentPerson: Person? = null)
+    override fun responseType(): KClass<Result> = Result::class
 }
 
 class PdlClient(
@@ -44,7 +46,7 @@ class PdlClient(
         httpClient = ktorHttpClient
     )
     suspend fun hentAlder(fnr: String): AlderResult {
-        val query = HentAlderQuerySerializable(HentAlderQuery(HentAlderQuery.Variables(fnr)))
+        val query = HentAlderQuerySerializable(HentAlderQuerySerializable.Variables(fnr))
         val result = client.execute(query)
         if (result.errors != null && result.errors!!.isNotEmpty()) {
             return AlderIkkeFunnet(result.errors!!.joinToString { it.message })
