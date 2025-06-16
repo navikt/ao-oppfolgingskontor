@@ -57,13 +57,22 @@ val expiry: Expiry<String, ExpirableToken> = object : Expiry<String, ExpirableTo
 }
 
 
-fun TexasTokenSuccessResult.toExpirableToken(): ExpirableToken {
+fun TexasTokenResponseDto.toExpirableToken(): ExpirableToken {
     return ExpirableToken(
         token = this.accessToken,
         expiresAt = System.currentTimeMillis() + (expiresIn * 1000),
         tokenType = tokenType
     )
 }
+
+fun TexasTokenResponseDto.toTexasTokenSuccessResult(): TexasTokenSuccessResult {
+    return TexasTokenSuccessResult(
+        accessToken = this.accessToken,
+        expiresIn = this.expiresIn,
+        tokenType = this.tokenType
+    )
+}
+
 fun ExpirableToken.toTexasTokenResponse(): TexasTokenSuccessResult {
     return TexasTokenSuccessResult(
         accessToken = this.token,
@@ -106,10 +115,9 @@ class TexasClient(
                 logger.error("Kall for autentisering mot Texas feilet - HTTP ${response.status.value} - ${response.bodyAsText()}")
                 return TexasTokenFailedResult("Kall for autentisering mot Texas feilet - HTTP ${response.status.value} - ${response.bodyAsText()} ")
             }
-            return response.body<TexasTokenSuccessResult>()
-                .also {
-                    cache.put(target, it.toExpirableToken())
-                }
+            return response.body<TexasTokenResponseDto>()
+                .also { cache.put(target, it.toExpirableToken()) }
+                .toTexasTokenSuccessResult()
         } catch (e: Throwable) {
             logger.error("Kall for autentisering mot Texas feilet: ${e.message ?: "Ukjent feil"}", e)
             return TexasTokenFailedResult("Kall for autentisering mot Texas feilet: ${e.message ?: "Ukjent feil"}")
@@ -124,10 +132,17 @@ data class TexasTokenRequest(
     val target: String
 )
 
-sealed class TexasTokenResponse
-data class TexasTokenFailedResult(val errorMessage: String) : TexasTokenResponse()
-data class TexasTokenSuccessResult(
+@Serializable
+data class TexasTokenResponseDto(
     @SerialName("access_token") val accessToken: String,
     @SerialName("expires_in") val expiresIn: Int, // in seconds
     @SerialName("token_type") val tokenType: String,
+)
+
+sealed class TexasTokenResponse
+data class TexasTokenFailedResult(val errorMessage: String) : TexasTokenResponse()
+data class TexasTokenSuccessResult(
+    val accessToken: String,
+    val expiresIn: Int, // in seconds
+    val tokenType: String,
 ) : TexasTokenResponse()
