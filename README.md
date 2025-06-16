@@ -9,15 +9,23 @@ Oppfølgingskontor for Arbeidsrettet Oppfølging
 | `Liste over Kontor fra Norg`           | Henter liste over kontor fra Norg2                                |
 
 ## Ubiquitous language
-- **Arbeidsoppfolgingkontor kontor**: Alltid satt manuelt av veileder (foreløpig)
-- **Arena kontor**: satt enten manuelt eller automatisk i Arena
-- **Geografisk-tilknyttet kontor**: Kontor som tilhører brukers folkeregistrerte adresse
+- **Arbeidsoppfolging-kontor**: Alltid satt manuelt av veileder (foreløpig)
+- **Arena-kontor**: satt enten manuelt eller automatisk i Arena
+- **Geografisk-tilknyttet-kontor**: Kontor som tilhører brukers folkeregistrerte adresse
   - Gitt en geografisk tilknytning (GT), sjekk i Norg2 hvilket kontor som er tilknyttet den GT-en
-- **Kontortilhørighet**: hvilket kontror en bruker tilhører
+- **Kontortilhørighet**: hvilket kontor en bruker tilhører
   - Kan være arbeidsoppfølging-kontor, arena-kontor eller GT-kontor
   - Kan være flere kontortilhørigheter samtidig men kun én av hver type
   - Har prioriteringsrekkefølge: arbeidsoppfølging-kontor (viktigst) > arena-kontor > GT-kontor
 - **Kontortilordning**: handlingen å sette kontoret til en bruker, kan være manuelt eller automatisk. Alle tre kontortyper kan settes. Inneholder hvem som utførte handlingen (system eller veileder-ident) og tidspunkt for når kontoret ble satt.
+  - AOKontorEndret
+    - KontorSattAvVeileder
+    - OppfolgingsPeriodeStartetLokalKontorTilordning
+    - OppfolgingsperiodeStartetNoeTilordning
+  - ArenaKontorEndret
+    - EndringPaaOppfolgingsBrukerFraArena
+  - GTKontorEndret
+    - Ingen foreløpig :(
 
 ## Business rules
 - Arbeidsoppfølgings-kontor > Arena-kontor > GT-kontor. 
