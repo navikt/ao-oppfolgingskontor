@@ -74,7 +74,7 @@ class PdlClient(
     }
 ) {
     val client = GraphQLKtorClient(
-        url = URI.create(pdlGraphqlUrl).toURL(),
+        url = URI.create("$pdlGraphqlUrl/graphql").toURL(),
         httpClient = ktorHttpClient
     )
     suspend fun hentAlder(fnr: String): AlderResult {
