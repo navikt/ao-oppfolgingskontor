@@ -16,19 +16,20 @@ import org.apache.kafka.streams.processor.api.Processor
 import org.apache.kafka.streams.processor.api.ProcessorSupplier
 import java.util.Properties
 
-fun configureTopology(topic: String, processRecord: ProcessRecord): Topology {
+fun configureTopology(topicAndConsumers: List<Pair<String, ProcessRecord>>): Topology {
     val builder = StreamsBuilder()
-    val sourceStream = builder.stream<String, String>(topic)
-
-    sourceStream.process(object : ProcessorSupplier<String, String, String, String> {
-        override fun get(): Processor<String, String, String, String> {
-            return ExplicitResultProcessor(processRecord)
-        }
-    })
+    topicAndConsumers.forEach { (topic, processRecord) ->
+        val sourceStream = builder.stream<String, String>(topic)
+        sourceStream.process(object : ProcessorSupplier<String, String, String, String> {
+            override fun get(): Processor<String, String, String, String> {
+                return ExplicitResultProcessor(processRecord)
+            }
+        })
+    }
     return builder.build()
 }
 
-fun configureStream(topologies: List<Topology>, config: ApplicationConfig): List<KafkaStreams> {
+fun configureStream(topology: Topology, config: ApplicationConfig): KafkaStreams {
     val naisKafkaEnv = config.toKafkaEnv()
 
     val config = Properties()
@@ -36,9 +37,7 @@ fun configureStream(topologies: List<Topology>, config: ApplicationConfig): List
         .streamsErrorHandlerConfig()
         .securityConfig(naisKafkaEnv)
 
-    return topologies.map { topology ->
-        KafkaStreams(topology, config)
-    }
+    return KafkaStreams(topology, config)
 }
 
 private fun Properties.streamsConfig(config: NaisKafkaEnv, appConfig: ApplicationConfig): Properties {
