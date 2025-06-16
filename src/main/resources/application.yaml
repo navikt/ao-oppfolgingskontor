@@ -10,6 +10,7 @@ ktor:
 auth:
   entraIssuer: "$AZURE_OPENID_CONFIG_ISSUER"
   naisTokenExchangeEndpoint: "$NAIS_TOKEN_EXCHANGE_ENDPOINT"
+  naisTokenEndpoint: "$NAIS_TOKEN_ENDPOINT"
 
 no:
   nav:

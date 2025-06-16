@@ -5,8 +5,6 @@ import com.github.benmanes.caffeine.cache.Expiry
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.auth.*
-import io.ktor.client.plugins.auth.providers.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.logging.*
 import io.ktor.client.request.*
@@ -19,8 +17,8 @@ import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
 
 
-fun ApplicationEnvironment.getNaisTokenExchangeEndpoint(): String {
-    return config.property("auth.naisTokenExchangeEndpoint").getString()
+fun ApplicationEnvironment.getNaisTokenEndpoint(): String {
+    return config.property("auth.naisTokenEndpoint").getString()
 }
 
 class ExpirableToken(
