@@ -148,6 +148,6 @@ data class TexasTokenSuccessResult(
 ) : TexasTokenResponse() {
     init {
         require(!accessToken.startsWith("Bearer")) { "accessToken must not be prefixed with bearer" }
-        require(accessToken.isEmpty()) { "accessToken must not be empty" }
+        require(accessToken.isNotEmpty()) { "accessToken must not be empty" }
     }
 }
