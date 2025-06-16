@@ -4,6 +4,7 @@ import com.expediagroup.graphql.client.ktor.GraphQLKtorClient
 import com.expediagroup.graphql.client.types.GraphQLClientRequest
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
+import io.ktor.client.plugins.api.createClientPlugin
 import io.ktor.client.plugins.auth.Auth
 import io.ktor.client.plugins.auth.providers.BearerTokens
 import io.ktor.client.plugins.auth.providers.bearer
@@ -53,10 +54,17 @@ fun ApplicationEnvironment.getPdlScope(): String {
     return config.property("apis.arbeidssokerregisteret.scope").getString()
 }
 
+val BehandlingsnummerHeaderPlugin = createClientPlugin("BehandlingsnummerHeaderPlugin") {
+    onRequest { request, _ ->
+        request.headers.append("Behandlingsnummber", "B884")
+    }
+}
+
 class PdlClient(
     pdlGraphqlUrl: String,
     private val azureTokenProvider: suspend () -> TexasTokenResponse,
     ktorHttpClient: HttpClient = HttpClient(CIO) {
+        install(BehandlingsnummerHeaderPlugin)
         install(Auth) {
             bearer {
                 loadTokens {
