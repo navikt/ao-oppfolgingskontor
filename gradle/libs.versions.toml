@@ -55,6 +55,7 @@ embedded-postgres = {module = "io.zonky.test:embedded-postgres", version.ref = "
 kafka-streams-test-utils = { module = "org.apache.kafka:kafka-streams-test-utils", version.ref = "kafka-streams" }
 kotest-assertions = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest-version" }
 graphql-kotlin-client = { module = "com.expediagroup:graphql-kotlin-ktor-client", version.ref = "graphql-kotlin-version" }
+graphql-kotlin-client-serialization = { module = "com.expediagroup:graphql-kotlin-client-serialization", version.ref = "graphql-kotlin-version" }
 graphql-kotlin-server = { module = "com.expediagroup:graphql-kotlin-ktor-server", version.ref = "graphql-kotlin-version" }
 graphql-kotlin-schema-generator = { module = "com.expediagroup:graphql-kotlin-schema-generator", version.ref = "graphql-kotlin-version" }
 token-validation-ktor-v3 = { module = "no.nav.security:token-validation-ktor-v3", version.ref ="token-validation-ktor-v3-version" }

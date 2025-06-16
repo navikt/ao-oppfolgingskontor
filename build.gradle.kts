@@ -1,3 +1,5 @@
+import com.expediagroup.graphql.plugin.gradle.config.GraphQLSerializer
+
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.ktor)
@@ -68,6 +70,7 @@ dependencies {
     implementation(libs.ktor.server.config.yaml)
     implementation(libs.kafka.streams)
     implementation(libs.graphql.kotlin.client)
+    implementation(libs.graphql.kotlin.client.serialization)
     implementation(libs.graphql.kotlin.server)
     implementation(libs.graphql.kotlin.schema.generator)
     implementation(libs.token.validation.ktor.v3)
@@ -88,6 +91,7 @@ graphql {
         )
     }
     client {
+        serializer = GraphQLSerializer.KOTLINX
         schemaFile = file("src/main/resources/graphql/schema.graphql")
         packageName = "no.nav.http.graphql.generated.client"
     }
