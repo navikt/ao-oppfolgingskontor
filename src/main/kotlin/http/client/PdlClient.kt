@@ -56,7 +56,7 @@ fun ApplicationEnvironment.getPdlScope(): String {
 
 val BehandlingsnummerHeaderPlugin = createClientPlugin("BehandlingsnummerHeaderPlugin") {
     onRequest { request, _ ->
-        request.headers.append("Behandlingsnummber", "B884")
+        request.headers.append("Behandlingsnummer", "B884")
     }
 }
 
