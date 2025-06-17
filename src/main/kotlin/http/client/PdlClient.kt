@@ -10,6 +10,7 @@ import io.ktor.client.plugins.auth.providers.bearer
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.ApplicationEnvironment
+import no.nav.db.Fnr
 import no.nav.http.graphql.generated.client.HentAlderQuery
 import no.nav.http.graphql.generated.client.HentFnrQuery
 import no.nav.http.graphql.generated.client.enums.IdentGruppe
@@ -23,6 +24,11 @@ import java.time.format.DateTimeFormatter
 sealed class AlderResult
 data class AlderFunnet(val alder: Int) : AlderResult()
 data class AlderIkkeFunnet(val message: String) : AlderResult()
+
+sealed class FnrResult
+data class FnrFunnet(val fnr: Fnr) : FnrResult()
+data class FnrIkkeFunnet(val message: String) : FnrResult()
+data class FnrOppslagFeil(val message: String) : FnrResult()
 
 fun ApplicationEnvironment.getPdlScope(): String {
     return config.property("apis.arbeidssokerregisteret.scope").getString()
@@ -77,12 +83,17 @@ class PdlClient(
         }
     }
 
-    suspend fun hentFnrFraAktorId(aktorId: String): String? {
+    suspend fun hentFnrFraAktorId(aktorId: String): FnrResult {
         val query = HentFnrQuery(HentFnrQuery.Variables(ident = aktorId, historikk = false))
         val result = client.execute(query)
+        if (result.errors != null && result.errors!!.isNotEmpty()) {
+            log.error("Feil ved henting av fnr for aktorId $aktorId: ${result.errors!!.joinToString { it.message }}")
+            return FnrOppslagFeil(result.errors!!.joinToString { it.message })
+        }
         return result.data?.hentIdenter?.identer
             ?.also { identer -> log.debug("Fant ${identer.size} identer, ${identer.joinToString(",") { it.gruppe.name }}") }
             ?.firstOrNull { it.gruppe == IdentGruppe.FOLKEREGISTERIDENT }
-            ?.ident
+            ?.ident?.let { FnrFunnet(it)
+            } ?: FnrIkkeFunnet("Fant ingen gyldig fnr for aktorId $aktorId")
     }
 }

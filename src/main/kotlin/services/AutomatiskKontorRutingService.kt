@@ -8,6 +8,8 @@ import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.domain.events.OppfolgingsperiodeStartetNoeTilordning
 import no.nav.http.client.AlderFunnet
 import no.nav.http.client.AlderResult
+import no.nav.http.client.FnrFunnet
+import no.nav.http.client.FnrResult
 import no.nav.http.client.GTKontorFunnet
 import no.nav.http.client.GTKontorResultat
 import no.nav.http.client.arbeidssogerregisteret.ProfileringEnum
@@ -20,11 +22,13 @@ data class ProfileringsResultatFeil(val error: Throwable) : ProfileringsResultat
 class AutomatiskKontorRutingService(
     private val gtKontorProvider: suspend (fnr: String) -> GTKontorResultat,
     private val aldersProvider: suspend (fnr: String) -> AlderResult,
-    private val fnrProvider: suspend (aktorId: String) -> Fnr?,
+    private val fnrProvider: suspend (aktorId: String) -> FnrResult,
     private val profileringProvider: suspend (fnr: String) -> ProfileringsResultat,
 ) {
     suspend fun tilordneKontorAutomatisk(aktorId: String) {
-        val fnr = fnrProvider(aktorId) ?: throw IllegalArgumentException("Fant ikke fnr for aktorId: $aktorId")
+        val fnrResult = fnrProvider(aktorId)
+        if (fnrResult !is FnrFunnet) throw IllegalArgumentException("Fant ikke fnr for aktorId: $aktorId")
+        val fnr = fnrResult.fnr
         val gtKontorResultat = gtKontorProvider(fnr)
         val aldersResultat = aldersProvider(fnr)
         val kontorTilordning = hentTilordning(
