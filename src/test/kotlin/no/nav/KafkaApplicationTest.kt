@@ -9,6 +9,7 @@ import no.nav.db.entity.KontorHistorikkEntity
 import no.nav.db.table.KontorhistorikkTable
 import no.nav.domain.KontorId
 import no.nav.http.client.AlderFunnet
+import no.nav.http.client.FnrFunnet
 import no.nav.http.client.GTKontorFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringEnum
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerConsumer
@@ -71,7 +72,7 @@ class KafkaApplicationTest {
             val consumer = OppfolgingsPeriodeConsumer(AutomatiskKontorRutingService(
                 { GTKontorFunnet(kontor) },
                 { AlderFunnet(40) },
-                { fnr },
+                { FnrFunnet(fnr) },
                 { ProfileringFunnet(ProfileringEnum.ANTATT_GODE_MULIGHETER)}
             ))
             val topology = configureTopology(listOf(topic to consumer::consume))
