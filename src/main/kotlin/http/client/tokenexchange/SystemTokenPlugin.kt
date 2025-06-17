@@ -15,10 +15,9 @@ val SystemTokenPlugin = createClientPlugin("SystemTokenPlugin", ::SystemTokenPlu
 
     onRequest { requestBuilder, content ->
         val result = tokenProvider()
-        when (result) {
-            is TexasTokenSuccessResult -> BearerTokens(result.accessToken, null)
-            is TexasTokenFailedResult -> throw IllegalStateException("Failed to fetch token: ${result.errorMessage}")
+        if (result !is TexasTokenSuccessResult) {
+            throw IllegalStateException("Could not system token")
         }
-        requestBuilder.headers.append(HttpHeaders.Authorization, "Bearer $result")
+        requestBuilder.headers.append(HttpHeaders.Authorization, "Bearer ${result.accessToken}")
     }
 }
