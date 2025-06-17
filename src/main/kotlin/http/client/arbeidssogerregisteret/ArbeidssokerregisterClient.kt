@@ -6,6 +6,7 @@ import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.auth.*
 import io.ktor.client.plugins.auth.providers.*
 import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
@@ -33,6 +34,7 @@ class ArbeidssokerregisterClient(
         install(SystemTokenPlugin) {
             this.tokenProvider = azureTokenProvider
         }
+        install(Logging)
         install(ContentNegotiation) {
             json()
         }

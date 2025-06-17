@@ -2,9 +2,12 @@ package no.nav.http.client
 
 import io.ktor.client.*
 import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.ApplicationEnvironment
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
@@ -41,6 +44,10 @@ class PoaoTilgangKtorHttpClient(
         HttpClient(CIO) {
             install(SystemTokenPlugin) {
                 this.tokenProvider = azureTokenProvider
+            }
+            install(Logging)
+            install(ContentNegotiation) {
+                json()
             }
         }
     )

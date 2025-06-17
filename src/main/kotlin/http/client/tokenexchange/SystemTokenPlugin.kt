@@ -1,28 +1,27 @@
 package no.nav.http.client.tokenexchange
 
 import io.ktor.client.plugins.api.createClientPlugin
-import io.ktor.client.plugins.auth.Auth
 import io.ktor.client.plugins.auth.providers.BearerTokens
-import io.ktor.client.plugins.auth.providers.bearer
+import io.ktor.http.HttpHeaders
+import io.ktor.http.headers
+
+typealias ProvideToken = suspend () -> TexasTokenResponse
 
 class SystemTokenPluginConfig(
-    var tokenProvider:(suspend () -> TexasTokenResponse)? = null,
+    var tokenProvider: ProvideToken? = null
 )
 
 val SystemTokenPlugin = createClientPlugin("SystemTokenPlugin", ::SystemTokenPluginConfig) {
-    val tokenProvider: suspend () -> TexasTokenResponse = pluginConfig.tokenProvider ?: error("Token provider must be set in SystemTokenPluginConfig")
+    val tokenProvider: ProvideToken = pluginConfig.tokenProvider ?: error("Token provider must be set in SystemTokenPluginConfig")
 
-    this.client.config {
-        install(Auth) {
-            bearer {
-                loadTokens {
-                    val result = tokenProvider()
-                    return@loadTokens when (result) {
-                        is TexasTokenSuccessResult -> BearerTokens(result.accessToken, null)
-                        is TexasTokenFailedResult -> throw IllegalStateException("Failed to fetch token: ${result.errorMessage}")
-                    }
-                }
-            }
+    onRequest { requestBuilder, content ->
+        val result = tokenProvider()
+        when (result) {
+            is TexasTokenSuccessResult -> BearerTokens(result.accessToken, null)
+            is TexasTokenFailedResult -> throw IllegalStateException("Failed to fetch token: ${result.errorMessage}")
+        }
+        headers {
+            append(HttpHeaders.Authorization, "Bearer $result")
         }
     }
 }
