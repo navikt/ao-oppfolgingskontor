@@ -33,7 +33,7 @@ data class FnrIkkeFunnet(val message: String) : FnrResult()
 data class FnrOppslagFeil(val message: String) : FnrResult()
 
 fun ApplicationEnvironment.getPdlScope(): String {
-    return config.property("apis.arbeidssokerregisteret.scope").getString()
+    return config.property("apis.pdl.scope").getString()
 }
 
 val BehandlingsnummerHeaderPlugin = createClientPlugin("BehandlingsnummerHeaderPlugin") {
@@ -90,7 +90,7 @@ class PdlClient(
         val query = HentFnrQuery(HentFnrQuery.Variables(ident = aktorId, historikk = false))
         val result = client.execute(query)
         if (result.errors != null && result.errors!!.isNotEmpty()) {
-            log.error("Feil ved henting av fnr for aktorId $aktorId: ${result.errors!!.joinToString { it.message }}")
+            log.error("Feil ved henting av fnr for aktorId $aktorId: \n\t${result.errors!!.joinToString { it.message }}")
             return FnrOppslagFeil(result.errors!!.joinToString { it.message })
         }
         return result.data?.hentIdenter?.identer

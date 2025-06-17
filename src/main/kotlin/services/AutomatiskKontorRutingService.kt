@@ -19,15 +19,19 @@ data class ProfileringFunnet(val profilering: ProfileringEnum) : ProfileringsRes
 data class ProfileringIkkeFunnet(val melding: String) : ProfileringsResultat()
 data class ProfileringsResultatFeil(val error: Throwable) : ProfileringsResultat()
 
+sealed class TilordningResultat
+data class TilordningSuccess(): TilordningResultat()
+data class TilordningFeil(val message: String) : TilordningResultat()
+
 class AutomatiskKontorRutingService(
     private val gtKontorProvider: suspend (fnr: String) -> GTKontorResultat,
     private val aldersProvider: suspend (fnr: String) -> AlderResult,
     private val fnrProvider: suspend (aktorId: String) -> FnrResult,
     private val profileringProvider: suspend (fnr: String) -> ProfileringsResultat,
 ) {
-    suspend fun tilordneKontorAutomatisk(aktorId: String) {
+    suspend fun tilordneKontorAutomatisk(aktorId: String): TilordningResultat {
         val fnrResult = fnrProvider(aktorId)
-        if (fnrResult !is FnrFunnet) throw IllegalArgumentException("Fant ikke fnr for aktorId: $aktorId")
+        if (fnrResult !is FnrFunnet) TilordningFeil(fnrResult) // throw IllegalArgumentException("Fant ikke fnr for aktorId: $aktorId")
         val fnr = fnrResult.fnr
         val gtKontorResultat = gtKontorProvider(fnr)
         val aldersResultat = aldersProvider(fnr)

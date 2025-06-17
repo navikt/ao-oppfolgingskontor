@@ -6,6 +6,8 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.services.AutomatiskKontorRutingService
+import no.nav.services.TilordningFeil
+import no.nav.services.TilordningSuccess
 import no.nav.utils.ZonedDateTimeSerializer
 import org.apache.kafka.streams.processor.api.Record
 import org.apache.kafka.streams.processor.api.RecordMetadata
@@ -25,9 +27,15 @@ class OppfolgingsPeriodeConsumer(
                 return RecordProcessingResult.SKIP
             } else {
                 runBlocking {
-                    automatiskKontorRutingService.tilordneKontorAutomatisk(aktorId)
+                    val resultat = automatiskKontorRutingService.tilordneKontorAutomatisk(aktorId)
+                    when (resultat) {
+                        is TilordningFeil -> {
+                            log.error(resultat.message)
+                            RecordProcessingResult.SKIP
+                        }
+                        is TilordningSuccess -> RecordProcessingResult.COMMIT
+                    }
                 }
-                return RecordProcessingResult.COMMIT
             }
         } catch (e: Exception) {
             log.error("Klarte ikke behandle oppfolgingsperiode melding", e)
