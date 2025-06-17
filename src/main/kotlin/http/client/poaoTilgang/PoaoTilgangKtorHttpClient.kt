@@ -1,4 +1,4 @@
-package no.nav.http.client
+package no.nav.http.client.poaoTilgang
 
 import io.ktor.client.*
 import io.ktor.client.engine.cio.CIO
@@ -11,6 +11,7 @@ import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.ApplicationEnvironment
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.modules.SerializersModule
 import no.nav.domain.KontorId
 import no.nav.http.client.tokenexchange.SystemTokenPlugin
 import no.nav.http.client.tokenexchange.TexasTokenResponse
@@ -90,6 +91,12 @@ class PoaoTilgangKtorHttpClient(
         }
     }
 
+    val json = Json {
+        serializersModule = SerializersModule {
+            contextual(TilgangsattributterResponse::class, PoaoTilgangSerizalier)
+        }
+    }
+
     private val poaoTilgangKtorHttpClient = PoaoTilgangHttpClient(
         baseUrl,
         httpFetch = ::fetch,
@@ -97,7 +104,7 @@ class PoaoTilgangKtorHttpClient(
 
             override fun parseHentTilgangsAttributterBody(body: String): ApiResult<TilgangsattributterResponse> {
                 try {
-                    return Json.decodeFromString<TilgangsattributterResponse>(body).let { ApiResult.success(it) }
+                    return json.decodeFromString<TilgangsattributterResponse>(body).let { ApiResult.success(it) }
                 } catch (e: Exception) {
                     log.error("Kunne ikke parse tilgangsattributter. Message: ${e.message}")
                     return ApiResult.failure(ResponseDataApiException("Kunne ikke parse tilgangsattributter. Message: ${e.message}"))

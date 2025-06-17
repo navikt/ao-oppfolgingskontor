@@ -1,6 +1,5 @@
 package no.nav.services
 
-import no.nav.db.Fnr
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.events.AOKontorEndret
@@ -12,9 +11,9 @@ import no.nav.http.client.FnrFunnet
 import no.nav.http.client.FnrIkkeFunnet
 import no.nav.http.client.FnrOppslagFeil
 import no.nav.http.client.FnrResult
-import no.nav.http.client.GTKontorFeil
-import no.nav.http.client.GTKontorFunnet
-import no.nav.http.client.GTKontorResultat
+import no.nav.http.client.poaoTilgang.GTKontorFeil
+import no.nav.http.client.poaoTilgang.GTKontorFunnet
+import no.nav.http.client.poaoTilgang.GTKontorResultat
 import no.nav.http.client.arbeidssogerregisteret.ProfileringEnum
 
 sealed class ProfileringsResultat

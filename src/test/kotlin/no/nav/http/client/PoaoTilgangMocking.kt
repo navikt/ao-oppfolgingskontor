@@ -8,8 +8,7 @@ import io.ktor.server.application.install
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.testing.*
-import kotlinx.coroutines.runBlocking
-import no.nav.http.client.tokenexchange.TexasTokenSuccessResult
+import no.nav.http.client.poaoTilgang.PoaoTilgangKtorHttpClient
 import no.nav.poao_tilgang.api.dto.response.Diskresjonskode
 import no.nav.poao_tilgang.api.dto.response.TilgangsattributterResponse
 
@@ -37,7 +36,8 @@ fun ApplicationTestBuilder.mockPoaoTilgangHost(kontorId: String?): PoaoTilgangKt
 
         }
     }
-    return PoaoTilgangKtorHttpClient(poaoTilgangTestUrl,
+    return PoaoTilgangKtorHttpClient(
+        poaoTilgangTestUrl,
         createClient {
             install(ContentNegotiation) { json() }
             install(Logging)

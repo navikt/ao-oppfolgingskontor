@@ -10,9 +10,8 @@ import no.nav.db.table.KontorhistorikkTable
 import no.nav.domain.KontorId
 import no.nav.http.client.AlderFunnet
 import no.nav.http.client.FnrFunnet
-import no.nav.http.client.GTKontorFunnet
+import no.nav.http.client.poaoTilgang.GTKontorFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringEnum
-import no.nav.http.client.mockPoaoTilgangHost
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerConsumer
 import no.nav.kafka.config.configureTopology
 import no.nav.kafka.config.streamsErrorHandlerConfig

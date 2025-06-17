@@ -96,6 +96,10 @@ class TexasSystemTokenClient(
 
     val logger = LoggerFactory.getLogger(this::class.java)
 
+    fun tokenProvider(scope: String): ProvideToken {
+        return { getToken(scope) }
+    }
+
     suspend fun getToken(target: String): TexasTokenResponse {
         val cachedValue = cache.getIfPresent(target)
         if (cachedValue != null) {

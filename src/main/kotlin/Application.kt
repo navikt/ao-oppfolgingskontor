@@ -7,6 +7,8 @@ import no.nav.http.client.*
 import no.nav.http.client.arbeidssogerregisteret.ArbeidssokerregisterClient
 import no.nav.http.client.arbeidssogerregisteret.getArbeidssokerregisteretScope
 import no.nav.http.client.arbeidssogerregisteret.getArbeidssokerregisteretUrl
+import no.nav.http.client.poaoTilgang.PoaoTilgangKtorHttpClient
+import no.nav.http.client.poaoTilgang.getPoaoTilgangScope
 import no.nav.http.client.tokenexchange.TexasSystemTokenClient
 import no.nav.http.client.tokenexchange.getNaisTokenEndpoint
 import no.nav.http.configureArbeidsoppfolgingskontorModule
@@ -30,14 +32,15 @@ fun Application.module() {
     configureDatabase()
     val norg2Client = Norg2Client(environment.getNorg2Url())
 
-    val texasTokenClient = TexasSystemTokenClient(environment.getNaisTokenEndpoint())
-    val poaoTilgangHttpClient = PoaoTilgangKtorHttpClient(environment.getPoaoTilgangUrl(), {
-        texasTokenClient.getToken(environment.getPoaoTilgangScope())
-    })
-    val pdlClient = PdlClient(environment.getPDLUrl(), { texasTokenClient.getToken(environment.getPdlScope()) })
+    val texasClient = TexasSystemTokenClient(environment.getNaisTokenEndpoint())
+    val poaoTilgangHttpClient = PoaoTilgangKtorHttpClient(
+        environment.getPoaoTilgangUrl(),
+        texasClient.tokenProvider(environment.getPoaoTilgangScope())
+    )
+    val pdlClient = PdlClient(environment.getPDLUrl(), texasClient.tokenProvider(environment.getPdlScope()))
     val arbeidssokerregisterClient = ArbeidssokerregisterClient(
         environment.getArbeidssokerregisteretUrl(),
-        { texasTokenClient.getToken(environment.getArbeidssokerregisteretScope()) })
+        texasClient.tokenProvider(environment.getArbeidssokerregisteretScope()))
 
     val kontorNavnService = KontorNavnService(norg2Client)
     val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService)
