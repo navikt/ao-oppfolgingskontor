@@ -85,7 +85,7 @@ class PdlClient(
         val result = client.execute(query)
         if (result.errors != null && result.errors!!.isNotEmpty()) {
             log.error("Feil ved henting av fnr for aktorId $aktorId: \n\t${result.errors!!.joinToString { it.message }}")
-            return FnrOppslagFeil(result.errors!!.joinToString { it.message })
+            return FnrOppslagFeil(result.errors!!.joinToString { "${it.message}: ${it.extensions?.get("details")}"  })
         }
         return result.data?.hentIdenter?.identer
             ?.also { identer -> log.debug("Fant ${identer.size} identer, ${identer.joinToString(",") { it.gruppe.name }}") }
