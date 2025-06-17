@@ -74,7 +74,7 @@ class PoaoTilgangKtorHttpClient(
     ): ApiResult<String> {
         return runBlocking {
             log.info("Poaotilgang posting to $fullUrl - baseUrl: $baseUrl")
-            val response = client.request (fullUrl.replace(baseUrl, "")) {
+            val response = client.request (fullUrl) {
                 this.method = HttpMethod.Post
                 accept(ContentType.Application.Json)
                 contentType(ContentType.Application.Json)
