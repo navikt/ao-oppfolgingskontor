@@ -12,7 +12,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
 import no.nav.http.client.poaoTilgang.GTKontorFunnet
 import no.nav.http.client.poaoTilgang.PoaoTilgangKtorHttpClient
-import no.nav.http.client.poaoTilgang.PoaoTilgangSerizalier
+import no.nav.http.client.poaoTilgang.PoaoTilgangSerializer
 import no.nav.poao_tilgang.api.dto.response.Diskresjonskode
 import no.nav.poao_tilgang.api.dto.response.TilgangsattributterResponse
 import kotlin.test.Test
@@ -29,7 +29,7 @@ class PoaoTilgangKtorHttpClientTest {
                         json(
                             Json {
                                 serializersModule = SerializersModule {
-                                    contextual(TilgangsattributterResponse::class, PoaoTilgangSerizalier)
+                                    contextual(TilgangsattributterResponse::class, PoaoTilgangSerializer)
                                 }
                             }
                         )

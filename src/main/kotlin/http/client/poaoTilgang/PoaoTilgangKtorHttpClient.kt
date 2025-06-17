@@ -93,7 +93,7 @@ class PoaoTilgangKtorHttpClient(
 
     val json = Json {
         serializersModule = SerializersModule {
-            contextual(TilgangsattributterResponse::class, PoaoTilgangSerizalier)
+            contextual(TilgangsattributterResponse::class, PoaoTilgangSerializer)
         }
     }
 

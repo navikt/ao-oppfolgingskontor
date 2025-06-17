@@ -15,7 +15,7 @@ private data class TilgangsattributterSurrogate(
     val diskresjonskode: Diskresjonskode?,
 )
 
-object PoaoTilgangSerizalier: KSerializer<TilgangsattributterResponse> {
+object PoaoTilgangSerializer: KSerializer<TilgangsattributterResponse> {
     override val descriptor: SerialDescriptor
         get() = TilgangsattributterSurrogate.serializer().descriptor
 
