@@ -1,12 +1,16 @@
 package no.nav.http.client
 
 import io.ktor.client.*
+import io.ktor.client.engine.cio.CIO
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import io.ktor.server.application.ApplicationEnvironment
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import no.nav.domain.KontorId
+import no.nav.http.client.tokenexchange.SystemTokenPlugin
+import no.nav.http.client.tokenexchange.TexasTokenResponse
 import no.nav.poao_tilgang.api.dto.request.ErSkjermetPersonBulkRequest
 import no.nav.poao_tilgang.api.dto.request.EvaluatePoliciesRequest
 import no.nav.poao_tilgang.api.dto.request.HentAdGrupperForBrukerRequest
@@ -21,10 +25,26 @@ sealed class GTKontorResultat
 data class GTKontorFunnet(val kontorId: KontorId) : GTKontorResultat()
 data class GTKontorFeil(val melding: String) : GTKontorResultat()
 
+fun ApplicationEnvironment.getPoaoTilgangScope(): String {
+    return config.property("apis.poaoTilgang.scope").getString()
+}
+
 class PoaoTilgangKtorHttpClient(
     private val baseUrl: String,
-    private val client: HttpClient = HttpClient(),
+    private val client: HttpClient
 ) {
+    constructor(
+        baseUrl: String,
+        azureTokenProvider: suspend () -> TexasTokenResponse,
+    ): this(
+        baseUrl,
+        HttpClient(CIO) {
+            install(SystemTokenPlugin) {
+                this.tokenProvider = azureTokenProvider
+            }
+        }
+    )
+
     private val log = LoggerFactory.getLogger(javaClass)
 
     fun hentTilgangsattributter(ident: String) = poaoTilgangKtorHttpClient.hentTilgangsAttributter(ident)

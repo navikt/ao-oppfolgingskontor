@@ -75,6 +75,8 @@ spec:
       value: http://norg2.org
     - name: POAO_TILGANG_URL
       value: http://poao-tilgang.poao
+    - name: POAO_TILGANG_SCOPE
+      value: api://dev-gcp.poao.poao-tilgang/.default
     - name: PDL_URL
       value: https://pdl-api.dev-fss-pub.nais.io
     - name: PDL_SCOPE

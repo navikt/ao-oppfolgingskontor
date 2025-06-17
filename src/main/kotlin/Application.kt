@@ -7,6 +7,8 @@ import no.nav.http.client.*
 import no.nav.http.client.arbeidssogerregisteret.ArbeidssokerregisterClient
 import no.nav.http.client.arbeidssogerregisteret.getArbeidssokerregisteretScope
 import no.nav.http.client.arbeidssogerregisteret.getArbeidssokerregisteretUrl
+import no.nav.http.client.tokenexchange.TexasSystemTokenClient
+import no.nav.http.client.tokenexchange.getNaisTokenEndpoint
 import no.nav.http.configureArbeidsoppfolgingskontorModule
 import no.nav.http.graphql.configureGraphQlModule
 import no.nav.http.graphql.getNorg2Url
@@ -27,8 +29,11 @@ fun Application.module() {
     configureSecurity()
     configureDatabase()
     val norg2Client = Norg2Client(environment.getNorg2Url())
-    val poaoTilgangHttpClient = PoaoTilgangKtorHttpClient(environment.getPoaoTilgangUrl())
-    val texasTokenClient = TexasClient(environment.getNaisTokenEndpoint())
+
+    val texasTokenClient = TexasSystemTokenClient(environment.getNaisTokenEndpoint())
+    val poaoTilgangHttpClient = PoaoTilgangKtorHttpClient(environment.getPoaoTilgangUrl(), {
+        texasTokenClient.getToken(environment.getPoaoTilgangScope())
+    })
     val pdlClient = PdlClient(environment.getPDLUrl(), { texasTokenClient.getToken(environment.getPdlScope()) })
     val arbeidssokerregisterClient = ArbeidssokerregisterClient(
         environment.getArbeidssokerregisteretUrl(),

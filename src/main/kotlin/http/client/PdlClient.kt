@@ -8,11 +8,13 @@ import io.ktor.client.plugins.auth.Auth
 import io.ktor.client.plugins.auth.providers.BearerTokens
 import io.ktor.client.plugins.auth.providers.bearer
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.ApplicationEnvironment
 import no.nav.db.Fnr
+import no.nav.http.client.tokenexchange.SystemTokenPlugin
+import no.nav.http.client.tokenexchange.TexasTokenResponse
+import no.nav.http.client.tokenexchange.TexasTokenSuccessResult
 import no.nav.http.graphql.generated.client.HentAlderQuery
 import no.nav.http.graphql.generated.client.HentFnrQuery
 import no.nav.http.graphql.generated.client.enums.IdentGruppe
@@ -47,16 +49,8 @@ class PdlClient(
     private val azureTokenProvider: suspend () -> TexasTokenResponse,
     ktorHttpClient: HttpClient = HttpClient(CIO) {
         install(BehandlingsnummerHeaderPlugin)
-        install(Auth) {
-            bearer {
-                loadTokens {
-                    val result = azureTokenProvider()
-                    when (result) {
-                        is TexasTokenSuccessResult -> BearerTokens(result.accessToken, null)
-                        else -> throw IllegalStateException("Kunne ikke hente token fra Azure: $result")
-                    }
-                }
-            }
+        install(SystemTokenPlugin) {
+            this.tokenProvider = azureTokenProvider
         }
         install(Logging)
         install(ContentNegotiation) {

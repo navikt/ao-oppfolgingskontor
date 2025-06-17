@@ -26,6 +26,7 @@ apis:
     url: "$NORG2_URL"
   poaoTilgang:
     url: "$POAO_TILGANG_URL"
+    scope: "$POAO_TILGANG_SCOPE"
   pdl:
     url: "$PDL_URL"
     scope: "$PDL_SCOPE"

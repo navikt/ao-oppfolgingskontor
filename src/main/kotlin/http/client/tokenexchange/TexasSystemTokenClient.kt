@@ -1,4 +1,4 @@
-package no.nav.http.client
+package no.nav.http.client.tokenexchange
 
 import com.github.benmanes.caffeine.cache.Caffeine
 import com.github.benmanes.caffeine.cache.Expiry
@@ -81,7 +81,7 @@ fun ExpirableToken.toTexasTokenResponse(): TexasTokenSuccessResult {
     )
 }
 
-class TexasClient(
+class TexasSystemTokenClient(
     private val tokenEndpoint: String,
     private val httpClient: HttpClient = HttpClient(CIO) {
         install(Logging)

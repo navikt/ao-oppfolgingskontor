@@ -10,8 +10,9 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
-import no.nav.http.client.TexasTokenResponse
-import no.nav.http.client.TexasTokenSuccessResult
+import no.nav.http.client.tokenexchange.SystemTokenPlugin
+import no.nav.http.client.tokenexchange.TexasTokenResponse
+import no.nav.http.client.tokenexchange.TexasTokenSuccessResult
 import no.nav.services.ProfileringFunnet
 import no.nav.services.ProfileringIkkeFunnet
 import no.nav.services.ProfileringsResultat
@@ -29,16 +30,8 @@ class ArbeidssokerregisterClient(
     private val baseUrl: String,
     private val azureTokenProvider: suspend () -> TexasTokenResponse,
     private val client: HttpClient = HttpClient(CIO) {
-        install(Auth) {
-            bearer {
-                loadTokens {
-                    val result = azureTokenProvider()
-                    when (result) {
-                        is TexasTokenSuccessResult -> BearerTokens(result.accessToken, null)
-                        else -> throw IllegalStateException("Kunne ikke hente token fra Azure: $result")
-                    }
-                }
-            }
+        install(SystemTokenPlugin) {
+            this.tokenProvider = azureTokenProvider
         }
         install(ContentNegotiation) {
             json()
