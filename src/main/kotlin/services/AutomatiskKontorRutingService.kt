@@ -12,6 +12,7 @@ import no.nav.http.client.FnrFunnet
 import no.nav.http.client.FnrIkkeFunnet
 import no.nav.http.client.FnrOppslagFeil
 import no.nav.http.client.FnrResult
+import no.nav.http.client.GTKontorFeil
 import no.nav.http.client.GTKontorFunnet
 import no.nav.http.client.GTKontorResultat
 import no.nav.http.client.arbeidssogerregisteret.ProfileringEnum
@@ -42,11 +43,15 @@ class AutomatiskKontorRutingService(
                 is FnrIkkeFunnet -> return TilordningFeil("Fant ikke fnr: ${fnrResult.message}")
                 is FnrOppslagFeil -> return TilordningFeil("Feil ved oppslag på fnr: ${fnrResult.message}")
             }
+
             val gtKontorResultat = gtKontorProvider(fnr)
+            if (gtKontorResultat is GTKontorFeil) return TilordningFeil("Feil ved henting av gt-kontor: ${gtKontorResultat.melding}")
+
             val aldersResultat = aldersProvider(fnr)
+
             val kontorTilordning = hentTilordning(
                 fnr,
-                if (gtKontorResultat is GTKontorFunnet) gtKontorResultat.kontorId else null,
+                (gtKontorResultat as GTKontorFunnet).kontorId,
                 if (aldersResultat is AlderFunnet) aldersResultat.alder else null,
                 profileringProvider(fnr),
             )
