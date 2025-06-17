@@ -65,8 +65,7 @@ class KafkaApplicationTest {
     fun `skal tilordne kontor til brukere som har fått startet oppfølging`() = testApplication {
         val fnr = "22325678901"
         val kontor = KontorId("2228")
-
-        val poaoTilgangClient = mockPoaoTilgangHost(kontor.id)
+//        val poaoTilgangClient = mockPoaoTilgangHost(kontor.id)
 
         application {
 
@@ -74,7 +73,8 @@ class KafkaApplicationTest {
             val aktorId = "1234567890123"
             val periodeStart = ZonedDateTime.now().minusDays(2)
             val consumer = OppfolgingsPeriodeConsumer(AutomatiskKontorRutingService(
-                { poaoTilgangClient.hentTilgangsattributter(it) },
+//                { poaoTilgangClient.hentTilgangsattributter(it) },
+                { GTKontorFunnet(kontor) },
                 { AlderFunnet(40) },
                 { FnrFunnet(fnr) },
                 { ProfileringFunnet(ProfileringEnum.ANTATT_GODE_MULIGHETER)}
