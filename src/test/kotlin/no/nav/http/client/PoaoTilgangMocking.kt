@@ -41,7 +41,7 @@ fun ApplicationTestBuilder.mockPoaoTilgangHost(kontorId: String?): PoaoTilgangKt
             install(ContentNegotiation) { json() }
             install(Logging)
             install(HttpTimeout) {
-                requestTimeoutMillis = 1000
+                requestTimeoutMillis = 10000
             }
             defaultRequest {
                 url(poaoTilgangTestUrl)

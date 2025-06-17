@@ -98,7 +98,10 @@ class TexasClient(
 
     suspend fun getToken(target: String): TexasTokenResponse {
         val cachedValue = cache.getIfPresent(target)
-        if (cachedValue != null) return cachedValue.toTexasTokenResponse()
+        if (cachedValue != null) {
+            logger.info("Bruker cache for Texas token for app: $target")
+            return cachedValue.toTexasTokenResponse()
+        }
 
         val texasTokenRequest = TexasTokenRequest(
             identityProvider = "azuread",
