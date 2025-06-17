@@ -26,9 +26,9 @@ class OppfolgingsPeriodeConsumer(
             if (oppfolgingsperiode.sluttDato != null) {
                 return RecordProcessingResult.SKIP
             } else {
-                runBlocking {
+                return runBlocking {
                     val resultat = automatiskKontorRutingService.tilordneKontorAutomatisk(aktorId)
-                    when (resultat) {
+                    return@runBlocking when (resultat) {
                         is TilordningFeil -> {
                             log.error(resultat.message)
                             RecordProcessingResult.SKIP
