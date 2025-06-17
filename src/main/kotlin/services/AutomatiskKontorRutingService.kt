@@ -32,23 +32,30 @@ class AutomatiskKontorRutingService(
     private val fnrProvider: suspend (aktorId: String) -> FnrResult,
     private val profileringProvider: suspend (fnr: String) -> ProfileringsResultat,
 ) {
+    val log = org.slf4j.LoggerFactory.getLogger(this::class.java)
+
     suspend fun tilordneKontorAutomatisk(aktorId: String): TilordningResultat {
-        val fnrResult = fnrProvider(aktorId)
-        val fnr = when (fnrResult) {
-            is FnrFunnet -> fnrResult.fnr
-            is FnrIkkeFunnet -> return TilordningFeil(fnrResult.message)
-            is FnrOppslagFeil -> return TilordningFeil(fnrResult.message)
+        try {
+            val fnrResult = fnrProvider(aktorId)
+            val fnr = when (fnrResult) {
+                is FnrFunnet -> fnrResult.fnr
+                is FnrIkkeFunnet -> return TilordningFeil("Fant ikke fnr: ${fnrResult.message}")
+                is FnrOppslagFeil -> return TilordningFeil("Feil ved oppslag på fnr: ${fnrResult.message}")
+            }
+            val gtKontorResultat = gtKontorProvider(fnr)
+            val aldersResultat = aldersProvider(fnr)
+            val kontorTilordning = hentTilordning(
+                fnr,
+                if (gtKontorResultat is GTKontorFunnet) gtKontorResultat.kontorId else null,
+                if (aldersResultat is AlderFunnet) aldersResultat.alder else null,
+                profileringProvider(fnr),
+            )
+            KontorTilordningService.tilordneKontor(kontorTilordning)
+            return TilordningSuccess
+        } catch (e: Exception) {
+            log.error("Feil ved tilordning kontor: ${e.message}", e)
+            return TilordningFeil("Feil ved tilordning av kontor: ${e.message ?: e.toString()}")
         }
-        val gtKontorResultat = gtKontorProvider(fnr)
-        val aldersResultat = aldersProvider(fnr)
-        val kontorTilordning = hentTilordning(
-            fnr,
-            if (gtKontorResultat is GTKontorFunnet) gtKontorResultat.kontorId else null,
-            if (aldersResultat is AlderFunnet) aldersResultat.alder else null,
-            profileringProvider(fnr),
-        )
-        KontorTilordningService.tilordneKontor(kontorTilordning)
-        return TilordningSuccess
     }
 
     private fun hentTilordning(
