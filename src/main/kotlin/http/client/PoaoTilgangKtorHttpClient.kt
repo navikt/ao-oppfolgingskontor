@@ -54,6 +54,10 @@ class PoaoTilgangKtorHttpClient(
 
     private val log = LoggerFactory.getLogger(javaClass)
 
+    init {
+        log.info("Starting HttpClient")
+    }
+
     fun hentTilgangsattributter(ident: String) = poaoTilgangKtorHttpClient.hentTilgangsAttributter(ident)
         .let {
             when (it.isSuccess) {
@@ -69,6 +73,7 @@ class PoaoTilgangKtorHttpClient(
         body: String? = null
     ): ApiResult<String> {
         return runBlocking {
+            log.debug("Poaotilgang posting to $fullUrl - baseUrl: $baseUrl")
             val response = client.request (fullUrl.replace(baseUrl, "")) {
                 this.method = HttpMethod.Post
                 accept(ContentType.Application.Json)

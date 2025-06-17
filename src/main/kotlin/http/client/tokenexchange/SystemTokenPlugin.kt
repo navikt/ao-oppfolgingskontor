@@ -1,7 +1,6 @@
 package no.nav.http.client.tokenexchange
 
 import io.ktor.client.plugins.api.createClientPlugin
-import io.ktor.client.plugins.auth.providers.BearerTokens
 import io.ktor.http.HttpHeaders
 
 typealias ProvideToken = suspend () -> TexasTokenResponse
