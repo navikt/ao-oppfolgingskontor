@@ -13,6 +13,7 @@ import io.ktor.server.application.ApplicationEnvironment
 import no.nav.http.graphql.generated.client.HentAlderQuery
 import no.nav.http.graphql.generated.client.HentFnrQuery
 import no.nav.http.graphql.generated.client.enums.IdentGruppe
+import org.slf4j.LoggerFactory
 import java.net.URI
 import java.time.LocalDate
 import java.time.Period
@@ -54,6 +55,7 @@ class PdlClient(
         }
     }
 ) {
+    val log = LoggerFactory.getLogger(PdlClient::class.java)
     val client = GraphQLKtorClient(
         url = URI.create("$pdlGraphqlUrl/graphql").toURL(),
         httpClient = ktorHttpClient
@@ -79,6 +81,7 @@ class PdlClient(
         val query = HentFnrQuery(HentFnrQuery.Variables(ident = aktorId, historikk = false))
         val result = client.execute(query)
         return result.data?.hentIdenter?.identer
+            ?.also { identer -> log.debug("Fant ${identer.size} identer, ${identer.joinToString(",") { it.gruppe.name }}") }
             ?.firstOrNull { it.gruppe == IdentGruppe.FOLKEREGISTERIDENT }
             ?.ident
     }
