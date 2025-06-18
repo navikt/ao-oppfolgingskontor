@@ -1,6 +1,0 @@
-query($fnr: String!) {
-    kontorForBruker(fnr: $fnr) {
-        kontorId
-        kilde
-    }
-}

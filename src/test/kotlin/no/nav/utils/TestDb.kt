@@ -16,8 +16,9 @@ object TestDb {
     }
 }
 
-fun Application.flywayMigrationInTest() {
+fun Application.flywayMigrationInTest(): DataSource {
     install(FlywayPlugin) {
         this.dataSource = TestDb.postgres
     }
+    return TestDb.postgres
 }

@@ -29,7 +29,7 @@ class RetryableProcessorTest {
  private lateinit var mockedMetrics: RetryMetrics
 
  // Selve prosessoren som testes
- private lateinit var processor: RetryableProcessor<String, String>
+ private lateinit var processor: RetryableProcessor<String, String, Void, Void>
 
  // For å fange opp den scheduled Punctuation-lambdaen
  private val punctuationCallback = slot<Punctuator>()
@@ -52,11 +52,12 @@ class RetryableProcessorTest {
   every { mockedContext.schedule(any(), any(), capture(punctuationCallback)) } returns mockk()
 
   // --- 3. Lag en instans av prosessoren som skal testes ---
-  processor = RetryableProcessor(
+  processor = RetryableProcessor<String, String, Void, Void>(
    config = config,
-   keySerializer = Serdes.String().serializer(),
-   valueSerializer = Serdes.String().serializer(),
-   valueDeserializer = Serdes.String().deserializer(),
+   keyInSerializer = Serdes.String().serializer(),
+   valueInSerializer = Serdes.String().serializer(),
+   keyInDeserializer = Serdes.String().deserializer(),
+   valueInDeserializer = Serdes.String().deserializer(),
    topic = inputTopicName,
    repository = mockk(relaxed = true), // Dummy mock, ikke brukt direkte av prosessoren
    // Definer en kontrollerbar forretningslogikk for testen

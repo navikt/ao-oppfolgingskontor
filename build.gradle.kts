@@ -1,3 +1,5 @@
+import com.expediagroup.graphql.plugin.gradle.config.GraphQLSerializer
+
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.ktor)
@@ -19,6 +21,7 @@ application {
 
 repositories {
     mavenCentral()
+    maven { url = uri("https://github-package-registry-mirror.gc.nav.no/cached/maven-release") }
 }
 
 java {
@@ -58,6 +61,8 @@ dependencies {
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.cio)
     implementation(libs.ktor.client.logging)
+    implementation(libs.ktor.client.auth)
+    implementation(libs.caffeine)
     implementation(libs.ktor.client.content.negotiation)
     implementation(libs.logstash)
     implementation(libs.flyway.core)
@@ -66,9 +71,12 @@ dependencies {
     implementation(libs.logback.classic)
     implementation(libs.ktor.server.config.yaml)
     implementation(libs.kafka.streams)
+    implementation(libs.graphql.kotlin.client)
+    implementation(libs.graphql.kotlin.client.serialization)
     implementation(libs.graphql.kotlin.server)
     implementation(libs.graphql.kotlin.schema.generator)
     implementation(libs.token.validation.ktor.v3)
+    implementation(libs.nav.poaotilgang.client.core)
     testImplementation(libs.embedded.postgres)
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.mock.oauth2.server)
@@ -84,6 +92,11 @@ graphql {
             "no.nav.http.graphql.queries",
             "no.nav.http.graphql.schemas",
         )
+    }
+    client {
+        serializer = GraphQLSerializer.KOTLINX
+        schemaFile = file("src/main/resources/graphql/schema.graphql")
+        packageName = "no.nav.http.graphql.generated.client"
     }
 }
 

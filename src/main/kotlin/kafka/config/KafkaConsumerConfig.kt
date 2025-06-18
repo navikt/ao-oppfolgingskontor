@@ -9,7 +9,6 @@ import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.config.SslConfigs
 import org.apache.kafka.common.serialization.Serdes
-import org.apache.kafka.streams.KafkaStreams
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
 import org.apache.kafka.streams.Topology
@@ -18,36 +17,27 @@ import org.apache.kafka.streams.processor.api.ProcessorSupplier
 import java.util.Properties
 import javax.sql.DataSource
 
-fun configureTopology(topic: String, dataSource: DataSource, processRecord: ProcessRecord): Topology {
+fun configureTopology(topicAndConsumers: List<Pair<String, ProcessRecord>>, dataSource: DataSource): Topology {
     val builder = StreamsBuilder()
-    RetryableTopology.addTerminalRetryableProcessor(
-        builder = builder,
-        inputTopic = topic,
-        dataSource = dataSource,
-        keySerde = Serdes.String(),
-        valueSerde = Serdes.String(),
-        businessLogic = processRecord
-    )
-
-    val sourceStream = builder.stream<String, String>(topic)
-
-    sourceStream.process(object : ProcessorSupplier<String, String, String, String> {
-        override fun get(): Processor<String, String, String, String> {
-            return ExplicitResultProcessor(processRecord)
-        }
-    })
+    topicAndConsumers.forEach { (topic, processRecord) ->
+        RetryableTopology.addTerminalRetryableProcessor(
+            builder = builder,
+            inputTopic = topic,
+            dataSource = dataSource,
+            keySerde = Serdes.String(),
+            valueSerde = Serdes.String(),
+            businessLogic = { processRecord(it, null) }
+        )
+    }
     return builder.build()
 }
 
-fun configureStream(topology: Topology, config: ApplicationConfig): KafkaStreams {
+fun configureKafkaStreams(config: ApplicationConfig): Properties {
     val naisKafkaEnv = config.toKafkaEnv()
-
-    val config = Properties()
+    return Properties()
         .streamsConfig(naisKafkaEnv, config)
         .streamsErrorHandlerConfig()
         .securityConfig(naisKafkaEnv)
-
-    return KafkaStreams(topology, config)
 }
 
 private fun Properties.streamsConfig(config: NaisKafkaEnv, appConfig: ApplicationConfig): Properties {

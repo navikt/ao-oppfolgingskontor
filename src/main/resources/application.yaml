@@ -9,6 +9,8 @@ ktor:
 
 auth:
   entraIssuer: "$AZURE_OPENID_CONFIG_ISSUER"
+  naisTokenExchangeEndpoint: "$NAIS_TOKEN_EXCHANGE_ENDPOINT"
+  naisTokenEndpoint: "$NAIS_TOKEN_ENDPOINT"
 
 no:
   nav:
@@ -22,6 +24,16 @@ no:
 apis:
   norg2:
     url: "$NORG2_URL"
+  poaoTilgang:
+    url: "$POAO_TILGANG_URL"
+    scope: "$POAO_TILGANG_SCOPE"
+  pdl:
+    url: "$PDL_URL"
+    scope: "$PDL_SCOPE"
+  arbeidssokerregisteret:
+    url: "$ARBEIDSSOKERREGISTERET_URL"
+    scope: "$ARBEIDSSOKERREGISTERET_SCOPE"
+
 
 postgres:
   host: "$NAIS_DATABASE_AO_OPPFOLGINGSKONTOR_AO_OPPFOLGINGSKONTOR_HOST"
@@ -54,3 +66,4 @@ kafka:
 topics:
   inn:
     endringPaOppfolgingsbruker: "pto.endring-paa-oppfolgingsbruker-v2"
+    oppfolgingsperiodeV1: "pto.oppfolgingsperiode-v1"
