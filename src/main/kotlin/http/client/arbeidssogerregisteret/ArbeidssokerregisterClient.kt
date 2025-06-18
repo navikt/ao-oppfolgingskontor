@@ -45,18 +45,10 @@ class ArbeidssokerregisterClient(
         identitetsnummer: String
     ): ProfileringsResultat {
         try {
-            val oboTokenResult = azureTokenProvider()
-            val token: TexasTokenSuccessResult = when (oboTokenResult) {
-                is TexasTokenSuccessResult -> oboTokenResult
-                else -> return ProfileringsResultatFeil(IllegalStateException("Ugyldig token type mottatt fra Azure"))
-            }
             val result = client.post("$baseUrl/api/v1/veileder/arbeidssoekerperioder-aggregert") {
                 contentType(ContentType.Application.Json)
                 setBody(ArbeidssoekerperiodeRequest(identitetsnummer))
                 url.parameters.append("siste", "true")
-                headers {
-                    append(HttpHeaders.Authorization, "Bearer ${token}")
-                }
             }.body<List<ArbeidssoekerperiodeAggregertResponse>>()
 
             return result.first { it.tom == null }.profilering?.let { ProfileringFunnet(it.profilertTil) }

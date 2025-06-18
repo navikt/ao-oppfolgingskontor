@@ -82,6 +82,6 @@ spec:
     - name: PDL_SCOPE
       value: api://dev-fss.pdl.pdl-api/.default
     - name: ARBEIDSSOKERREGISTERET_URL
-      value: https://arbeidssokerregisteret.dev-fss-pub.nais.io
+      value: http://paw-arbeidssoekerregisteret-api-oppslag.paw
     - name: ARBEIDSSOKERREGISTERET_SCOPE
       value: api://dev-gcp.paw.paw-arbeidssoekerregisteret-api-oppslag/.default
