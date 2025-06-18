@@ -4,16 +4,16 @@ import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.plugins.logging.Logging
+import io.ktor.client.plugins.logging.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import no.nav.http.client.tokenexchange.SystemTokenPlugin
 import no.nav.http.client.tokenexchange.TexasTokenResponse
+import no.nav.services.HentProfileringsResultat
 import no.nav.services.ProfileringFunnet
 import no.nav.services.ProfileringIkkeFunnet
-import no.nav.services.HentProfileringsResultat
 import no.nav.services.ProfileringsResultatFeil
 import org.slf4j.LoggerFactory
 
@@ -58,11 +58,22 @@ class ArbeidssokerregisterClient(
             }
                 .body<List<ArbeidssoekerperiodeAggregertResponse>>()
 
-            return result.first { it.avsluttet == null }.opplysningerOmArbeidssoeker
+            val currentOpenPeriod = result.firstOrNull { it.avsluttet == null }
+            if (currentOpenPeriod == null) {
+                return ProfileringIkkeFunnet("Ingen åpen arbeidssøkerperiode.")
+            }
+
+            return currentOpenPeriod.opplysningerOmArbeidssoeker
                 .firstOrNull()
                 ?.profilering
-                ?.profilertTil?.let { ProfileringFunnet(it) }
+                ?.profilertTil?.let { profilertTil ->
+                    when (profilertTil) {
+                        ProfileringsResultat.UKJENT_VERDI -> ProfileringIkkeFunnet("Ukjent verdi for profilering.")
+                        else -> ProfileringFunnet(profilertTil)
+                    }
+                }
                 ?: ProfileringIkkeFunnet("Bruker hadde ikke profilering")
+
 
         } catch (e: Exception) {
             log.error(e.message, e)

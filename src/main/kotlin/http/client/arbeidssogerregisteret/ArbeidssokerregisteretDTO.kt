@@ -62,7 +62,7 @@ data class BekreftelseSvarResponse(
 @Serializable
 data class BekreftelseResponse(
     val periodeId: String,
-    val bekreftelsesloesning:	List<Bekreftelsesloesning>,
+    val bekreftelsesloesning:	Bekreftelsesloesning,
     val svar: BekreftelseSvarResponse,
 )
 
