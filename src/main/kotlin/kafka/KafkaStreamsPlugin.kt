@@ -8,10 +8,13 @@ import io.ktor.server.application.ApplicationStopping
 import io.ktor.server.application.createApplicationPlugin
 import io.ktor.server.application.hooks.MonitoringEvent
 import io.ktor.server.application.log
-import no.nav.kafka.config.configureStream
+import no.nav.kafka.config.configureKafkaStreams
 import no.nav.kafka.config.configureTopology
+import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerConsumer
+import no.nav.kafka.consumers.OppfolgingsPeriodeConsumer
+import no.nav.services.AutomatiskKontorRutingService
+import org.apache.kafka.streams.KafkaStreams
 import java.time.Duration
-import javax.sql.DataSource
 
 val KafkaStreamsStarting: EventDefinition<Application> = EventDefinition()
 val KafkaStreamsStarted: EventDefinition<Application> = EventDefinition()
@@ -19,30 +22,41 @@ val KafkaStreamsStopping: EventDefinition<Application> = EventDefinition()
 val KafkaStreamsStopped: EventDefinition<Application> = EventDefinition()
 
 class KafkaStreamsPluginConfig(
-    var dataSource: DataSource? = null
+    var automatiskKontorRutingService: AutomatiskKontorRutingService? = null,
 )
 
-val KafkaStreamsPlugin: ApplicationPlugin<Unit> =
-    createApplicationPlugin("KafkaStreams") {
-        val consumer = EndringPaOppfolgingsBrukerConsumer()
+val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
+    createApplicationPlugin("KafkaStreams", ::KafkaStreamsPluginConfig) {
+        val automatiskKontorRutingService = requireNotNull(this.pluginConfig.automatiskKontorRutingService)
+
+        val endringPaOppfolgingsBrukerConsumer = EndringPaOppfolgingsBrukerConsumer()
         val oppfolgingsBrukerTopic = environment.config.property("topics.inn.endringPaOppfolgingsbruker").getString()
-        val topology = configureTopology(oppfolgingsBrukerTopic, { record, maybeRecordMetadata ->
-            consumer.consume(record, maybeRecordMetadata) })
-        val kafkaStreams = listOf(configureStream(topology, environment.config))
+
+        val oppfolgingsPeriodeConsumer = OppfolgingsPeriodeConsumer(automatiskKontorRutingService)
+        val oppfolgingsPeriodeTopic = environment.config.property("topics.inn.oppfolgingsperiodeV1").getString()
+
+        val topology = configureTopology(listOf(
+            oppfolgingsBrukerTopic to { record, maybeRecordMetadata ->
+                endringPaOppfolgingsBrukerConsumer.consume(record, maybeRecordMetadata) },
+            oppfolgingsPeriodeTopic to { record, maybeRecordMetadata ->
+                oppfolgingsPeriodeConsumer.consume(record, maybeRecordMetadata) }),
+        )
+
+        val kafkaStream = KafkaStreams(topology, configureKafkaStreams(environment.config))
 
         val shutDownTimeout = Duration.ofSeconds(1)
 
         on(MonitoringEvent(ApplicationStarted)) { application ->
             application.log.info("Starter Kafka Streams")
             application.monitor.raise(KafkaStreamsStarting, application)
-            kafkaStreams.forEach { stream -> stream.start() }
+            kafkaStream.start()
             application.monitor.raise(KafkaStreamsStarted, application)
         }
 
         on(MonitoringEvent(ApplicationStopping)) { application ->
             application.log.info("Stopper Kafka Streams")
             application.monitor.raise(KafkaStreamsStopping, application)
-            kafkaStreams.forEach { stream -> stream.close(shutDownTimeout) }
+            kafkaStream.close(shutDownTimeout)
             application.monitor.raise(KafkaStreamsStopped, application)
         }
     }

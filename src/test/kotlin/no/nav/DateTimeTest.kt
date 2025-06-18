@@ -1,7 +1,7 @@
 package no.nav.no.nav
 
 import io.kotest.matchers.nulls.shouldNotBeNull
-import no.nav.kafka.convertToOffsetDatetime
+import no.nav.kafka.consumers.convertToOffsetDatetime
 import org.junit.Test
 
 class DateTimeTest {

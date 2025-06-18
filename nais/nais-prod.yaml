@@ -38,6 +38,17 @@ spec:
     autoInstrumentation:
       enabled: true
       runtime: java
+  accessPolicy:
+    inbound:
+      rules:
+        - application: veilarbpersonflate
+          namespace: poao
+    outbound:
+      rules:
+        - application: norg2
+          namespace: org
+        - application: poao-tilgang
+          namespace: poao
   azure:
     application:
       enabled: true
@@ -45,3 +56,10 @@ spec:
       claims:
         extra:
           - "NAVident"
+  env:
+    - name: NORG2_URL
+      value: http://norg2.org
+    - name: POAO_TILGANG_URL
+      value: http://poao-tilgang.poao
+    - name: PDL_URL
+      value: https://pdl-api.prod-fss-pub.nais.io

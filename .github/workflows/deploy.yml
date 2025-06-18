@@ -33,7 +33,7 @@ jobs:
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
       - name: ao-oppfolgingskontor - Generate graphql schema
-        run: ./gradlew graphqlGenerateSDL --rerun-tasks
+        run: ./gradlew graphqlGenerateSDL
 
       - name: ao-oppfolgingskontor - Test and build
         run: ./gradlew build
@@ -45,13 +45,13 @@ jobs:
           docker_context: .
           team: dab
       - name: Slack Notification (test failure)
-        if: failure() && inputs.env == 'prod'
+        if: failure()
         uses: rtCamp/action-slack-notify@v2
         env:
           SLACK_COLOR: danger
           SLACK_USERNAME: Github Actions
           SLACK_ICON: https://github.com/github.png?size=48
-          SLACK_TITLE: 'ao-oppfolgingskontor: tester feilet under deploy til prod'
+          SLACK_TITLE: 'ao-oppfolgingskontor: tester feilet under deploy til ${{inputs.env}}'
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
           SLACK_MESSAGE: 'Commit-message til feilende deploy: ${{ github.event.head_commit.message }}'
 
@@ -68,12 +68,12 @@ jobs:
           RESOURCE: nais/nais-${{ inputs.env }}.yaml
           VAR: image=${{ needs.build.outputs.image }}
       - name: Slack Notification (deploy failure)
-        if: failure() && inputs.env == 'prod'
+        if: failure()
         uses: rtCamp/action-slack-notify@v2
         env:
           SLACK_COLOR: danger
           SLACK_USERNAME: Github Actions
           SLACK_ICON: https://github.com/github.png?size=48
-          SLACK_TITLE: 'ao-oppfolgingskontor: deploy til prod feilet'
+          SLACK_TITLE: 'ao-oppfolgingskontor: deploy til ${{inputs.env}} feilet'
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
           SLACK_MESSAGE: 'Commit-message til feilende deploy: ${{ github.event.head_commit.message }}'
