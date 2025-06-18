@@ -3,8 +3,6 @@ package no.nav.http.client.arbeidssogerregisteret
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.cio.*
-import io.ktor.client.plugins.auth.*
-import io.ktor.client.plugins.auth.providers.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.request.*
@@ -13,11 +11,11 @@ import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import no.nav.http.client.tokenexchange.SystemTokenPlugin
 import no.nav.http.client.tokenexchange.TexasTokenResponse
-import no.nav.http.client.tokenexchange.TexasTokenSuccessResult
 import no.nav.services.ProfileringFunnet
 import no.nav.services.ProfileringIkkeFunnet
-import no.nav.services.ProfileringsResultat
+import no.nav.services.HentProfileringsResultat
 import no.nav.services.ProfileringsResultatFeil
+import org.slf4j.LoggerFactory
 
 fun ApplicationEnvironment.getArbeidssokerregisteretUrl(): String {
     return config.property("apis.arbeidssokerregisteret.url").getString()
@@ -29,32 +27,45 @@ fun ApplicationEnvironment.getArbeidssokerregisteretScope(): String {
 
 class ArbeidssokerregisterClient(
     private val baseUrl: String,
-    private val azureTokenProvider: suspend () -> TexasTokenResponse,
-    private val client: HttpClient = HttpClient(CIO) {
-        install(SystemTokenPlugin) {
-            this.tokenProvider = azureTokenProvider
-        }
-        install(Logging)
-        install(ContentNegotiation) {
-            json()
-        }
-    }
+    private val client: HttpClient
 ) {
+    val log = LoggerFactory.getLogger(javaClass)
+
+    constructor(
+        baseUrl: String,
+        azureTokenProvider: suspend () -> TexasTokenResponse,
+    ) : this(
+        baseUrl,
+        HttpClient(CIO) {
+            install(SystemTokenPlugin) {
+                this.tokenProvider = azureTokenProvider
+            }
+            install(Logging)
+            install(ContentNegotiation) {
+                json()
+            }
+        }
+    )
 
     suspend fun hentProfilering(
         identitetsnummer: String
-    ): ProfileringsResultat {
+    ): HentProfileringsResultat {
         try {
             val result = client.post("$baseUrl/api/v1/veileder/arbeidssoekerperioder-aggregert") {
                 contentType(ContentType.Application.Json)
                 setBody(ArbeidssoekerperiodeRequest(identitetsnummer))
                 url.parameters.append("siste", "true")
-            }.body<List<ArbeidssoekerperiodeAggregertResponse>>()
+            }
+                .body<List<ArbeidssoekerperiodeAggregertResponse>>()
 
-            return result.first { it.tom == null }.profilering?.let { ProfileringFunnet(it.profilertTil) }
+            return result.first { it.avsluttet == null }.opplysningerOmArbeidssoeker
+                .firstOrNull()
+                ?.profilering
+                ?.profilertTil?.let { ProfileringFunnet(it) }
                 ?: ProfileringIkkeFunnet("Bruker hadde ikke profilering")
 
         } catch (e: Exception) {
+            log.error(e.message, e)
             return ProfileringsResultatFeil(e)
         }
     }

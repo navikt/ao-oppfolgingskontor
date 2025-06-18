@@ -91,6 +91,7 @@ class PoaoTilgangKtorHttpClient(
         }
     }
 
+    /* Lager en egen serializer fordi man ikke kan annotere en klasse fra et lib med @Serializable */
     val json = Json {
         serializersModule = SerializersModule {
             contextual(TilgangsattributterResponse::class, PoaoTilgangSerializer)

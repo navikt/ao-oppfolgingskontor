@@ -11,15 +11,15 @@ import no.nav.http.client.FnrFunnet
 import no.nav.http.client.FnrIkkeFunnet
 import no.nav.http.client.FnrOppslagFeil
 import no.nav.http.client.FnrResult
+import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
 import no.nav.http.client.poaoTilgang.GTKontorFeil
 import no.nav.http.client.poaoTilgang.GTKontorFunnet
 import no.nav.http.client.poaoTilgang.GTKontorResultat
-import no.nav.http.client.arbeidssogerregisteret.ProfileringEnum
 
-sealed class ProfileringsResultat
-data class ProfileringFunnet(val profilering: ProfileringEnum) : ProfileringsResultat()
-data class ProfileringIkkeFunnet(val melding: String) : ProfileringsResultat()
-data class ProfileringsResultatFeil(val error: Throwable) : ProfileringsResultat()
+sealed class HentProfileringsResultat
+data class ProfileringFunnet(val profilering: ProfileringsResultat) : HentProfileringsResultat()
+data class ProfileringIkkeFunnet(val melding: String) : HentProfileringsResultat()
+data class ProfileringsResultatFeil(val error: Throwable) : HentProfileringsResultat()
 
 sealed class TilordningResultat
 object TilordningSuccess: TilordningResultat()
@@ -30,7 +30,7 @@ class AutomatiskKontorRutingService(
     private val gtKontorProvider: suspend (fnr: String) -> GTKontorResultat,
     private val aldersProvider: suspend (fnr: String) -> AlderResult,
     private val fnrProvider: suspend (aktorId: String) -> FnrResult,
-    private val profileringProvider: suspend (fnr: String) -> ProfileringsResultat,
+    private val profileringProvider: suspend (fnr: String) -> HentProfileringsResultat,
 ) {
     val log = org.slf4j.LoggerFactory.getLogger(this::class.java)
 
@@ -66,12 +66,12 @@ class AutomatiskKontorRutingService(
         fnr: String,
         gtKontor: KontorId?,
         alder: Int?,
-        profilering: ProfileringsResultat,
+        profilering: HentProfileringsResultat,
     ): AOKontorEndret {
         if (alder == null) throw IllegalArgumentException("Alder == null")
 
         if (profilering is ProfileringFunnet &&
-            profilering.profilering == ProfileringEnum.ANTATT_GODE_MULIGHETER &&
+            profilering.profilering == ProfileringsResultat.ANTATT_GODE_MULIGHETER &&
             alder in 31..59) {
             return OppfolgingsperiodeStartetNoeTilordning(fnr)
         }
