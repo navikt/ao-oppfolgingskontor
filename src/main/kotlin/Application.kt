@@ -55,6 +55,7 @@ fun Application.module() {
     )
     install(KafkaStreamsPlugin) {
         this.automatiskKontorRutingService = automatiskKontorRutingService
+        this.dataSource = dataSource
     }
 
     configureGraphQlModule(norg2Client, kontorTilhorighetService)
