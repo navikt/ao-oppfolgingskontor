@@ -32,7 +32,7 @@ class KafkaStreamsPluginConfig(
 val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
     createApplicationPlugin("KafkaStreams", ::KafkaStreamsPluginConfig) {
         val dataSource = requireNotNull(this.pluginConfig.dataSource) { "DataSource must be configured for KafkaStreamsPlugin" }
-        val automatiskKontorRutingService = requireNotNull(this.pluginConfig.automatiskKontorRutingService)
+        val automatiskKontorRutingService = requireNotNull(this.pluginConfig.automatiskKontorRutingService) { "AutomatiskKontorRutingService must be configured for KafkaStreamPlugin" }
 
         val endringPaOppfolgingsBrukerConsumer = EndringPaOppfolgingsBrukerConsumer()
         val oppfolgingsBrukerTopic = environment.config.property("topics.inn.endringPaOppfolgingsbruker").getString()
