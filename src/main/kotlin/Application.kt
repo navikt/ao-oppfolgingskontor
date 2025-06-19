@@ -30,9 +30,7 @@ fun Application.module() {
     configureHealthAndCompression()
     configureSecurity()
     val dataSource = configureDatabase()
-    install(KafkaStreamsPlugin) {
-        this.dataSource = dataSource
-    }
+
     val norg2Client = Norg2Client(environment.getNorg2Url())
 
     val texasClient = TexasSystemTokenClient(environment.getNaisTokenEndpoint())
