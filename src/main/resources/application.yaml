@@ -63,6 +63,7 @@ kafka:
   truststore-path: "$KAFKA_TRUSTSTORE_PATH"
 
 
+
 topics:
   inn:
     endringPaOppfolgingsbruker: "pto.endring-paa-oppfolgingsbruker-v2"

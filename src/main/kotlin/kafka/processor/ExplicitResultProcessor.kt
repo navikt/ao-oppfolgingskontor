@@ -13,14 +13,14 @@ class UnhandledRecordProcessingException(cause: Throwable): Exception("Unhandled
 * Processing a message expects a explicit result of either COMMIT, RETRY or SKIP to be the result of processing a message.
 * If an exception is thrown the error
 * */
-class ExplicitResultProcessor(val processRecord: ProcessRecord): Processor<String, String, String, String> {
+class ExplicitResultProcessor<K,V>(val processRecord: ProcessRecord<K,V>): Processor<K, V, String, String> {
     private lateinit var context: ProcessorContext<String, String>
     val log = LoggerFactory.getLogger(ExplicitResultProcessor::class.java)
     override fun init(context: ProcessorContext<String, String>) {
         this.context = context
     }
 
-    override fun process(record: Record<String, String>) {
+    override fun process(record: Record<K, V>) {
 
         runCatching {
             context.recordMetadata().map { log.info("Kafka topic: ${it.topic()}, partition: ${it.partition()}, offset: ${it.offset()}") }

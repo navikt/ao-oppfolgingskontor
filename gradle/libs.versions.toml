@@ -49,6 +49,7 @@ ktor-server-test-host = { module = "io.ktor:ktor-server-test-host", version.ref 
 kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin-version" }
 kafka-streams = { module = "org.apache.kafka:kafka-streams", version.ref = "kafka-streams" }
 kafka-avro = { module = "io.confluent:kafka-avro-serializer", version.ref = "kafka-avro" }
+kafka-streams-avro-serde = { module = "io.confluent:kafka-streams-avro-serde", version.ref = "kafka-avro" }
 flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway-version" }
 flyway-postgres = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway-version"}
 hikaricp = { module = "com.zaxxer:HikariCP", version.ref = "hikari-version" }
@@ -63,6 +64,7 @@ graphql-kotlin-schema-generator = { module = "com.expediagroup:graphql-kotlin-sc
 token-validation-ktor-v3 = { module = "no.nav.security:token-validation-ktor-v3", version.ref ="token-validation-ktor-v3-version" }
 mock-oauth2-server = { module = "no.nav.security:mock-oauth2-server", version.ref ="mock-oauth2-server-version" }
 nav-poaotilgang-client-core = { module = "no.nav.poao-tilgang:client-core", version.ref = "poao-tilgang-version" }
+
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-version" }
