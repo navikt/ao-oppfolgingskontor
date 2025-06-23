@@ -68,3 +68,4 @@ topics:
   inn:
     endringPaOppfolgingsbruker: "pto.endring-paa-oppfolgingsbruker-v2"
     oppfolgingsperiodeV1: "pto.oppfolgingsperiode-v1"
+    pdlLeesah: "pdl.leesah-v1"

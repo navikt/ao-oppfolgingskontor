@@ -14,10 +14,9 @@ import no.nav.kafka.config.StringTopicConsumer
 import no.nav.kafka.config.configureKafkaStreams
 import no.nav.kafka.config.configureTopology
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerConsumer
+import no.nav.kafka.consumers.LeesahConsumer
 import no.nav.kafka.consumers.OppfolgingsPeriodeConsumer
 import no.nav.kafka.processor.LeesahDto
-import no.nav.kafka.processor.ProcessRecord
-import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.services.AutomatiskKontorRutingService
 import org.apache.kafka.streams.KafkaStreams
 import java.time.Duration
@@ -41,8 +40,8 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
         val oppfolgingsPeriodeConsumer = OppfolgingsPeriodeConsumer(automatiskKontorRutingService)
         val oppfolgingsPeriodeTopic = environment.config.property("topics.inn.oppfolgingsperiodeV1").getString()
 
-        val leesahConsumer: ProcessRecord<String, LeesahDto> = { a, b -> RecordProcessingResult.COMMIT }
-        val leesahTopic = environment.config.property("pdl.leesah-v1").getString()
+        val leesahConsumer = LeesahConsumer()
+        val leesahTopic = environment.config.property("topics.inn.pdlLeesah").getString()
         val spesificAvroSerde = SpecificAvroSerde<LeesahDto>().apply {
             configure(
                 mapOf(
@@ -63,7 +62,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
                 { record, maybeRecordMetadata -> oppfolgingsPeriodeConsumer.consume(record, maybeRecordMetadata) }
             ),
             AvroTopicConsumer(
-                leesahTopic, leesahConsumer, spesificAvroSerde
+                leesahTopic, leesahConsumer::consume, spesificAvroSerde
             ))
         )
 
