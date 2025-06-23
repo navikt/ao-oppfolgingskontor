@@ -1,12 +1,11 @@
 package no.nav.kafka.config
 
-import io.confluent.kafka.serializers.KafkaAvroDeserializer
 import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde
 import io.ktor.server.config.*
 import no.nav.kafka.exceptionHandler.RetryIfRetriableExceptionHandler
 import no.nav.kafka.processor.ExplicitResultProcessor
+import no.nav.kafka.processor.LeesahDto
 import no.nav.kafka.processor.ProcessRecord
-import org.apache.avro.specific.SpecificRecord
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.config.SslConfigs
@@ -15,33 +14,39 @@ import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
 import org.apache.kafka.streams.Topology
 import org.apache.kafka.streams.kstream.Consumed
-import org.apache.kafka.streams.processor.api.Processor
 import org.apache.kafka.streams.processor.api.ProcessorSupplier
 import java.util.*
 
-fun <V : SpecificRecord> configureTopology(
-    topicAndConsumers: List<Pair<String, ProcessRecord<String, String>>>,
-    avroConsumers: List<Triple<String, ProcessRecord<String, V>, SpecificAvroSerde<V>>>
+sealed class TopicConsumer(
+    val topic: String,
+)
+class StringTopicConsumer(
+    topic: String,
+    val processRecord: ProcessRecord<String, String>,
+): TopicConsumer(topic)
+class AvroTopicConsumer(
+    topic: String,
+    val processRecord: ProcessRecord<String, LeesahDto>,
+    val specificRecord: SpecificAvroSerde<LeesahDto>
+): TopicConsumer(topic)
+
+fun configureTopology(
+    topicAndConsumers: List<TopicConsumer>,
 ): Topology {
     val builder = StreamsBuilder()
 
-    topicAndConsumers.forEach { (topic, processRecord) ->
-        val sourceStream = builder.stream<String, String>(topic)
-        sourceStream.process(object : ProcessorSupplier<String, String, String, String> {
-            override fun get(): Processor<String, String, String, String> {
-                return ExplicitResultProcessor(processRecord)
+    topicAndConsumers.forEach { topicAndConsumer ->
+        when (topicAndConsumer) {
+            is StringTopicConsumer -> {
+                val sourceStream = builder.stream<String, String>(topicAndConsumer.topic)
+                sourceStream.process(ProcessorSupplier { ExplicitResultProcessor(topicAndConsumer.processRecord) })
             }
-        })
-    }
-
-    avroConsumers.forEach { (topic, processRecord, specificRecord) ->
-        val consumedwith: Consumed<String, V> = Consumed.with(Serdes.String(), specificRecord)
-        val sourceStream = builder.stream<String, V>(topic, consumedwith)
-        sourceStream.process(object : ProcessorSupplier<String, V, String, String> {
-            override fun get(): Processor<String, V, String, String> {
-                return ExplicitResultProcessor(processRecord)
+            is AvroTopicConsumer -> {
+                val consumedwith: Consumed<String, LeesahDto> = Consumed.with(Serdes.String(), topicAndConsumer.specificRecord)
+                val sourceStream = builder.stream(topicAndConsumer.topic, consumedwith)
+                sourceStream.process(ProcessorSupplier { ExplicitResultProcessor(topicAndConsumer.processRecord) })
             }
-        })
+        }
     }
     return builder.build()
 }

@@ -9,6 +9,8 @@ import io.ktor.server.application.ApplicationStopping
 import io.ktor.server.application.createApplicationPlugin
 import io.ktor.server.application.hooks.MonitoringEvent
 import io.ktor.server.application.log
+import no.nav.kafka.config.AvroTopicConsumer
+import no.nav.kafka.config.StringTopicConsumer
 import no.nav.kafka.config.configureKafkaStreams
 import no.nav.kafka.config.configureTopology
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerConsumer
@@ -42,7 +44,6 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
         val leesahConsumer: ProcessRecord<String, LeesahDto> = { a, b -> RecordProcessingResult.COMMIT }
         val leesahTopic = environment.config.property("pdl.leesah-v1").getString()
         val spesificAvroSerde = SpecificAvroSerde<LeesahDto>().apply {
-            this.
             configure(
                 mapOf(
                     "schema.registry.url" to environment.config.property("kafka.schema-registry").getString(),
@@ -52,13 +53,18 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
             )
         }
 
-
-        val topology = configureTopology<LeesahDto>(listOf(
-            oppfolgingsBrukerTopic to { record, maybeRecordMetadata ->
-                endringPaOppfolgingsBrukerConsumer.consume(record, maybeRecordMetadata) },
-            oppfolgingsPeriodeTopic to { record, maybeRecordMetadata ->
-                oppfolgingsPeriodeConsumer.consume(record, maybeRecordMetadata) }),
-            listOf(Triple(leesahTopic, leesahConsumer, spesificAvroSerde))
+        val topology = configureTopology(listOf(
+            StringTopicConsumer(
+                oppfolgingsBrukerTopic,
+                { record, maybeRecordMetadata -> endringPaOppfolgingsBrukerConsumer.consume(record, maybeRecordMetadata) }
+            ),
+            StringTopicConsumer(
+                oppfolgingsPeriodeTopic,
+                { record, maybeRecordMetadata -> oppfolgingsPeriodeConsumer.consume(record, maybeRecordMetadata) }
+            ),
+            AvroTopicConsumer(
+                leesahTopic, leesahConsumer, spesificAvroSerde
+            ))
         )
 
         val kafkaStream = KafkaStreams(topology, configureKafkaStreams(environment.config))
