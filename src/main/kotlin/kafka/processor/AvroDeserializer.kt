@@ -3,7 +3,6 @@ package no.nav.kafka.processor
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClientConfig
-import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig
 import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde
 import io.ktor.server.config.ApplicationConfig
 import org.apache.avro.Schema
@@ -30,8 +29,8 @@ data class LeesahDto(
 class LeesahAvroDeserializer (
     config: ApplicationConfig,
 ) {
-    val schemaRegistryUrl: String = config.property("kafka.schema-registry").getString(),
-    val schemaRegistryUser: String = config.property("kafka.schema-registry-user").getString(),
+    val schemaRegistryUrl: String = config.property("kafka.schema-registry").getString()
+    val schemaRegistryUser: String = config.property("kafka.schema-registry-user").getString()
     val schemaRegistryPassword: String = config.property("kafka.schema-registry-password").getString()
     val SCHEMA_MAP_CAPACITY: Int = 100
     val schemaRegistryClient: SchemaRegistryClient by lazy {
