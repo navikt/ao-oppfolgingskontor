@@ -5,26 +5,6 @@ import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClientConfig
 import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde
 import io.ktor.server.config.ApplicationConfig
-import org.apache.avro.Schema
-import org.apache.avro.specific.SpecificRecord
-
-data class LeesahDto(
-    val id: String,
-    val name: String,
-    val age: Int
-): SpecificRecord {
-    override fun put(i: Int, v: Any?) {
-        TODO("Not yet implemented")
-    }
-
-    override fun get(i: Int): Any? {
-        TODO("Not yet implemented")
-    }
-
-    override fun getSchema(): Schema? {
-        TODO("Not yet implemented")
-    }
-}
 
 class LeesahAvroDeserializer (
     config: ApplicationConfig,
@@ -45,6 +25,7 @@ class LeesahAvroDeserializer (
         .apply {
             configure(
                 mapOf(
+                    "schema.registry.url" to schemaRegistryUrl,
                     "specific.avro.reader" to true
                 ),
                 false
