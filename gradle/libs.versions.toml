@@ -17,7 +17,7 @@ token-validation-ktor-v3-version = "5.0.24"
 mock-oauth2-server-version = "2.1.10"
 poao-tilgang-version = "test.2025.06.06_07.57-65ec2c15731b"
 caffeine-version = "3.2.1"
-kafka-avro = "7.9.1"
+kafka-avro = "8.0.0"
 
 [libraries]
 ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor-version" }
