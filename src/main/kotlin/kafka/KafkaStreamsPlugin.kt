@@ -1,5 +1,6 @@
 package no.nav.kafka
 
+import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig
 import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde
 import io.ktor.events.EventDefinition
 import io.ktor.server.application.Application
@@ -16,6 +17,7 @@ import no.nav.kafka.config.configureTopology
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerConsumer
 import no.nav.kafka.consumers.LeesahConsumer
 import no.nav.kafka.consumers.OppfolgingsPeriodeConsumer
+import no.nav.kafka.processor.LeesahAvroDeserializer
 import no.nav.kafka.processor.LeesahDto
 import no.nav.services.AutomatiskKontorRutingService
 import org.apache.kafka.streams.KafkaStreams
@@ -42,15 +44,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
 
         val leesahConsumer = LeesahConsumer()
         val leesahTopic = environment.config.property("topics.inn.pdlLeesah").getString()
-        val spesificAvroSerde = SpecificAvroSerde<LeesahDto>().apply {
-            configure(
-                mapOf(
-                    "schema.registry.url" to environment.config.property("kafka.schema-registry").getString(),
-                    "specific.avro.reader" to true
-                ),
-                false
-            )
-        }
+        val spesificAvroSerde = LeesahAvroDeserializer(environment.config).deserializer
 
         val topology = configureTopology(listOf(
             StringTopicConsumer(
