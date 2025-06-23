@@ -54,7 +54,7 @@ object RetryableTopology {
         dataSource: DataSource,
         keySerde: Serde<K>,
         valueSerde: Serde<V>,
-        config: RetryConfig = RetryConfig(),
+        config: RetryConfig,
         noinline businessLogic: (record: Record<K, V>) -> Unit
     ) {
         // Liten lambda wrapper for å håndtere transformasjonen
@@ -87,7 +87,7 @@ object RetryableTopology {
         noinline businessLogic: (record: Record<KIn, VIn>) -> Record<KOut, VOut>?
     ): KStream<KOut, VOut> {
 
-        val repository = FailedMessageRepository(dataSource)
+        val repository = FailedMessageRepository(dataSource, inputTopic)
         val storeBuilder = PostgresRetryStoreBuilder(config.stateStoreName, repository)
         builder.addStateStore(storeBuilder)
 

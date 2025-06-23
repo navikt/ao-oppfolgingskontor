@@ -4,27 +4,29 @@ import org.jdbi.v3.core.Jdbi
 import org.jdbi.v3.core.kotlin.KotlinPlugin
 import javax.sql.DataSource
 
-class FailedMessageRepository(dataSource: DataSource) {
+class FailedMessageRepository(dataSource: DataSource, val topic: String) {
     private val jdbi = Jdbi.create(dataSource).apply {
         installPlugin(KotlinPlugin())
     }
 
     fun hasFailedMessages(key: String): Boolean = jdbi.withHandle<Boolean, Exception> { handle ->
-        handle.createQuery("SELECT EXISTS (SELECT 1 FROM failed_messages WHERE message_key_text = :key)")
+        handle.createQuery("SELECT EXISTS (SELECT 1 FROM failed_messages WHERE message_key_text = :key and topic = :topic)")
             .bind("key", key)
+            .bind("topic", topic)
             .mapTo(Boolean::class.java)
             .one()
     }
 
     fun enqueue(keyString: String, keyBytes: ByteArray, value: ByteArray, reason: String) = jdbi.useHandle<Exception> { handle ->
         handle.createUpdate("""
-            INSERT INTO failed_messages (message_key_text, message_key_bytes, message_value, failure_reason)
+            INSERT INTO failed_messages (message_key_text, message_key_bytes, message_value, failure_reason, topic)
             VALUES (:keyString, :keyBytes, :value, :reason)
         """)
             .bind("keyString", keyString)
             .bind("keyBytes", keyBytes)
             .bind("value", value)
             .bind("reason", reason)
+            .bind("topic", topic)
             .execute()
     }
 
@@ -33,10 +35,12 @@ class FailedMessageRepository(dataSource: DataSource) {
         handle.createQuery("""
             SELECT id, message_key_text, message_key_bytes, message_value, queue_timestamp, retry_count, last_attempt_timestamp, failure_reason
             FROM failed_messages
+            WHERE topic = :topic
             ORDER BY queue_timestamp
             LIMIT :limit
         """)
             .bind("limit", limit)
+            .bind("topic", topic)
             .mapTo(FailedMessage::class.java)
             .list()
     }

@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory
  * 5.  Oppdaterer alle relevante metrikker via RetryMetrics-klassen.
  */
 @PublishedApi
-internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
+internal class RetryableProcessor<KIn, VIn, KOut, VOut, ProcessorOutput>(
     private val config: RetryConfig,
     private val keyInSerializer: Serializer<KIn>,
     private val valueInSerializer: Serializer<VIn>,
@@ -29,7 +29,7 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
     private val topic: String, // Nødvendig for SerDes
     private val repository: FailedMessageRepository, // Nødvendig for metrikk-initialiserin
     /* businessLogig er selve forretningslogikken fra brukeren. Kan returnere Record<KOut,VOut> eller Unit.     */
-    private val businessLogic: (Record<KIn, VIn>) -> Any?
+    private val businessLogic: (Record<KIn, VIn>) -> ProcessorOutput
 ) : Processor<KIn, VIn, KOut, VOut> {
 
     private lateinit var context: ProcessorContext<KOut, VOut>

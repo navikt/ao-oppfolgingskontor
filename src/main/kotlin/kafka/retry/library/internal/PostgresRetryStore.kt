@@ -2,6 +2,7 @@ package no.nav.kafka.retry.library.internal
 
 import org.apache.kafka.streams.processor.StateStore
 import org.apache.kafka.streams.processor.StateStoreContext
+import org.apache.kafka.streams.state.internals.GlobalStateStoreProvider
 
 interface PostgresRetryStore : StateStore {
     fun hasFailedMessages(key: String): Boolean

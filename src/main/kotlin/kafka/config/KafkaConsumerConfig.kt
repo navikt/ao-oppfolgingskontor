@@ -4,6 +4,7 @@ import io.ktor.server.config.ApplicationConfig
 import no.nav.kafka.processor.ProcessRecord
 import no.nav.kafka.exceptionHandler.RetryIfRetriableExceptionHandler
 import no.nav.kafka.processor.ExplicitResultProcessor
+import no.nav.kafka.retry.library.RetryConfig
 import no.nav.kafka.retry.library.RetryableTopology
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.producer.ProducerConfig
@@ -26,7 +27,8 @@ fun configureTopology(topicAndConsumers: List<Pair<String, ProcessRecord>>, data
             dataSource = dataSource,
             keySerde = Serdes.String(),
             valueSerde = Serdes.String(),
-            businessLogic = { processRecord(it, null) }
+            businessLogic = { processRecord(it, null) },
+            config = RetryConfig(topic)
         )
     }
     return builder.build()
