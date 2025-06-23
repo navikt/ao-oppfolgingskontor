@@ -17,6 +17,7 @@ token-validation-ktor-v3-version = "5.0.24"
 mock-oauth2-server-version = "2.1.10"
 poao-tilgang-version = "test.2025.06.06_07.57-65ec2c15731b"
 caffeine-version = "3.2.1"
+kafka-avro = "7.9.1"
 
 [libraries]
 ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor-version" }
@@ -47,6 +48,7 @@ ktor-server-config-yaml = { module = "io.ktor:ktor-server-config-yaml", version.
 ktor-server-test-host = { module = "io.ktor:ktor-server-test-host", version.ref = "ktor-version" }
 kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin-version" }
 kafka-streams = { module = "org.apache.kafka:kafka-streams", version.ref = "kafka-streams" }
+kafka-avro = { module = "io.confluent:kafka-avro-serializer", version.ref = "kafka-avro" }
 flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway-version" }
 flyway-postgres = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway-version"}
 hikaricp = { module = "com.zaxxer:HikariCP", version.ref = "hikari-version" }

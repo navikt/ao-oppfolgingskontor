@@ -60,3 +60,5 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
             application.monitor.raise(KafkaStreamsStopped, application)
         }
     }
+
+val avroDeserializer = KafkaAvroDeserializer()
