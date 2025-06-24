@@ -2,7 +2,6 @@ package kafka.consumers
 
 import io.kotest.matchers.shouldBe
 import io.ktor.server.testing.testApplication
-import kotlinx.datetime.LocalDateTime
 import no.nav.db.Fnr
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.GeografiskTilknyttetKontorEntity
@@ -72,7 +71,7 @@ class LeesahConsumerTest {
 
     @Test
     fun `skal ikke sette ao-kontor men gt-kontor ved addressebeskyttelse endret hvis det er nytt kontor`() = testApplication {
-        val fnr = "1234567892"
+        val fnr = "1234567894"
         val gammelKontorId = "1234"
         val nyKontorId = "5678"
         application {
