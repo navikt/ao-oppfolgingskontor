@@ -9,10 +9,11 @@ import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.db.table.GeografiskTilknytningKontorTable
 import no.nav.domain.KontorId
 import no.nav.http.client.AlderFunnet
-import no.nav.http.client.FnrFunnet
+import no.nav.http.client.FnrOppslagFeil
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
 import no.nav.http.client.poaoTilgang.GTKontorFeil
 import no.nav.http.client.poaoTilgang.GTKontorFunnet
+import no.nav.http.client.poaoTilgang.GTKontorResultat
 import no.nav.kafka.consumers.AddressebeskyttelseEndret
 import no.nav.kafka.consumers.BostedsadresseEndret
 import no.nav.kafka.consumers.LeesahConsumer
@@ -36,7 +37,7 @@ class LeesahConsumerTest {
         application {
             flywayMigrationInTest()
             gittNåværendeGtKontor(fnr, KontorId(gammeltKontorId))
-            val automatiskKontorRutingService = gittKontorINorg(fnr, KontorId(nyKontorId))
+            val automatiskKontorRutingService = gittRutingServiceMedGtKontor(KontorId(nyKontorId))
             val leesahConsumer = LeesahConsumer(automatiskKontorRutingService)
 
             leesahConsumer.handterLeesahHendelse(BostedsadresseEndret(fnr))
@@ -56,7 +57,7 @@ class LeesahConsumerTest {
         application {
             flywayMigrationInTest()
             gittNåværendeGtKontor(fnr, KontorId(gammeltKontorId))
-            val automatiskKontorRutingService = gittKontorINorg(fnr, KontorId(nyKontorId))
+            val automatiskKontorRutingService = gittRutingServiceMedGtKontor(KontorId(nyKontorId))
             val leesahConsumer = LeesahConsumer(automatiskKontorRutingService)
 
             leesahConsumer.handterLeesahHendelse(AddressebeskyttelseEndret(fnr, Gradering.STRENGT_FORTROLIG))
@@ -80,7 +81,7 @@ class LeesahConsumerTest {
             flywayMigrationInTest()
             gittNåværendeAOKontor(fnr, KontorId(gammelKontorId))
             gittNåværendeGtKontor(fnr, KontorId(gammelKontorId))
-            val automatiskKontorRutingService = gittKontorINorg(fnr, KontorId(nyKontorId))
+            val automatiskKontorRutingService = gittRutingServiceMedGtKontor(KontorId(nyKontorId))
             val leesahConsumer = LeesahConsumer(automatiskKontorRutingService)
 
             leesahConsumer.handterLeesahHendelse(AddressebeskyttelseEndret(fnr, Gradering.UGRADERT))
@@ -98,11 +99,8 @@ class LeesahConsumerTest {
     @Test
     fun `skal håndtere at gt-provider returnerer GTKontorFeil`() = testApplication {
         val fnr = "4044567890"
-        val automatiskKontorRutingService = AutomatiskKontorRutingService(
-            fnrProvider = { FnrFunnet(fnr) },
-            gtKontorProvider = { GTKontorFeil("Noe gikk galt") },
-            aldersProvider = { AlderFunnet(20) },
-            profileringProvider = { ProfileringFunnet(ProfileringsResultat.ANTATT_BEHOV_FOR_VEILEDNING) },
+        val automatiskKontorRutingService = defaultAutomatiskKontorRutingService(
+            { GTKontorFeil("Noe gikk galt") }
         )
         val leesahConsumer = LeesahConsumer(automatiskKontorRutingService)
 
@@ -114,11 +112,8 @@ class LeesahConsumerTest {
     @Test
     fun `skal håndtere at gt-provider kaster throwable`() = testApplication {
         val fnr = "4044567890"
-        val automatiskKontorRutingService = AutomatiskKontorRutingService(
-            fnrProvider = { FnrFunnet(fnr) },
-            gtKontorProvider = { throw Throwable("Noe gikk galt") },
-            aldersProvider = { AlderFunnet(20) },
-            profileringProvider = { ProfileringFunnet(ProfileringsResultat.ANTATT_BEHOV_FOR_VEILEDNING) },
+        val automatiskKontorRutingService = defaultAutomatiskKontorRutingService(
+            { throw Throwable("Noe gikk galt") }
         )
         val leesahConsumer = LeesahConsumer(automatiskKontorRutingService)
 
@@ -127,12 +122,20 @@ class LeesahConsumerTest {
         resultat shouldBe  RecordProcessingResult.RETRY
     }
 
-    private fun gittKontorINorg(fnr: Fnr, kontorId: KontorId): AutomatiskKontorRutingService {
+    private fun defaultAutomatiskKontorRutingService(
+        gtProvider: suspend (fnr: String) -> GTKontorResultat
+    ): AutomatiskKontorRutingService {
         return AutomatiskKontorRutingService(
-            fnrProvider = { FnrFunnet(fnr) },
-            gtKontorProvider = { GTKontorFunnet(kontorId) },
-            aldersProvider = { AlderFunnet(20) },
-            profileringProvider = { ProfileringFunnet(ProfileringsResultat.ANTATT_BEHOV_FOR_VEILEDNING) },
+            fnrProvider = { throw Throwable("Denne skal ikke brukes") },
+            gtKontorProvider = gtProvider,
+            aldersProvider = { throw Throwable("Denne skal ikke brukes") },
+            profileringProvider = { throw Throwable("Denne skal ikke brukes") },
+        )
+    }
+
+    private fun gittRutingServiceMedGtKontor(kontorId: KontorId): AutomatiskKontorRutingService {
+        return defaultAutomatiskKontorRutingService(
+            { GTKontorFunnet(kontorId) }
         )
     }
 
