@@ -1,20 +1,22 @@
 package no.nav.domain.events
 
 import no.nav.domain.KontorEndringsType
-import no.nav.domain.KontorHIstorikkInnslag
+import no.nav.domain.KontorHistorikkInnslag
 import no.nav.domain.KontorTilordning
+import no.nav.domain.KontorType
 import no.nav.domain.System
 import org.slf4j.LoggerFactory
 
-class GtKontorEndretPgaBostedsadresseEndret(tilordning: KontorTilordning) : GTKontorEndret(tilordning) {
+class GTKontorEndretPgaBostedsadresseEndret(tilordning: KontorTilordning) : GTKontorEndret(tilordning) {
     val logger = LoggerFactory.getLogger(this::class.java)
 
-    override fun toHistorikkInnslag(): KontorHIstorikkInnslag {
-        return KontorHIstorikkInnslag(
+    override fun toHistorikkInnslag(): KontorHistorikkInnslag {
+        return KontorHistorikkInnslag(
             kontorId = tilordning.kontorId,
             fnr = tilordning.fnr,
             registrant = System(),
-            kontorendringstype = KontorEndringsType.EndretBostedsadresse
+            kontorendringstype = KontorEndringsType.EndretBostedsadresse,
+            kontorType = KontorType.GEOGRAFISK_TILKNYTNING
         )
     }
 

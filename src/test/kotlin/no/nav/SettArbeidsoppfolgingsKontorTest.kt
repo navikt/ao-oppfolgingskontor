@@ -9,7 +9,7 @@ import io.ktor.server.config.MapApplicationConfig
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
-import no.nav.domain.KontorKilde
+import no.nav.domain.KontorType
 import no.nav.http.client.mockNorg2Host
 import no.nav.http.client.norg2TestUrl
 import no.nav.http.client.settKontor
@@ -71,7 +71,7 @@ class SettArbeidsoppfolgingsKontorTest {
             kontorResponse.data?.kontorTilhorighet?.kontorId shouldBe kontorId
             kontorResponse.data?.kontorTilhorighet?.registrant shouldBe veilederIdent
             kontorResponse.data?.kontorTilhorighet?.registrantType shouldBe RegistrantTypeDto.VEILEDER
-            kontorResponse.data?.kontorTilhorighet?.kilde shouldBe KontorKilde.ARBEIDSOPPFOLGING
+            kontorResponse.data?.kontorTilhorighet?.kontorType shouldBe KontorType.ARBEIDSOPPFOLGING
         }
     }
 

@@ -1,17 +1,14 @@
 package no.nav.domain.events
 
-import no.nav.domain.KontorEndringsType
-import no.nav.domain.KontorHIstorikkInnslag
+import no.nav.domain.KontorHistorikkInnslag
 import no.nav.domain.KontorTilordning
 import no.nav.domain.Registrant
-import no.nav.domain.System
-import org.slf4j.LoggerFactory
 import java.time.OffsetDateTime
 
 sealed class KontorEndretEvent(
     val tilordning: KontorTilordning
 ) {
-    abstract fun toHistorikkInnslag(): KontorHIstorikkInnslag
+    abstract fun toHistorikkInnslag(): KontorHistorikkInnslag
     abstract fun logg(): Unit
 }
 

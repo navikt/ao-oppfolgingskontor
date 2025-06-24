@@ -19,15 +19,13 @@ class LeesahConsumer(
         log.info("Consumer Personhendelse record ${record.value().opplysningstype} ${record.value().endringstype}")
 
         record.value().toHendelse()
-            .let {
+            .let { hendelse ->
                 runBlocking {
-                    when (it) {
-                        is BostedsadresseEndret -> automatiskKontorRutingService.handterEndringForBostedsadresse(it)
-                        is AddressebeskyttelseEndret -> {
-//                            automatiskKontorRutingService.handterEndringForAdressebeskyttelse(it.fnr)
-                        }
+                    when (hendelse) {
+                        is BostedsadresseEndret -> automatiskKontorRutingService.handterEndringForBostedsadresse(hendelse)
+                        is AddressebeskyttelseEndret -> automatiskKontorRutingService.handterEndringForAdressebeskyttelse(hendelse)
                         is IrrelevantHendelse -> {
-                            log.info("Hendelse ${it.opplysningstype} er irrelevant for kontor-ruting")
+                            log.info("Hendelse ${hendelse.opplysningstype} er irrelevant for kontor-ruting")
                             RecordProcessingResult.SKIP
                         }
                     }

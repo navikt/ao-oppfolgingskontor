@@ -62,6 +62,7 @@ object KontorTilordningService {
             it[endretAv] = historikkInnslag.registrant.getIdent()
             it[endretAvType] = historikkInnslag.registrant.getType()
             it[kontorendringstype] = historikkInnslag.kontorendringstype.name
+            it[kontorType] = historikkInnslag.kontorType.name
         }
     }
 }

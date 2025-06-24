@@ -3,7 +3,9 @@ package no.nav.services
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.events.AOKontorEndret
-import no.nav.domain.events.GtKontorEndretPgaBostedsadresseEndret
+import no.nav.domain.events.AOKontorEndretPgaAdressebeskyttelseEndret
+import no.nav.domain.events.GTKontorPgaAdressebeskyttelseEndret
+import no.nav.domain.events.GTKontorEndretPgaBostedsadresseEndret
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.domain.events.OppfolgingsperiodeStartetNoeTilordning
 import no.nav.http.client.*
@@ -11,6 +13,7 @@ import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
 import no.nav.http.client.poaoTilgang.GTKontorFeil
 import no.nav.http.client.poaoTilgang.GTKontorFunnet
 import no.nav.http.client.poaoTilgang.GTKontorResultat
+import no.nav.kafka.consumers.AddressebeskyttelseEndret
 import no.nav.kafka.consumers.BostedsadresseEndret
 
 sealed class HentProfileringsResultat
@@ -87,7 +90,7 @@ class AutomatiskKontorRutingService(
         val gtKontorResultat = gtKontorProvider(hendelse.fnr)
         when (gtKontorResultat) {
             is GTKontorFunnet -> KontorTilordningService.tilordneKontor(
-                GtKontorEndretPgaBostedsadresseEndret(
+                GTKontorEndretPgaBostedsadresseEndret(
                     KontorTilordning(
                         hendelse.fnr,
                         gtKontorResultat.kontorId
@@ -95,8 +98,38 @@ class AutomatiskKontorRutingService(
                 )
             )
             is GTKontorFeil -> {
-                log.error("Feil ved henting av gt-kontor: ${gtKontorResultat.melding}")
+                log.error("Feil ved henting av gt-kontor: ${gtKontorResultat.melding}") // TODO: Prøv igjen om det feiler
             }
         }
+    }
+
+    suspend fun handterEndringForAdressebeskyttelse(
+        hendelse: AddressebeskyttelseEndret,
+    ) {
+        val gtKontorResultat = gtKontorProvider(hendelse.fnr)
+        when (gtKontorResultat) {
+            is GTKontorFunnet -> {
+                KontorTilordningService.tilordneKontor(
+                    GTKontorPgaAdressebeskyttelseEndret(
+                        KontorTilordning(
+                            hendelse.fnr,
+                            gtKontorResultat.kontorId
+                        )
+                    )
+                )
+                KontorTilordningService.tilordneKontor(
+                    AOKontorEndretPgaAdressebeskyttelseEndret(
+                        KontorTilordning(
+                            hendelse.fnr,
+                            gtKontorResultat.kontorId
+                        )
+                    )
+                )
+            }
+            is GTKontorFeil -> {
+                log.error("Feil ved henting av gt-kontor: ${gtKontorResultat.melding}") // TODO: Prøv igjen om det feiler
+            }
+        }
+
     }
 }
