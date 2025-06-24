@@ -18,7 +18,6 @@ import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerConsumer
 import no.nav.kafka.consumers.LeesahConsumer
 import no.nav.kafka.consumers.OppfolgingsPeriodeConsumer
 import no.nav.kafka.processor.LeesahAvroDeserializer
-import no.nav.kafka.processor.LeesahDto
 import no.nav.services.AutomatiskKontorRutingService
 import org.apache.kafka.streams.KafkaStreams
 import java.time.Duration

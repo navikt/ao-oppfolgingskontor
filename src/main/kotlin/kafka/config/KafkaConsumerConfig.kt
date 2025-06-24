@@ -4,8 +4,8 @@ import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde
 import io.ktor.server.config.*
 import no.nav.kafka.exceptionHandler.RetryIfRetriableExceptionHandler
 import no.nav.kafka.processor.ExplicitResultProcessor
-import no.nav.kafka.processor.LeesahDto
 import no.nav.kafka.processor.ProcessRecord
+import no.nav.person.pdl.leesah.Personhendelse
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.config.SslConfigs
@@ -26,8 +26,8 @@ class StringTopicConsumer(
 ): TopicConsumer(topic)
 class AvroTopicConsumer(
     topic: String,
-    val processRecord: ProcessRecord<String, LeesahDto>,
-    val specificRecord: SpecificAvroSerde<LeesahDto>
+    val processRecord: ProcessRecord<String, Personhendelse>,
+    val specificRecord: SpecificAvroSerde<Personhendelse>
 ): TopicConsumer(topic)
 
 fun configureTopology(
@@ -42,7 +42,7 @@ fun configureTopology(
                 sourceStream.process(ProcessorSupplier { ExplicitResultProcessor(topicAndConsumer.processRecord) })
             }
             is AvroTopicConsumer -> {
-                val consumedwith: Consumed<String, LeesahDto> = Consumed.with(Serdes.String(), topicAndConsumer.specificRecord)
+                val consumedwith: Consumed<String, Personhendelse> = Consumed.with(Serdes.String(), topicAndConsumer.specificRecord)
                 val sourceStream = builder.stream(topicAndConsumer.topic, consumedwith)
                 sourceStream.process(ProcessorSupplier { ExplicitResultProcessor(topicAndConsumer.processRecord) })
             }

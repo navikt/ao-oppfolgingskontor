@@ -5,6 +5,7 @@ import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClientConfig
 import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde
 import io.ktor.server.config.ApplicationConfig
+import no.nav.person.pdl.leesah.Personhendelse
 
 class LeesahAvroDeserializer (
     config: ApplicationConfig,
@@ -21,7 +22,7 @@ class LeesahAvroDeserializer (
         CachedSchemaRegistryClient(schemaRegistryUrl, SCHEMA_MAP_CAPACITY, configs)
     }
 
-    val deserializer: SpecificAvroSerde<LeesahDto> = SpecificAvroSerde<LeesahDto>(schemaRegistryClient)
+    val deserializer: SpecificAvroSerde<Personhendelse> = SpecificAvroSerde<Personhendelse>(schemaRegistryClient)
         .apply {
             configure(
                 mapOf(
