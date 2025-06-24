@@ -3,7 +3,7 @@ package no.nav.services
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.events.AOKontorEndret
-import no.nav.domain.events.BostedsadresseEndret
+import no.nav.domain.events.GtKontorEndretPgaBostedsadresseEndret
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.domain.events.OppfolgingsperiodeStartetNoeTilordning
 import no.nav.http.client.*
@@ -11,6 +11,7 @@ import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
 import no.nav.http.client.poaoTilgang.GTKontorFeil
 import no.nav.http.client.poaoTilgang.GTKontorFunnet
 import no.nav.http.client.poaoTilgang.GTKontorResultat
+import no.nav.kafka.consumers.BostedsadresseEndret
 
 sealed class HentProfileringsResultat
 data class ProfileringFunnet(val profilering: ProfileringsResultat) : HentProfileringsResultat()
@@ -81,23 +82,21 @@ class AutomatiskKontorRutingService(
     }
 
     suspend fun handterEndringForBostedsadresse(
-        fnr: String,
-    ): Unit {
-        val gtKontorResultat = gtKontorProvider(fnr)
-        if (gtKontorResultat is GTKontorFunnet) {
-            KontorTilordningService.tilordneKontor(
-                BostedsadresseEndret(
+        hendelse: BostedsadresseEndret,
+    ) {
+        val gtKontorResultat = gtKontorProvider(hendelse.fnr)
+        when (gtKontorResultat) {
+            is GTKontorFunnet -> KontorTilordningService.tilordneKontor(
+                GtKontorEndretPgaBostedsadresseEndret(
                     KontorTilordning(
-                        fnr,
+                        hendelse.fnr,
                         gtKontorResultat.kontorId
                     )
                 )
             )
-        }
-
-        if (gtKontorResultat is GTKontorFeil) {
-            log.error("Feil ved henting av gt-kontor: ${gtKontorResultat.melding}")
-            return
+            is GTKontorFeil -> {
+                log.error("Feil ved henting av gt-kontor: ${gtKontorResultat.melding}")
+            }
         }
     }
 }

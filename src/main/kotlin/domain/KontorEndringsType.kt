@@ -4,20 +4,24 @@ enum class KontorEndringsType {
     AutomatiskRutetTilNOE,
     AutomatiskRutetTilLokalkontor,
     FlyttetAvVeileder,
-    BleSkjermet,
+    FikkSkjerming,
+    MistetSkjerming,
     FikkAddressebeskyttelse,
+    AddressebeskyttelseMistet,
     EndretIArena,
-    BostedsadresseEndret,
+    EndretBostedsadresse,
 }
 
 fun KontorEndringsType.getKilde(): KontorKilde {
     return when (this) {
         KontorEndringsType.AutomatiskRutetTilNOE -> KontorKilde.ARBEIDSOPPFOLGING
         KontorEndringsType.FlyttetAvVeileder -> KontorKilde.ARBEIDSOPPFOLGING
-        KontorEndringsType.BleSkjermet -> KontorKilde.GEOGRAFISK_TILKNYTNING
+        KontorEndringsType.FikkSkjerming -> KontorKilde.GEOGRAFISK_TILKNYTNING
         KontorEndringsType.FikkAddressebeskyttelse -> KontorKilde.GEOGRAFISK_TILKNYTNING
         KontorEndringsType.AutomatiskRutetTilLokalkontor -> KontorKilde.ARBEIDSOPPFOLGING
         KontorEndringsType.EndretIArena -> KontorKilde.ARENA
-        KontorEndringsType.BostedsadresseEndret -> KontorKilde.GEOGRAFISK_TILKNYTNING
+        KontorEndringsType.EndretBostedsadresse -> KontorKilde.GEOGRAFISK_TILKNYTNING
+        KontorEndringsType.MistetSkjerming -> KontorKilde.GEOGRAFISK_TILKNYTNING
+        KontorEndringsType.AddressebeskyttelseMistet -> KontorKilde.GEOGRAFISK_TILKNYTNING
     }
 }
