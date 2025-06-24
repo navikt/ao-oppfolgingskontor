@@ -1,5 +1,5 @@
-name: Deploy ao-oppfolgingskontor feature branch to dev
-run-name:  Deploy ao-oppfolgingskontor feature branch ${{ github.ref_name }} to dev by @${{ github.actor }}
+name: Deploy main branch
+run-name:  Deploy main branch by @${{ github.actor }}
 
 on:
   push:
