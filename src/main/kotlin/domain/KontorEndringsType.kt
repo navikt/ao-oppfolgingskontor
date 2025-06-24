@@ -6,7 +6,8 @@ enum class KontorEndringsType {
     FlyttetAvVeileder,
     BleSkjermet,
     FikkAddressebeskyttelse,
-    EndretIArena
+    EndretIArena,
+    BostedsadresseEndret,
 }
 
 fun KontorEndringsType.getKilde(): KontorKilde {
@@ -17,5 +18,6 @@ fun KontorEndringsType.getKilde(): KontorKilde {
         KontorEndringsType.FikkAddressebeskyttelse -> KontorKilde.GEOGRAFISK_TILKNYTNING
         KontorEndringsType.AutomatiskRutetTilLokalkontor -> KontorKilde.ARBEIDSOPPFOLGING
         KontorEndringsType.EndretIArena -> KontorKilde.ARENA
+        KontorEndringsType.BostedsadresseEndret -> KontorKilde.GEOGRAFISK_TILKNYTNING
     }
 }

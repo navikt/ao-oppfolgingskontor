@@ -3,14 +3,10 @@ package no.nav.services
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.events.AOKontorEndret
+import no.nav.domain.events.BostedsadresseEndret
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.domain.events.OppfolgingsperiodeStartetNoeTilordning
-import no.nav.http.client.AlderFunnet
-import no.nav.http.client.AlderResult
-import no.nav.http.client.FnrFunnet
-import no.nav.http.client.FnrIkkeFunnet
-import no.nav.http.client.FnrOppslagFeil
-import no.nav.http.client.FnrResult
+import no.nav.http.client.*
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
 import no.nav.http.client.poaoTilgang.GTKontorFeil
 import no.nav.http.client.poaoTilgang.GTKontorFunnet
@@ -22,7 +18,7 @@ data class ProfileringIkkeFunnet(val melding: String) : HentProfileringsResultat
 data class ProfileringsResultatFeil(val error: Throwable) : HentProfileringsResultat()
 
 sealed class TilordningResultat
-object TilordningSuccess: TilordningResultat()
+object TilordningSuccess : TilordningResultat()
 data class TilordningFeil(val message: String) : TilordningResultat()
 
 
@@ -73,13 +69,35 @@ class AutomatiskKontorRutingService(
 
         if (profilering is ProfileringFunnet &&
             profilering.profilering == ProfileringsResultat.ANTATT_GODE_MULIGHETER &&
-            alder in 31..59) {
+            alder in 31..59
+        ) {
             return OppfolgingsperiodeStartetNoeTilordning(fnr)
         }
 
         return when {
             gtKontor == null -> OppfolgingsPeriodeStartetLokalKontorTilordning(KontorTilordning(fnr, KontorId("2990")))
             else -> OppfolgingsPeriodeStartetLokalKontorTilordning(KontorTilordning(fnr, gtKontor))
+        }
+    }
+
+    suspend fun handterEndringForBostedsadresse(
+        fnr: String,
+    ): Unit {
+        val gtKontorResultat = gtKontorProvider(fnr)
+        if (gtKontorResultat is GTKontorFunnet) {
+            KontorTilordningService.tilordneKontor(
+                BostedsadresseEndret(
+                    KontorTilordning(
+                        fnr,
+                        gtKontorResultat.kontorId
+                    )
+                )
+            )
+        }
+
+        if (gtKontorResultat is GTKontorFeil) {
+            log.error("Feil ved henting av gt-kontor: ${gtKontorResultat.melding}")
+            return
         }
     }
 }

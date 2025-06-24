@@ -41,7 +41,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
         val oppfolgingsPeriodeConsumer = OppfolgingsPeriodeConsumer(automatiskKontorRutingService)
         val oppfolgingsPeriodeTopic = environment.config.property("topics.inn.oppfolgingsperiodeV1").getString()
 
-        val leesahConsumer = LeesahConsumer()
+        val leesahConsumer = LeesahConsumer(automatiskKontorRutingService)
         val leesahTopic = environment.config.property("topics.inn.pdlLeesah").getString()
         val spesificAvroSerde = LeesahAvroDeserializer(environment.config).deserializer
 
