@@ -1,6 +1,9 @@
 # ao-oppfolgingskontor
 Oppfølgingskontor for Arbeidsrettet Oppfølging
 
+<img src="[https://github.com/favicon.ico](https://github.com/user-attachments/assets/26fbe963-22c7-44e7-a14d-397f8626abb0)" width="48" height="48" >
+
+
 ## Inbound data
 | Endepunkt                              | Beskrivelse                                                       |      
 |----------------------------------------|-------------------------------------------------------------------|
