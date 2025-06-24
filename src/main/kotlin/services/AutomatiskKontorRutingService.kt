@@ -1,5 +1,6 @@
 package no.nav.services
 
+import io.ktor.network.sockets.BoundDatagramSocket
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.events.AOKontorEndret
@@ -15,6 +16,7 @@ import no.nav.http.client.poaoTilgang.GTKontorFunnet
 import no.nav.http.client.poaoTilgang.GTKontorResultat
 import no.nav.kafka.consumers.AddressebeskyttelseEndret
 import no.nav.kafka.consumers.BostedsadresseEndret
+import no.nav.person.pdl.leesah.adressebeskyttelse.Gradering
 
 sealed class HentProfileringsResultat
 data class ProfileringFunnet(val profilering: ProfileringsResultat) : HentProfileringsResultat()
@@ -117,19 +119,26 @@ class AutomatiskKontorRutingService(
                         )
                     )
                 )
-                KontorTilordningService.tilordneKontor(
-                    AOKontorEndretPgaAdressebeskyttelseEndret(
-                        KontorTilordning(
-                            hendelse.fnr,
-                            gtKontorResultat.kontorId
+                if (hendelse.erGradert()) {
+                    KontorTilordningService.tilordneKontor(
+                        AOKontorEndretPgaAdressebeskyttelseEndret(
+                            KontorTilordning(
+                                hendelse.fnr,
+                                gtKontorResultat.kontorId
+                            )
                         )
                     )
-                )
+                }
             }
             is GTKontorFeil -> {
                 log.error("Feil ved henting av gt-kontor: ${gtKontorResultat.melding}") // TODO: Prøv igjen om det feiler
             }
         }
-
     }
+}
+
+fun AddressebeskyttelseEndret.erGradert(): Boolean {
+    return this.gradering == Gradering.STRENGT_FORTROLIG
+            || this.gradering == Gradering.FORTROLIG
+            || this.gradering == Gradering.STRENGT_FORTROLIG_UTLAND
 }
