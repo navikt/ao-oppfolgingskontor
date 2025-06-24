@@ -17,30 +17,33 @@ class LeesahConsumer(
 
     fun consume(record: Record<String, Personhendelse>, maybeRecordMetadata: RecordMetadata?): RecordProcessingResult {
         log.info("Consumer Personhendelse record ${record.value().opplysningstype} ${record.value().endringstype}")
-        handterLeesahHendelse(record.value().toHendelse())
-        return RecordProcessingResult.COMMIT
+        return handterLeesahHendelse(record.value().toHendelse())
     }
 
-    fun handterLeesahHendelse(hendelse: GrunnlagForKontorEndretHendelse) {
-        runBlocking {
+    fun handterLeesahHendelse(hendelse: PersondataEndretHendelse): RecordProcessingResult {
+        val result = runBlocking {
             when (hendelse) {
                 is BostedsadresseEndret -> automatiskKontorRutingService.handterEndringForBostedsadresse(hendelse)
                 is AddressebeskyttelseEndret -> automatiskKontorRutingService.handterEndringForAdressebeskyttelse(hendelse)
                 is IrrelevantHendelse -> {
                     log.info("Hendelse ${hendelse.opplysningstype} er irrelevant for kontor-ruting")
-                    RecordProcessingResult.SKIP
+                    HåndterPersondataEndretSuccess
                 }
             }
+        }
+        return when (result) {
+            is HåndterPersondataEndretSuccess -> RecordProcessingResult.COMMIT
+            is HåndterPersondataEndretFail -> RecordProcessingResult.RETRY
         }
     }
 }
 
-sealed class GrunnlagForKontorEndretHendelse(val fnr: Fnr)
-class BostedsadresseEndret(fnr: Fnr): GrunnlagForKontorEndretHendelse(fnr)
-class AddressebeskyttelseEndret(fnr: Fnr, val gradering: Gradering): GrunnlagForKontorEndretHendelse(fnr)
-class IrrelevantHendelse(fnr: Fnr, val opplysningstype: String): GrunnlagForKontorEndretHendelse(fnr)
+sealed class PersondataEndretHendelse(val fnr: Fnr)
+class BostedsadresseEndret(fnr: Fnr): PersondataEndretHendelse(fnr)
+class AddressebeskyttelseEndret(fnr: Fnr, val gradering: Gradering): PersondataEndretHendelse(fnr)
+class IrrelevantHendelse(fnr: Fnr, val opplysningstype: String): PersondataEndretHendelse(fnr)
 
-fun Personhendelse.toHendelse(): GrunnlagForKontorEndretHendelse {
+fun Personhendelse.toHendelse(): PersondataEndretHendelse {
     if (this.personidenter.isEmpty()) {
         throw IllegalStateException("Personhendelse must have at least one personident")
     }
@@ -50,3 +53,8 @@ fun Personhendelse.toHendelse(): GrunnlagForKontorEndretHendelse {
     if (this.adressebeskyttelse != null) return AddressebeskyttelseEndret(fnr, this.adressebeskyttelse.gradering)
     return IrrelevantHendelse(fnr, this.opplysningstype)
 }
+
+sealed class HåndterPersondataEndretResultat()
+object HåndterPersondataEndretSuccess: HåndterPersondataEndretResultat()
+class HåndterPersondataEndretFail(val message: String, val error: Throwable? = null) : HåndterPersondataEndretResultat()
+

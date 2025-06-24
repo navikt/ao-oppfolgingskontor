@@ -1,6 +1,5 @@
 package no.nav.services
 
-import io.ktor.network.sockets.BoundDatagramSocket
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.events.AOKontorEndret
@@ -16,7 +15,11 @@ import no.nav.http.client.poaoTilgang.GTKontorFunnet
 import no.nav.http.client.poaoTilgang.GTKontorResultat
 import no.nav.kafka.consumers.AddressebeskyttelseEndret
 import no.nav.kafka.consumers.BostedsadresseEndret
+import no.nav.kafka.consumers.HåndterPersondataEndretFail
+import no.nav.kafka.consumers.HåndterPersondataEndretResultat
+import no.nav.kafka.consumers.HåndterPersondataEndretSuccess
 import no.nav.person.pdl.leesah.adressebeskyttelse.Gradering
+import org.slf4j.LoggerFactory
 
 sealed class HentProfileringsResultat
 data class ProfileringFunnet(val profilering: ProfileringsResultat) : HentProfileringsResultat()
@@ -34,7 +37,7 @@ class AutomatiskKontorRutingService(
     private val fnrProvider: suspend (aktorId: String) -> FnrResult,
     private val profileringProvider: suspend (fnr: String) -> HentProfileringsResultat,
 ) {
-    val log = org.slf4j.LoggerFactory.getLogger(this::class.java)
+    val log = LoggerFactory.getLogger(this::class.java)
 
     suspend fun tilordneKontorAutomatisk(aktorId: String): TilordningResultat {
         try {
@@ -88,51 +91,65 @@ class AutomatiskKontorRutingService(
 
     suspend fun handterEndringForBostedsadresse(
         hendelse: BostedsadresseEndret,
-    ) {
-        val gtKontorResultat = gtKontorProvider(hendelse.fnr)
-        when (gtKontorResultat) {
-            is GTKontorFunnet -> KontorTilordningService.tilordneKontor(
-                GTKontorEndretPgaBostedsadresseEndret(
-                    KontorTilordning(
-                        hendelse.fnr,
-                        gtKontorResultat.kontorId
-                    )
-                )
-            )
-            is GTKontorFeil -> {
-                log.error("Feil ved henting av gt-kontor: ${gtKontorResultat.melding}") // TODO: Prøv igjen om det feiler
+    ): HåndterPersondataEndretResultat {
+        try {
+            val gtKontorResultat = gtKontorProvider(hendelse.fnr)
+            return when (gtKontorResultat) {
+                is GTKontorFunnet -> { KontorTilordningService.tilordneKontor(
+                    GTKontorEndretPgaBostedsadresseEndret(
+                        KontorTilordning(
+                            hendelse.fnr,
+                            gtKontorResultat.kontorId
+                        )
+                    ))
+                    HåndterPersondataEndretSuccess
+                }
+                is GTKontorFeil -> {
+                    val feilmelding = "Kunne ikke håndtere endring i bostedsadresse pga feil ved henting av gt-kontor: ${gtKontorResultat.melding}"
+                    log.error(feilmelding) // TODO: Prøv igjen om det feiler
+                    HåndterPersondataEndretFail(feilmelding)
+                }
             }
+        } catch (error: Throwable) {
+            return HåndterPersondataEndretFail("Uventet feil ved håndtering av endring i bostedsadresse", error)
         }
     }
 
     suspend fun handterEndringForAdressebeskyttelse(
         hendelse: AddressebeskyttelseEndret,
-    ) {
-        val gtKontorResultat = gtKontorProvider(hendelse.fnr)
-        when (gtKontorResultat) {
-            is GTKontorFunnet -> {
-                KontorTilordningService.tilordneKontor(
-                    GTKontorPgaAdressebeskyttelseEndret(
-                        KontorTilordning(
-                            hendelse.fnr,
-                            gtKontorResultat.kontorId
-                        )
-                    )
-                )
-                if (hendelse.erGradert()) {
+    ): HåndterPersondataEndretResultat {
+        try {
+            val gtKontorResultat = gtKontorProvider(hendelse.fnr)
+            return when (gtKontorResultat) {
+                is GTKontorFunnet -> {
                     KontorTilordningService.tilordneKontor(
-                        AOKontorEndretPgaAdressebeskyttelseEndret(
+                        GTKontorPgaAdressebeskyttelseEndret(
                             KontorTilordning(
                                 hendelse.fnr,
                                 gtKontorResultat.kontorId
                             )
                         )
                     )
+                    if (hendelse.erGradert()) {
+                        KontorTilordningService.tilordneKontor(
+                            AOKontorEndretPgaAdressebeskyttelseEndret(
+                                KontorTilordning(
+                                    hendelse.fnr,
+                                    gtKontorResultat.kontorId
+                                )
+                            )
+                        )
+                    }
+                    HåndterPersondataEndretSuccess
+                }
+                is GTKontorFeil -> {
+                    val feilmelding = "Kunne ikke håndtere endring i adressebeskyttelse pga feil ved henting av gt-kontor: ${gtKontorResultat.melding}"
+                    log.error(feilmelding) // TODO: Prøv igjen om det feiler
+                    HåndterPersondataEndretFail(feilmelding)
                 }
             }
-            is GTKontorFeil -> {
-                log.error("Feil ved henting av gt-kontor: ${gtKontorResultat.melding}") // TODO: Prøv igjen om det feiler
-            }
+        } catch (error: Throwable) {
+            return HåndterPersondataEndretFail("Uventet feil ved håndtering av endring i adressebeskyttelse", error)
         }
     }
 }

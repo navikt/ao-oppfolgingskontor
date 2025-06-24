@@ -11,10 +11,12 @@ import no.nav.domain.KontorId
 import no.nav.http.client.AlderFunnet
 import no.nav.http.client.FnrFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
+import no.nav.http.client.poaoTilgang.GTKontorFeil
 import no.nav.http.client.poaoTilgang.GTKontorFunnet
 import no.nav.kafka.consumers.AddressebeskyttelseEndret
 import no.nav.kafka.consumers.BostedsadresseEndret
 import no.nav.kafka.consumers.LeesahConsumer
+import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.person.pdl.leesah.adressebeskyttelse.Gradering
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.ProfileringFunnet
@@ -91,6 +93,38 @@ class LeesahConsumerTest {
                 aoKontorEtterEndirng.kontorId shouldBe gammelKontorId
             }
         }
+    }
+
+    @Test
+    fun `skal håndtere at gt-provider returnerer GTKontorFeil`() = testApplication {
+        val fnr = "4044567890"
+        val automatiskKontorRutingService = AutomatiskKontorRutingService(
+            fnrProvider = { FnrFunnet(fnr) },
+            gtKontorProvider = { GTKontorFeil("Noe gikk galt") },
+            aldersProvider = { AlderFunnet(20) },
+            profileringProvider = { ProfileringFunnet(ProfileringsResultat.ANTATT_BEHOV_FOR_VEILEDNING) },
+        )
+        val leesahConsumer = LeesahConsumer(automatiskKontorRutingService)
+
+        val resultat = leesahConsumer.handterLeesahHendelse(BostedsadresseEndret(fnr))
+
+        resultat shouldBe  RecordProcessingResult.RETRY
+    }
+
+    @Test
+    fun `skal håndtere at gt-provider kaster throwable`() = testApplication {
+        val fnr = "4044567890"
+        val automatiskKontorRutingService = AutomatiskKontorRutingService(
+            fnrProvider = { FnrFunnet(fnr) },
+            gtKontorProvider = { throw Throwable("Noe gikk galt") },
+            aldersProvider = { AlderFunnet(20) },
+            profileringProvider = { ProfileringFunnet(ProfileringsResultat.ANTATT_BEHOV_FOR_VEILEDNING) },
+        )
+        val leesahConsumer = LeesahConsumer(automatiskKontorRutingService)
+
+        val resultat = leesahConsumer.handterLeesahHendelse(BostedsadresseEndret(fnr))
+
+        resultat shouldBe  RecordProcessingResult.RETRY
     }
 
     private fun gittKontorINorg(fnr: Fnr, kontorId: KontorId): AutomatiskKontorRutingService {
