@@ -21,6 +21,6 @@ class GTKontorPgaAdressebeskyttelseEndret(tilordning: KontorTilordning): GTKonto
     }
 
     override fun logg() {
-        logger.info("AdressebeskyttelseGTEndret: kontorId=${tilordning.kontorId}, fnr=${tilordning.fnr}")
+        logger.info("AdressebeskyttelseGTEndret: kontorId=${tilordning.kontorId}")
     }
 }
