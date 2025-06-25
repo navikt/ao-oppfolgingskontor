@@ -21,6 +21,6 @@ class AOKontorEndretPgaAdressebeskyttelseEndret(tilordning: KontorTilordning): A
     }
 
     override fun logg() {
-        logger.info("AdressebeskyttelseAOEndret: kontorId=${tilordning.kontorId}, fnr=${tilordning.fnr}")
+        logger.info("AdressebeskyttelseAOEndret: kontorId=${tilordning.kontorId}")
     }
 }
