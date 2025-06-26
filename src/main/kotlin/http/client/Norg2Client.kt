@@ -70,7 +70,7 @@ class Norg2Client(
         const val hentEnheterPath = "/norg2/api/v1/enhet"
         const val hentEnhetPathWithParam = "/norg2/api/v1/enhet/{enhetId}"
         fun hentEnhetPath(kontorId: KontorId): (String) = "/norg2/api/v1/enhet/${kontorId.id}"
-        fun hentKontorForGtPath(gt: GeografiskTilknytning): (String) = "/norg2/api/v1/enhet/navkontor/${gt}"
+        fun hentKontorForGtPath(gt: GeografiskTilknytning): (String) = "/norg2/api/v1/enhet/navkontor/${gt.value}"
     }
 }
 

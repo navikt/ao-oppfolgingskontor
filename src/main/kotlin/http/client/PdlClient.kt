@@ -49,20 +49,25 @@ val BehandlingsnummerHeaderPlugin = createClientPlugin("BehandlingsnummerHeaderP
 
 class PdlClient(
     pdlGraphqlUrl: String,
-    private val azureTokenProvider: suspend () -> TexasTokenResponse,
-    ktorHttpClient: HttpClient = HttpClient(CIO) {
-        install(BehandlingsnummerHeaderPlugin)
-        install(SystemTokenPlugin) {
-            this.tokenProvider = azureTokenProvider
-        }
-        install(Logging) {
-            level = LogLevel.INFO
-        }
-        install(ContentNegotiation) {
-            json()
-        }
-    }
+    ktorHttpClient: HttpClient
 ) {
+
+    constructor(pdlGraphqlUrl: String, azureTokenProvider: suspend () -> TexasTokenResponse): this(
+        pdlGraphqlUrl,
+        HttpClient(CIO) {
+            install(BehandlingsnummerHeaderPlugin)
+            install(SystemTokenPlugin) {
+                this.tokenProvider = azureTokenProvider
+            }
+            install(Logging) {
+                level = LogLevel.INFO
+            }
+            install(ContentNegotiation) {
+                json()
+            }
+        }
+    )
+
     val log = LoggerFactory.getLogger(PdlClient::class.java)
     val client = GraphQLKtorClient(
         url = URI.create("$pdlGraphqlUrl/graphql").toURL(),
