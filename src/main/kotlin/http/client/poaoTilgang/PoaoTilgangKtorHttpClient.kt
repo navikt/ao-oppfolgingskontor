@@ -3,6 +3,7 @@ package no.nav.http.client.poaoTilgang
 import io.ktor.client.*
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -46,7 +47,9 @@ class PoaoTilgangKtorHttpClient(
             install(SystemTokenPlugin) {
                 this.tokenProvider = azureTokenProvider
             }
-            install(Logging)
+            install(Logging) {
+                level = LogLevel.INFO
+            }
             install(ContentNegotiation) {
                 json()
             }
