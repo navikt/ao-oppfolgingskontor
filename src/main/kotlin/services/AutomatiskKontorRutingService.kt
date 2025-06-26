@@ -1,5 +1,6 @@
 package no.nav.services
 
+import no.nav.db.Fnr
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.events.AOKontorEndret
@@ -36,10 +37,10 @@ data class TilordningFeil(val message: String) : TilordningResultat()
 
 
 class AutomatiskKontorRutingService(
-    private val gtKontorProvider: suspend (fnr: String) -> GTKontorResultat,
-    private val aldersProvider: suspend (fnr: String) -> AlderResult,
+    private val gtKontorProvider: suspend (fnr: Fnr) -> GTKontorResultat,
+    private val aldersProvider: suspend (fnr: Fnr) -> AlderResult,
     private val fnrProvider: suspend (aktorId: String) -> FnrResult,
-    private val profileringProvider: suspend (fnr: String) -> HentProfileringsResultat,
+    private val profileringProvider: suspend (fnr: Fnr) -> HentProfileringsResultat,
 ) {
     val log = LoggerFactory.getLogger(this::class.java)
 
@@ -188,7 +189,7 @@ class AutomatiskKontorRutingService(
 
                 }
                 is GTKontorFeil -> {
-                    val feilmelding = "Kunne ikke håndtere endring i adressebeskyttelse pga feil ved henting av gt-kontor: ${gtKontorResultat.melding}"
+                    val feilmelding = "Kunne ikke håndtere endring i skjerming pga feil ved henting av gt-kontor: ${gtKontorResultat.melding}"
                     log.error(feilmelding)
                     return Result.failure(Exception(feilmelding))
                 }
