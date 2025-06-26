@@ -105,18 +105,24 @@ class PdlClient(
     }
 
     suspend fun hentGt(fnr: Fnr): GtForBrukerResult {
-        val query = HentGtQuery(HentGtQuery.Variables(ident = fnr))
-        val result = client.execute(query)
-        if (result.errors != null && result.errors!!.isNotEmpty()) {
-            log.error("Feil ved henting av gt for bruker: \n\t${result.errors!!.joinToString { it.message }}")
-            return GtForBrukerIkkeFunnet(result.errors!!.joinToString { "${it.message}: ${it.extensions?.get("details")}"  })
+        try {
+            val query = HentGtQuery(HentGtQuery.Variables(ident = fnr))
+            val result = client.execute(query)
+            if (result.errors != null && result.errors!!.isNotEmpty()) {
+                log.error("Feil ved henting av gt for bruker: \n\t${result.errors!!.joinToString { it.message }}")
+                return GtForBrukerIkkeFunnet(result.errors!!.joinToString { "${it.message}: ${it.extensions?.get("details")}"  })
+            }
+            return result.data?.hentGeografiskTilknytning?.let {
+                if (it.gtType === GtType.BYDEL && it.gtBydel != null) return@let GtForBrukerFunnet(GeografiskTilknytning(it.gtBydel))
+                if (it.gtType === GtType.KOMMUNE && it.gtKommune != null) return@let GtForBrukerFunnet(GeografiskTilknytning(it.gtKommune))
+                if (it.gtType === GtType.UTLAND && it.gtLand != null) return@let GtForBrukerFunnet(GeografiskTilknytning(it.gtLand))
+                return@let GtForBrukerIkkeFunnet("Ingen gyldige verider i GT repons fra PDL funnet for type ${it.gtType} bydel: ${it.gtBydel}, kommune: ${it.gtKommune}, land: ${it.gtLand}")
+            } ?: GtForBrukerIkkeFunnet("Ingen GT ingen geografisk tilknytning funnet for bruker")
+        } catch (e: Throwable) {
+            return GtForBrukerIkkeFunnet("Henting av GT for bruker feilet: ${e.message ?: e.toString()}").also {
+                log.error(it.message, e)
+            }
         }
-        return result.data?.hentGeografiskTilknytning?.let {
-            if (it.gtType === GtType.BYDEL && it.gtBydel != null) return@let GtForBrukerFunnet(GeografiskTilknytning(it.gtBydel))
-            if (it.gtType === GtType.KOMMUNE && it.gtKommune != null) return@let GtForBrukerFunnet(GeografiskTilknytning(it.gtKommune))
-            if (it.gtType === GtType.UTLAND && it.gtLand != null) return@let GtForBrukerFunnet(GeografiskTilknytning(it.gtLand))
-            return@let GtForBrukerIkkeFunnet("Ingen gyldige verider i GT repons fra PDL funnet for type ${it.gtType} bydel: ${it.gtBydel}, kommune: ${it.gtKommune}, land: ${it.gtLand}")
-        } ?: GtForBrukerIkkeFunnet("Ingen GT ingen geografisk tilknytning funnet for bruker")
     }
 }
 
