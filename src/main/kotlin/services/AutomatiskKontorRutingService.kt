@@ -4,8 +4,10 @@ import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.events.AOKontorEndret
 import no.nav.domain.events.AOKontorEndretPgaAdressebeskyttelseEndret
+import no.nav.domain.events.AOKontorEndretPgaSkjermingEndret
 import no.nav.domain.events.GTKontorPgaAdressebeskyttelseEndret
 import no.nav.domain.events.GTKontorEndretPgaBostedsadresseEndret
+import no.nav.domain.events.GTKontorEndretPgaSkjermingEndret
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.domain.events.OppfolgingsperiodeStartetNoeTilordning
 import no.nav.http.client.*
@@ -15,6 +17,8 @@ import no.nav.http.client.poaoTilgang.GTKontorFunnet
 import no.nav.http.client.poaoTilgang.GTKontorResultat
 import no.nav.kafka.consumers.AddressebeskyttelseEndret
 import no.nav.kafka.consumers.BostedsadresseEndret
+import no.nav.kafka.consumers.EndringISkjermingResult
+import no.nav.kafka.consumers.EndringISkjermingStatus
 import no.nav.kafka.consumers.HåndterPersondataEndretFail
 import no.nav.kafka.consumers.HåndterPersondataEndretResultat
 import no.nav.kafka.consumers.HåndterPersondataEndretSuccess
@@ -150,6 +154,45 @@ class AutomatiskKontorRutingService(
             }
         } catch (error: Throwable) {
             return HåndterPersondataEndretFail("Uventet feil ved håndtering av endring i adressebeskyttelse", error)
+        }
+    }
+
+    suspend fun handterEndringISkjermingStatus(
+        endringISkjermingStatus: EndringISkjermingStatus
+    ): Result<EndringISkjermingResult> {
+        return runCatching {
+            val gtKontorResultat = gtKontorProvider(endringISkjermingStatus.fnr)
+            return when (gtKontorResultat) {
+                is GTKontorFunnet -> {
+                    if (endringISkjermingStatus.erSkjermet) {
+                        KontorTilordningService.tilordneKontor(
+                            AOKontorEndretPgaSkjermingEndret(
+                                KontorTilordning(
+                                    endringISkjermingStatus.fnr,
+                                    gtKontorResultat.kontorId
+                                )
+                            )
+                        )
+                        KontorTilordningService.tilordneKontor(
+                            GTKontorEndretPgaSkjermingEndret(
+                                KontorTilordning(
+                                    endringISkjermingStatus.fnr,
+                                    gtKontorResultat.kontorId
+                                )
+                            )
+                        )
+                        Result.success(EndringISkjermingResult.NY_ENHET)
+                    } else {
+                        Result.success(EndringISkjermingResult.IKKE_NY_ENHET)
+                    }
+
+                }
+                is GTKontorFeil -> {
+                    val feilmelding = "Kunne ikke håndtere endring i adressebeskyttelse pga feil ved henting av gt-kontor: ${gtKontorResultat.melding}"
+                    log.error(feilmelding)
+                    return Result.failure(Exception(feilmelding))
+                }
+            }
         }
     }
 }

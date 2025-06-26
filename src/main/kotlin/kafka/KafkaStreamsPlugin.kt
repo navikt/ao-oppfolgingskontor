@@ -1,7 +1,5 @@
 package no.nav.kafka
 
-import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig
-import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde
 import io.ktor.events.EventDefinition
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationPlugin
@@ -17,6 +15,7 @@ import no.nav.kafka.config.configureTopology
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerConsumer
 import no.nav.kafka.consumers.LeesahConsumer
 import no.nav.kafka.consumers.OppfolgingsPeriodeConsumer
+import no.nav.kafka.consumers.SkjermingConsumer
 import no.nav.kafka.processor.LeesahAvroDeserializer
 import no.nav.services.AutomatiskKontorRutingService
 import org.apache.kafka.streams.KafkaStreams
@@ -45,6 +44,9 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
         val leesahTopic = environment.config.property("topics.inn.pdlLeesah").getString()
         val spesificAvroSerde = LeesahAvroDeserializer(environment.config).deserializer
 
+        val skjermingConsumer = SkjermingConsumer(automatiskKontorRutingService)
+        val skjermingTopic = environment.config.property("topics.inn.skjerming").getString()
+
         val topology = configureTopology(listOf(
             StringTopicConsumer(
                 oppfolgingsBrukerTopic,
@@ -56,6 +58,10 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
             ),
             AvroTopicConsumer(
                 leesahTopic, leesahConsumer::consume, spesificAvroSerde
+            ),
+            StringTopicConsumer(
+                skjermingTopic,
+                { record, maybeRecordMetadata -> skjermingConsumer.consume(record, maybeRecordMetadata) }
             ))
         )
 

@@ -5,6 +5,7 @@ import io.kotest.matchers.shouldBe
 import io.ktor.server.testing.testApplication
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.ArenaKontorEntity
+import no.nav.db.entity.GeografiskTilknyttetKontorEntity
 import no.nav.db.entity.KontorHistorikkEntity
 import no.nav.db.table.KontorhistorikkTable
 import no.nav.domain.KontorId
@@ -17,7 +18,9 @@ import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerConsumer
 import no.nav.kafka.config.configureTopology
 import no.nav.kafka.config.streamsErrorHandlerConfig
 import no.nav.kafka.consumers.OppfolgingsPeriodeConsumer
+import no.nav.kafka.consumers.SkjermingConsumer
 import no.nav.services.AutomatiskKontorRutingService
+import no.nav.services.KontorTilhorighetService
 import no.nav.services.ProfileringFunnet
 import no.nav.utils.flywayMigrationInTest
 import org.apache.kafka.common.serialization.Serdes
@@ -118,6 +121,35 @@ class KafkaApplicationTest {
                 KontorHistorikkEntity.Companion
                     .find { KontorhistorikkTable.fnr eq fnr }
                     .count() shouldBe 1
+            }
+        }
+    }
+
+    @Test
+    fun `skal behandle endring i skjerming sett kontor fra GT`() = testApplication {
+        val fnr = "55345678901"
+        val ikkeSkjermetKontor = "1234"
+        val skjermetKontor = "4555"
+
+        val automatiskKontorRutingService = AutomatiskKontorRutingService(
+            { GTKontorFunnet(KontorId(skjermetKontor)) },
+            { AlderFunnet(40) }, { FnrFunnet(fnr) }, { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) }
+        )
+        val skjermingConsumer = SkjermingConsumer(automatiskKontorRutingService)
+
+        application {
+            flywayMigrationInTest()
+            val topology = configureTopology(listOf(StringTopicConsumer(topic, skjermingConsumer::consume)))
+            val kafkaMockTopic = setupKafkaMock(topology, topic)
+
+            kafkaMockTopic.pipeInput(fnr, "true")
+
+            transaction {
+                GeografiskTilknyttetKontorEntity.Companion.findById(fnr)?.kontorId shouldBe skjermetKontor
+                ArbeidsOppfolgingKontorEntity.Companion.findById(fnr)?.kontorId shouldBe skjermetKontor
+                KontorHistorikkEntity.Companion
+                    .find { KontorhistorikkTable.fnr eq fnr }
+                    .count() shouldBe 2
             }
         }
     }
