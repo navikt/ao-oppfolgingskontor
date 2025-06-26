@@ -16,15 +16,15 @@ class GTNorgService(
     val log = LoggerFactory.getLogger(this::class.java)
 
     suspend fun hentGtKontorForBruker(fnr: Fnr): GTKontorResultat {
-        val gtForBruker = gtForBrukerProvider(fnr)
-        when (gtForBruker) {
-            is GtForBrukerFunnet -> {
-                val gt = gtForBruker.gt
-                return kontorForGtProvider(gt)
+        try {
+            val gtForBruker = gtForBrukerProvider(fnr)
+            return when (gtForBruker) {
+                is GtForBrukerFunnet -> kontorForGtProvider(gtForBruker.gt)
+                is GtForBrukerIkkeFunnet -> GTKontorFeil(gtForBruker.message)
             }
-            is GtForBrukerIkkeFunnet -> {
-                return GTKontorFeil(gtForBruker.message)
-            }
+        } catch (e: Exception) {
+            log.error("henting av GT kontor for bruker feilet (hardt!)", e)
+            return GTKontorFeil("Klarte ikke hente GT kontor for bruker: ${e.message}")
         }
     }
 

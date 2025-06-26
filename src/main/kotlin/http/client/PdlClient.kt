@@ -107,10 +107,10 @@ class PdlClient(
             return GtForBrukerIkkeFunnet(result.errors!!.joinToString { "${it.message}: ${it.extensions?.get("details")}"  })
         }
         return result.data?.hentGeografiskTilknytning?.let {
-            if (it.gtType === GtType.BYDEL && it.gtBydel != null) GtForBrukerFunnet(GeografiskTilknytning(it.gtBydel))
-            if (it.gtType === GtType.KOMMUNE && it.gtKommune != null) GtForBrukerFunnet(GeografiskTilknytning(it.gtKommune))
-            if (it.gtType === GtType.UTLAND && it.gtLand != null) GtForBrukerFunnet(GeografiskTilknytning(it.gtLand))
-            GtForBrukerIkkeFunnet("Ingen gyldige verider i GT repons fra PDL funnet for type ${it.gtType} bydel: ${it.gtBydel}, kommune: ${it.gtKommune}, land: ${it.gtLand}")
+            if (it.gtType === GtType.BYDEL && it.gtBydel != null) return@let GtForBrukerFunnet(GeografiskTilknytning(it.gtBydel))
+            if (it.gtType === GtType.KOMMUNE && it.gtKommune != null) return@let GtForBrukerFunnet(GeografiskTilknytning(it.gtKommune))
+            if (it.gtType === GtType.UTLAND && it.gtLand != null) return@let GtForBrukerFunnet(GeografiskTilknytning(it.gtLand))
+            return@let GtForBrukerIkkeFunnet("Ingen gyldige verider i GT repons fra PDL funnet for type ${it.gtType} bydel: ${it.gtBydel}, kommune: ${it.gtKommune}, land: ${it.gtLand}")
         } ?: GtForBrukerIkkeFunnet("Ingen GT ingen geografisk tilknytning funnet for bruker")
     }
 }
