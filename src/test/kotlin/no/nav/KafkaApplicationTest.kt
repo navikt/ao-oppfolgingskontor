@@ -133,7 +133,9 @@ class KafkaApplicationTest {
 
         val automatiskKontorRutingService = AutomatiskKontorRutingService(
             { GTKontorFunnet(KontorId(skjermetKontor)) },
-            { AlderFunnet(40) }, { FnrFunnet(fnr) }, { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) }
+            { AlderFunnet(40) },
+            { FnrFunnet(fnr) },
+            { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) }
         )
         val skjermingConsumer = SkjermingConsumer(automatiskKontorRutingService)
 
