@@ -12,6 +12,7 @@ import no.nav.http.client.AlderFunnet
 import no.nav.http.client.FnrFunnet
 import no.nav.http.client.poaoTilgang.GTKontorFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
+import no.nav.kafka.config.StringTopicConsumer
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerConsumer
 import no.nav.kafka.config.configureTopology
 import no.nav.kafka.config.streamsErrorHandlerConfig
@@ -41,7 +42,8 @@ class KafkaApplicationTest {
 
         application {
             flywayMigrationInTest()
-            val topology = configureTopology(listOf(topic to endringPaOppfolgingsBrukerConsumer::consume))
+            val topology = configureTopology(listOf(
+                StringTopicConsumer(topic,endringPaOppfolgingsBrukerConsumer::consume)))
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(
                 fnr,
@@ -78,7 +80,7 @@ class KafkaApplicationTest {
                 { FnrFunnet(fnr) },
                 { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER)}
             ))
-            val topology = configureTopology(listOf(topic to consumer::consume))
+            val topology = configureTopology(listOf(StringTopicConsumer(topic,consumer::consume)))
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(
                 fnr,
@@ -103,7 +105,7 @@ class KafkaApplicationTest {
 
         application {
             flywayMigrationInTest()
-            val topology = configureTopology(listOf(topic to endringPaOppfolgingsBrukerConsumer::consume))
+            val topology = configureTopology(listOf(StringTopicConsumer(topic, endringPaOppfolgingsBrukerConsumer::consume)))
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(
                 fnr, endringPaOppfolgingsBrukerMessage("1234", ZonedDateTime.parse("2025-04-10T13:01:14+02:00"))
@@ -128,7 +130,7 @@ class KafkaApplicationTest {
         application {
             flywayMigrationInTest()
 
-            val topology = configureTopology(listOf(topic to endringPaOppfolgingsBrukerConsumer::consume))
+            val topology = configureTopology(listOf(StringTopicConsumer(topic, endringPaOppfolgingsBrukerConsumer::consume)))
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(fnr, endringPaOppfolgingsBrukerMessage("1234", ZonedDateTime.now()))
         }
@@ -141,7 +143,7 @@ class KafkaApplicationTest {
         application {
             flywayMigrationInTest()
 
-            val topology = configureTopology(listOf(topic to endringPaOppfolgingsBrukerConsumer::consume))
+            val topology = configureTopology(listOf(StringTopicConsumer(topic, endringPaOppfolgingsBrukerConsumer::consume)))
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(fnr, """{"oppfolgingsenhet":"ugyldigEnhet"}""")
         }

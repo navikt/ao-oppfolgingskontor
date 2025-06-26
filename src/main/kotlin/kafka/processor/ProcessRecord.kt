@@ -9,4 +9,4 @@ enum class RecordProcessingResult {
     SKIP
 }
 
-typealias ProcessRecord = (record: Record<String, String>, maybeRecordMetadata: RecordMetadata?) -> RecordProcessingResult
+typealias ProcessRecord <K, V> = (record: Record<K, V>, maybeRecordMetadata: RecordMetadata?) -> RecordProcessingResult

@@ -84,7 +84,9 @@ fun ExpirableToken.toTexasTokenResponse(): TexasTokenSuccessResult {
 class TexasSystemTokenClient(
     private val tokenEndpoint: String,
     private val httpClient: HttpClient = HttpClient(CIO) {
-        install(Logging)
+        install(Logging) {
+            level = LogLevel.INFO
+        }
         install(ContentNegotiation) {
             json()
         }

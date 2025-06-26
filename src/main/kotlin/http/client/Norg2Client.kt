@@ -20,7 +20,9 @@ class Norg2Client(
         defaultRequest {
             url(baseUrl)
         }
-        install(Logging)
+        install(Logging) {
+            level = LogLevel.INFO
+        }
         install(ContentNegotiation) {
             json()
         }
