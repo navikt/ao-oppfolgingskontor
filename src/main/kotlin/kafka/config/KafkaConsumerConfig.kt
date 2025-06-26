@@ -27,7 +27,7 @@ class StringTopicConsumer(
 class AvroTopicConsumer(
     topic: String,
     val processRecord: ProcessRecord<String, Personhendelse>,
-    val specificRecord: SpecificAvroSerde<Personhendelse>
+    val specificAvroSerde: SpecificAvroSerde<Personhendelse>
 ): TopicConsumer(topic)
 
 fun configureTopology(
@@ -42,7 +42,7 @@ fun configureTopology(
                 sourceStream.process(ProcessorSupplier { ExplicitResultProcessor(topicAndConsumer.processRecord) })
             }
             is AvroTopicConsumer -> {
-                val consumedwith: Consumed<String, Personhendelse> = Consumed.with(Serdes.String(), topicAndConsumer.specificRecord)
+                val consumedwith: Consumed<String, Personhendelse> = Consumed.with(Serdes.String(), topicAndConsumer.specificAvroSerde)
                 val sourceStream = builder.stream(topicAndConsumer.topic, consumedwith)
                 sourceStream.process(ProcessorSupplier { ExplicitResultProcessor(topicAndConsumer.processRecord) })
             }

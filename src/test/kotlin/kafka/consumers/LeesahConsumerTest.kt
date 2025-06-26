@@ -8,9 +8,6 @@ import no.nav.db.entity.GeografiskTilknyttetKontorEntity
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.db.table.GeografiskTilknytningKontorTable
 import no.nav.domain.KontorId
-import no.nav.http.client.AlderFunnet
-import no.nav.http.client.FnrOppslagFeil
-import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
 import no.nav.http.client.poaoTilgang.GTKontorFeil
 import no.nav.http.client.poaoTilgang.GTKontorFunnet
 import no.nav.http.client.poaoTilgang.GTKontorResultat
@@ -20,7 +17,6 @@ import no.nav.kafka.consumers.LeesahConsumer
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.person.pdl.leesah.adressebeskyttelse.Gradering
 import no.nav.services.AutomatiskKontorRutingService
-import no.nav.services.ProfileringFunnet
 import no.nav.utils.flywayMigrationInTest
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
