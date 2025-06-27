@@ -17,6 +17,7 @@ import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorType
 import no.nav.domain.System
 import no.nav.http.client.mockNorg2Host
+import no.nav.http.client.mockPoaoTilgangHost
 import no.nav.http.graphql.installGraphQl
 import no.nav.http.graphql.schemas.KontorHistorikkQueryDto
 import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
@@ -41,9 +42,14 @@ import java.time.ZonedDateTime
 
 fun ApplicationTestBuilder.graphqlServerInTest() {
     val norg2Client = mockNorg2Host()
+    val poaoTilgangClient = mockPoaoTilgangHost(null)
     application {
         flywayMigrationInTest()
-        installGraphQl(norg2Client, KontorTilhorighetService(KontorNavnService(norg2Client)))
+        installGraphQl(
+            norg2Client,
+            KontorTilhorighetService(KontorNavnService(norg2Client), poaoTilgangClient),
+            "issuer"
+        )
         routing {
             graphQLPostRoute()
         }

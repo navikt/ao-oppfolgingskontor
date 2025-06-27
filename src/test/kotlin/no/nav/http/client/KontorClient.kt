@@ -5,13 +5,14 @@ import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
+import no.nav.NavAnsatt
 import no.nav.db.Fnr
 import no.nav.security.mock.oauth2.MockOAuth2Server
 
-suspend fun HttpClient.settKontor(server: MockOAuth2Server, kontorId: String, fnr: Fnr, navIdent: String): HttpResponse {
+suspend fun HttpClient.settKontor(server: MockOAuth2Server, kontorId: String, fnr: Fnr, navAnsatt: NavAnsatt): HttpResponse {
     return post("/api/kontor") {
         header("Authorization", "Bearer ${server.issueToken(
-            claims = mapOf("NAVident" to "$navIdent")
+            claims = mapOf("NAVident" to "${navAnsatt.navIdent}", "oid" to "${navAnsatt.navAnsattAzureId}"),
         ).serialize()}")
         header("Content-Type", "application/json")
         header("Accept", "application/json")

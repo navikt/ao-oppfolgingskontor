@@ -3,6 +3,7 @@ package no.nav.http.graphql.queries
 import com.expediagroup.graphql.server.operations.Query
 import graphql.schema.DataFetchingEnvironment
 import io.ktor.client.engine.callContext
+import no.nav.AOPrincipal
 import no.nav.db.Fnr
 import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
 import no.nav.http.graphql.schemas.KontorTilhorigheterQueryDto
@@ -16,15 +17,17 @@ class KontorQuery(
 ) : Query {
 
     suspend fun kontorTilhorighet(fnr: Fnr, dataFetchingEnvironment: DataFetchingEnvironment): KontorTilhorighetQueryDto? {
-        dataFetchingEnvironment
-        return kontorTilhorighetService.getKontorTilhorighet(fnr)
+        val principal = dataFetchingEnvironment.graphQlContext.get<AOPrincipal>("principal")
+        return kontorTilhorighetService.getKontorTilhorighet(fnr, principal)
     }
 
     suspend fun kontorTilhorigheter(fnr: Fnr, dataFetchingEnvironment: DataFetchingEnvironment): KontorTilhorigheterQueryDto {
+        val principal = dataFetchingEnvironment.graphQlContext.get<AOPrincipal>("principal")
+        val (arbeidsoppfolging, arena, gt) = kontorTilhorighetService.getKontorTilhorigheter(fnr, principal)
         return KontorTilhorigheterQueryDto(
-            arena = kontorTilhorighetService.getArenaKontorTilhorighet(fnr)?.toArenaKontorDto(),
-            geografiskTilknytning = kontorTilhorighetService.getGeografiskTilknyttetKontorTilhorighet(fnr)?.toGeografiskTilknyttetKontorDto(),
-            arbeidsoppfolging = kontorTilhorighetService.getArbeidsoppfolgingKontorTilhorighet(fnr)?.toArbeidsoppfolgingKontorDto(),
+            arena = arena?.toArenaKontorDto(),
+            geografiskTilknytning = gt?.toGeografiskTilknyttetKontorDto(),
+            arbeidsoppfolging = arbeidsoppfolging?.toArbeidsoppfolgingKontorDto(),
         )
     }
 }

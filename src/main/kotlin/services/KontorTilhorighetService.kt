@@ -3,6 +3,7 @@ package no.nav.services
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import no.nav.AOPrincipal
 import no.nav.db.Fnr
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.ArenaKontorEntity
@@ -24,19 +25,26 @@ class KontorTilhorighetService(
     val kontorNavnService: KontorNavnService,
     val poaoTilgangHttpClient: PoaoTilgangKtorHttpClient
 ) {
+    suspend fun getKontorTilhorigheter(fnr: Fnr, principal: AOPrincipal): Triple<ArbeidsoppfolgingsKontor?, ArenaKontor?, GeografiskTilknyttetKontor?> {
+        val aokontor = getArbeidsoppfolgingKontorTilhorighet(fnr)
+        val arenakontor = getArenaKontorTilhorighet(fnr)
+        val gtkontor = getGeografiskTilknyttetKontorTilhorighet(fnr)
+        return Triple(aokontor, arenakontor, gtkontor)
+    }
+
     suspend fun getArbeidsoppfolgingKontorTilhorighet(fnr: Fnr): ArbeidsoppfolgingsKontor? {
         return transaction { getAOKontor(fnr) }
             ?.let { it to kontorNavnService.getKontorNavn(KontorId(it.kontorId)) }
             ?.let { (kontor, kontorNavn) -> ArbeidsoppfolgingsKontor(kontorNavn,kontor.getKontorId()) }
     }
 
-    suspend fun getArenaKontorTilhorighet(fnr: Fnr): ArenaKontor? {
+    private suspend fun getArenaKontorTilhorighet(fnr: Fnr): ArenaKontor? {
         return transaction { getArenaKontor(fnr) }
             ?.let { it to kontorNavnService.getKontorNavn(KontorId(it.kontorId)) }
             ?.let { (kontor, kontorNavn) -> ArenaKontor(kontorNavn, kontor.getKontorId()) }
     }
 
-    suspend fun getGeografiskTilknyttetKontorTilhorighet(fnr: Fnr): GeografiskTilknyttetKontor? {
+    private suspend fun getGeografiskTilknyttetKontorTilhorighet(fnr: Fnr): GeografiskTilknyttetKontor? {
         return transaction { getGTKontor(fnr) }
             ?.let { it to kontorNavnService.getKontorNavn(KontorId(it.kontorId)) }
             ?.let { (kontor, kontorNavn) -> GeografiskTilknyttetKontor(kontorNavn,kontor.getKontorId()) }
@@ -46,8 +54,8 @@ class KontorTilhorighetService(
     private fun getArenaKontor(fnr: Fnr) = ArenaKontorEntity.findById(fnr)
     private fun getAOKontor(fnr: Fnr) = ArbeidsOppfolgingKontorEntity.findById(fnr)
 
-    suspend fun getKontorTilhorighet(fnr: Fnr): KontorTilhorighetQueryDto? {
-        poaoTilgangHttpClient.harLeseTilgangTilBruker()
+    suspend fun getKontorTilhorighet(fnr: Fnr, principal: AOPrincipal): KontorTilhorighetQueryDto? {
+        poaoTilgangHttpClient.harLeseTilgang(principal, fnr)
         return newSuspendedTransaction {
             val kontorer = coroutineScope {
                 awaitAll( /* The ordering is important! */

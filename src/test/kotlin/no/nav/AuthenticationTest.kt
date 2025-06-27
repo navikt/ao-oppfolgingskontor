@@ -10,6 +10,7 @@ import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import no.nav.configureSecurity
 import no.nav.http.client.Norg2Client
+import no.nav.http.client.mockPoaoTilgangHost
 import no.nav.http.client.norg2TestUrl
 import no.nav.http.graphql.configureGraphQlModule
 import no.nav.http.graphql.getNorg2Url
@@ -26,12 +27,14 @@ class AuthenticationTest {
         environment {
             config = getMockOauth2ServerConfig()
         }
+        val poaoTilgangKtorHttpClient = mockPoaoTilgangHost(null)
         application {
             val norg2Client = Norg2Client(environment.getNorg2Url())
             configureSecurity()
             configureGraphQlModule(
                 norg2Client,
-                KontorTilhorighetService(KontorNavnService(norg2Client))
+                KontorTilhorighetService(KontorNavnService(norg2Client), poaoTilgangKtorHttpClient),
+                "default"
             )
         }
     }
@@ -43,7 +46,13 @@ class AuthenticationTest {
             val client = getJsonHttpClient()
 
             val response = client.post("/graphql") {
-                header("Authorization", "Bearer ${server.issueToken().serialize()}")
+                header("Authorization", "Bearer ${server.issueToken(
+                    claims = mapOf(
+                        "azp_name" to "cluster:namespace:app",
+                        "NAVident" to "veilederNavIdent",
+                        "oid" to "12345678-1234-1234-1234-123456789012",
+                    )
+                ).serialize()}")
                 header("Content-Type", "application/json")
                 setBody(kontorTilhorighetQuery("8989889898"))
             }

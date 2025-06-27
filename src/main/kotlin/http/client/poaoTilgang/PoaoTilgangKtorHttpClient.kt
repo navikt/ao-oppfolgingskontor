@@ -80,10 +80,10 @@ class PoaoTilgangKtorHttpClient(
             }
         }
 
-    private fun harLeseTilgangTilBruker(navIdent: NavIdent, fnr: Fnr): ApiResult<Decision> {
+    private fun harLeseTilgangTilBruker(navAnsatt: NavAnsatt, fnr: Fnr): ApiResult<Decision> {
         return poaoTilgangKtorHttpClient.evaluatePolicy(
             NavAnsattTilgangTilEksternBrukerPolicyInput(
-                navAnsattAzureId = UUID.fromString(navIdent.id),
+                navAnsattAzureId = navAnsatt.navAnsattAzureId,
                 norskIdent = fnr,
                 tilgangType = TilgangType.LESE
             )
@@ -92,7 +92,7 @@ class PoaoTilgangKtorHttpClient(
 
     fun harLeseTilgang(principal: AOPrincipal, fnr: Fnr): ApiResult<Decision> {
         return when (principal) {
-            is NavAnsatt -> harLeseTilgangTilBruker(principal.navIdent, fnr)
+            is NavAnsatt -> harLeseTilgangTilBruker(principal, fnr)
             is SystemPrincipal -> ApiResult.success(Decision.Permit)
         }
     }
@@ -141,12 +141,14 @@ class PoaoTilgangKtorHttpClient(
                 }
             }
 
-            override fun parsePolicyRequestsBody(body: String) = TODO("Not yet implemented")
+            override fun parsePolicyRequestsBody(body: String) = TODO("parsePolicyRequestsBody Not yet implemented")
             override fun parseErSkjermetPersonBody(body: String) = TODO("Not yet implemented")
             override fun parseHentAdGrupper(body: String) = TODO("Not yet implemented")
         },
         serializer = object : PoaoTilgangClient.Serializer {
-            override fun <I> serializeEvaluatePolicies(body: EvaluatePoliciesRequest<I>) = TODO("Not yet implemented")
+            override fun <I> serializeEvaluatePolicies(body: EvaluatePoliciesRequest<I>): String {
+                return json.encodeToString(body)
+            }
             override fun serializeHentAdGrupper(body: HentAdGrupperForBrukerRequest) = TODO("Not yet implemented")
             override fun serializeErSkjermet(body: ErSkjermetPersonBulkRequest) = TODO("Not yet implemented")
         }
