@@ -35,6 +35,11 @@ fun Application.module() {
     val arbeidssokerregisterClient = ArbeidssokerregisterClient(
         environment.getArbeidssokerregisteretUrl(),
         texasClient.tokenProvider(environment.getArbeidssokerregisteretScope()))
+    /*
+    val poaoTilgangHttpClient = PoaoTilgangKtorHttpClient(
+        environment.getPoaoTilgangUrl(),
+        texasClient.tokenProvider(environment.getPoaoTilgangScope())
+    )*/
 
     val gtNorgService = GTNorgService(
         { pdlClient.hentGt(it) },

@@ -1,6 +1,7 @@
 package no.nav.http.client
 
 import com.expediagroup.graphql.client.ktor.GraphQLKtorClient
+import com.expediagroup.graphql.client.types.GraphQLClientResponse
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.api.createClientPlugin
@@ -34,8 +35,8 @@ data class FnrIkkeFunnet(val message: String) : FnrResult()
 data class FnrOppslagFeil(val message: String) : FnrResult()
 
 sealed class GtForBrukerResult
-class GtForBrukerFunnet(val gt: GeografiskTilknytning) : GtForBrukerResult()
-class GtForBrukerIkkeFunnet(val message: String) : GtForBrukerResult()
+data class GtForBrukerFunnet(val gt: GeografiskTilknytning) : GtForBrukerResult()
+data class GtForBrukerIkkeFunnet(val message: String) : GtForBrukerResult()
 
 fun ApplicationEnvironment.getPdlScope(): String {
     return config.property("apis.pdl.scope").getString()
@@ -112,12 +113,7 @@ class PdlClient(
                 log.error("Feil ved henting av gt for bruker: \n\t${result.errors!!.joinToString { it.message }}")
                 return GtForBrukerIkkeFunnet(result.errors!!.joinToString { "${it.message}: ${it.extensions?.get("details")}"  })
             }
-            return result.data?.hentGeografiskTilknytning?.let {
-                if (it.gtType === GtType.BYDEL && it.gtBydel != null) return@let GtForBrukerFunnet(GeografiskTilknytning(it.gtBydel))
-                if (it.gtType === GtType.KOMMUNE && it.gtKommune != null) return@let GtForBrukerFunnet(GeografiskTilknytning(it.gtKommune))
-                if (it.gtType === GtType.UTLAND && it.gtLand != null) return@let GtForBrukerFunnet(GeografiskTilknytning(it.gtLand))
-                return@let GtForBrukerIkkeFunnet("Ingen gyldige verider i GT repons fra PDL funnet for type ${it.gtType} bydel: ${it.gtBydel}, kommune: ${it.gtKommune}, land: ${it.gtLand}")
-            } ?: GtForBrukerIkkeFunnet("Ingen GT ingen geografisk tilknytning funnet for bruker")
+            return result.toGeografiskTilknytning()
         } catch (e: Throwable) {
             return GtForBrukerIkkeFunnet("Henting av GT for bruker feilet: ${e.message ?: e.toString()}").also {
                 log.error(it.message, e)
@@ -126,3 +122,14 @@ class PdlClient(
     }
 }
 
+fun GraphQLClientResponse<HentGtQuery.Result>.toGeografiskTilknytning(): GtForBrukerResult {
+    return this.data?.hentGeografiskTilknytning?.let {
+            when (it.gtType) {
+                GtType.BYDEL -> it.gtBydel?.let { bydel -> GeografiskTilknytning(bydel) }
+                GtType.KOMMUNE -> it.gtKommune?.let { kommune -> GeografiskTilknytning(kommune) }
+                GtType.UTLAND -> it.gtLand?.let { land -> GeografiskTilknytning(land) }
+                else -> null
+            }?.let { gt -> GtForBrukerFunnet(gt) }
+                ?: GtForBrukerIkkeFunnet("Ingen gyldige verider i GT repons fra PDL funnet for type ${it.gtType} bydel: ${it.gtBydel}, kommune: ${it.gtKommune}, land: ${it.gtLand}")
+        } ?: GtForBrukerIkkeFunnet("Ingen GT ingen geografisk tilknytning funnet for bruker")
+}
