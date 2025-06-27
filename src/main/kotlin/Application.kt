@@ -43,7 +43,7 @@ fun Application.module() {
         texasClient.tokenProvider(environment.getArbeidssokerregisteretScope()))
 
     val kontorNavnService = KontorNavnService(norg2Client)
-    val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService)
+    val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangHttpClient)
     val automatiskKontorRutingService = AutomatiskKontorRutingService(
         { poaoTilgangHttpClient.hentTilgangsattributter(it) },
         { pdlClient.hentAlder(it) },
@@ -54,6 +54,7 @@ fun Application.module() {
         this.automatiskKontorRutingService = automatiskKontorRutingService
     }
 
-    configureGraphQlModule(norg2Client, kontorTilhorighetService)
-    configureArbeidsoppfolgingskontorModule(kontorNavnService, KontorTilhorighetService(kontorNavnService))
+    val issuer = environment.config.property("security.jwt.issuer").getString()
+    configureGraphQlModule(norg2Client, kontorTilhorighetService, issuer)
+    configureArbeidsoppfolgingskontorModule(kontorNavnService, kontorTilhorighetService, poaoTilgangHttpClient)
 }

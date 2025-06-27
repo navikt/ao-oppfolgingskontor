@@ -2,6 +2,7 @@ package no.nav.http.graphql.queries
 
 import com.expediagroup.graphql.server.operations.Query
 import graphql.schema.DataFetchingEnvironment
+import io.ktor.client.engine.callContext
 import no.nav.db.Fnr
 import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
 import no.nav.http.graphql.schemas.KontorTilhorigheterQueryDto
@@ -15,6 +16,7 @@ class KontorQuery(
 ) : Query {
 
     suspend fun kontorTilhorighet(fnr: Fnr, dataFetchingEnvironment: DataFetchingEnvironment): KontorTilhorighetQueryDto? {
+        dataFetchingEnvironment
         return kontorTilhorighetService.getKontorTilhorighet(fnr)
     }
 

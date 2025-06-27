@@ -13,13 +13,16 @@ import no.nav.domain.GeografiskTilknyttetKontor
 import no.nav.domain.KontorId
 import no.nav.domain.KontorType
 import no.nav.domain.KontorNavn
+import no.nav.http.client.poaoTilgang.PoaoTilgangKtorHttpClient
 import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
 import no.nav.http.graphql.schemas.RegistrantTypeDto
+import no.nav.poao_tilgang.client_core.PoaoTilgangHttpClient
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.transactions.transaction
 
 class KontorTilhorighetService(
-    val kontorNavnService: KontorNavnService
+    val kontorNavnService: KontorNavnService,
+    val poaoTilgangHttpClient: PoaoTilgangKtorHttpClient
 ) {
     suspend fun getArbeidsoppfolgingKontorTilhorighet(fnr: Fnr): ArbeidsoppfolgingsKontor? {
         return transaction { getAOKontor(fnr) }
@@ -44,6 +47,7 @@ class KontorTilhorighetService(
     private fun getAOKontor(fnr: Fnr) = ArbeidsOppfolgingKontorEntity.findById(fnr)
 
     suspend fun getKontorTilhorighet(fnr: Fnr): KontorTilhorighetQueryDto? {
+        poaoTilgangHttpClient.harLeseTilgangTilBruker()
         return newSuspendedTransaction {
             val kontorer = coroutineScope {
                 awaitAll( /* The ordering is important! */

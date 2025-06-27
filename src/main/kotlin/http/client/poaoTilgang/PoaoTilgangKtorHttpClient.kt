@@ -13,18 +13,27 @@ import io.ktor.server.application.ApplicationEnvironment
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
+import no.nav.AOPrincipal
+import no.nav.NavAnsatt
+import no.nav.SystemPrincipal
+import no.nav.db.Fnr
 import no.nav.domain.KontorId
+import no.nav.domain.NavIdent
 import no.nav.http.client.tokenexchange.SystemTokenPlugin
 import no.nav.http.client.tokenexchange.TexasTokenResponse
 import no.nav.poao_tilgang.api.dto.request.ErSkjermetPersonBulkRequest
 import no.nav.poao_tilgang.api.dto.request.EvaluatePoliciesRequest
 import no.nav.poao_tilgang.api.dto.request.HentAdGrupperForBrukerRequest
 import no.nav.poao_tilgang.api.dto.response.TilgangsattributterResponse
+import no.nav.poao_tilgang.client_core.Decision
+import no.nav.poao_tilgang.client_core.NavAnsattTilgangTilEksternBrukerPolicyInput
 import no.nav.poao_tilgang.client_core.PoaoTilgangClient
 import no.nav.poao_tilgang.client_core.PoaoTilgangHttpClient
+import no.nav.poao_tilgang.client_core.TilgangType
 import no.nav.poao_tilgang.client_core.api.ApiResult
 import no.nav.poao_tilgang.client_core.api.ResponseDataApiException
 import org.slf4j.LoggerFactory
+import java.util.UUID
 
 sealed class GTKontorResultat
 data class GTKontorFunnet(val kontorId: KontorId) : GTKontorResultat()
@@ -70,6 +79,23 @@ class PoaoTilgangKtorHttpClient(
                 false -> GTKontorFeil("Feil ved henting av tilgangsattributter for fnr: $ident, ${it.exception?.message}")
             }
         }
+
+    private fun harLeseTilgangTilBruker(navIdent: NavIdent, fnr: Fnr): ApiResult<Decision> {
+        return poaoTilgangKtorHttpClient.evaluatePolicy(
+            NavAnsattTilgangTilEksternBrukerPolicyInput(
+                navAnsattAzureId = UUID.fromString(navIdent.id),
+                norskIdent = fnr,
+                tilgangType = TilgangType.LESE
+            )
+        )
+    }
+
+    fun harLeseTilgang(principal: AOPrincipal, fnr: Fnr): ApiResult<Decision> {
+        return when (principal) {
+            is NavAnsatt -> harLeseTilgangTilBruker(principal.navIdent, fnr)
+            is SystemPrincipal -> ApiResult.success(Decision.Permit)
+        }
+    }
 
     private fun fetch(
         fullUrl: String,
