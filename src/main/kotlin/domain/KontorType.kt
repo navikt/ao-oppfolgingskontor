@@ -1,6 +1,6 @@
 package no.nav.domain
 
-enum class KontorKilde {
+enum class KontorType {
     ARBEIDSOPPFOLGING,
     ARENA,
     GEOGRAFISK_TILKNYTNING

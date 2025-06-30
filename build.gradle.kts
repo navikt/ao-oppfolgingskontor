@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.plugin.serialization)
     alias(libs.plugins.expedia.graphql)
     alias(libs.plugins.sonar)
+    id("io.github.androa.gradle.plugin.avro") version "0.0.11"
     jacoco
 }
 
@@ -22,6 +23,7 @@ application {
 repositories {
     mavenCentral()
     maven { url = uri("https://github-package-registry-mirror.gc.nav.no/cached/maven-release") }
+    maven { url = uri("https://packages.confluent.io/maven") }
 }
 
 java {
@@ -70,7 +72,9 @@ dependencies {
     implementation(libs.hikaricp)
     implementation(libs.logback.classic)
     implementation(libs.ktor.server.config.yaml)
+    implementation(libs.kafka.avro)
     implementation(libs.kafka.streams)
+    implementation(libs.kafka.streams.avro.serde)
     implementation(libs.graphql.kotlin.client)
     implementation(libs.graphql.kotlin.client.serialization)
     implementation(libs.graphql.kotlin.server)

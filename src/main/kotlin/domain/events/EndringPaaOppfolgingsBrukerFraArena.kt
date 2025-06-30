@@ -1,8 +1,9 @@
 package no.nav.domain.events
 
 import no.nav.domain.KontorEndringsType
-import no.nav.domain.KontorHIstorikkInnslag
+import no.nav.domain.KontorHistorikkInnslag
 import no.nav.domain.KontorTilordning
+import no.nav.domain.KontorType
 import no.nav.domain.System
 import no.nav.http.logger
 import java.time.OffsetDateTime
@@ -18,13 +19,14 @@ class EndringPaaOppfolgingsBrukerFraArena(
     offset = offset,
     partition = partition
 ) {
-    override fun toHistorikkInnslag(): KontorHIstorikkInnslag {
+    override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         val registrant = System()
-        return KontorHIstorikkInnslag(
+        return KontorHistorikkInnslag(
             kontorId = tilordning.kontorId,
             fnr = tilordning.fnr,
             registrant = registrant,
             kontorendringstype = KontorEndringsType.EndretIArena,
+            kontorType = KontorType.ARENA,
         )
     }
 

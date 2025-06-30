@@ -8,10 +8,15 @@ import io.ktor.server.application.ApplicationStopping
 import io.ktor.server.application.createApplicationPlugin
 import io.ktor.server.application.hooks.MonitoringEvent
 import io.ktor.server.application.log
+import no.nav.kafka.config.AvroTopicConsumer
+import no.nav.kafka.config.StringTopicConsumer
 import no.nav.kafka.config.configureKafkaStreams
 import no.nav.kafka.config.configureTopology
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerConsumer
+import no.nav.kafka.consumers.LeesahConsumer
 import no.nav.kafka.consumers.OppfolgingsPeriodeConsumer
+import no.nav.kafka.consumers.SkjermingConsumer
+import no.nav.kafka.processor.LeesahAvroDeserializer
 import no.nav.services.AutomatiskKontorRutingService
 import org.apache.kafka.streams.KafkaStreams
 import java.time.Duration
@@ -40,12 +45,31 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
         val oppfolgingsPeriodeConsumer = OppfolgingsPeriodeConsumer(automatiskKontorRutingService)
         val oppfolgingsPeriodeTopic = environment.config.property("topics.inn.oppfolgingsperiodeV1").getString()
 
+        val leesahConsumer = LeesahConsumer(automatiskKontorRutingService)
+        val leesahTopic = environment.config.property("topics.inn.pdlLeesah").getString()
+        val spesificAvroSerde = LeesahAvroDeserializer(environment.config).deserializer
+
+        val skjermingConsumer = SkjermingConsumer(automatiskKontorRutingService)
+        val skjermingTopic = environment.config.property("topics.inn.skjerming").getString()
+
         val topology = configureTopology(listOf(
-            oppfolgingsBrukerTopic to { record, maybeRecordMetadata ->
-                endringPaOppfolgingsBrukerConsumer.consume(record, maybeRecordMetadata) },
-            oppfolgingsPeriodeTopic to { record, maybeRecordMetadata ->
-                oppfolgingsPeriodeConsumer.consume(record, maybeRecordMetadata) })
-        ,dataSource)
+            StringTopicConsumer(
+                oppfolgingsBrukerTopic,
+                { record, maybeRecordMetadata -> endringPaOppfolgingsBrukerConsumer.consume(record, maybeRecordMetadata) }
+            ),
+            StringTopicConsumer(
+                oppfolgingsPeriodeTopic,
+                { record, maybeRecordMetadata -> oppfolgingsPeriodeConsumer.consume(record, maybeRecordMetadata) }
+            ),
+            AvroTopicConsumer(
+                leesahTopic, leesahConsumer::consume, spesificAvroSerde
+            ),
+            StringTopicConsumer(
+                skjermingTopic,
+                { record, maybeRecordMetadata -> skjermingConsumer.consume(record, maybeRecordMetadata) }
+            )),
+            dataSource
+        )
 
         val kafkaStream = KafkaStreams(topology, configureKafkaStreams(environment.config))
 

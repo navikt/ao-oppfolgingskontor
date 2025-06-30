@@ -1,6 +1,6 @@
 package no.nav.domain.events
 
-import no.nav.domain.KontorHIstorikkInnslag
+import no.nav.domain.KontorHistorikkInnslag
 import no.nav.domain.KontorTilordning
 import no.nav.domain.Registrant
 import java.time.OffsetDateTime
@@ -8,7 +8,7 @@ import java.time.OffsetDateTime
 sealed class KontorEndretEvent(
     val tilordning: KontorTilordning
 ) {
-    abstract fun toHistorikkInnslag(): KontorHIstorikkInnslag
+    abstract fun toHistorikkInnslag(): KontorHistorikkInnslag
     abstract fun logg(): Unit
 }
 

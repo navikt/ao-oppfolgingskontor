@@ -85,7 +85,7 @@ suspend fun HttpClient.alleKontorTilhorigheter(fnr: Fnr): HttpResponse {
         setBody(alleKontorTilhorigheterQuery(fnr).also { logger.info("GRAPHQL-query: $it") })
     }
 }
-suspend fun HttpClient.kontoHistorikk(fnr: Fnr): HttpResponse {
+suspend fun HttpClient.kontorHistorikk(fnr: Fnr): HttpResponse {
     return graphqlRequest {
         setBody(kontorHistorikkQuery(fnr))
     }
@@ -101,12 +101,12 @@ val fnrArg = "${pesos}fnr"
 
 private fun kontorHistorikkQuery(fnr: Fnr): String {
     return graphqlPayload(fnr, """
-            { kontorHistorikk (fnr: \"$fnr\") { kontorId , kilde, endretAv, endretAvType, endretTidspunkt, endringsType } }
+            { kontorHistorikk (fnr: \"$fnr\") { kontorId , kontorType, endretAv, endretAvType, endretTidspunkt, endringsType } }
         """.trimIndent())
 }
 fun kontorTilhorighetQuery(fnr: Fnr): String {
     return graphqlPayload(fnr, """
-             { kontorTilhorighet (fnr: \"$fnr\") { kontorId , kilde, registrant, registrantType, kontorNavn } }
+             { kontorTilhorighet (fnr: \"$fnr\") { kontorId , kontorType, registrant, registrantType, kontorNavn } }
         """.trimIndent())
 }
 

@@ -14,7 +14,8 @@ import no.nav.db.table.ArenaKontorTable
 import no.nav.db.table.GeografiskTilknytningKontorTable
 import no.nav.db.table.KontorhistorikkTable
 import no.nav.domain.KontorEndringsType
-import no.nav.domain.KontorKilde
+import no.nav.domain.KontorType
+import no.nav.domain.System
 import no.nav.http.client.mockNorg2Host
 import no.nav.http.graphql.installGraphQl
 import no.nav.http.graphql.schemas.KontorHistorikkQueryDto
@@ -31,7 +32,7 @@ import no.nav.utils.alleKontor
 import no.nav.utils.alleKontorTilhorigheter
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.getJsonHttpClient
-import no.nav.utils.kontoHistorikk
+import no.nav.utils.kontorHistorikk
 import no.nav.utils.kontorTilhorighet
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -66,7 +67,7 @@ class GraphqlApplicationTest {
         response.status shouldBe HttpStatusCode.Companion.OK
         val payload = response.body<GraphqlResponse<KontorTilhorighet>>()
         payload shouldBe GraphqlResponse(KontorTilhorighet(
-            KontorTilhorighetQueryDto(kontorId, "NAV test", KontorKilde.ARENA, "Arena", RegistrantTypeDto.ARENA))
+            KontorTilhorighetQueryDto(kontorId, "NAV test", KontorType.ARENA, "Arena", RegistrantTypeDto.ARENA))
         )
     }
 
@@ -80,7 +81,7 @@ class GraphqlApplicationTest {
             gittBrukerMedKontorIArena(fnr, kontorId)
         }
 
-        val response = client.kontoHistorikk(fnr)
+        val response = client.kontorHistorikk(fnr)
 
         response.status shouldBe HttpStatusCode.Companion.OK
         val payload = response.body<GraphqlResponse<KontorHistorikk>>()
@@ -89,10 +90,10 @@ class GraphqlApplicationTest {
             listOf(
                 KontorHistorikkQueryDto(
                     kontorId = kontorId,
-                    kilde = KontorKilde.ARBEIDSOPPFOLGING,
-                    endringsType = KontorEndringsType.FlyttetAvVeileder,
-                    endretAv = "S515151",
-                    endretAvType = "veileder",
+                    kontorType = KontorType.ARENA,
+                    endringsType = KontorEndringsType.EndretIArena,
+                    endretAv = System().getIdent(),
+                    endretAvType = System().getType(),
                     endretTidspunkt = insertTime.toString()
                 )
             )
@@ -171,10 +172,11 @@ class GraphqlApplicationTest {
             KontorhistorikkTable.insert {
                 it[this.fnr] = fnr
                 it[this.kontorId] = kontorId
-                it[this.kontorendringstype] = KontorEndringsType.FlyttetAvVeileder.name
-                it[this.endretAvType] = "veileder"
-                it[this.endretAv] = "S515151"
+                it[this.kontorendringstype] = KontorEndringsType.EndretIArena.name
+                it[this.endretAvType] = System().getType()
+                it[this.endretAv] = System().getIdent()
                 it[this.createdAt] = insertTime.toOffsetDateTime()
+                it[this.kontorType] = KontorType.ARENA.name
             }
         }
     }
@@ -194,6 +196,7 @@ class GraphqlApplicationTest {
                 it[this.endretAvType] = "veileder"
                 it[this.endretAv] = "S515151"
                 it[this.createdAt] = insertTime.toOffsetDateTime()
+                it[this.kontorType] = KontorType.GEOGRAFISK_TILKNYTNING.name
             }
         }
     }
@@ -213,6 +216,7 @@ class GraphqlApplicationTest {
                 it[this.endretAvType] = "veileder"
                 it[this.endretAv] = "S515151"
                 it[this.createdAt] = insertTime.toOffsetDateTime()
+                it[this.kontorType] = KontorType.ARBEIDSOPPFOLGING.name
             }
         }
     }

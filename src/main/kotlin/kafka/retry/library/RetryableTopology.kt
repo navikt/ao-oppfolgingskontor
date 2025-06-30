@@ -83,7 +83,7 @@ object RetryableTopology {
         dataSource: DataSource,
         keyInSerde: Serde<KIn>, // Kun input-SerDes er nødvendig
         valueInSerde: Serde<VIn>,
-        config: RetryConfig = RetryConfig(),
+        config: RetryConfig = RetryConfig(inputTopic),
         noinline businessLogic: (record: Record<KIn, VIn>) -> Record<KOut, VOut>?
     ): KStream<KOut, VOut> {
 

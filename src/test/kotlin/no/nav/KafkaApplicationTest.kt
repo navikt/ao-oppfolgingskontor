@@ -5,6 +5,7 @@ import io.kotest.matchers.shouldBe
 import io.ktor.server.testing.testApplication
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.ArenaKontorEntity
+import no.nav.db.entity.GeografiskTilknyttetKontorEntity
 import no.nav.db.entity.KontorHistorikkEntity
 import no.nav.db.table.KontorhistorikkTable
 import no.nav.domain.KontorId
@@ -12,11 +13,12 @@ import no.nav.http.client.AlderFunnet
 import no.nav.http.client.FnrFunnet
 import no.nav.http.client.poaoTilgang.GTKontorFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
+import no.nav.kafka.config.StringTopicConsumer
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerConsumer
 import no.nav.kafka.config.streamsErrorHandlerConfig
 import no.nav.kafka.consumers.OppfolgingsPeriodeConsumer
 import no.nav.kafka.processor.ExplicitResultProcessor
-import no.nav.kafka.processor.ProcessRecord
+import no.nav.kafka.consumers.SkjermingConsumer
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.ProfileringFunnet
 import no.nav.utils.flywayMigrationInTest
@@ -44,7 +46,8 @@ class KafkaApplicationTest {
 
         application {
             flywayMigrationInTest()
-            val topology = configureTopology(listOf(topic to endringPaOppfolgingsBrukerConsumer::consume))
+            val topology = configureTopology(listOf(
+                StringTopicConsumer(topic,endringPaOppfolgingsBrukerConsumer::consume)))
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(
                 fnr,
@@ -81,7 +84,7 @@ class KafkaApplicationTest {
                 { FnrFunnet(fnr) },
                 { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER)}
             ))
-            val topology = configureTopology(listOf(topic to consumer::consume))
+            val topology = configureTopology(listOf(StringTopicConsumer(topic,consumer::consume)))
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(
                 fnr,
@@ -106,7 +109,7 @@ class KafkaApplicationTest {
 
         application {
             flywayMigrationInTest()
-            val topology = configureTopology(listOf(topic to endringPaOppfolgingsBrukerConsumer::consume))
+            val topology = configureTopology(listOf(StringTopicConsumer(topic, endringPaOppfolgingsBrukerConsumer::consume)))
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(
                 fnr, endringPaOppfolgingsBrukerMessage("1234", ZonedDateTime.parse("2025-04-10T13:01:14+02:00"))
@@ -123,6 +126,37 @@ class KafkaApplicationTest {
         }
     }
 
+    @Test
+    fun `skal behandle endring i skjerming sett kontor fra GT`() = testApplication {
+        val fnr = "55345678901"
+        val ikkeSkjermetKontor = "1234"
+        val skjermetKontor = "4555"
+
+        val automatiskKontorRutingService = AutomatiskKontorRutingService(
+            { GTKontorFunnet(KontorId(skjermetKontor)) },
+            { AlderFunnet(40) },
+            { FnrFunnet(fnr) },
+            { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) }
+        )
+        val skjermingConsumer = SkjermingConsumer(automatiskKontorRutingService)
+
+        application {
+            flywayMigrationInTest()
+            val topology = configureTopology(listOf(StringTopicConsumer(topic, skjermingConsumer::consume)))
+            val kafkaMockTopic = setupKafkaMock(topology, topic)
+
+            kafkaMockTopic.pipeInput(fnr, "true")
+
+            transaction {
+                GeografiskTilknyttetKontorEntity.Companion.findById(fnr)?.kontorId shouldBe skjermetKontor
+                ArbeidsOppfolgingKontorEntity.Companion.findById(fnr)?.kontorId shouldBe skjermetKontor
+                KontorHistorikkEntity.Companion
+                    .find { KontorhistorikkTable.fnr eq fnr }
+                    .count() shouldBe 2
+            }
+        }
+    }
+
     @Ignore
     @Test
     fun testKafkaRetry() = testApplication {
@@ -131,7 +165,7 @@ class KafkaApplicationTest {
         application {
             val dataSource = flywayMigrationInTest()
 
-            val topology = configureTopology(listOf(topic to endringPaOppfolgingsBrukerConsumer::consume))
+            val topology = configureTopology(listOf(StringTopicConsumer(topic, endringPaOppfolgingsBrukerConsumer::consume)))
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(fnr, endringPaOppfolgingsBrukerMessage("1234", ZonedDateTime.now()))
         }
@@ -144,7 +178,7 @@ class KafkaApplicationTest {
         application {
             val dataSource = flywayMigrationInTest()
 
-            val topology = configureTopology(listOf(topic to endringPaOppfolgingsBrukerConsumer::consume))
+            val topology = configureTopology(listOf(StringTopicConsumer(topic, endringPaOppfolgingsBrukerConsumer::consume)))
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(fnr, """{"oppfolgingsenhet":"ugyldigEnhet"}""")
         }
@@ -163,14 +197,13 @@ class KafkaApplicationTest {
         return """{"uuid":"$uuid", "startDato":"$startDato", "sluttDato":${sluttDato?.let { "\"$it\"" } ?: "null"}, "startetBegrunnelse": "SYKEMELDT_MER_OPPFOLGING" "aktorId":"$aktorId"}"""
     }
 
-    private fun configureTopology(topicAndConsumers: List<Pair<String, ProcessRecord>>): Topology {
+    private fun configureTopology(topicAndConsumers: List<StringTopicConsumer>): Topology {
         val builder = StreamsBuilder()
-        topicAndConsumers.forEach { (topic, processRecord) ->
-            builder.stream<String, String>(topic)
+        topicAndConsumers.forEach { topicAndConsumer ->
+            builder.stream<String, String>(topicAndConsumer.topic)
                 .process(ProcessorSupplier {
-                    ExplicitResultProcessor(processRecord)
+                    ExplicitResultProcessor(topicAndConsumer.processRecord)
                 })
-
         }
         return builder.build()
     }

@@ -1,13 +1,13 @@
 package no.nav.http.graphql.schemas
 
 import kotlinx.serialization.Serializable
-import no.nav.domain.KontorKilde
+import no.nav.domain.KontorType
 
 @Serializable
 data class KontorTilhorighetQueryDto(
     val kontorId: String,
     val kontorNavn: String,
-    val kilde: KontorKilde,
+    val kontorType: KontorType,
     val registrant: String,
     val registrantType: RegistrantTypeDto
 )

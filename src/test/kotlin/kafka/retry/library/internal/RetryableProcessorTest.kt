@@ -29,12 +29,12 @@ class RetryableProcessorTest {
  private lateinit var mockedMetrics: RetryMetrics
 
  // Selve prosessoren som testes
- private lateinit var processor: RetryableProcessor<String, String, Void, Void>
+ private lateinit var processor: RetryableProcessor<String, String, Void, Void, Unit>
 
  // For å fange opp den scheduled Punctuation-lambdaen
  private val punctuationCallback = slot<Punctuator>()
 
- private val config = RetryConfig(retryInterval = Duration.ofMinutes(1), maxRetries = 2)
+ private val config = RetryConfig(retryInterval = Duration.ofMinutes(1), maxRetries = 2, stateStoreName = "test-store")
  private val inputTopicName = "input-topic"
 
  @Before
@@ -52,7 +52,7 @@ class RetryableProcessorTest {
   every { mockedContext.schedule(any(), any(), capture(punctuationCallback)) } returns mockk()
 
   // --- 3. Lag en instans av prosessoren som skal testes ---
-  processor = RetryableProcessor<String, String, Void, Void>(
+  processor = RetryableProcessor<String, String, Void, Void, Unit>(
    config = config,
    keyInSerializer = Serdes.String().serializer(),
    valueInSerializer = Serdes.String().serializer(),

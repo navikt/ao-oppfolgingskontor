@@ -1,11 +1,12 @@
 package no.nav.kafka.config
 
-import io.ktor.server.config.ApplicationConfig
-import no.nav.kafka.processor.ProcessRecord
+import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde
+import io.ktor.server.config.*
 import no.nav.kafka.exceptionHandler.RetryIfRetriableExceptionHandler
-import no.nav.kafka.processor.ExplicitResultProcessor
 import no.nav.kafka.retry.library.RetryConfig
 import no.nav.kafka.retry.library.RetryableTopology
+import no.nav.kafka.processor.ProcessRecord
+import no.nav.person.pdl.leesah.Personhendelse
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.config.SslConfigs
@@ -13,23 +14,54 @@ import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
 import org.apache.kafka.streams.Topology
-import org.apache.kafka.streams.processor.api.Processor
-import org.apache.kafka.streams.processor.api.ProcessorSupplier
 import java.util.Properties
 import javax.sql.DataSource
 
-fun configureTopology(topicAndConsumers: List<Pair<String, ProcessRecord>>, dataSource: DataSource): Topology {
+sealed class TopicConsumer(
+    val topic: String,
+)
+class StringTopicConsumer(
+    topic: String,
+    val processRecord: ProcessRecord<String, String>,
+): TopicConsumer(topic)
+class AvroTopicConsumer(
+    topic: String,
+    val processRecord: ProcessRecord<String, Personhendelse>,
+    val specificAvroSerde: SpecificAvroSerde<Personhendelse>
+): TopicConsumer(topic)
+
+fun configureTopology(
+    topicAndConsumers: List<TopicConsumer>,
+    dataSource: DataSource
+): Topology {
     val builder = StreamsBuilder()
-    topicAndConsumers.forEach { (topic, processRecord) ->
-        RetryableTopology.addTerminalRetryableProcessor(
-            builder = builder,
-            inputTopic = topic,
-            dataSource = dataSource,
-            keySerde = Serdes.String(),
-            valueSerde = Serdes.String(),
-            businessLogic = { processRecord(it, null) },
-            config = RetryConfig(topic)
-        )
+    builder.addGlobalStore<>()
+
+    topicAndConsumers.forEach { topicAndConsumer ->
+        when (topicAndConsumer) {
+            is StringTopicConsumer -> {
+                RetryableTopology.addTerminalRetryableProcessor(
+                    builder = builder,
+                    inputTopic = topicAndConsumer.topic,
+                    dataSource = dataSource,
+                    keySerde = Serdes.String(),
+                    valueSerde = Serdes.String(),
+                    businessLogic = { topicAndConsumer.processRecord(it, null) },
+                    config = RetryConfig(topicAndConsumer.topic)
+                )
+            }
+            is AvroTopicConsumer -> {
+                RetryableTopology.addTerminalRetryableProcessor(
+                    builder = builder,
+                    inputTopic = topicAndConsumer.topic,
+                    dataSource = dataSource,
+                    keySerde = Serdes.String(),
+                    valueSerde = topicAndConsumer.specificAvroSerde,
+                    businessLogic = { topicAndConsumer.processRecord(it, null) },
+                    config = RetryConfig(topicAndConsumer.topic)
+                )
+            }
+        }
     }
     return builder.build()
 }
