@@ -7,7 +7,7 @@ import no.nav.domain.KontorType
 import no.nav.domain.System
 import org.slf4j.LoggerFactory
 
-class GTKontorPgaAdressebeskyttelseEndret(tilordning: KontorTilordning): GTKontorEndret(tilordning) {
+class GTKontorEndretPgaAdressebeskyttelseEndret(tilordning: KontorTilordning): GTKontorEndret(tilordning) {
     val logger = LoggerFactory.getLogger(this::class.java)
 
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {

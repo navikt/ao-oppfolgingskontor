@@ -6,7 +6,7 @@ import no.nav.domain.KontorTilordning
 import no.nav.domain.events.AOKontorEndret
 import no.nav.domain.events.AOKontorEndretPgaAdressebeskyttelseEndret
 import no.nav.domain.events.AOKontorEndretPgaSkjermingEndret
-import no.nav.domain.events.GTKontorPgaAdressebeskyttelseEndret
+import no.nav.domain.events.GTKontorEndretPgaAdressebeskyttelseEndret
 import no.nav.domain.events.GTKontorEndretPgaBostedsadresseEndret
 import no.nav.domain.events.GTKontorEndretPgaSkjermingEndret
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
@@ -128,7 +128,7 @@ class AutomatiskKontorRutingService(
             return when (gtKontorResultat) {
                 is GTKontorFunnet -> {
                     KontorTilordningService.tilordneKontor(
-                        GTKontorPgaAdressebeskyttelseEndret(
+                        GTKontorEndretPgaAdressebeskyttelseEndret(
                             KontorTilordning(
                                 hendelse.fnr,
                                 gtKontorResultat.kontorId
