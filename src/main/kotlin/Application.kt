@@ -7,17 +7,15 @@ import no.nav.http.client.*
 import no.nav.http.client.arbeidssogerregisteret.ArbeidssokerregisterClient
 import no.nav.http.client.arbeidssogerregisteret.getArbeidssokerregisteretScope
 import no.nav.http.client.arbeidssogerregisteret.getArbeidssokerregisteretUrl
-import no.nav.http.client.poaoTilgang.PoaoTilgangKtorHttpClient
-import no.nav.http.client.poaoTilgang.getPoaoTilgangScope
 import no.nav.http.client.tokenexchange.TexasSystemTokenClient
 import no.nav.http.client.tokenexchange.getNaisTokenEndpoint
 import no.nav.http.configureArbeidsoppfolgingskontorModule
 import no.nav.http.graphql.configureGraphQlModule
 import no.nav.http.graphql.getNorg2Url
 import no.nav.http.graphql.getPDLUrl
-import no.nav.http.graphql.getPoaoTilgangUrl
 import no.nav.kafka.KafkaStreamsPlugin
 import no.nav.services.AutomatiskKontorRutingService
+import no.nav.services.GTNorgService
 import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
 
@@ -33,19 +31,24 @@ fun Application.module() {
     val norg2Client = Norg2Client(environment.getNorg2Url())
 
     val texasClient = TexasSystemTokenClient(environment.getNaisTokenEndpoint())
-    val poaoTilgangHttpClient = PoaoTilgangKtorHttpClient(
-        environment.getPoaoTilgangUrl(),
-        texasClient.tokenProvider(environment.getPoaoTilgangScope())
-    )
     val pdlClient = PdlClient(environment.getPDLUrl(), texasClient.tokenProvider(environment.getPdlScope()))
     val arbeidssokerregisterClient = ArbeidssokerregisterClient(
         environment.getArbeidssokerregisteretUrl(),
         texasClient.tokenProvider(environment.getArbeidssokerregisteretScope()))
+    /*
+    val poaoTilgangHttpClient = PoaoTilgangKtorHttpClient(
+        environment.getPoaoTilgangUrl(),
+        texasClient.tokenProvider(environment.getPoaoTilgangScope())
+    )*/
 
+    val gtNorgService = GTNorgService(
+        { pdlClient.hentGt(it) },
+        { norg2Client.hentKontorForGt(it) }
+    )
     val kontorNavnService = KontorNavnService(norg2Client)
     val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangHttpClient)
     val automatiskKontorRutingService = AutomatiskKontorRutingService(
-        { poaoTilgangHttpClient.hentTilgangsattributter(it) },
+        { gtNorgService.hentGtKontorForBruker(it) },
         { pdlClient.hentAlder(it) },
         { pdlClient.hentFnrFraAktorId(it) },
         { arbeidssokerregisterClient.hentProfilering(it) }

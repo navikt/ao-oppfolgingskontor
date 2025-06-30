@@ -7,20 +7,20 @@ import no.nav.domain.KontorType
 import no.nav.domain.System
 import org.slf4j.LoggerFactory
 
-class GTKontorPgaAdressebeskyttelseEndret(tilordning: KontorTilordning): GTKontorEndret(tilordning) {
-    val logger = LoggerFactory.getLogger(this::class.java)
+class GTKontorEndretPgaSkjermingEndret(kontorTilordning: KontorTilordning): GTKontorEndret(kontorTilordning) {
+    val log = LoggerFactory.getLogger(this::class.java)
 
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(
-            kontorId = tilordning.kontorId,
-            fnr = tilordning.fnr,
+            kontorId = this.tilordning.kontorId,
+            fnr = this.tilordning.fnr,
             registrant = System(),
-            kontorendringstype = KontorEndringsType.FikkAddressebeskyttelse,
+            kontorendringstype = KontorEndringsType.FikkSkjerming,
             kontorType = KontorType.GEOGRAFISK_TILKNYTNING
         )
     }
 
     override fun logg() {
-        logger.info("AdressebeskyttelseGTEndret: kontorId=${tilordning.kontorId}")
+        log.info("GT kontor endret pga person ble skjermet")
     }
 }

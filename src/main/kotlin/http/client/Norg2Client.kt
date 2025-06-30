@@ -13,6 +13,10 @@ import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
 import no.nav.domain.KontorId
+import no.nav.http.client.poaoTilgang.GTKontorFeil
+import no.nav.http.client.poaoTilgang.GTKontorFunnet
+import no.nav.http.client.poaoTilgang.GTKontorResultat
+import org.slf4j.LoggerFactory
 
 class Norg2Client(
     val baseUrl: String,
@@ -28,6 +32,8 @@ class Norg2Client(
         }
     }
 ) {
+    val log = LoggerFactory.getLogger(this::class.java)
+
     suspend fun hentAlleEnheter(): List<MinimaltNorgKontor> {
         val response = httpClient.get(hentEnheterPath) {
             accept(ContentType.Application.Json)
@@ -46,10 +52,25 @@ class Norg2Client(
         return response.body<NorgKontor>().toMinimaltKontor()
     }
 
+    suspend fun hentKontorForGt(gt: GeografiskTilknytning): GTKontorResultat {
+        try {
+            val response = httpClient.get((hentKontorForGtPath(gt))) {
+                accept(ContentType.Application.Json)
+            }
+            if (response.status != HttpStatusCode.OK)
+                throw RuntimeException("Kunne ikke hente kontor for GT $gt fra Norg2. Status: ${response.status}")
+            return response.body<NorgKontor>().toMinimaltKontor()
+                .let { GTKontorFunnet(KontorId(it.kontorId)) }
+        } catch (e: Exception) {
+            return GTKontorFeil(e.message ?: "Ukjent feil")
+        }
+    }
+
     companion object {
         const val hentEnheterPath = "/norg2/api/v1/enhet"
         const val hentEnhetPathWithParam = "/norg2/api/v1/enhet/{enhetId}"
         fun hentEnhetPath(kontorId: KontorId): (String) = "/norg2/api/v1/enhet/${kontorId.id}"
+        fun hentKontorForGtPath(gt: GeografiskTilknytning): (String) = "/norg2/api/v1/enhet/navkontor/${gt.value}"
     }
 }
 
@@ -57,6 +78,9 @@ data class MinimaltNorgKontor(
     val kontorId: String,
     val navn: String
 )
+
+@JvmInline
+value class GeografiskTilknytning(val value: String)
 
 fun NorgKontor.toMinimaltKontor() = MinimaltNorgKontor(
     kontorId = this.enhetNr,
