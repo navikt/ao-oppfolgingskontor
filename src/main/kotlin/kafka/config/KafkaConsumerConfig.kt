@@ -35,7 +35,6 @@ fun configureTopology(
     dataSource: DataSource
 ): Topology {
     val builder = StreamsBuilder()
-    builder.addGlobalStore<>()
 
     topicAndConsumers.forEach { topicAndConsumer ->
         when (topicAndConsumer) {

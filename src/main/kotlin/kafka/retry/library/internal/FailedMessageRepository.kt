@@ -1,7 +1,12 @@
 package no.nav.kafka.retry.library.internal
 
+import kotlinx.coroutines.selects.select
+import no.nav.db.table.FailedMessagesTable
 import org.jdbi.v3.core.Jdbi
 import org.jdbi.v3.core.kotlin.KotlinPlugin
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.exists
+import org.jetbrains.exposed.sql.transactions.transaction
 import javax.sql.DataSource
 
 class FailedMessageRepository(dataSource: DataSource, val topic: String) {
@@ -9,12 +14,15 @@ class FailedMessageRepository(dataSource: DataSource, val topic: String) {
         installPlugin(KotlinPlugin())
     }
 
-    fun hasFailedMessages(key: String): Boolean = jdbi.withHandle<Boolean, Exception> { handle ->
-        handle.createQuery("SELECT EXISTS (SELECT 1 FROM failed_messages WHERE message_key_text = :key and topic = :topic)")
-            .bind("key", key)
-            .bind("topic", topic)
-            .mapTo(Boolean::class.java)
-            .one()
+    fun hasFailedMessages(key: String): Boolean {
+        val result = transaction {
+            val messageOnTopicWithKeySubquery = FailedMessagesTable
+                .select(FailedMessagesTable.id)
+                .where { FailedMessagesTable.topic eq topic and (FailedMessagesTable.messageKeyText eq key) }
+            FailedMessagesTable
+                .select(exists(messageOnTopicWithKeySubquery))
+        }
+        val rs = result.first()
     }
 
     fun enqueue(keyString: String, keyBytes: ByteArray, value: ByteArray, reason: String) = jdbi.useHandle<Exception> { handle ->

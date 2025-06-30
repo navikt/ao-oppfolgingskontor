@@ -17,7 +17,6 @@ class FailedMessageRepositoryTest {
 
     @Before
     fun createTable() {
-
         /* Flyway migrering hvis vi ikke legge denne koden i et ekstern bibliotek */
         Flyway.configure()
             .dataSource(dataSource)

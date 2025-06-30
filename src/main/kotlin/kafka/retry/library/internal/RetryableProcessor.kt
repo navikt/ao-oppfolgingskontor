@@ -1,5 +1,6 @@
 package no.nav.kafka.retry.library.internal
 
+import no.nav.db.table.FailedMessagesTable
 import no.nav.kafka.retry.library.RetryConfig
 import org.apache.kafka.common.serialization.Deserializer
 import org.apache.kafka.common.serialization.Serializer
@@ -40,7 +41,7 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut, ProcessorOutput>(
 
     override fun init(context: ProcessorContext<KOut, VOut>) {
         this.context = context
-        this.store = context.getStateStore(config.stateStoreName)
+//        this.store = context.getStateStore(config.stateStoreName)
         this.metrics = RetryMetrics(context, repository)
         context.schedule(config.retryInterval, PunctuationType.WALL_CLOCK_TIME, this::runReprocessing)
     }
@@ -69,7 +70,7 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut, ProcessorOutput>(
 
     private fun runReprocessing(timestamp: Long) {
         metrics.updateCurrentFailedMessagesGauge()
-        val messagesToRetry = store.getBatchToRetry(config.retryBatchSize)
+        val messagesToRetry = FailedMessagesTable.getBatchToRetry(topic) store.getBatchToRetry(config.retryBatchSize)
 
         for (msg in messagesToRetry) {
             metrics.retryAttempted()
