@@ -1,80 +1,81 @@
 package no.nav.kafka.retry.library.internal
 
-import kotlinx.coroutines.selects.select
+import no.nav.db.table.FailedMessagesEntity
 import no.nav.db.table.FailedMessagesTable
-import org.jdbi.v3.core.Jdbi
-import org.jdbi.v3.core.kotlin.KotlinPlugin
+import no.nav.db.table.FailedMessagesTable.messageKeyText
+import org.jetbrains.exposed.sql.SizedIterable
+import org.jetbrains.exposed.sql.SqlExpressionBuilder
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.exists
+import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
-import javax.sql.DataSource
+import org.jetbrains.exposed.sql.update
+import java.time.OffsetDateTime
 
-class FailedMessageRepository(dataSource: DataSource, val topic: String) {
-    private val jdbi = Jdbi.create(dataSource).apply {
-        installPlugin(KotlinPlugin())
+class FailedMessageRepository(val repositoryTopic: String) {
+
+    fun hasFailedMessages(key: String): Boolean = transaction {
+        val messageOnTopicWithKeySubquery = FailedMessagesTable
+            .select(FailedMessagesTable.id)
+            .where { FailedMessagesTable.topic eq repositoryTopic and (messageKeyText eq key) }
+        val existsOp = exists(messageOnTopicWithKeySubquery)
+        FailedMessagesTable
+            .select(existsOp)
+            .map { it[existsOp] }
+            .firstOrNull() ?: false
     }
 
-    fun hasFailedMessages(key: String): Boolean {
-        val result = transaction {
-            val messageOnTopicWithKeySubquery = FailedMessagesTable
-                .select(FailedMessagesTable.id)
-                .where { FailedMessagesTable.topic eq topic and (FailedMessagesTable.messageKeyText eq key) }
-            FailedMessagesTable
-                .select(exists(messageOnTopicWithKeySubquery))
+    fun enqueue(keyString: String, keyBytes: ByteArray, value: ByteArray, reason: String): Unit = transaction {
+        FailedMessagesTable.insert {
+            it[messageKeyText] = keyString
+            it[FailedMessagesTable.messageKeyBytes] = keyBytes
+            it[FailedMessagesTable.messageValue] = value
+            it[FailedMessagesTable.failureReason] = reason
+            it[FailedMessagesTable.topic] = repositoryTopic
         }
-        val rs = result.first()
-    }
-
-    fun enqueue(keyString: String, keyBytes: ByteArray, value: ByteArray, reason: String) = jdbi.useHandle<Exception> { handle ->
-        handle.createUpdate("""
-            INSERT INTO failed_messages (message_key_text, message_key_bytes, message_value, failure_reason, topic)
-            VALUES (:keyString, :keyBytes, :value, :reason)
-        """)
-            .bind("keyString", keyString)
-            .bind("keyBytes", keyBytes)
-            .bind("value", value)
-            .bind("reason", reason)
-            .bind("topic", topic)
-            .execute()
     }
 
     // Henter en batch med meldinger klare for reprosessering
-    fun getBatchToRetry(limit: Int): List<FailedMessage> = jdbi.withHandle<List<FailedMessage>, Exception> { handle ->
-        handle.createQuery("""
-            SELECT id, message_key_text, message_key_bytes, message_value, queue_timestamp, retry_count, last_attempt_timestamp, failure_reason
-            FROM failed_messages
-            WHERE topic = :topic
-            ORDER BY queue_timestamp
-            LIMIT :limit
-        """)
-            .bind("limit", limit)
-            .bind("topic", topic)
-            .mapTo(FailedMessage::class.java)
-            .list()
+    fun getBatchToRetry(limit: Int): List<FailedMessage> = transaction {
+        FailedMessagesEntity
+            .find { FailedMessagesTable.topic eq repositoryTopic }
+            .limit(limit)
+            .map { it.toFailedMessage() }
     }
 
-    fun delete(messageId: Long) = jdbi.useHandle<Exception> { handle ->
-        handle.createUpdate("DELETE FROM failed_messages WHERE id = :id")
-            .bind("id", messageId)
-            .execute()
+    fun delete(messageId: Long): Unit = transaction {
+        FailedMessagesTable.deleteWhere { FailedMessagesTable.id eq messageId }
     }
 
-    fun updateAfterFailedAttempt(messageId: Long, newReason: String) = jdbi.useHandle<Exception> { handle ->
-        handle.createUpdate("""
-            UPDATE failed_messages
-            SET retry_count = retry_count + 1,
-                last_attempt_timestamp = NOW(),
-                failure_reason = :reason
-            WHERE id = :id
-        """)
-            .bind("reason", newReason)
-            .bind("id", messageId)
-            .execute()
+    fun updateAfterFailedAttempt(messageId: Long, newReason: String): Unit = transaction {
+        FailedMessagesTable
+            .update({ FailedMessagesTable.id eq messageId })
+            {
+                with(SqlExpressionBuilder) {
+                    it[FailedMessagesTable.retryCount] = retryCount + 1
+                    it[FailedMessagesTable.lastAttemptTimestamp] = OffsetDateTime.now()
+                    it[FailedMessagesTable.failureReason] = newReason
+                }
+            }
     }
 
-    fun countTotalFailedMessages(): Long = jdbi.withHandle<Long, Exception> { handle ->
-        handle.createQuery("SELECT COUNT(*) FROM failed_messages")
-            .mapTo(Long::class.java)
-            .one()
+    fun countTotalFailedMessages(): Long = transaction {
+        FailedMessagesTable.selectAll().count()
     }
+}
+
+fun FailedMessagesEntity.toFailedMessage(): FailedMessage {
+    return FailedMessage(
+        id = this.id.value,
+        messageKeyText = this.messageKeyText,
+        messageKeyBytes = this.messageKeyBytes,
+        messageValue = this.messageValue,
+        queueTimestamp = this.queueTimestamp,
+        lastAttemptTimestamp = this.lastAttemptTimestamp,
+        retryCount = this.retryCount,
+        failureReason = this.failureReason,
+    )
 }

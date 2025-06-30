@@ -87,7 +87,7 @@ object RetryableTopology {
         noinline businessLogic: (record: Record<KIn, VIn>) -> Record<KOut, VOut>?
     ): KStream<KOut, VOut> {
 
-        val repository = FailedMessageRepository(dataSource, inputTopic)
+        val repository = FailedMessageRepository(inputTopic)
         val storeBuilder = PostgresRetryStoreBuilder(config.stateStoreName, repository)
         builder.addStateStore(storeBuilder)
 

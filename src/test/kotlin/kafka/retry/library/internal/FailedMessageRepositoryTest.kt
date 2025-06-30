@@ -13,7 +13,7 @@ import kotlin.text.toByteArray
 class FailedMessageRepositoryTest {
     private val topic = "test-topic"
     private var dataSource: DataSource = TestDb.postgres
-    private var repository: FailedMessageRepository = FailedMessageRepository(TestDb.postgres, topic)
+    private var repository: FailedMessageRepository = FailedMessageRepository( topic)
 
     @Before
     fun createTable() {

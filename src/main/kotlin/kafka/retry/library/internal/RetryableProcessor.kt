@@ -70,7 +70,7 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut, ProcessorOutput>(
 
     private fun runReprocessing(timestamp: Long) {
         metrics.updateCurrentFailedMessagesGauge()
-        val messagesToRetry = FailedMessagesTable.getBatchToRetry(topic) store.getBatchToRetry(config.retryBatchSize)
+        val messagesToRetry = store.getBatchToRetry(config.retryBatchSize)
 
         for (msg in messagesToRetry) {
             metrics.retryAttempted()
