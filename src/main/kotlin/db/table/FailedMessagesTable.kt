@@ -16,8 +16,6 @@ object FailedMessagesTable: IdTable<Long>("failed_messages") {
     val lastAttemptTimestamp = timestampWithTimeZone("last_attempt_timestamp").nullable()
     val retryCount = integer("retry_count")
     val failureReason = text("failure_reason")
-    val kafkaPartition = text("kafka_partition")
-    val kafkaOffset = text("kafka_offset")
     val topic = text("topic")
 }
 
@@ -30,7 +28,5 @@ class FailedMessagesEntity(id: EntityID<Long>): LongEntity(id) {
     val lastAttemptTimestamp by FailedMessagesTable.lastAttemptTimestamp
     val retryCount by FailedMessagesTable.retryCount
     val failureReason by FailedMessagesTable.failureReason
-    val kafkaPartition by FailedMessagesTable.kafkaPartition
-    val kafkaOffset by FailedMessagesTable.kafkaOffset
     val topic by FailedMessagesTable.topic
 }
