@@ -1,6 +1,11 @@
 package no.nav.kafka.retry.library.internal
 
 import no.nav.db.table.FailedMessagesTable
+import no.nav.kafka.processor.Commit
+import no.nav.kafka.processor.Forward
+import no.nav.kafka.processor.RecordProcessingResult
+import no.nav.kafka.processor.Retry
+import no.nav.kafka.processor.Skip
 import no.nav.kafka.retry.library.RetryConfig
 import org.apache.kafka.common.serialization.Deserializer
 import org.apache.kafka.common.serialization.Serializer
@@ -21,7 +26,7 @@ import org.slf4j.LoggerFactory
  * 5.  Oppdaterer alle relevante metrikker via RetryMetrics-klassen.
  */
 @PublishedApi
-internal class RetryableProcessor<KIn, VIn, KOut, VOut, ProcessorOutput>(
+internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
     private val config: RetryConfig,
     private val keyInSerializer: Serializer<KIn>,
     private val valueInSerializer: Serializer<VIn>,
@@ -30,7 +35,8 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut, ProcessorOutput>(
     private val topic: String, // Nødvendig for SerDes
     private val repository: FailedMessageRepository, // Nødvendig for metrikk-initialiserin
     /* businessLogig er selve forretningslogikken fra brukeren. Kan returnere Record<KOut,VOut> eller Unit.     */
-    private val businessLogic: (Record<KIn, VIn>) -> ProcessorOutput
+    private val businessLogic: (Record<KIn, VIn>) -> RecordProcessingResult<KOut, VOut>
+//    private val businessLogic: (Record<KIn, VIn>) -> Record<KOut, VOut>?
 ) : Processor<KIn, VIn, KOut, VOut> {
 
     private lateinit var context: ProcessorContext<KOut, VOut>
@@ -61,7 +67,14 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut, ProcessorOutput>(
 
         try {
             val result = businessLogic(record)
-            forwardResult(result)
+            when (result) {
+                Commit, Skip -> {}
+                is Forward -> context.forward(result.forwardedRecord)
+                is Retry -> {
+                    val reason = "TODO: Bruk retry feilmelding her"
+                    enqueue(record, reason)
+                }
+            }
         } catch (e: Exception) {
             val reason = "Initial processing failed: ${e.javaClass.simpleName} - ${e.message}"
             enqueue(record, reason)
@@ -104,7 +117,11 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut, ProcessorOutput>(
                 // Håndter suksess
                 store.delete(msg.id)
                 metrics.retrySucceeded()
-                forwardResult(result)
+                result.let {
+                    if (it is Forward) {
+                        context.forward(it.forwardedRecord)
+                    }
+                }
                 logger.info("Successfully reprocessed message ${msg.id} for key '${msg.messageKeyText}'.")
 
             } catch (e: Exception) {
@@ -126,14 +143,6 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut, ProcessorOutput>(
         store.enqueue(keyString, keyBytes, valueBytes, reason)
         metrics.messageEnqueued()
         logger.info("Message for key '$keyString' was enqueued for retry. Reason: $reason")
-    }
-
-    /** Hjelpemetode for å sende resultatet videre hvis det finnes. */
-    private fun forwardResult(result: Any?) {
-        if (result != null && result != Unit) {
-            @Suppress("UNCHECKED_CAST")
-            context.forward(result as Record<KOut, VOut>)
-        }
     }
 
     /** Hjelpemetode for å håndtere ugjenopprettelige deserialiseringsfeil. */

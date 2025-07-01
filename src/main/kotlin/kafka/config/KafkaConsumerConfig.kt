@@ -15,24 +15,22 @@ import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
 import org.apache.kafka.streams.Topology
 import java.util.Properties
-import javax.sql.DataSource
 
 sealed class TopicConsumer(
     val topic: String,
 )
 class StringTopicConsumer(
     topic: String,
-    val processRecord: ProcessRecord<String, String>,
+    val processRecord: ProcessRecord<String, String, Unit, Unit>,
 ): TopicConsumer(topic)
 class AvroTopicConsumer(
     topic: String,
-    val processRecord: ProcessRecord<String, Personhendelse>,
+    val processRecord: ProcessRecord<String, Personhendelse, Unit, Unit>,
     val specificAvroSerde: SpecificAvroSerde<Personhendelse>
 ): TopicConsumer(topic)
 
 fun configureTopology(
     topicAndConsumers: List<TopicConsumer>,
-    dataSource: DataSource
 ): Topology {
     val builder = StreamsBuilder()
 
@@ -42,7 +40,6 @@ fun configureTopology(
                 RetryableTopology.addTerminalRetryableProcessor(
                     builder = builder,
                     inputTopic = topicAndConsumer.topic,
-                    dataSource = dataSource,
                     keySerde = Serdes.String(),
                     valueSerde = Serdes.String(),
                     businessLogic = { topicAndConsumer.processRecord(it, null) },
@@ -53,7 +50,6 @@ fun configureTopology(
                 RetryableTopology.addTerminalRetryableProcessor(
                     builder = builder,
                     inputTopic = topicAndConsumer.topic,
-                    dataSource = dataSource,
                     keySerde = Serdes.String(),
                     valueSerde = topicAndConsumer.specificAvroSerde,
                     businessLogic = { topicAndConsumer.processRecord(it, null) },

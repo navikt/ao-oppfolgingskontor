@@ -2,6 +2,8 @@ package kafka.retry.library.internal
 
 import io.mockk.*
 import no.nav.db.flywayMigrate
+import no.nav.kafka.processor.Commit
+import no.nav.kafka.processor.Retry
 import no.nav.kafka.retry.library.RetryConfig
 import no.nav.kafka.retry.library.internal.FailedMessage
 import no.nav.kafka.retry.library.internal.FailedMessageRepository
@@ -25,12 +27,12 @@ import java.time.OffsetDateTime
 class RetryableProcessorTest {
 
  // Mocks for alle avhengigheter
- private lateinit var mockedContext: ProcessorContext<Void, Void>
+ private lateinit var mockedContext: ProcessorContext<Unit, Unit>
  private lateinit var mockedStore: FailedMessageRepository
  private lateinit var mockedMetrics: RetryMetrics
 
  // Selve prosessoren som testes
- private lateinit var processor: RetryableProcessor<String, String, Void, Void, Unit>
+ private lateinit var processor: RetryableProcessor<String, String, Unit, Unit>
 
  // For å fange opp den scheduled Punctuation-lambdaen
  private val punctuationCallback = slot<Punctuator>()
@@ -51,7 +53,7 @@ class RetryableProcessorTest {
   every { mockedContext.schedule(any(), any(), capture(punctuationCallback)) } returns mockk()
 
   // --- 3. Lag en instans av prosessoren som skal testes ---
-  processor = RetryableProcessor<String, String, Void, Void, Unit>(
+  processor = RetryableProcessor<String, String, Unit, Unit>(
    config = config,
    keyInSerializer = Serdes.String().serializer(),
    valueInSerializer = Serdes.String().serializer(),
@@ -64,6 +66,7 @@ class RetryableProcessorTest {
     if (record.value().contains("FAIL")) {
      throw RuntimeException("Simulated failure")
     }
+    Commit
    }
   )
 

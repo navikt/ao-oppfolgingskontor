@@ -1,6 +1,9 @@
 package kafka.consumers
 
+import io.kotest.matchers.equals.shouldBeEqual
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeSameInstanceAs
+import io.kotest.matchers.types.shouldBeTypeOf
 import io.ktor.server.testing.testApplication
 import no.nav.db.Fnr
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
@@ -15,6 +18,7 @@ import no.nav.kafka.consumers.AddressebeskyttelseEndret
 import no.nav.kafka.consumers.BostedsadresseEndret
 import no.nav.kafka.consumers.LeesahConsumer
 import no.nav.kafka.processor.RecordProcessingResult
+import no.nav.kafka.processor.Retry
 import no.nav.person.pdl.leesah.adressebeskyttelse.Gradering
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.utils.flywayMigrationInTest
@@ -102,7 +106,8 @@ class LeesahConsumerTest {
 
         val resultat = leesahConsumer.handterLeesahHendelse(BostedsadresseEndret(fnr))
 
-        resultat shouldBe  RecordProcessingResult.RETRY
+        resultat.shouldBeTypeOf<Retry>()
+        resultat.reason shouldBe "Kunne ikke håndtere endring i bostedsadresse pga feil ved henting av gt-kontor: Noe gikk galt"
     }
 
     @Test
@@ -115,7 +120,8 @@ class LeesahConsumerTest {
 
         val resultat = leesahConsumer.handterLeesahHendelse(BostedsadresseEndret(fnr))
 
-        resultat shouldBe  RecordProcessingResult.RETRY
+        resultat.shouldBeTypeOf<Retry>()
+        resultat.reason shouldBe "Uventet feil ved håndtering av endring i bostedsadresse"
     }
 
     private fun defaultAutomatiskKontorRutingService(
