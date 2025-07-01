@@ -78,10 +78,7 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
             when (result) {
                 Commit, Skip -> {}
                 is Forward -> context.forward(result.forwardedRecord)
-                is Retry -> {
-                    val reason = "TODO: Bruk retry feilmelding her"
-                    enqueue(record, reason)
-                }
+                is Retry -> enqueue(record, result.reason)
             }
         } catch (e: Exception) {
             val reason = "Initial processing failed: ${e.javaClass.simpleName} - ${e.message}"

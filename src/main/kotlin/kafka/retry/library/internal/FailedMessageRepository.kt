@@ -17,6 +17,8 @@ import java.time.OffsetDateTime
 class FailedMessageRepository(val repositoryTopic: String) {
 
     fun hasFailedMessages(key: String): Boolean = transaction {
+        if (key.isEmpty()) throw IllegalArgumentException("Key cannot be empty")
+        if (key.isBlank()) throw IllegalArgumentException("Key cannot be blank")
         val messageOnTopicWithKeySubquery = FailedMessagesTable
             .select(FailedMessagesTable.id)
             .where { FailedMessagesTable.topic eq repositoryTopic and (messageKeyText eq key) }

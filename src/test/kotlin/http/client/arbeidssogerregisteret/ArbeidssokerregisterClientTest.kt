@@ -10,7 +10,6 @@ import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.Json
-import no.nav.http.client.arbeidssogerregisteret.ArbeidssoekerperiodeAggregertResponse
 import no.nav.http.client.arbeidssogerregisteret.ArbeidssokerregisterClient
 import no.nav.services.ProfileringFunnet
 import no.nav.services.ProfileringIkkeFunnet
