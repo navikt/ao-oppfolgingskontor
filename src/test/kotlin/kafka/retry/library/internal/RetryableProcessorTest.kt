@@ -1,14 +1,15 @@
 package kafka.retry.library.internal
 
 import io.mockk.*
+import no.nav.db.flywayMigrate
 import no.nav.kafka.retry.library.RetryConfig
 import no.nav.kafka.retry.library.internal.FailedMessage
-import no.nav.kafka.retry.library.internal.PostgresRetryStore
+import no.nav.kafka.retry.library.internal.FailedMessageRepository
 import no.nav.kafka.retry.library.internal.RetryMetrics
 import no.nav.kafka.retry.library.internal.RetryableProcessor
+import no.nav.utils.TestDb
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.processor.Punctuator
-import org.apache.kafka.streams.processor.StateStore
 import org.apache.kafka.streams.processor.api.ProcessorContext
 import org.apache.kafka.streams.processor.api.Record
 import org.junit.Before
@@ -25,7 +26,7 @@ class RetryableProcessorTest {
 
  // Mocks for alle avhengigheter
  private lateinit var mockedContext: ProcessorContext<Void, Void>
- private lateinit var mockedStore: PostgresRetryStore
+ private lateinit var mockedStore: FailedMessageRepository
  private lateinit var mockedMetrics: RetryMetrics
 
  // Selve prosessoren som testes
@@ -39,14 +40,12 @@ class RetryableProcessorTest {
 
  @Before
  fun setup() {
+  flywayMigrate(TestDb.postgres)
   // --- 1. Lag Mocks ---
   mockedContext = mockk(relaxed = true)
   mockedStore = mockk(relaxed = true)
 
   // --- 2. Konfigurer Mock-oppførsel  ---
-
-  // Når context.getStateStore(ANY_STRING) kalles, returner vår mock.
-  every { mockedContext.getStateStore<StateStore>(any<String>()) } returns mockedStore
 
   // Når context.schedule blir kalt, fang opp lambdaen (Consumer) som sendes inn
   every { mockedContext.schedule(any(), any(), capture(punctuationCallback)) } returns mockk()
@@ -59,7 +58,7 @@ class RetryableProcessorTest {
    keyInDeserializer = Serdes.String().deserializer(),
    valueInDeserializer = Serdes.String().deserializer(),
    topic = inputTopicName,
-   repository = mockk(relaxed = true), // Dummy mock, ikke brukt direkte av prosessoren
+   repository = mockedStore, // Dummy mock, ikke brukt direkte av prosessoren
    // Definer en kontrollerbar forretningslogikk for testen
    businessLogic = { record ->
     if (record.value().contains("FAIL")) {
