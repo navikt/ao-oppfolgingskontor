@@ -43,11 +43,11 @@ private fun configureDb(config: ApplicationConfig): HikariDataSource {
     })
 }
 
-fun Application.configureDatabase() : DataSource {
+fun Application.configureDatabase() : Database {
     val dataSource = PostgresDataSource.getDataSource(environment.config)
-    Database.connect(dataSource)
+    val database = Database.connect(dataSource)
     install(FlywayPlugin) {
         this.dataSource = dataSource
     }
-    return dataSource
+    return database
 }

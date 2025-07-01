@@ -8,6 +8,7 @@ import io.ktor.server.application.ApplicationStopping
 import io.ktor.server.application.createApplicationPlugin
 import io.ktor.server.application.hooks.MonitoringEvent
 import io.ktor.server.application.log
+import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
 import no.nav.kafka.config.AvroTopicConsumer
 import no.nav.kafka.config.StringTopicConsumer
 import no.nav.kafka.config.configureKafkaStreams
@@ -19,8 +20,8 @@ import no.nav.kafka.consumers.SkjermingConsumer
 import no.nav.kafka.processor.LeesahAvroDeserializer
 import no.nav.services.AutomatiskKontorRutingService
 import org.apache.kafka.streams.KafkaStreams
+import org.jetbrains.exposed.sql.Database
 import java.time.Duration
-import javax.sql.DataSource
 
 val KafkaStreamsStarting: EventDefinition<Application> = EventDefinition()
 val KafkaStreamsStarted: EventDefinition<Application> = EventDefinition()
@@ -31,13 +32,16 @@ val shutDownTimeout = Duration.ofSeconds(1)
 
 class KafkaStreamsPluginConfig(
     var automatiskKontorRutingService: AutomatiskKontorRutingService? = null,
-    var dataSource: DataSource? = null
+    var database: Database? = null
 )
 
 val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
     createApplicationPlugin("KafkaStreams", ::KafkaStreamsPluginConfig) {
-        val dataSource = requireNotNull(this.pluginConfig.dataSource) { "DataSource must be configured for KafkaStreamsPlugin" }
+//        val dataSource = requireNotNull(this.pluginConfig.dataSource) { "DataSource must be configured for KafkaStreamsPlugin" }
+        val database = requireNotNull(this.pluginConfig.database) { "DataSource must be configured for KafkaStreamsPlugin" }
         val automatiskKontorRutingService = requireNotNull(this.pluginConfig.automatiskKontorRutingService) { "AutomatiskKontorRutingService must be configured for KafkaStreamPlugin" }
+
+        val lockProvider = ExposedLockProvider(database)
 
         val endringPaOppfolgingsBrukerConsumer = EndringPaOppfolgingsBrukerConsumer()
         val oppfolgingsBrukerTopic = environment.config.property("topics.inn.endringPaOppfolgingsbruker").getString()
@@ -68,6 +72,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
                 skjermingTopic,
                 { record, maybeRecordMetadata -> skjermingConsumer.consume(record, maybeRecordMetadata) }
             )),
+            lockProvider
         )
 
         val kafkaStream = KafkaStreams(topology, configureKafkaStreams(environment.config))

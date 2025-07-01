@@ -1,6 +1,8 @@
 package no.nav.kafka.retry.library.internal
 
-import no.nav.db.table.FailedMessagesTable
+import net.javacrumbs.shedlock.core.DefaultLockingTaskExecutor
+import net.javacrumbs.shedlock.core.LockConfiguration
+import net.javacrumbs.shedlock.core.LockProvider
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.RecordProcessingResult
@@ -14,6 +16,8 @@ import org.apache.kafka.streams.processor.api.Processor
 import org.apache.kafka.streams.processor.api.ProcessorContext
 import org.apache.kafka.streams.processor.api.Record
 import org.slf4j.LoggerFactory
+import java.time.Duration
+import java.time.Instant
 
 /**
  * Den sentrale prosessoren i feilhåndteringsbiblioteket.
@@ -25,6 +29,9 @@ import org.slf4j.LoggerFactory
  * 4.  Håndterer logikk for maksimalt antall forsøk ("dead-lettering").
  * 5.  Oppdaterer alle relevante metrikker via RetryMetrics-klassen.
  */
+val lockAtMostFor = Duration.ofSeconds(60)
+val lockAtLeastFor = Duration.ZERO
+
 @PublishedApi
 internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
     private val config: RetryConfig,
@@ -35,21 +42,22 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
     private val topic: String, // Nødvendig for SerDes
     private val repository: FailedMessageRepository, // Nødvendig for metrikk-initialiserin
     /* businessLogig er selve forretningslogikken fra brukeren. Kan returnere Record<KOut,VOut> eller Unit.     */
-    private val businessLogic: (Record<KIn, VIn>) -> RecordProcessingResult<KOut, VOut>
+    private val businessLogic: (Record<KIn, VIn>) -> RecordProcessingResult<KOut, VOut>,
+    private val lockProvider: LockProvider,
 //    private val businessLogic: (Record<KIn, VIn>) -> Record<KOut, VOut>?
 ) : Processor<KIn, VIn, KOut, VOut> {
 
     private lateinit var context: ProcessorContext<KOut, VOut>
     private lateinit var store: PostgresRetryStore
     private lateinit var metrics: RetryMetrics
-
+    private val lockingTaskExecutor = DefaultLockingTaskExecutor(lockProvider)
     private val logger = LoggerFactory.getLogger(RetryableProcessor::class.java)
 
     override fun init(context: ProcessorContext<KOut, VOut>) {
         this.context = context
         this.store = PostgresRetryStoreImpl(topic, repository)
         this.metrics = RetryMetrics(context, repository)
-        context.schedule(config.retryInterval, PunctuationType.WALL_CLOCK_TIME, this::runReprocessing)
+        context.schedule(config.retryInterval, PunctuationType.WALL_CLOCK_TIME, this::runReprocessingWithLock)
     }
 
     override fun process(record: Record<KIn, VIn>) {
@@ -79,6 +87,19 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
             val reason = "Initial processing failed: ${e.javaClass.simpleName} - ${e.message}"
             enqueue(record, reason)
         }
+    }
+
+    private fun runWithLock(block: Runnable) {
+        lockingTaskExecutor.executeWithLock(
+            block,
+            LockConfiguration(Instant.now(), "${topic}-lock", lockAtMostFor, lockAtLeastFor)
+        )
+    }
+
+    private fun runReprocessingWithLock(timestamp: Long) {
+        runWithLock(Runnable {
+            runReprocessing(timestamp)
+        })
     }
 
     private fun runReprocessing(timestamp: Long) {

@@ -1,6 +1,7 @@
 package kafka.retry.library.internal
 
 import io.mockk.*
+import kafka.retry.TestLockProvider
 import no.nav.db.flywayMigrate
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Retry
@@ -67,7 +68,8 @@ class RetryableProcessorTest {
      throw RuntimeException("Simulated failure")
     }
     Commit
-   }
+   },
+   TestLockProvider
   )
 
   // --- 4. Initialiser prosessoren ---

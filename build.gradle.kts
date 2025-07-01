@@ -81,6 +81,8 @@ dependencies {
     implementation(libs.graphql.kotlin.schema.generator)
     implementation(libs.token.validation.ktor.v3)
     implementation(libs.nav.poaotilgang.client.core)
+    implementation(libs.shedlock)
+    implementation(libs.shedlock.exposed)
     testImplementation(libs.embedded.postgres)
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.mock.oauth2.server)

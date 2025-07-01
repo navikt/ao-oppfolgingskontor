@@ -20,6 +20,7 @@ mockk-version = "1.13.8"
 poao-tilgang-version = "test.2025.06.06_07.57-65ec2c15731b"
 caffeine-version = "3.2.1"
 kafka-avro = "8.0.0"
+shedlock-version = "6.9.0"
 
 [libraries]
 ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor-version" }
@@ -33,6 +34,8 @@ jdbi3-core = { module = "org.jdbi:jdbi3-core", version.ref = "jdbi3-version" }
 jdbi3-kotlin = { module = "org.jdbi:jdbi3-kotlin", version.ref = "jdbi3-version" }
 h2 = { module = "com.h2database:h2", version.ref = "h2-version" }
 postgresql = { module = "org.postgresql:postgresql", version.ref = "postgres-version" }
+shedlock = { module = "net.javacrumbs.shedlock:shedlock-core", version.ref = "shedlock-version" }
+shedlock-exposed = { module = "net.javacrumbs.shedlock:shedlock-provider-exposed", version.ref = "shedlock-version" }
 ktor-server-metrics = { module = "io.ktor:ktor-server-metrics", version.ref = "ktor-version" }
 ktor-server-call-logging = { module = "io.ktor:ktor-server-call-logging", version.ref = "ktor-version" }
 ktor-server-compression = { module = "io.ktor:ktor-server-compression", version.ref = "ktor-version" }

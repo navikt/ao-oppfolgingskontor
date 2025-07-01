@@ -2,6 +2,7 @@ package no.nav.kafka.config
 
 import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde
 import io.ktor.server.config.*
+import net.javacrumbs.shedlock.core.LockProvider
 import no.nav.kafka.exceptionHandler.RetryIfRetriableExceptionHandler
 import no.nav.kafka.retry.library.RetryConfig
 import no.nav.kafka.retry.library.RetryableTopology
@@ -31,6 +32,7 @@ class AvroTopicConsumer(
 
 fun configureTopology(
     topicAndConsumers: List<TopicConsumer>,
+    lockProvider: LockProvider
 ): Topology {
     val builder = StreamsBuilder()
 
@@ -43,7 +45,8 @@ fun configureTopology(
                     keySerde = Serdes.String(),
                     valueSerde = Serdes.String(),
                     businessLogic = { topicAndConsumer.processRecord(it, null) },
-                    config = RetryConfig(topicAndConsumer.topic)
+                    config = RetryConfig(topicAndConsumer.topic),
+                    lockProvider = lockProvider
                 )
             }
             is AvroTopicConsumer -> {
@@ -53,7 +56,8 @@ fun configureTopology(
                     keySerde = Serdes.String(),
                     valueSerde = topicAndConsumer.specificAvroSerde,
                     businessLogic = { topicAndConsumer.processRecord(it, null) },
-                    config = RetryConfig(topicAndConsumer.topic)
+                    config = RetryConfig(topicAndConsumer.topic),
+                    lockProvider = lockProvider
                 )
             }
         }

@@ -27,7 +27,7 @@ fun Application.module() {
     configureMonitoring()
     configureHealthAndCompression()
     configureSecurity()
-    val dataSource = configureDatabase()
+    val database = configureDatabase()
 
     val norg2Client = Norg2Client(environment.getNorg2Url())
 
@@ -54,9 +54,10 @@ fun Application.module() {
         { pdlClient.hentFnrFraAktorId(it) },
         { arbeidssokerregisterClient.hentProfilering(it) }
     )
+
     install(KafkaStreamsPlugin) {
         this.automatiskKontorRutingService = automatiskKontorRutingService
-        this.dataSource = dataSource
+        this.database = database
     }
 
     configureGraphQlModule(norg2Client, kontorTilhorighetService)

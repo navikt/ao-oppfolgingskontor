@@ -1,4 +1,5 @@
 package no.nav.kafka.retry.library
+import net.javacrumbs.shedlock.core.LockProvider
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.retry.library.internal.FailedMessageRepository
 import no.nav.kafka.retry.library.internal.PostgresRetryStoreBuilder
@@ -55,14 +56,16 @@ object RetryableTopology {
         keySerde: Serde<K>,
         valueSerde: Serde<V>,
         config: RetryConfig,
-        noinline businessLogic: (record: Record<K, V>) -> RecordProcessingResult<Unit, Unit>
+        noinline businessLogic: (record: Record<K, V>) -> RecordProcessingResult<Unit, Unit>,
+        lockProvider: LockProvider,
     ) {
         addTransformingRetryableProcessor<K, V, Unit, Unit>(
             builder, inputTopic,
             keyInSerde = keySerde,
             valueInSerde = valueSerde,
             config = config,
-            businessLogic = businessLogic
+            businessLogic = businessLogic,
+            lockProvider = lockProvider
         )
     }
 
@@ -77,7 +80,8 @@ object RetryableTopology {
         keyInSerde: Serde<KIn>, // Kun input-SerDes er nødvendig
         valueInSerde: Serde<VIn>,
         config: RetryConfig = RetryConfig(inputTopic),
-        noinline businessLogic: (record: Record<KIn, VIn>) -> RecordProcessingResult<KOut, VOut>
+        noinline businessLogic: (record: Record<KIn, VIn>) -> RecordProcessingResult<KOut, VOut>,
+        lockProvider: LockProvider,
     ): KStream<KOut, VOut> {
 
         val repository = FailedMessageRepository(inputTopic)
@@ -93,7 +97,8 @@ object RetryableTopology {
                 valueInDeserializer = valueInSerde.deserializer(),
                 topic = inputTopic,
                 repository = repository,
-                businessLogic = businessLogic
+                businessLogic = businessLogic,
+                lockProvider = lockProvider
             )
         }
 

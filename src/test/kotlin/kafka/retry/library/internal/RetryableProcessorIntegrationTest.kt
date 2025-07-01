@@ -2,6 +2,7 @@ package kafka.retry.library.internal
 
 import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
+import kafka.retry.TestLockProvider
 import no.nav.db.flywayMigrate
 import no.nav.kafka.config.StringTopicConsumer
 import no.nav.kafka.config.configureTopology
@@ -57,20 +58,21 @@ class RetryableProcessorIntegrationTest {
                         }
                     }
                 )
-            )
+            ),
+            TestLockProvider
         )
         val (testDriver, testInputTopic) = setupKafkaMock(topology, topic)
 
         testInputTopic.pipeInput("key1", "value1")
         testInputTopic.pipeInput(TestRecord("key1", "value1"))
 
-        withClue("Shoud have enqueued message in failed message repository") {
+        withClue("Shoud have enqueued message in failed message repository after first failure") {
             failedMessageRepository.hasFailedMessages("key1") shouldBe true
         }
 
         testDriver.advanceWallClockTime(Duration.of(1, ChronoUnit.MINUTES))
 
-        withClue("Shoud not have any failed message in failed message repository") {
+        withClue("Should not have any failed message in failed message repository after it has been successfully processed") {
             failedMessageRepository.hasFailedMessages("key1") shouldBe false
         }
     }
