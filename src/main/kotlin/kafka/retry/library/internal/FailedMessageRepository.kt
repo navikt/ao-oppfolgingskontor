@@ -3,7 +3,6 @@ package no.nav.kafka.retry.library.internal
 import no.nav.db.table.FailedMessagesEntity
 import no.nav.db.table.FailedMessagesTable
 import no.nav.db.table.FailedMessagesTable.messageKeyText
-import org.jetbrains.exposed.sql.SizedIterable
 import org.jetbrains.exposed.sql.SqlExpressionBuilder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and

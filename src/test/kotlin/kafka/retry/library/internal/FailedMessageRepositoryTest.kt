@@ -78,6 +78,21 @@ class FailedMessageRepositoryTest {
     }
 
     @Test
+    fun `getBatchToRetry should return first failed message on key`() {
+        repository.enqueue("key", "key".toByteArray(), "first".toByteArray(), "first-fail")
+        repository.enqueue("key", "key".toByteArray(), "second".toByteArray(), "second-fail")
+
+        val batch = repository.getBatchToRetry(2)
+
+        batch.size shouldBe 2
+        batch[0].failureReason shouldBe "first-fail"
+
+        repository.delete(batch[0].id)
+
+        repository.getBatchToRetry(2).size shouldBe 1
+    }
+
+    @Test
     fun `should delete a message by id`() {
         repository.enqueue("key-to-delete", "key-to-delete".toByteArray(), "val".toByteArray(), "failure")
         val message = repository.getBatchToRetry(1).first()
