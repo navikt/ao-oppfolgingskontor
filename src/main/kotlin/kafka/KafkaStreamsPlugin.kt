@@ -68,7 +68,6 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
                 skjermingTopic,
                 { record, maybeRecordMetadata -> skjermingConsumer.consume(record, maybeRecordMetadata) }
             )),
-            dataSource
         )
 
         val kafkaStream = KafkaStreams(topology, configureKafkaStreams(environment.config))

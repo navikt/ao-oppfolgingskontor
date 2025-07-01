@@ -13,7 +13,7 @@ import kotlin.text.toByteArray
 class FailedMessageRepositoryTest {
     private val topic = "test-topic"
     private var dataSource: DataSource = TestDb.postgres
-    private var repository: FailedMessageRepository = FailedMessageRepository(TestDb.postgres, topic)
+    private var repository: FailedMessageRepository = FailedMessageRepository( topic)
 
     @Before
     fun createTable() {
@@ -75,6 +75,21 @@ class FailedMessageRepositoryTest {
         batch.size shouldBe 2
         batch[0].messageKeyText shouldBe "key1"
         batch[1].messageKeyText shouldBe "key2"
+    }
+
+    @Test
+    fun `getBatchToRetry should return first failed message on key`() {
+        repository.enqueue("key", "key".toByteArray(), "first".toByteArray(), "first-fail")
+        repository.enqueue("key", "key".toByteArray(), "second".toByteArray(), "second-fail")
+
+        val batch = repository.getBatchToRetry(2)
+
+        batch.size shouldBe 2
+        batch[0].failureReason shouldBe "first-fail"
+
+        repository.delete(batch[0].id)
+
+        repository.getBatchToRetry(2).size shouldBe 1
     }
 
     @Test

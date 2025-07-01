@@ -13,10 +13,10 @@ class UnhandledRecordProcessingException(cause: Throwable): Exception("Unhandled
 * Processing a message expects a explicit result of either COMMIT, RETRY or SKIP to be the result of processing a message.
 * If an exception is thrown the error
 * */
-class ExplicitResultProcessor<K,V>(val processRecord: ProcessRecord<K,V>): Processor<K, V, String, String> {
-    private lateinit var context: ProcessorContext<String, String>
+class ExplicitResultProcessor<K,V>(val processRecord: ProcessRecord<K,V, Unit, Unit>): Processor<K, V, Unit, Unit> {
+    private lateinit var context: ProcessorContext<Unit, Unit>
     val log = LoggerFactory.getLogger(ExplicitResultProcessor::class.java)
-    override fun init(context: ProcessorContext<String, String>) {
+    override fun init(context: ProcessorContext<Unit, Unit>) {
         this.context = context
     }
 
@@ -28,9 +28,10 @@ class ExplicitResultProcessor<K,V>(val processRecord: ProcessRecord<K,V>): Proce
         }
             .onSuccess {
                 when (it) {
-                    RecordProcessingResult.COMMIT -> context.commit()
-                    RecordProcessingResult.RETRY -> {}
-                    RecordProcessingResult.SKIP -> context.commit()
+                    is Commit -> context.commit()
+                    is Forward -> context.forward(it.forwardedRecord)
+                    is Retry -> {}
+                    is Skip -> context.commit()
                 }
             }
             .onFailure { exception ->

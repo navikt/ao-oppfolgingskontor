@@ -15,13 +15,17 @@ class FlywayPluginConfig(
 
 val FlywayPlugin: ApplicationPlugin<FlywayPluginConfig> = createApplicationPlugin("Flyway", ::FlywayPluginConfig) {
     val dataSource = requireNotNull(pluginConfig.dataSource) { "DataSource is required for Flyway" }
-    val logger = LoggerFactory.getLogger("FlywayPlugin::class.java")
     application.monitor.raise(FlywayMigrationStarting, application)
+    flywayMigrate(dataSource)
+    application.monitor.raise(FlywayMigrationFinished, application)
+}
+
+fun flywayMigrate(dataSource: DataSource) {
+    val logger = LoggerFactory.getLogger("FlywayPlugin::class.java")
     logger.info("Starting Flyway migration")
     Flyway.configure()
         .dataSource(dataSource)
         .load()
         .migrate()
     logger.info("Flyway migration finished")
-    application.monitor.raise(FlywayMigrationFinished, application)
 }

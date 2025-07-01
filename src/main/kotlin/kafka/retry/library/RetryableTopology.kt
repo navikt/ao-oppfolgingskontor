@@ -1,4 +1,5 @@
 package no.nav.kafka.retry.library
+import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.retry.library.internal.FailedMessageRepository
 import no.nav.kafka.retry.library.internal.PostgresRetryStoreBuilder
 import no.nav.kafka.retry.library.internal.RetryableProcessor
@@ -51,24 +52,17 @@ object RetryableTopology {
     inline fun <reified K, reified V> addTerminalRetryableProcessor(
         builder: StreamsBuilder,
         inputTopic: String,
-        dataSource: DataSource,
         keySerde: Serde<K>,
         valueSerde: Serde<V>,
         config: RetryConfig,
-        noinline businessLogic: (record: Record<K, V>) -> Unit
+        noinline businessLogic: (record: Record<K, V>) -> RecordProcessingResult<Unit, Unit>
     ) {
-        // Liten lambda wrapper for å håndtere transformasjonen
-        val transformingLogic: (Record<K, V>) -> Record<Void, Void>? = { record ->
-            businessLogic(record) // Kall den originale logikken
-            null // Returner null for å signalisere at ingenting skal sendes videre
-        }
-
-        addTransformingRetryableProcessor<K, V, Void, Void>(
-            builder, inputTopic, dataSource,
+        addTransformingRetryableProcessor<K, V, Unit, Unit>(
+            builder, inputTopic,
             keyInSerde = keySerde,
             valueInSerde = valueSerde,
             config = config,
-            businessLogic = transformingLogic
+            businessLogic = businessLogic
         )
     }
 
@@ -80,14 +74,13 @@ object RetryableTopology {
     inline fun <reified KIn, reified VIn, reified KOut, reified VOut> addTransformingRetryableProcessor(
         builder: StreamsBuilder,
         inputTopic: String,
-        dataSource: DataSource,
         keyInSerde: Serde<KIn>, // Kun input-SerDes er nødvendig
         valueInSerde: Serde<VIn>,
         config: RetryConfig = RetryConfig(inputTopic),
-        noinline businessLogic: (record: Record<KIn, VIn>) -> Record<KOut, VOut>?
+        noinline businessLogic: (record: Record<KIn, VIn>) -> RecordProcessingResult<KOut, VOut>
     ): KStream<KOut, VOut> {
 
-        val repository = FailedMessageRepository(dataSource, inputTopic)
+        val repository = FailedMessageRepository(inputTopic)
         val storeBuilder = PostgresRetryStoreBuilder(config.stateStoreName, repository)
         builder.addStateStore(storeBuilder)
 
