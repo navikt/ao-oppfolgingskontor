@@ -1,0 +1,6 @@
+protocol StringKeyProtocol {
+  @namespace("no.nav.kafka.avro")
+  record StringKey {
+    string value;
+  }
+}

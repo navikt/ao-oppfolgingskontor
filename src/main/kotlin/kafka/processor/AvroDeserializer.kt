@@ -3,9 +3,9 @@ package no.nav.kafka.processor
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClientConfig
-import io.confluent.kafka.streams.serdes.avro.GenericAvroSerde
 import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde
 import io.ktor.server.config.ApplicationConfig
+import no.nav.kafka.avro.StringKey
 import no.nav.person.pdl.leesah.Personhendelse
 
 class LeesahAvroDeserializer (
@@ -33,12 +33,12 @@ class LeesahAvroDeserializer (
                 false
             )
         }
-    val keyDeserializer: GenericAvroSerde = GenericAvroSerde(schemaRegistryClient)
+    val keyDeserializer: SpecificAvroSerde<StringKey> = SpecificAvroSerde<StringKey>(schemaRegistryClient)
         .apply {
             configure(
                 mapOf(
                     "schema.registry.url" to schemaRegistryUrl,
-                    "specific.avro.reader" to false
+                    "specific.avro.reader" to true
                 ),
                 true
             )
