@@ -5,6 +5,7 @@ import kafka.retry.TestLockProvider
 import no.nav.db.flywayMigrate
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Retry
+import no.nav.kafka.retry.library.MaxRetries
 import no.nav.kafka.retry.library.RetryConfig
 import no.nav.kafka.retry.library.internal.FailedMessage
 import no.nav.kafka.retry.library.internal.FailedMessageRepository
@@ -38,7 +39,7 @@ class RetryableProcessorTest {
  // For å fange opp den scheduled Punctuation-lambdaen
  private val punctuationCallback = slot<Punctuator>()
 
- private val config = RetryConfig(retryInterval = Duration.ofMinutes(1), maxRetries = 2, stateStoreName = "test-store")
+ private val config = RetryConfig(retryInterval = Duration.ofMinutes(1), maxRetries = MaxRetries.Finite(2), stateStoreName = "test-store")
  private val inputTopicName = "input-topic"
 
  @Before
