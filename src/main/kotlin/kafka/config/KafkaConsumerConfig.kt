@@ -12,6 +12,7 @@ import no.nav.person.pdl.leesah.Personhendelse
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.config.SslConfigs
+import org.apache.kafka.common.serialization.Serde
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
@@ -27,9 +28,9 @@ class StringTopicConsumer(
 ): TopicConsumer(topic)
 class AvroTopicConsumer(
     topic: String,
-    val processRecord: ProcessRecord<StringKey, Personhendelse, Unit, Unit>,
+    val processRecord: ProcessRecord<String, Personhendelse, Unit, Unit>,
     val valueSerde: SpecificAvroSerde<Personhendelse>,
-    val keySerde: SpecificAvroSerde<StringKey>
+    val keySerde: Serde<String>
 ): TopicConsumer(topic)
 
 fun configureTopology(

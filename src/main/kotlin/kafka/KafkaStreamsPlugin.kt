@@ -52,7 +52,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
         val leesahConsumer = LeesahConsumer(automatiskKontorRutingService)
         val leesahTopic = environment.config.property("topics.inn.pdlLeesah").getString()
         val spesificAvroValueSerde = LeesahAvroDeserializer(environment.config).valueDeserializer
-        val specificAvroKeySerde = LeesahAvroDeserializer(environment.config).keyDeserializer
+        val specificAvroKeySerde = LeesahAvroDeserializer(environment.config).keyAvroSerde
 
         val skjermingConsumer = SkjermingConsumer(automatiskKontorRutingService)
         val skjermingTopic = environment.config.property("topics.inn.skjerming").getString()

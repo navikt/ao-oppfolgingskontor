@@ -2,7 +2,6 @@ package no.nav.kafka.consumers
 
 import kotlinx.coroutines.runBlocking
 import no.nav.db.Fnr
-import no.nav.kafka.avro.StringKey
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
@@ -18,7 +17,7 @@ class LeesahConsumer(
 ) {
     val log = LoggerFactory.getLogger(this::class.java)
 
-    fun consume(record: Record<StringKey, Personhendelse>, maybeRecordMetadata: RecordMetadata?): RecordProcessingResult<Unit, Unit> {
+    fun consume(record: Record<String, Personhendelse>, maybeRecordMetadata: RecordMetadata?): RecordProcessingResult<Unit, Unit> {
         log.info("Consumer Personhendelse record ${record.value().opplysningstype} ${record.value().endringstype}")
         return handterLeesahHendelse(record.value().toHendelse())
     }
