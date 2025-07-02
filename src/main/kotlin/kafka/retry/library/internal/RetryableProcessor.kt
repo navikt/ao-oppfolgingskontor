@@ -8,6 +8,7 @@ import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
+import no.nav.kafka.retry.library.INFINITE_RETRY
 import no.nav.kafka.retry.library.RetryConfig
 import org.apache.kafka.common.serialization.Deserializer
 import org.apache.kafka.common.serialization.Serializer
@@ -106,7 +107,7 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
         for (msg in messagesToRetry) {
             metrics.retryAttempted()
 
-            if (msg.retryCount >= config.maxRetries) {
+            if (config.maxRetries != INFINITE_RETRY && msg.retryCount >= config.maxRetries) {
                 metrics.messageDeadLettered()
                 logger.error("Message ${msg.id} for key '${msg.messageKeyText}' has exceeded max retries. Deleting from queue.")
                 store.delete(msg.id)
