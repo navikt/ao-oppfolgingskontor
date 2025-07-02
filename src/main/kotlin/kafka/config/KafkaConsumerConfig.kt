@@ -3,7 +3,6 @@ package no.nav.kafka.config
 import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde
 import io.ktor.server.config.*
 import net.javacrumbs.shedlock.core.LockProvider
-import no.nav.kafka.avro.StringKey
 import no.nav.kafka.exceptionHandler.RetryIfRetriableExceptionHandler
 import no.nav.kafka.retry.library.RetryConfig
 import no.nav.kafka.retry.library.RetryableTopology
