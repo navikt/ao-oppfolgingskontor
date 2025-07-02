@@ -9,6 +9,7 @@ import io.confluent.kafka.serializers.KafkaAvroSerializer
 import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde
 import io.ktor.server.config.ApplicationConfig
 import no.nav.person.pdl.leesah.Personhendelse
+import org.apache.kafka.common.serialization.Serde
 import org.apache.kafka.common.serialization.Serdes
 
 class LeesahAvroDeserializer (
@@ -54,5 +55,5 @@ class LeesahAvroDeserializer (
                 true
             )
         }
-    val keyAvroSerde = Serdes.serdeFrom(String::class.java)
+    val keyAvroSerde = Serdes.serdeFrom(keySerializer, keyDeserializer)
 }

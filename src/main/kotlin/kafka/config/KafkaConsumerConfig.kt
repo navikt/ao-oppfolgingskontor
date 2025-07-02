@@ -28,9 +28,9 @@ class StringTopicConsumer(
 ): TopicConsumer(topic)
 class AvroTopicConsumer(
     topic: String,
-    val processRecord: ProcessRecord<String, Personhendelse, Unit, Unit>,
+    val processRecord: ProcessRecord<Any, Personhendelse, Unit, Unit>,
     val valueSerde: SpecificAvroSerde<Personhendelse>,
-    val keySerde: Serde<String>
+    val keySerde: Serde<Any>
 ): TopicConsumer(topic)
 
 fun configureTopology(
