@@ -1,5 +1,6 @@
 package no.nav.kafka.config
 
+import io.confluent.kafka.streams.serdes.avro.GenericAvroSerde
 import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde
 import io.ktor.server.config.*
 import net.javacrumbs.shedlock.core.LockProvider
@@ -8,6 +9,7 @@ import no.nav.kafka.retry.library.RetryConfig
 import no.nav.kafka.retry.library.RetryableTopology
 import no.nav.kafka.processor.ProcessRecord
 import no.nav.person.pdl.leesah.Personhendelse
+import org.apache.avro.generic.GenericRecord
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.config.SslConfigs
@@ -26,8 +28,9 @@ class StringTopicConsumer(
 ): TopicConsumer(topic)
 class AvroTopicConsumer(
     topic: String,
-    val processRecord: ProcessRecord<String, Personhendelse, Unit, Unit>,
-    val specificAvroSerde: SpecificAvroSerde<Personhendelse>
+    val processRecord: ProcessRecord<GenericRecord, Personhendelse, Unit, Unit>,
+    val valueSerde: SpecificAvroSerde<Personhendelse>,
+    val keySerde: GenericAvroSerde
 ): TopicConsumer(topic)
 
 fun configureTopology(
@@ -53,8 +56,8 @@ fun configureTopology(
                 RetryableTopology.addTerminalRetryableProcessor(
                     builder = builder,
                     inputTopic = topicAndConsumer.topic,
-                    keySerde = Serdes.String(),
-                    valueSerde = topicAndConsumer.specificAvroSerde,
+                    keySerde = topicAndConsumer.keySerde,
+                    valueSerde = topicAndConsumer.valueSerde,
                     businessLogic = { topicAndConsumer.processRecord(it, null) },
                     config = RetryConfig(topicAndConsumer.topic),
                     lockProvider = lockProvider

@@ -8,6 +8,7 @@ import no.nav.kafka.processor.Retry
 import no.nav.person.pdl.leesah.Personhendelse
 import no.nav.person.pdl.leesah.adressebeskyttelse.Gradering
 import no.nav.services.AutomatiskKontorRutingService
+import org.apache.avro.generic.GenericRecord
 import org.apache.kafka.streams.processor.api.Record
 import org.apache.kafka.streams.processor.api.RecordMetadata
 import org.slf4j.LoggerFactory
@@ -17,7 +18,7 @@ class LeesahConsumer(
 ) {
     val log = LoggerFactory.getLogger(this::class.java)
 
-    fun consume(record: Record<String, Personhendelse>, maybeRecordMetadata: RecordMetadata?): RecordProcessingResult<Unit, Unit> {
+    fun consume(record: Record<GenericRecord, Personhendelse>, maybeRecordMetadata: RecordMetadata?): RecordProcessingResult<Unit, Unit> {
         log.info("Consumer Personhendelse record ${record.value().opplysningstype} ${record.value().endringstype}")
         return handterLeesahHendelse(record.value().toHendelse())
     }
