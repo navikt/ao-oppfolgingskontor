@@ -35,7 +35,10 @@ class LeesahConsumer(
         }
         return when (result) {
             is HåndterPersondataEndretSuccess -> Commit
-            is HåndterPersondataEndretFail -> Retry(result.message)
+            is HåndterPersondataEndretFail -> {
+                log.error(result.message, result.error)
+                Retry(result.message)
+            }
         }
     }
 }

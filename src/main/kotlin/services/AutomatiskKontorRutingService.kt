@@ -111,12 +111,11 @@ class AutomatiskKontorRutingService(
                 }
                 is GTKontorFeil -> {
                     val feilmelding = "Kunne ikke håndtere endring i bostedsadresse pga feil ved henting av gt-kontor: ${gtKontorResultat.melding}"
-                    log.error(feilmelding) // TODO: Prøv igjen om det feiler
                     HåndterPersondataEndretFail(feilmelding)
                 }
             }
         } catch (error: Throwable) {
-            return HåndterPersondataEndretFail("Uventet feil ved håndtering av endring i bostedsadresse", error)
+            return HåndterPersondataEndretFail("Uventet feil ved håndtering av endring i bostedsadresse: ${error.message}", error)
         }
     }
 
@@ -149,7 +148,6 @@ class AutomatiskKontorRutingService(
                 }
                 is GTKontorFeil -> {
                     val feilmelding = "Kunne ikke håndtere endring i adressebeskyttelse pga feil ved henting av gt-kontor: ${gtKontorResultat.melding}"
-                    log.error(feilmelding) // TODO: Prøv igjen om det feiler
                     HåndterPersondataEndretFail(feilmelding)
                 }
             }
