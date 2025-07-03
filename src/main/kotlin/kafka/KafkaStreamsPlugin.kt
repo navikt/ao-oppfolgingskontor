@@ -9,11 +9,13 @@ import io.ktor.server.application.createApplicationPlugin
 import io.ktor.server.application.hooks.MonitoringEvent
 import io.ktor.server.application.log
 import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
+import no.nav.http.client.FnrResult
 import no.nav.kafka.config.AvroTopicConsumer
 import no.nav.kafka.config.StringTopicConsumer
 import no.nav.kafka.config.configureKafkaStreams
 import no.nav.kafka.config.configureTopology
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerConsumer
+import no.nav.kafka.consumers.FnrEllerAktorId
 import no.nav.kafka.consumers.LeesahConsumer
 import no.nav.kafka.consumers.OppfolgingsPeriodeConsumer
 import no.nav.kafka.consumers.SkjermingConsumer
@@ -32,6 +34,7 @@ val shutDownTimeout = Duration.ofSeconds(1)
 
 class KafkaStreamsPluginConfig(
     var automatiskKontorRutingService: AutomatiskKontorRutingService? = null,
+    var fnrProvider: (suspend (fnrEllerAktorId: FnrEllerAktorId) -> FnrResult)? = null,
     var database: Database? = null
 )
 
@@ -39,6 +42,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
     createApplicationPlugin("KafkaStreams", ::KafkaStreamsPluginConfig) {
 //        val dataSource = requireNotNull(this.pluginConfig.dataSource) { "DataSource must be configured for KafkaStreamsPlugin" }
         val database = requireNotNull(this.pluginConfig.database) { "DataSource must be configured for KafkaStreamsPlugin" }
+        val fnrProvider = requireNotNull(this.pluginConfig.fnrProvider) { "fnrProvider must be configured for KafkaStreamPlugin" }
         val automatiskKontorRutingService = requireNotNull(this.pluginConfig.automatiskKontorRutingService) { "AutomatiskKontorRutingService must be configured for KafkaStreamPlugin" }
 
         val lockProvider = ExposedLockProvider(database)
@@ -49,7 +53,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
         val oppfolgingsPeriodeConsumer = OppfolgingsPeriodeConsumer(automatiskKontorRutingService)
         val oppfolgingsPeriodeTopic = environment.config.property("topics.inn.oppfolgingsperiodeV1").getString()
 
-        val leesahConsumer = LeesahConsumer(automatiskKontorRutingService)
+        val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, fnrProvider)
         val leesahTopic = environment.config.property("topics.inn.pdlLeesah").getString()
         val spesificAvroValueSerde = LeesahAvroDeserializer(environment.config).valueDeserializer
         val specificAvroKeySerde = LeesahAvroDeserializer(environment.config).keyAvroSerde

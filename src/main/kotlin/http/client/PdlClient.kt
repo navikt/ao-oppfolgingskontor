@@ -99,10 +99,15 @@ class PdlClient(
             return FnrOppslagFeil(result.errors!!.joinToString { "${it.message}: ${it.extensions?.get("details")}"  })
         }
         return result.data?.hentIdenter?.identer
-            ?.also { identer -> log.debug("Fant ${identer.size} identer, ${identer.joinToString(",") { it.gruppe.name }}") }
-            ?.firstOrNull { it.gruppe == IdentGruppe.FOLKEREGISTERIDENT }
-            ?.ident?.let { FnrFunnet(it)
-            } ?: FnrIkkeFunnet("Fant ingen gyldig fnr for aktorId $aktorId")
+            ?.let { identer ->
+                identer.firstOrNull { it.gruppe == IdentGruppe.FOLKEREGISTERIDENT && !it.historisk }
+                    ?.ident
+                    ?.let { FnrFunnet(it) }
+                    ?: run {
+                        log.debug("Fant ${identer.size} på identer")
+                        FnrIkkeFunnet("Fant ingen gyldig fnr for bruker, antall identer: ${identer.size}")
+                    }
+            } ?: FnrIkkeFunnet("Ingen ident funnet, feltet `identer` i hentIdenter response var null")
     }
 
     suspend fun hentGt(fnr: Fnr): GtForBrukerResult {

@@ -57,6 +57,7 @@ fun Application.module() {
 
     install(KafkaStreamsPlugin) {
         this.automatiskKontorRutingService = automatiskKontorRutingService
+        this.fnrProvider = pdlClient::hentFnrFraAktorId
         this.database = database
     }
 
