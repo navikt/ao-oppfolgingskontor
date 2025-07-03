@@ -1,5 +1,6 @@
 package no.nav.kafka.retry.library.internal
 
+import io.ktor.utils.io.KtorDsl
 import net.javacrumbs.shedlock.core.DefaultLockingTaskExecutor
 import net.javacrumbs.shedlock.core.LockConfiguration
 import net.javacrumbs.shedlock.core.LockProvider
@@ -80,7 +81,7 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
                 is Forward -> context.forward(result.forwardedRecord)
                 is Retry -> enqueue(record, result.reason)
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             val reason = "Initial processing failed: ${e.javaClass.simpleName} - ${e.message}"
             enqueue(record, reason)
         }
@@ -170,7 +171,8 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
     private fun runReprocessingOnOneBatch(timestamp: Long) {
         metrics.updateCurrentFailedMessagesGauge()
         store.getBatchToRetry(config.retryBatchSize)
-            .map { handleReprocessingResult(reprocessSingleMessage(it)) }
+            .proccessInOrderOnKey { reprocessSingleMessage(it) }
+            .map { handleReprocessingResult(it) }
     }
 
     private fun enqueue(record: Record<KIn, VIn>, reason: String) {
@@ -190,6 +192,19 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
         keyInDeserializer.close()
         valueInDeserializer.close()
     }
+}
+
+fun <KIn, VIn, KOut, VOut> List<FailedMessage>.proccessInOrderOnKey(block: (message: FailedMessage) -> ReprocessingResult<KIn, VIn, KOut, VOut>): List<ReprocessingResult<KIn, VIn, KOut, VOut>> {
+    return this.groupBy { it.messageKeyText }
+        .flatMap { (key, messagesOnKeyInOrder) ->
+            // Process messages for each key in order
+            messagesOnKeyInOrder
+                // Stop processing if previous message is going to be retried
+                .fold(emptyList<ReprocessingResult<KIn, VIn, KOut, VOut>>()) { accResults, nextMessage ->
+                    if (accResults.any { it is RetryableFail }) accResults
+                    else accResults + listOf(block(nextMessage))
+                }
+        }
 }
 
 sealed class ReprocessingResult<KIn, VIn, KOut, VOut>(val msg: FailedMessage)
