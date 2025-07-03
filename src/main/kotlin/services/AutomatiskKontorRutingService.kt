@@ -152,7 +152,7 @@ class AutomatiskKontorRutingService(
                 }
             }
         } catch (error: Throwable) {
-            return HåndterPersondataEndretFail("Uventet feil ved håndtering av endring i adressebeskyttelse", error)
+            return HåndterPersondataEndretFail("Uventet feil ved håndtering av endring i adressebeskyttelse: ${error.message}", error)
         }
     }
 

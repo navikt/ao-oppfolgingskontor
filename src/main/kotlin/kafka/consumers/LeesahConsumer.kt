@@ -52,7 +52,9 @@ fun Personhendelse.toHendelse(): PersondataEndretHendelse {
     if (this.personidenter.isEmpty()) {
         throw IllegalStateException("Personhendelse must have at least one personident")
     }
-    val fnr = this.personidenter.first()
+    val fnrs = this.personidenter.filter { it.length == 11 }
+    require(fnrs.size > 1) { "Must be at least one ident with size 11 but found: ${fnrs.map { it.length }.joinToString(",")}" }
+    val fnr = fnrs.first()
 
     if (this.bostedsadresse != null) return BostedsadresseEndret(fnr)
     if (this.adressebeskyttelse != null) return AddressebeskyttelseEndret(fnr, this.adressebeskyttelse.gradering)

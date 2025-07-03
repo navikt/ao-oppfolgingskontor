@@ -115,9 +115,8 @@ class PdlClient(
             }
             return result.toGeografiskTilknytning()
         } catch (e: Throwable) {
-            return GtForBrukerIkkeFunnet("Henting av GT for bruker feilet: ${e.message ?: e.toString()}").also {
-                log.error(it.message, e)
-            }
+            return GtForBrukerIkkeFunnet("Henting av GT for bruker feilet: ${e.message ?: e.toString()}")
+                .also { log.error(it.message, e) }
         }
     }
 }
