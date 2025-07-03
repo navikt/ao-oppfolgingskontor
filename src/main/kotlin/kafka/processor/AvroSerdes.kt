@@ -4,15 +4,12 @@ import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClientConfig
 import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig
-import io.confluent.kafka.serializers.KafkaAvroDeserializer
-import io.confluent.kafka.serializers.KafkaAvroSerializer
 import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde
 import io.ktor.server.config.ApplicationConfig
 import no.nav.person.pdl.leesah.Personhendelse
-import org.apache.kafka.common.serialization.Serde
 import org.apache.kafka.common.serialization.Serdes
 
-class LeesahAvroDeserializer (
+class LeesahAvroSerdes (
     config: ApplicationConfig,
 ) {
     val schemaRegistryUrl: String = config.property("kafka.schema-registry").getString()
@@ -27,11 +24,7 @@ class LeesahAvroDeserializer (
         CachedSchemaRegistryClient(schemaRegistryUrl, SCHEMA_MAP_CAPACITY, configs)
     }
 
-    val serdeConfig = mapOf(
-        AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG to schemaRegistryUrl,
-    )
-
-    val valueDeserializer: SpecificAvroSerde<Personhendelse> = SpecificAvroSerde<Personhendelse>(schemaRegistryClient)
+    val valueAvroSerde: SpecificAvroSerde<Personhendelse> = SpecificAvroSerde<Personhendelse>(schemaRegistryClient)
         .apply {
             configure(
                 mapOf(
@@ -41,14 +34,18 @@ class LeesahAvroDeserializer (
                 false
             )
         }
-    val keySerializer = KafkaAvroSerializer(schemaRegistryClient)
+
+    private val serdeConfig = mapOf(
+        AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG to schemaRegistryUrl,
+    )
+    private val keySerializer = TypedKafkaAvroSerializer<String>()
         .apply {
             configure(
                 serdeConfig,
                 true
             )
         }
-    val keyDeserializer = KafkaAvroDeserializer(schemaRegistryClient)
+    private val keyDeserializer = TypedKafkaAvroDeserializer(String::class.java)
         .apply {
             configure(
                 serdeConfig,
