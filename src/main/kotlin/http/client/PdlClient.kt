@@ -135,5 +135,5 @@ fun GraphQLClientResponse<HentGtQuery.Result>.toGeografiskTilknytning(): GtForBr
                 else -> null
             }?.let { gt -> GtForBrukerFunnet(gt) }
                 ?: GtForBrukerIkkeFunnet("Ingen gyldige verider i GT repons fra PDL funnet for type ${it.gtType} bydel: ${it.gtBydel}, kommune: ${it.gtKommune}, land: ${it.gtLand}")
-        } ?: GtForBrukerIkkeFunnet("Ingen GT ingen geografisk tilknytning funnet for bruker")
+        } ?: GtForBrukerIkkeFunnet("Ingen geografisk tilknytning funnet for bruker $this")
 }
