@@ -11,23 +11,29 @@ import io.ktor.server.response.respondText
 import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import no.nav.authenticate
 import no.nav.db.Fnr
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.NavIdent
 import no.nav.domain.Veileder
 import no.nav.domain.events.KontorSattAvVeileder
+import no.nav.http.client.poaoTilgang.PoaoTilgangKtorHttpClient
 import no.nav.security.token.support.v3.TokenValidationContextPrincipal
 import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
 import no.nav.services.KontorTilordningService
+import no.nav.toRegistrant
 import org.slf4j.LoggerFactory
+import java.util.UUID
 
 val logger = LoggerFactory.getLogger("Applcation.configureArbeidsoppfolgingskontorModule")
 
+
 fun Application.configureArbeidsoppfolgingskontorModule(
     kontorNavnService: KontorNavnService,
-    kontorTilhorighetService: KontorTilhorighetService
+    kontorTilhorighetService: KontorTilhorighetService,
+    poaoTilgangKtorHttpClient: PoaoTilgangKtorHttpClient
 ) {
     val issuer = environment.config.property("auth.entraIssuer").getString()
 
@@ -42,9 +48,13 @@ fun Application.configureArbeidsoppfolgingskontorModule(
             post("/api/kontor") {
                 runCatching {
                     val kontorTilordning = call.receive<ArbeidsoppfolgingsKontorTilordningDTO>()
-                    val principal = call.principal<TokenValidationContextPrincipal>()
-                    val veilederIdent = principal?.context?.getClaims(issuer)?.getStringClaim("NAVident")
-                        ?: throw IllegalStateException("NAVident not found in token")
+                    val principal = call.authenticate(issuer)
+                    val harTilgang = poaoTilgangKtorHttpClient.harLeseTilgang(principal, kontorTilordning.fnr)
+                    if (harTilgang.isFailure || (harTilgang.get()?.isDeny ?: true)) {
+                        logger.warn("Bruker/system har ikke tilgang til å endre kontor for bruker")
+                        call.respond(HttpStatusCode.Forbidden, "Du har ikke tilgang til å endre kontor for denne brukeren")
+                        return@post
+                    }
                     val gammeltKontor = kontorTilhorighetService.getArbeidsoppfolgingKontorTilhorighet(kontorTilordning.fnr)
                     val kontorId = KontorId(kontorTilordning.kontorId)
 
@@ -54,7 +64,7 @@ fun Application.configureArbeidsoppfolgingskontorModule(
                                 fnr = kontorTilordning.fnr,
                                 kontorId = kontorId,
                             ),
-                            registrant = Veileder(NavIdent(veilederIdent))
+                            registrant = principal.toRegistrant()
                         )
                     )
                     kontorId to gammeltKontor
