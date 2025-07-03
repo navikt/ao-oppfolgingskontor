@@ -49,8 +49,8 @@ class EndringPaOppfolgingsBrukerConsumer() {
                     kontorId = KontorId(endringPaOppfolgingsBruker.oppfolgingsenhet),
                 ),
                 sistEndretDatoArena = endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime(),
-                offset = maybeRecordMetadata!!.offset(),
-                partition = maybeRecordMetadata.partition(),
+                offset = maybeRecordMetadata?.offset(),
+                partition = maybeRecordMetadata?.partition(),
             )
         )
         return Commit
