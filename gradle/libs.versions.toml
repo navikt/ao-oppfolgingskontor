@@ -1,6 +1,7 @@
 
 [versions]
 exposed-version = "0.60.0"
+jdbi3-version = "3.40.0"
 h2-version = "2.3.232"
 kotlin-version = "2.1.20"
 kafka-streams = "4.0.0"
@@ -15,9 +16,11 @@ kotest-version = "5.9.1"
 graphql-kotlin-version = "8.5.0"
 token-validation-ktor-v3-version = "5.0.24"
 mock-oauth2-server-version = "2.1.10"
+mockk-version = "1.13.8"
 poao-tilgang-version = "test.2025.06.06_07.57-65ec2c15731b"
 caffeine-version = "3.2.1"
 kafka-avro = "8.0.0"
+shedlock-version = "6.9.0"
 
 [libraries]
 ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor-version" }
@@ -27,8 +30,12 @@ exposed-core = { module = "org.jetbrains.exposed:exposed-core", version.ref = "e
 exposed-datetime = { module = "org.jetbrains.exposed:exposed-kotlin-datetime", version.ref = "exposed-version" }
 exposed-dao = { module = "org.jetbrains.exposed:exposed-dao", version.ref = "exposed-version" }
 exposed-jdbc = { module = "org.jetbrains.exposed:exposed-jdbc", version.ref = "exposed-version" }
+jdbi3-core = { module = "org.jdbi:jdbi3-core", version.ref = "jdbi3-version" }
+jdbi3-kotlin = { module = "org.jdbi:jdbi3-kotlin", version.ref = "jdbi3-version" }
 h2 = { module = "com.h2database:h2", version.ref = "h2-version" }
 postgresql = { module = "org.postgresql:postgresql", version.ref = "postgres-version" }
+shedlock = { module = "net.javacrumbs.shedlock:shedlock-core", version.ref = "shedlock-version" }
+shedlock-exposed = { module = "net.javacrumbs.shedlock:shedlock-provider-exposed", version.ref = "shedlock-version" }
 ktor-server-metrics = { module = "io.ktor:ktor-server-metrics", version.ref = "ktor-version" }
 ktor-server-call-logging = { module = "io.ktor:ktor-server-call-logging", version.ref = "ktor-version" }
 ktor-server-compression = { module = "io.ktor:ktor-server-compression", version.ref = "ktor-version" }
@@ -63,6 +70,7 @@ graphql-kotlin-server = { module = "com.expediagroup:graphql-kotlin-ktor-server"
 graphql-kotlin-schema-generator = { module = "com.expediagroup:graphql-kotlin-schema-generator", version.ref = "graphql-kotlin-version" }
 token-validation-ktor-v3 = { module = "no.nav.security:token-validation-ktor-v3", version.ref ="token-validation-ktor-v3-version" }
 mock-oauth2-server = { module = "no.nav.security:mock-oauth2-server", version.ref ="mock-oauth2-server-version" }
+mockk = { module = "io.mockk:mockk", version.ref = "mockk-version" }
 nav-poaotilgang-client-core = { module = "no.nav.poao-tilgang:client-core", version.ref = "poao-tilgang-version" }
 
 

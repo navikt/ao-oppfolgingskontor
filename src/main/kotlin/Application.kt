@@ -27,7 +27,8 @@ fun Application.module() {
     configureMonitoring()
     configureHealthAndCompression()
     configureSecurity()
-    configureDatabase()
+    val database = configureDatabase()
+
     val norg2Client = Norg2Client(environment.getNorg2Url())
 
     val texasClient = TexasSystemTokenClient(environment.getNaisTokenEndpoint())
@@ -53,8 +54,11 @@ fun Application.module() {
         { pdlClient.hentFnrFraAktorId(it) },
         { arbeidssokerregisterClient.hentProfilering(it) }
     )
+
     install(KafkaStreamsPlugin) {
         this.automatiskKontorRutingService = automatiskKontorRutingService
+        this.fnrProvider = pdlClient::hentFnrFraAktorId
+        this.database = database
     }
 
     configureGraphQlModule(norg2Client, kontorTilhorighetService)

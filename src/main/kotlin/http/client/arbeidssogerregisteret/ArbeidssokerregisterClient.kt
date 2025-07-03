@@ -9,6 +9,7 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
+import kotlinx.serialization.json.Json
 import no.nav.http.client.tokenexchange.SystemTokenPlugin
 import no.nav.http.client.tokenexchange.TexasTokenResponse
 import no.nav.services.HentProfileringsResultat
@@ -44,7 +45,7 @@ class ArbeidssokerregisterClient(
                 level = LogLevel.INFO
             }
             install(ContentNegotiation) {
-                json()
+                json(Json { ignoreUnknownKeys = true })
             }
         }
     )

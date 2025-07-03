@@ -10,7 +10,6 @@ import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.Json
-import no.nav.http.client.arbeidssogerregisteret.ArbeidssoekerperiodeAggregertResponse
 import no.nav.http.client.arbeidssogerregisteret.ArbeidssokerregisterClient
 import no.nav.services.ProfileringFunnet
 import no.nav.services.ProfileringIkkeFunnet
@@ -92,6 +91,7 @@ class ArbeidssokerregisterClientTest {
                                           }
                                         ],
                                         "profilering": {
+                                          "egenvurderinger": [],
                                           "profileringId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
                                           "periodeId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
                                           "opplysningerOmArbeidssoekerId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -170,7 +170,7 @@ class ArbeidssokerregisterClientTest {
         val testClient = createClient {
             install(Logging)
             install(ContentNegotiation) {
-                json()
+                json(Json { ignoreUnknownKeys = true })
             }
         }
 
@@ -241,6 +241,7 @@ class ArbeidssokerregisterClientTest {
                                           }
                                         ],
                                         "profilering": {
+                                          "egenvurderinger": [],
                                           "profileringId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
                                           "periodeId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
                                           "opplysningerOmArbeidssoekerId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -319,7 +320,7 @@ class ArbeidssokerregisterClientTest {
         val testClient = createClient {
             install(Logging)
             install(ContentNegotiation) {
-                json()
+                json(Json { ignoreUnknownKeys = true })
             }
         }
 

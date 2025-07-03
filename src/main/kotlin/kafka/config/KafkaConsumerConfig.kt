@@ -2,49 +2,65 @@ package no.nav.kafka.config
 
 import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde
 import io.ktor.server.config.*
+import net.javacrumbs.shedlock.core.LockProvider
 import no.nav.kafka.exceptionHandler.RetryIfRetriableExceptionHandler
-import no.nav.kafka.processor.ExplicitResultProcessor
+import no.nav.kafka.retry.library.RetryConfig
+import no.nav.kafka.retry.library.RetryableTopology
 import no.nav.kafka.processor.ProcessRecord
 import no.nav.person.pdl.leesah.Personhendelse
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.config.SslConfigs
+import org.apache.kafka.common.serialization.Serde
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
 import org.apache.kafka.streams.Topology
-import org.apache.kafka.streams.kstream.Consumed
-import org.apache.kafka.streams.processor.api.ProcessorSupplier
-import java.util.*
+import java.util.Properties
 
 sealed class TopicConsumer(
     val topic: String,
 )
 class StringTopicConsumer(
     topic: String,
-    val processRecord: ProcessRecord<String, String>,
+    val processRecord: ProcessRecord<String, String, Unit, Unit>,
 ): TopicConsumer(topic)
 class AvroTopicConsumer(
     topic: String,
-    val processRecord: ProcessRecord<String, Personhendelse>,
-    val specificAvroSerde: SpecificAvroSerde<Personhendelse>
+    val processRecord: ProcessRecord<Any, Personhendelse, Unit, Unit>,
+    val valueSerde: SpecificAvroSerde<Personhendelse>,
+    val keySerde: Serde<Any>
 ): TopicConsumer(topic)
 
 fun configureTopology(
     topicAndConsumers: List<TopicConsumer>,
+    lockProvider: LockProvider
 ): Topology {
     val builder = StreamsBuilder()
 
     topicAndConsumers.forEach { topicAndConsumer ->
         when (topicAndConsumer) {
             is StringTopicConsumer -> {
-                val sourceStream = builder.stream<String, String>(topicAndConsumer.topic)
-                sourceStream.process(ProcessorSupplier { ExplicitResultProcessor(topicAndConsumer.processRecord) })
+                RetryableTopology.addTerminalRetryableProcessor(
+                    builder = builder,
+                    inputTopic = topicAndConsumer.topic,
+                    keySerde = Serdes.String(),
+                    valueSerde = Serdes.String(),
+                    businessLogic = { topicAndConsumer.processRecord(it, null) },
+                    config = RetryConfig(topicAndConsumer.topic),
+                    lockProvider = lockProvider
+                )
             }
             is AvroTopicConsumer -> {
-                val consumedwith: Consumed<String, Personhendelse> = Consumed.with(Serdes.String(), topicAndConsumer.specificAvroSerde)
-                val sourceStream = builder.stream(topicAndConsumer.topic, consumedwith)
-                sourceStream.process(ProcessorSupplier { ExplicitResultProcessor(topicAndConsumer.processRecord) })
+                RetryableTopology.addTerminalRetryableProcessor(
+                    builder = builder,
+                    inputTopic = topicAndConsumer.topic,
+                    keySerde = topicAndConsumer.keySerde,
+                    valueSerde = topicAndConsumer.valueSerde,
+                    businessLogic = { topicAndConsumer.processRecord(it, null) },
+                    config = RetryConfig(topicAndConsumer.topic),
+                    lockProvider = lockProvider
+                )
             }
         }
     }

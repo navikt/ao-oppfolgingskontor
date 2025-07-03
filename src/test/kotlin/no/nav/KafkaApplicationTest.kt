@@ -15,19 +15,20 @@ import no.nav.http.client.poaoTilgang.GTKontorFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
 import no.nav.kafka.config.StringTopicConsumer
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerConsumer
-import no.nav.kafka.config.configureTopology
 import no.nav.kafka.config.streamsErrorHandlerConfig
 import no.nav.kafka.consumers.OppfolgingsPeriodeConsumer
+import no.nav.kafka.processor.ExplicitResultProcessor
 import no.nav.kafka.consumers.SkjermingConsumer
 import no.nav.services.AutomatiskKontorRutingService
-import no.nav.services.KontorTilhorighetService
 import no.nav.services.ProfileringFunnet
 import no.nav.utils.flywayMigrationInTest
 import org.apache.kafka.common.serialization.Serdes
+import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
 import org.apache.kafka.streams.TestInputTopic
 import org.apache.kafka.streams.Topology
 import org.apache.kafka.streams.TopologyTestDriver
+import org.apache.kafka.streams.processor.api.ProcessorSupplier
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.Ignore
 import org.junit.Test
@@ -73,7 +74,7 @@ class KafkaApplicationTest {
 
         application {
 
-            flywayMigrationInTest()
+            val dataSource = flywayMigrationInTest()
             val aktorId = "1234567890123"
             val periodeStart = ZonedDateTime.now().minusDays(2)
             val consumer = OppfolgingsPeriodeConsumer(AutomatiskKontorRutingService(
@@ -162,7 +163,7 @@ class KafkaApplicationTest {
         val fnr = "12345678901"
 
         application {
-            flywayMigrationInTest()
+            val dataSource = flywayMigrationInTest()
 
             val topology = configureTopology(listOf(StringTopicConsumer(topic, endringPaOppfolgingsBrukerConsumer::consume)))
             val kafkaMockTopic = setupKafkaMock(topology, topic)
@@ -175,7 +176,7 @@ class KafkaApplicationTest {
     fun testKafkaSkipMessage() = testApplication {
         val fnr = "12345678901"
         application {
-            flywayMigrationInTest()
+            val dataSource = flywayMigrationInTest()
 
             val topology = configureTopology(listOf(StringTopicConsumer(topic, endringPaOppfolgingsBrukerConsumer::consume)))
             val kafkaMockTopic = setupKafkaMock(topology, topic)
@@ -194,6 +195,17 @@ class KafkaApplicationTest {
         aktorId: String
     ): String {
         return """{"uuid":"$uuid", "startDato":"$startDato", "sluttDato":${sluttDato?.let { "\"$it\"" } ?: "null"}, "startetBegrunnelse": "SYKEMELDT_MER_OPPFOLGING" "aktorId":"$aktorId"}"""
+    }
+
+    private fun configureTopology(topicAndConsumers: List<StringTopicConsumer>): Topology {
+        val builder = StreamsBuilder()
+        topicAndConsumers.forEach { topicAndConsumer ->
+            builder.stream<String, String>(topicAndConsumer.topic)
+                .process(ProcessorSupplier {
+                    ExplicitResultProcessor(topicAndConsumer.processRecord)
+                })
+        }
+        return builder.build()
     }
 }
 

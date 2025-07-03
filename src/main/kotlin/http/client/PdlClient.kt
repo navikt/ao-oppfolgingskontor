@@ -99,10 +99,15 @@ class PdlClient(
             return FnrOppslagFeil(result.errors!!.joinToString { "${it.message}: ${it.extensions?.get("details")}"  })
         }
         return result.data?.hentIdenter?.identer
-            ?.also { identer -> log.debug("Fant ${identer.size} identer, ${identer.joinToString(",") { it.gruppe.name }}") }
-            ?.firstOrNull { it.gruppe == IdentGruppe.FOLKEREGISTERIDENT }
-            ?.ident?.let { FnrFunnet(it)
-            } ?: FnrIkkeFunnet("Fant ingen gyldig fnr for aktorId $aktorId")
+            ?.let { identer ->
+                identer.firstOrNull { it.gruppe == IdentGruppe.FOLKEREGISTERIDENT && !it.historisk }
+                    ?.ident
+                    ?.let { FnrFunnet(it) }
+                    ?: run {
+                        log.debug("Fant ${identer.size} på identer")
+                        FnrIkkeFunnet("Fant ingen gyldig fnr for bruker, antall identer: ${identer.size}")
+                    }
+            } ?: FnrIkkeFunnet("Ingen ident funnet, feltet `identer` i hentIdenter response var null")
     }
 
     suspend fun hentGt(fnr: Fnr): GtForBrukerResult {
@@ -115,9 +120,8 @@ class PdlClient(
             }
             return result.toGeografiskTilknytning()
         } catch (e: Throwable) {
-            return GtForBrukerIkkeFunnet("Henting av GT for bruker feilet: ${e.message ?: e.toString()}").also {
-                log.error(it.message, e)
-            }
+            return GtForBrukerIkkeFunnet("Henting av GT for bruker feilet: ${e.message ?: e.toString()}")
+                .also { log.error(it.message, e) }
         }
     }
 }
@@ -131,5 +135,5 @@ fun GraphQLClientResponse<HentGtQuery.Result>.toGeografiskTilknytning(): GtForBr
                 else -> null
             }?.let { gt -> GtForBrukerFunnet(gt) }
                 ?: GtForBrukerIkkeFunnet("Ingen gyldige verider i GT repons fra PDL funnet for type ${it.gtType} bydel: ${it.gtBydel}, kommune: ${it.gtKommune}, land: ${it.gtLand}")
-        } ?: GtForBrukerIkkeFunnet("Ingen GT ingen geografisk tilknytning funnet for bruker")
+        } ?: GtForBrukerIkkeFunnet("Ingen geografisk tilknytning funnet for bruker $this")
 }

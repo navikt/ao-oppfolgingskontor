@@ -11,8 +11,8 @@ import java.time.OffsetDateTime
 class EndringPaaOppfolgingsBrukerFraArena(
     tilordning: KontorTilordning,
     sistEndretDatoArena: OffsetDateTime,
-    offset: Long,
-    partition: Int
+    offset: Long?,
+    partition: Int?
 ): ArenaKontorEndret(
     tilordning = tilordning,
     sistEndretDatoArena = sistEndretDatoArena,

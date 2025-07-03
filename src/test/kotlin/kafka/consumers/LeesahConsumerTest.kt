@@ -1,6 +1,9 @@
 package kafka.consumers
 
+import io.kotest.matchers.equals.shouldBeEqual
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeSameInstanceAs
+import io.kotest.matchers.types.shouldBeTypeOf
 import io.ktor.server.testing.testApplication
 import no.nav.db.Fnr
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
@@ -8,13 +11,14 @@ import no.nav.db.entity.GeografiskTilknyttetKontorEntity
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.db.table.GeografiskTilknytningKontorTable
 import no.nav.domain.KontorId
+import no.nav.http.client.FnrFunnet
 import no.nav.http.client.poaoTilgang.GTKontorFeil
 import no.nav.http.client.poaoTilgang.GTKontorFunnet
 import no.nav.http.client.poaoTilgang.GTKontorResultat
 import no.nav.kafka.consumers.AddressebeskyttelseEndret
 import no.nav.kafka.consumers.BostedsadresseEndret
 import no.nav.kafka.consumers.LeesahConsumer
-import no.nav.kafka.processor.RecordProcessingResult
+import no.nav.kafka.processor.Retry
 import no.nav.person.pdl.leesah.adressebeskyttelse.Gradering
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.utils.flywayMigrationInTest
@@ -34,7 +38,7 @@ class LeesahConsumerTest {
             flywayMigrationInTest()
             gittNåværendeGtKontor(fnr, KontorId(gammeltKontorId))
             val automatiskKontorRutingService = gittRutingServiceMedGtKontor(KontorId(nyKontorId))
-            val leesahConsumer = LeesahConsumer(automatiskKontorRutingService)
+            val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) })
 
             leesahConsumer.handterLeesahHendelse(BostedsadresseEndret(fnr))
 
@@ -54,7 +58,7 @@ class LeesahConsumerTest {
             flywayMigrationInTest()
             gittNåværendeGtKontor(fnr, KontorId(gammeltKontorId))
             val automatiskKontorRutingService = gittRutingServiceMedGtKontor(KontorId(nyKontorId))
-            val leesahConsumer = LeesahConsumer(automatiskKontorRutingService)
+            val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) })
 
             leesahConsumer.handterLeesahHendelse(AddressebeskyttelseEndret(fnr, Gradering.STRENGT_FORTROLIG))
 
@@ -78,7 +82,7 @@ class LeesahConsumerTest {
             gittNåværendeAOKontor(fnr, KontorId(gammelKontorId))
             gittNåværendeGtKontor(fnr, KontorId(gammelKontorId))
             val automatiskKontorRutingService = gittRutingServiceMedGtKontor(KontorId(nyKontorId))
-            val leesahConsumer = LeesahConsumer(automatiskKontorRutingService)
+            val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) })
 
             leesahConsumer.handterLeesahHendelse(AddressebeskyttelseEndret(fnr, Gradering.UGRADERT))
 
@@ -98,11 +102,12 @@ class LeesahConsumerTest {
         val automatiskKontorRutingService = defaultAutomatiskKontorRutingService(
             { GTKontorFeil("Noe gikk galt") }
         )
-        val leesahConsumer = LeesahConsumer(automatiskKontorRutingService)
+        val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) })
 
         val resultat = leesahConsumer.handterLeesahHendelse(BostedsadresseEndret(fnr))
 
-        resultat shouldBe  RecordProcessingResult.RETRY
+        resultat.shouldBeTypeOf<Retry>()
+        resultat.reason shouldBe "Kunne ikke håndtere endring i bostedsadresse pga feil ved henting av gt-kontor: Noe gikk galt"
     }
 
     @Test
@@ -111,11 +116,12 @@ class LeesahConsumerTest {
         val automatiskKontorRutingService = defaultAutomatiskKontorRutingService(
             { throw Throwable("Noe gikk galt") }
         )
-        val leesahConsumer = LeesahConsumer(automatiskKontorRutingService)
+        val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) })
 
         val resultat = leesahConsumer.handterLeesahHendelse(BostedsadresseEndret(fnr))
 
-        resultat shouldBe  RecordProcessingResult.RETRY
+        resultat.shouldBeTypeOf<Retry>()
+        resultat.reason shouldBe "Uventet feil ved håndtering av endring i bostedsadresse: Noe gikk galt"
     }
 
     private fun defaultAutomatiskKontorRutingService(
