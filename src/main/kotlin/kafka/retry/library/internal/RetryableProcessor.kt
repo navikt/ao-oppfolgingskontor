@@ -45,7 +45,6 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
     /* businessLogig er selve forretningslogikken fra brukeren. Kan returnere Record<KOut,VOut> eller Unit.     */
     private val businessLogic: (Record<KIn, VIn>) -> RecordProcessingResult<KOut, VOut>,
     private val lockProvider: LockProvider,
-//    private val businessLogic: (Record<KIn, VIn>) -> Record<KOut, VOut>?
 ) : Processor<KIn, VIn, KOut, VOut> {
 
     private lateinit var context: ProcessorContext<KOut, VOut>
@@ -95,72 +94,83 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
     }
 
     private fun runReprocessingWithLock(timestamp: Long) {
-        runWithLock(Runnable {
-            runReprocessing(timestamp)
-        })
+        runWithLock { runReprocessingOnOneBatch(timestamp) }
     }
 
-    private fun runReprocessing(timestamp: Long) {
-        metrics.updateCurrentFailedMessagesGauge()
-        val messagesToRetry = store.getBatchToRetry(config.retryBatchSize)
+    private fun hasReachedMaxRetries(msg: FailedMessage): Boolean {
+        return when (config.maxRetries) {
+            is MaxRetries.Finite -> msg.retryCount >= config.maxRetries.maxRetries
+            MaxRetries.Infinite -> false // Ingen begrensning på antall forsøk
+        }
+    }
 
-        for (msg in messagesToRetry) {
-            metrics.retryAttempted()
-            when (config.maxRetries) {
-                is MaxRetries.Finite -> {
-                    if (msg.retryCount >= config.maxRetries.maxRetries) {
-                        // NB meldingen slettes hvis den har nådd maks antall forsøk.
-                        // Vær oppmerksom på at dette kan føre til tap av meldinger,
-                        // og at det fremdeles kan ligge nyere meldinger i køen for samme nøkkel.
-                        metrics.messageDeadLettered()
-                        logger.error("Message ${msg.id} for key '${msg.messageKeyText}' has exceeded max retries. Deleting from queue.")
-                        store.delete(msg.id)
-                        continue // Gå videre til neste melding i for-løkken
+    private fun reprocessSingleMessage(message: FailedMessage): ReprocessingResult<KIn, VIn, KOut, VOut> {
+        metrics.retryAttempted()
+        if (hasReachedMaxRetries(message)) return MaxRetryReached(message)
+        try {
+            val reconstructionResult = message.toRecordReconstructedRecord()
+            return when (reconstructionResult) {
+                is ReconstructedRecord -> {
+                    val processingResult = businessLogic(reconstructionResult.record)
+                    when (processingResult) {
+                        is Retry -> RetryableFail(message, Exception(processingResult.reason))
+                        else -> Success(message, processingResult)
                     }
                 }
-
-                MaxRetries.Infinite -> Unit // Ingen begrensning på antall forsøk, fortsett å reprosessere
+                is UnrecoverableDeserialization -> UnrecoverableFail(message, reconstructionResult.reason)
             }
+        } catch (e: Throwable) {
+            return RetryableFail(message, e)
+        }
+    }
 
-
-
-            try {
-                // Håndter feil under deserialisering
-                val keyBytes = msg.messageKeyBytes ?: run {
-                    handleUnrecoverableDeserialization(msg.id, "messageKeyBytes is null in database")
-                    return@runReprocessing
-                }
-                val key = keyInDeserializer.deserialize(topic, keyBytes)
-                val value = valueInDeserializer.deserialize(topic, msg.messageValue)
-
-                if (key == null || value == null) {
-                    handleUnrecoverableDeserialization(msg.id, "key or value was null after deserialization")
-                    continue
-                }
-
-                val reconstructedRecord = Record(key, value, msg.queueTimestamp.toInstant().toEpochMilli())
-
-                // Kjør den samme logikken på nytt
-                val result = businessLogic(reconstructedRecord)
-
-                // Håndter suksess
-                store.delete(msg.id)
-                metrics.retrySucceeded()
-                result.let {
-                    if (it is Forward) {
-                        context.forward(it.forwardedRecord)
-                    }
-                }
-                logger.info("Successfully reprocessed message ${msg.id} for key '${msg.messageKeyText}'.")
-
-            } catch (e: Exception) {
-                // Håndter feil under retry
-                val reason = "Reprocessing failed: ${e.javaClass.simpleName} - ${e.message}"
-                store.updateAfterFailedAttempt(msg.id, reason)
+    private fun handleReprocessingResult(result: ReprocessingResult<KIn, VIn, KOut, VOut>) {
+        when (result) {
+            is MaxRetryReached -> {
+                metrics.messageDeadLettered()
+                logger.error("Message ${result.msg.id} for key '${result.msg.messageKeyText}' has exceeded max retries. Deleting from queue.")
+                store.delete(result.msg.id)
+            }
+            is RetryableFail -> {
+                val reason = "Reprocessing failed: ${result.error.javaClass.simpleName} - ${result.error.message}"
+                store.updateAfterFailedAttempt(result.msg.id, reason)
                 metrics.retryFailed()
-                logger.warn("Reprocessing message ${msg.id} for key '${msg.messageKeyText}' failed again. Reason: $reason", e)
+                logger.warn("Reprocessing messageId:${result.msg.id}, key:'${result.msg.messageKeyText}', topic:${topic} failed again. Reason: $reason", result.error)
+            }
+            is UnrecoverableFail -> {
+                metrics.messageDeadLettered()
+                store.delete(result.msg.id)
+                logger.error("Message $result.msg.id could not be deserialized (${result.reason}). Moving to dead-letter.")
+            }
+            is Success -> {
+                store.delete(result.msg.id)
+                metrics.retrySucceeded()
+                if (result.processingResult is Forward<KOut, VOut>) {
+                    context.forward(result.processingResult.forwardedRecord)
+                }
+                logger.info("Successfully reprocessed message ${result.msg.id} for key '${result.msg.messageKeyText}'.")
             }
         }
+    }
+
+    private fun FailedMessage.toRecordReconstructedRecord(): MessageReconstructionResult<KIn, VIn> {
+        val keyBytes = this.messageKeyBytes ?: run {
+            return UnrecoverableDeserialization(this.id, "messageKeyBytes is null in database")
+        }
+        val key: KIn = keyInDeserializer.deserialize(topic, keyBytes) ?: run {
+            return UnrecoverableDeserialization(this.id, "Key was null after deserialization")
+        }
+        val value: VIn = valueInDeserializer.deserialize(topic, this.messageValue) ?: run {
+            return UnrecoverableDeserialization(this.id, "Value was null after deserialization")
+        }
+        val record = Record(key, value, this.queueTimestamp.toInstant().toEpochMilli())
+        return ReconstructedRecord(record)
+    }
+
+    private fun runReprocessingOnOneBatch(timestamp: Long) {
+        metrics.updateCurrentFailedMessagesGauge()
+        store.getBatchToRetry(config.retryBatchSize)
+            .map { handleReprocessingResult(reprocessSingleMessage(it)) }
     }
 
     private fun enqueue(record: Record<KIn, VIn>, reason: String) {
@@ -174,13 +184,6 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
         logger.info("Message for key '$keyString' was enqueued for retry. Reason: $reason")
     }
 
-    /** Hjelpemetode for å håndtere ugjenopprettelige deserialiseringsfeil. */
-    private fun handleUnrecoverableDeserialization(messageId: Long, reason: String) {
-        metrics.messageDeadLettered()
-        store.delete(messageId)
-        logger.error("Message $messageId could not be deserialized ($reason). Moving to dead-letter.")
-    }
-
     override fun close() {
         keyInSerializer.close()
         valueInSerializer.close()
@@ -188,3 +191,13 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
         valueInDeserializer.close()
     }
 }
+
+sealed class ReprocessingResult<KIn, VIn, KOut, VOut>(val msg: FailedMessage)
+class MaxRetryReached<KIn, VIn, KOut, VOut>(msg: FailedMessage): ReprocessingResult<KIn, VIn, KOut, VOut>(msg)
+class RetryableFail<KIn, VIn, KOut, VOut>(msg: FailedMessage, val error: Throwable): ReprocessingResult<KIn, VIn, KOut, VOut>(msg)
+class UnrecoverableFail<KIn, VIn, KOut, VOut>(msg: FailedMessage, val reason: String): ReprocessingResult<KIn, VIn, KOut, VOut>(msg)
+class Success<KIn, VIn, KOut, VOut>(msg: FailedMessage, val processingResult: RecordProcessingResult<KOut, VOut>): ReprocessingResult<KIn, VIn, KOut, VOut>(msg)
+
+sealed class MessageReconstructionResult<KIn, VIn>()
+class ReconstructedRecord<KIn, VIn>(val record: Record<KIn, VIn>) : MessageReconstructionResult<KIn, VIn>()
+class UnrecoverableDeserialization<KIn, VIn>(val messageId: Long, val reason: String) : MessageReconstructionResult<KIn, VIn>()

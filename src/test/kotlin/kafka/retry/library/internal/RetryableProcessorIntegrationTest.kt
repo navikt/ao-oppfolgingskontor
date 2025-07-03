@@ -23,6 +23,11 @@ import java.time.Duration
 import java.time.temporal.ChronoUnit
 import java.util.Properties
 
+enum class Res {
+    Fail,
+    Succ
+}
+
 class RetryableProcessorIntegrationTest {
 
     @Before
@@ -37,12 +42,12 @@ class RetryableProcessorIntegrationTest {
         val failedMessageRepository = FailedMessageRepository(topic)
 
         var hasFailed = false
-        fun failFirstThenOk(): Boolean {
+        fun failFirstThenOk(): Res {
             if (!hasFailed) {
                 hasFailed = true
-                return false // Simulate failure on the first call
+                return Res.Fail // Simulate failure on the first call
             } else {
-                return true
+                return Res.Succ
             }
         }
         val topology = configureTopology(
@@ -51,7 +56,7 @@ class RetryableProcessorIntegrationTest {
                     topic = "test-topic",
                     processRecord = { record, metadata ->
                         val failed = failFirstThenOk()
-                        if (failed) {
+                        if (failed == Res.Fail) {
                             Retry("Dette gikk galt")
                         } else {
                             Commit
