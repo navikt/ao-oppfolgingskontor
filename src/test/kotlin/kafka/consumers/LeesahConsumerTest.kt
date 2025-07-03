@@ -120,7 +120,7 @@ class LeesahConsumerTest {
         val resultat = leesahConsumer.handterLeesahHendelse(BostedsadresseEndret(fnr))
 
         resultat.shouldBeTypeOf<Retry>()
-        resultat.reason shouldBe "Uventet feil ved håndtering av endring i bostedsadresse"
+        resultat.reason shouldBe "Uventet feil ved håndtering av endring i bostedsadresse: Noe gikk galt"
     }
 
     private fun defaultAutomatiskKontorRutingService(
