@@ -40,7 +40,6 @@ class KafkaStreamsPluginConfig(
 
 val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
     createApplicationPlugin("KafkaStreams", ::KafkaStreamsPluginConfig) {
-//        val dataSource = requireNotNull(this.pluginConfig.dataSource) { "DataSource must be configured for KafkaStreamsPlugin" }
         val database = requireNotNull(this.pluginConfig.database) { "DataSource must be configured for KafkaStreamsPlugin" }
         val fnrProvider = requireNotNull(this.pluginConfig.fnrProvider) { "fnrProvider must be configured for KafkaStreamPlugin" }
         val automatiskKontorRutingService = requireNotNull(this.pluginConfig.automatiskKontorRutingService) { "AutomatiskKontorRutingService must be configured for KafkaStreamPlugin" }
