@@ -154,12 +154,11 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
                 logger.info("Successfully reprocessed message ${msg.id} for key '${msg.messageKeyText}'.")
 
             } catch (e: Exception) {
-                logger.error("Reprocessing failed", e)
                 // Håndter feil under retry
                 val reason = "Reprocessing failed: ${e.javaClass.simpleName} - ${e.message}"
                 store.updateAfterFailedAttempt(msg.id, reason)
                 metrics.retryFailed()
-                logger.warn("Reprocessing message ${msg.id} for key '${msg.messageKeyText}' failed again. Reason: $reason")
+                logger.warn("Reprocessing message ${msg.id} for key '${msg.messageKeyText}' failed again. Reason: $reason", e)
             }
         }
     }
