@@ -10,6 +10,10 @@ sealed class KontorEndretEvent(
 ) {
     abstract fun toHistorikkInnslag(): KontorHistorikkInnslag
     abstract fun logg(): Unit
+
+    override fun toString(): String {
+        return "${this.javaClass.simpleName}(tilordning=$tilordning)"
+    }
 }
 
 sealed class GTKontorEndret(tilordning: KontorTilordning) : KontorEndretEvent(tilordning)

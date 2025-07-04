@@ -69,6 +69,7 @@ logstash = { module = "net.logstash.logback:logstash-logback-encoder", version.r
 embedded-postgres = {module = "io.zonky.test:embedded-postgres", version.ref = "embedded-postgres-version" }
 kafka-streams-test-utils = { module = "org.apache.kafka:kafka-streams-test-utils", version.ref = "kafka-streams" }
 kotest-assertions = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest-version" }
+kotest-runner = { module = "io.kotest:kotest-runner-junit5", version.ref = "kotest-version" }
 graphql-kotlin-client = { module = "com.expediagroup:graphql-kotlin-ktor-client", version.ref = "graphql-kotlin-version" }
 graphql-kotlin-client-serialization = { module = "com.expediagroup:graphql-kotlin-client-serialization", version.ref = "graphql-kotlin-version" }
 graphql-kotlin-server = { module = "com.expediagroup:graphql-kotlin-ktor-server", version.ref = "graphql-kotlin-version" }

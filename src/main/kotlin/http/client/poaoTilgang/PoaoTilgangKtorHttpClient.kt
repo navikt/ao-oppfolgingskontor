@@ -26,6 +26,7 @@ import no.nav.poao_tilgang.client_core.api.ApiResult
 import no.nav.poao_tilgang.client_core.api.ResponseDataApiException
 import no.nav.services.GTKontorFeil
 import no.nav.services.GTKontorFunnet
+import no.nav.services.GTKontorVanligFunnet
 import org.slf4j.LoggerFactory
 
 fun ApplicationEnvironment.getPoaoTilgangScope(): String {
@@ -63,7 +64,8 @@ class PoaoTilgangKtorHttpClient(
     fun hentTilgangsattributter(ident: String) = poaoTilgangKtorHttpClient.hentTilgangsAttributter(ident)
         .let {
             when (it.isSuccess) {
-                true -> it.get()?.kontor?.let { kontorId -> GTKontorFunnet(KontorId(kontorId)) }
+                true -> it.get()?.kontor
+                    ?.let { kontorId -> GTKontorVanligFunnet(KontorId(kontorId)) }
                     ?: GTKontorFeil("Ingen kontor funnet for fnr: $ident")
                 false -> GTKontorFeil("Feil ved henting av tilgangsattributter for fnr: $ident, ${it.exception?.message}")
             }

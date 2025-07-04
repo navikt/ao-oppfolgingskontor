@@ -2,7 +2,8 @@ package no.nav.kafka.consumers
 
 import kotlinx.coroutines.runBlocking
 import no.nav.db.Fnr
-import no.nav.domain.externalEvents.AddressebeskyttelseEndret
+import no.nav.domain.events.KontorEndretEvent
+import no.nav.domain.externalEvents.AdressebeskyttelseEndret
 import no.nav.domain.externalEvents.BostedsadresseEndret
 import no.nav.domain.externalEvents.IrrelevantHendelse
 import no.nav.domain.externalEvents.PersondataEndret
@@ -43,10 +44,10 @@ class LeesahConsumer(
         val result = runBlocking {
             when (hendelse) {
                 is BostedsadresseEndret -> automatiskKontorRutingService.handterEndringForBostedsadresse(hendelse)
-                is AddressebeskyttelseEndret -> automatiskKontorRutingService.handterEndringForAdressebeskyttelse(hendelse)
+                is AdressebeskyttelseEndret -> automatiskKontorRutingService.handterEndringForAdressebeskyttelse(hendelse)
                 is IrrelevantHendelse -> {
                     log.info("Hendelse ${hendelse.opplysningstype} er irrelevant for kontor-ruting")
-                    HåndterPersondataEndretSuccess
+                    HåndterPersondataEndretSuccess(emptyList())
                 }
             }
         }
@@ -70,7 +71,7 @@ class LeesahConsumer(
 
 fun Pair<Fnr, Personhendelse>.toHendelse(): PersondataEndret {
     if (this.second.bostedsadresse != null) return BostedsadresseEndret(this.first)
-    if (this.second.adressebeskyttelse != null) return AddressebeskyttelseEndret(
+    if (this.second.adressebeskyttelse != null) return AdressebeskyttelseEndret(
         this.first,
         this.second.adressebeskyttelse.gradering
     )
@@ -78,7 +79,7 @@ fun Pair<Fnr, Personhendelse>.toHendelse(): PersondataEndret {
 }
 
 sealed class HåndterPersondataEndretResultat()
-object HåndterPersondataEndretSuccess: HåndterPersondataEndretResultat()
+data class HåndterPersondataEndretSuccess(val endringer: List<KontorEndretEvent>): HåndterPersondataEndretResultat()
 class HåndterPersondataEndretFail(val message: String, val error: Throwable? = null) : HåndterPersondataEndretResultat()
 
 typealias FnrEllerAktorId = String

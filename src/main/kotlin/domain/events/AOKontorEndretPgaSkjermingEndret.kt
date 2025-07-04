@@ -20,6 +20,11 @@ class AOKontorEndretPgaSkjermingEndret(kontorTilordning: KontorTilordning): AOKo
         )
     }
 
+    override fun equals(other: Any?): Boolean {
+        if (other !is AOKontorEndretPgaSkjermingEndret) return false
+        return this.tilordning == other.tilordning
+    }
+
     override fun logg() {
         log.info("AO kontor endret pga person ble skjermet")
     }
