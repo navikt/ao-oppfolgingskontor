@@ -144,7 +144,7 @@ class PdlClient(
                 ?.firstOrNull()
                 ?.let { it.gradering == AdressebeskyttelseGradering.STRENGT_FORTROLIG || it.gradering == AdressebeskyttelseGradering.STRENGT_FORTROLIG_UTLAND }
                 ?.let { HarStrengtFortroligAdresseFunnet(it) }
-                ?: HarStrengtFortroligAdresseIkkeFunnet("Ingen adressebeskyttelse funnet for bruker $this")
+                ?: HarStrengtFortroligAdresseIkkeFunnet("Ingen adressebeskyttelse funnet for bruker $result")
         } catch (e: Throwable) {
             log.error("Henting av strengt fortrolig adresse for bruker $fnr feilet: ${e.message ?: e.toString()}", e)
             return HarStrengtFortroligAdresseOppslagFeil("Henting av strengt fortrolig adresse for bruker $fnr feilet: ${e.message ?: e.toString()}")
