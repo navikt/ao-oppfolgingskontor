@@ -22,7 +22,7 @@ class LeesahConsumer(
 ) {
     val log = LoggerFactory.getLogger(this::class.java)
 
-    fun consume(record: Record<Any, Personhendelse>, maybeRecordMetadata: RecordMetadata?): RecordProcessingResult<Unit, Unit> {
+    fun consume(record: Record<String, Personhendelse>, maybeRecordMetadata: RecordMetadata?): RecordProcessingResult<Unit, Unit> {
         log.info("Consumer Personhendelse record ${record.value().opplysningstype} ${record.value().endringstype}")
         return record.value()
             .let { hendelse ->
