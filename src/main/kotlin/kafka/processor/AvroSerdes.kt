@@ -17,8 +17,8 @@ class LeesahAvroSerdes (
     val schemaRegistryPassword: String = config.property("kafka.schema-registry-password").getString()
     val SCHEMA_MAP_CAPACITY: Int = 100
     private val schemaRegistryConfig: Map<String, Any> = mapOf(
-        SchemaRegistryClientConfig.BASIC_AUTH_CREDENTIALS_SOURCE to "USER_INFO",
-        SchemaRegistryClientConfig.USER_INFO_CONFIG to String.format("%s:%s", schemaRegistryUser, schemaRegistryPassword),
+      //  SchemaRegistryClientConfig.BASIC_AUTH_CREDENTIALS_SOURCE to "USER_INFO",
+      //  SchemaRegistryClientConfig.USER_INFO_CONFIG to String.format("%s:%s", schemaRegistryUser, schemaRegistryPassword),
         AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG to schemaRegistryUrl
     )
     val schemaRegistryClient: SchemaRegistryClient by lazy {
