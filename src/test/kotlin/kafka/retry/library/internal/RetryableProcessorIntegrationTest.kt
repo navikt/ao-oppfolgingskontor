@@ -21,8 +21,8 @@ import org.apache.kafka.streams.Topology
 import org.apache.kafka.streams.TopologyTestDriver
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.junit.Before
-import org.junit.Test
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import java.time.Duration
 import java.time.temporal.ChronoUnit
 import java.util.Properties
@@ -34,7 +34,7 @@ enum class Res {
 
 class RetryableProcessorIntegrationTest {
 
-    @Before
+    @BeforeEach
     fun setup() {
         // Flyway migration or any other setup can be done here if needed
         flywayMigrate(TestDb.postgres)

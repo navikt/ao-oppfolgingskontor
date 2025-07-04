@@ -1,14 +1,12 @@
 package no.nav.services
 
 import no.nav.db.Fnr
+import no.nav.domain.KontorId
 import no.nav.http.client.GeografiskTilknytning
 import no.nav.http.client.GtForBrukerFunnet
 import no.nav.http.client.GtForBrukerResult
 import no.nav.http.client.GtForBrukerIkkeFunnet
 import no.nav.http.client.GtForBrukerOppslagFeil
-import no.nav.http.client.poaoTilgang.GTKontorFeil
-import no.nav.http.client.poaoTilgang.GTKontorFinnesIkke
-import no.nav.http.client.poaoTilgang.GTKontorResultat
 import org.slf4j.LoggerFactory
 
 class GTNorgService(
@@ -30,5 +28,9 @@ class GTNorgService(
             return GTKontorFeil("Klarte ikke hente GT kontor for bruker: ${e.message}")
         }
     }
-
 }
+
+sealed class GTKontorResultat
+data class GTKontorFunnet(val kontorId: KontorId) : GTKontorResultat()
+data object GTKontorFinnesIkke : GTKontorResultat()
+data class GTKontorFeil(val melding: String) : GTKontorResultat()

@@ -11,8 +11,8 @@ import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.Json
 import no.nav.http.client.arbeidssogerregisteret.ArbeidssokerregisterClient
-import no.nav.services.ProfileringFunnet
-import no.nav.services.ProfileringIkkeFunnet
+import no.nav.http.client.arbeidssogerregisteret.ProfileringFunnet
+import no.nav.http.client.arbeidssogerregisteret.ProfileringIkkeFunnet
 import kotlin.test.Test
 
 class ArbeidssokerregisterClientTest {

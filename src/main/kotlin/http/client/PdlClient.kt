@@ -142,6 +142,9 @@ class PdlClient(
                 return HarStrengtFortroligAdresseOppslagFeil(result.errors!!.joinToString { "${it.message}: ${it.extensions?.get("details")}"  })
             }
             return result?.data?.hentPerson?.adressebeskyttelse
+                ?.also {
+                    if (it.isEmpty()) return HarStrengtFortroligAdresseFunnet(false)
+                }
                 ?.firstOrNull()
                 ?.let { it.gradering == AdressebeskyttelseGradering.STRENGT_FORTROLIG || it.gradering == AdressebeskyttelseGradering.STRENGT_FORTROLIG_UTLAND }
                 ?.let { HarStrengtFortroligAdresseFunnet(it) }

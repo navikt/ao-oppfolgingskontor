@@ -6,15 +6,15 @@ import io.ktor.server.config.*
 import io.mockk.every
 import io.mockk.mockk
 import no.nav.kafka.processor.LeesahAvroSerdes
-import org.junit.Before
-import org.junit.Test
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 
 class LeesahAvroSerdesTest {
 
  private lateinit var config: ApplicationConfig
  private lateinit var serdes: LeesahAvroSerdes
 
- @Before
+ @BeforeEach
  fun setup() {
   config = mockk(relaxed = true)
   every { config.property("kafka.schema-registry").getString() } returns "http://localhost:8081"

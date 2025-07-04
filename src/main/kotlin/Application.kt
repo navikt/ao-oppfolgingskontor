@@ -18,6 +18,7 @@ import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.GTNorgService
 import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
+import no.nav.services.KontorTilordningService
 
 fun main(args: Array<String>) {
     EngineMain.main(args)
@@ -53,6 +54,7 @@ fun Application.module() {
     val kontorNavnService = KontorNavnService(norg2Client)
     val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService)
     val automatiskKontorRutingService = AutomatiskKontorRutingService(
+        KontorTilordningService::tilordneKontor,
         { fnr, strengtFortroligAdresse, skjermet -> gtNorgService.hentGtKontorForBruker(fnr, strengtFortroligAdresse, skjermet) },
         { pdlClient.hentAlder(it) },
         { pdlClient.hentFnrFraAktorId(it) },

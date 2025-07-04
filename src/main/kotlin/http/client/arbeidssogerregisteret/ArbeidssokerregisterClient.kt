@@ -12,10 +12,6 @@ import io.ktor.server.application.*
 import kotlinx.serialization.json.Json
 import no.nav.http.client.tokenexchange.SystemTokenPlugin
 import no.nav.http.client.tokenexchange.TexasTokenResponse
-import no.nav.services.HentProfileringsResultat
-import no.nav.services.ProfileringFunnet
-import no.nav.services.ProfileringIkkeFunnet
-import no.nav.services.ProfileringsResultatFeil
 import org.slf4j.LoggerFactory
 
 fun ApplicationEnvironment.getArbeidssokerregisteretUrl(): String {
@@ -84,3 +80,8 @@ class ArbeidssokerregisterClient(
         }
     }
 }
+
+sealed class HentProfileringsResultat
+data class ProfileringFunnet(val profilering: ProfileringsResultat) : HentProfileringsResultat()
+data class ProfileringIkkeFunnet(val melding: String) : HentProfileringsResultat()
+data class ProfileringsResultatFeil(val error: Throwable) : HentProfileringsResultat()

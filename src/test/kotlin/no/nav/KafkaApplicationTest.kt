@@ -13,7 +13,7 @@ import no.nav.http.client.AlderFunnet
 import no.nav.http.client.FnrFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.SkjermingFunnet
-import no.nav.http.client.poaoTilgang.GTKontorFunnet
+import no.nav.http.client.arbeidssogerregisteret.ProfileringFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
 import no.nav.kafka.config.StringTopicConsumer
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerConsumer
@@ -22,7 +22,8 @@ import no.nav.kafka.consumers.OppfolgingsPeriodeConsumer
 import no.nav.kafka.processor.ExplicitResultProcessor
 import no.nav.kafka.consumers.SkjermingConsumer
 import no.nav.services.AutomatiskKontorRutingService
-import no.nav.services.ProfileringFunnet
+import no.nav.services.GTKontorFunnet
+import no.nav.services.KontorTilordningService
 import no.nav.utils.flywayMigrationInTest
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.StreamsBuilder
@@ -32,8 +33,7 @@ import org.apache.kafka.streams.Topology
 import org.apache.kafka.streams.TopologyTestDriver
 import org.apache.kafka.streams.processor.api.ProcessorSupplier
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.junit.Ignore
-import org.junit.Test
+import org.junit.jupiter.api.Test
 import java.time.ZonedDateTime
 import java.util.Properties
 import java.util.UUID
@@ -80,6 +80,7 @@ class KafkaApplicationTest {
             val aktorId = "1234567890123"
             val periodeStart = ZonedDateTime.now().minusDays(2)
             val consumer = OppfolgingsPeriodeConsumer(AutomatiskKontorRutingService(
+                KontorTilordningService::tilordneKontor,
                 { _, _, _-> GTKontorFunnet(kontor) },
                 { AlderFunnet(40) },
                 { FnrFunnet(fnr) },
@@ -136,6 +137,7 @@ class KafkaApplicationTest {
         val skjermetKontor = "4555"
 
         val automatiskKontorRutingService = AutomatiskKontorRutingService(
+            KontorTilordningService::tilordneKontor,
             { _, _, _-> GTKontorFunnet(KontorId(skjermetKontor)) },
             { AlderFunnet(40) },
             { FnrFunnet(fnr) },
@@ -162,8 +164,7 @@ class KafkaApplicationTest {
         }
     }
 
-    @Ignore
-    @Test
+//    @Test
     fun testKafkaRetry() = testApplication {
         val fnr = "12345678901"
 
@@ -176,8 +177,7 @@ class KafkaApplicationTest {
         }
     }
 
-    @Ignore
-    @Test
+//    @Test
     fun testKafkaSkipMessage() = testApplication {
         val fnr = "12345678901"
         application {

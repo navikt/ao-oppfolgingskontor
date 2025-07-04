@@ -1,30 +1,23 @@
 package kafka.processor
 
+import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.shouldBe
 import io.mockk.every
-import io.mockk.impl.annotations.MockK
-import io.mockk.junit4.MockKRule
 import io.mockk.just
+import io.mockk.mockk
 import io.mockk.runs
 import io.mockk.verify
 import no.nav.kafka.processor.TypedKafkaAvroDeserializer
 import org.apache.kafka.common.errors.SerializationException
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 
 class TypedKafkaAvroDeserializerTest {
 
- @get:Rule
- val mockkRule = MockKRule(this)
-
- @MockK
- private lateinit var innerMock: io.confluent.kafka.serializers.KafkaAvroDeserializer
-
+ private var innerMock: io.confluent.kafka.serializers.KafkaAvroDeserializer = mockk()
  private lateinit var deserializer: TypedKafkaAvroDeserializer<String>
 
- @Before
+ @BeforeEach
  fun setUp() {
   deserializer = TypedKafkaAvroDeserializer(String::class.java)
 
@@ -61,10 +54,10 @@ class TypedKafkaAvroDeserializerTest {
   val result = deserializer.deserialize(topic, data)
 
   // Verify the result
-  assertEquals(expectedString, result)
+  expectedString shouldBe result
  }
 
- @Test(expected = SerializationException::class)
+ @Test
  fun `deserialize should throw SerializationException when inner deserializer returns wrong type`() {
   val topic = "test-topic"
   val data = "some-data".toByteArray()
@@ -74,7 +67,9 @@ class TypedKafkaAvroDeserializerTest {
   every { innerMock.deserialize(topic, data) } returns wrongTypeObject
 
   // Perform the action. JUnit 4 will catch the expected exception.
-  deserializer.deserialize(topic, data)
+  shouldThrow<SerializationException> {
+   deserializer.deserialize(topic, data)
+  }
  }
 
  @Test
@@ -83,7 +78,7 @@ class TypedKafkaAvroDeserializerTest {
   val result = deserializer.deserialize("any-topic", null)
 
   // Verify that the result is null and that the inner mock was never called
-  assertNull(result)
+  result shouldBe null
   verify(exactly = 0) { innerMock.deserialize(any(), any()) }
  }
 }

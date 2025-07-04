@@ -11,22 +11,23 @@ import no.nav.db.entity.GeografiskTilknyttetKontorEntity
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.db.table.GeografiskTilknytningKontorTable
 import no.nav.domain.KontorId
+import no.nav.domain.externalEvents.AddressebeskyttelseEndret
+import no.nav.domain.externalEvents.BostedsadresseEndret
 import no.nav.http.client.FnrFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.SkjermingFunnet
-import no.nav.http.client.poaoTilgang.GTKontorFeil
-import no.nav.http.client.poaoTilgang.GTKontorFunnet
-import no.nav.http.client.poaoTilgang.GTKontorResultat
-import no.nav.kafka.consumers.AddressebeskyttelseEndret
-import no.nav.kafka.consumers.BostedsadresseEndret
 import no.nav.kafka.consumers.LeesahConsumer
 import no.nav.kafka.processor.Retry
 import no.nav.person.pdl.leesah.adressebeskyttelse.Gradering
 import no.nav.services.AutomatiskKontorRutingService
+import no.nav.services.GTKontorFeil
+import no.nav.services.GTKontorFunnet
+import no.nav.services.GTKontorResultat
+import no.nav.services.KontorTilordningService
 import no.nav.utils.flywayMigrationInTest
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.junit.Test
+import org.junit.jupiter.api.Test
 import java.time.ZonedDateTime
 
 class LeesahConsumerTest {
@@ -130,6 +131,7 @@ class LeesahConsumerTest {
         gtProvider: suspend (fnr: String, strengtFortroligAdresse: Boolean, skjermet: Boolean) -> GTKontorResultat
     ): AutomatiskKontorRutingService {
         return AutomatiskKontorRutingService(
+            KontorTilordningService::tilordneKontor,
             fnrProvider = { throw Throwable("Denne skal ikke brukes") },
             gtKontorProvider = gtProvider,
             aldersProvider = { throw Throwable("Denne skal ikke brukes") },

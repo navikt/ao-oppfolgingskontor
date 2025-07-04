@@ -1,7 +1,7 @@
 package no.nav.kafka.consumers
 
 import kotlinx.coroutines.runBlocking
-import no.nav.db.Fnr
+import no.nav.domain.externalEvents.SkjermetStatusEndret
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
@@ -22,7 +22,7 @@ class SkjermingConsumer(
     fun handterEndringISKjermetStatus(fnr: String, skjermingStatus: Boolean): RecordProcessingResult<Unit, Unit> {
         return runBlocking {
             val result = automatiskKontorRutingService.handterEndringISkjermingStatus(
-                EndringISkjermingStatus(fnr, skjermingStatus)
+                SkjermetStatusEndret(fnr, skjermingStatus)
             )
             when (result.isSuccess) {
                 true -> {
@@ -38,11 +38,6 @@ class SkjermingConsumer(
         }
     }
 }
-
-class EndringISkjermingStatus(
-    val fnr: Fnr,
-    val erSkjermet: Boolean
-)
 
 enum class EndringISkjermingResult {
     NY_ENHET,

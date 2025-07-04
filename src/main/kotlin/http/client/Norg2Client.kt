@@ -9,13 +9,12 @@ import io.ktor.client.plugins.logging.*
 import io.ktor.client.request.*
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
-import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
 import no.nav.domain.KontorId
-import no.nav.http.client.poaoTilgang.GTKontorFeil
-import no.nav.http.client.poaoTilgang.GTKontorFunnet
-import no.nav.http.client.poaoTilgang.GTKontorResultat
+import no.nav.services.GTKontorFeil
+import no.nav.services.GTKontorFunnet
+import no.nav.services.GTKontorResultat
 import org.slf4j.LoggerFactory
 
 class Norg2Client(

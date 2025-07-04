@@ -10,36 +10,47 @@ import no.nav.domain.events.AOKontorEndretPgaSkjermingEndret
 import no.nav.domain.events.GTKontorEndretPgaAdressebeskyttelseEndret
 import no.nav.domain.events.GTKontorEndretPgaBostedsadresseEndret
 import no.nav.domain.events.GTKontorEndretPgaSkjermingEndret
+import no.nav.domain.events.KontorEndretEvent
 import no.nav.domain.events.OppfolgingsPeriodeStartetFallbackKontorTilordning
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.domain.events.OppfolgingsperiodeStartetNoeTilordning
-import no.nav.http.client.*
+import no.nav.domain.externalEvents.AddressebeskyttelseEndret
+import no.nav.domain.externalEvents.BostedsadresseEndret
+import no.nav.domain.externalEvents.OppfolgingperiodeAvsluttet
+import no.nav.domain.externalEvents.OppfolgingsperiodeEndret
+import no.nav.domain.externalEvents.SkjermetStatusEndret
+import no.nav.domain.externalEvents.erGradert
+import no.nav.domain.externalEvents.erStrengtFortrolig
+import no.nav.http.client.AlderFunnet
+import no.nav.http.client.AlderResult
+import no.nav.http.client.FnrFunnet
+import no.nav.http.client.FnrIkkeFunnet
+import no.nav.http.client.FnrOppslagFeil
+import no.nav.http.client.FnrResult
+import no.nav.http.client.HarStrengtFortroligAdresseFunnet
+import no.nav.http.client.HarStrengtFortroligAdresseIkkeFunnet
+import no.nav.http.client.HarStrengtFortroligAdresseOppslagFeil
+import no.nav.http.client.HarStrengtFortroligAdresseResult
+import no.nav.http.client.SkjermingFunnet
+import no.nav.http.client.SkjermingIkkeFunnet
+import no.nav.http.client.SkjermingResult
+import no.nav.http.client.arbeidssogerregisteret.HentProfileringsResultat
+import no.nav.http.client.arbeidssogerregisteret.ProfileringFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
-import no.nav.http.client.poaoTilgang.GTKontorFeil
-import no.nav.http.client.poaoTilgang.GTKontorFinnesIkke
-import no.nav.http.client.poaoTilgang.GTKontorFunnet
-import no.nav.http.client.poaoTilgang.GTKontorResultat
-import no.nav.kafka.consumers.AddressebeskyttelseEndret
-import no.nav.kafka.consumers.BostedsadresseEndret
 import no.nav.kafka.consumers.EndringISkjermingResult
-import no.nav.kafka.consumers.EndringISkjermingStatus
 import no.nav.kafka.consumers.HåndterPersondataEndretFail
 import no.nav.kafka.consumers.HåndterPersondataEndretResultat
 import no.nav.kafka.consumers.HåndterPersondataEndretSuccess
-import no.nav.person.pdl.leesah.adressebeskyttelse.Gradering
 import org.slf4j.LoggerFactory
 
-sealed class HentProfileringsResultat
-data class ProfileringFunnet(val profilering: ProfileringsResultat) : HentProfileringsResultat()
-data class ProfileringIkkeFunnet(val melding: String) : HentProfileringsResultat()
-data class ProfileringsResultatFeil(val error: Throwable) : HentProfileringsResultat()
-
 sealed class TilordningResultat
-object TilordningSuccess : TilordningResultat()
+sealed class TilordningSuccess : TilordningResultat()
+object TilordningSuccessIngenEndring : TilordningSuccess()
+class TilordningSuccessKontorEndret(val kontorEndretEvent: KontorEndretEvent) : TilordningSuccess()
 data class TilordningFeil(val message: String) : TilordningResultat()
 
-
 class AutomatiskKontorRutingService(
+    private val tilordneKontor: suspend (kontorEndretEvent: KontorEndretEvent) -> Unit,
     private val gtKontorProvider: suspend (fnr: Fnr, strengtFortroligAdresse: Boolean, skjermet: Boolean) -> GTKontorResultat,
     private val aldersProvider: suspend (fnr: Fnr) -> AlderResult,
     private val fnrProvider: suspend (aktorId: String) -> FnrResult,
@@ -49,9 +60,10 @@ class AutomatiskKontorRutingService(
 ) {
     val log = LoggerFactory.getLogger(this::class.java)
 
-    suspend fun tilordneKontorAutomatisk(aktorId: String): TilordningResultat {
+    suspend fun tilordneKontorAutomatisk(oppfolgingsperiodeEndret: OppfolgingsperiodeEndret): TilordningResultat {
+        if (oppfolgingsperiodeEndret is OppfolgingperiodeAvsluttet) return TilordningSuccessIngenEndring
         try {
-            val fnrResult = fnrProvider(aktorId)
+            val fnrResult = fnrProvider(oppfolgingsperiodeEndret.aktorId)
             val fnr = when (fnrResult) {
                 is FnrFunnet -> fnrResult.fnr
                 is FnrIkkeFunnet -> return TilordningFeil("Fant ikke fnr: ${fnrResult.message}")
@@ -78,8 +90,8 @@ class AutomatiskKontorRutingService(
                 if (aldersResultat is AlderFunnet) aldersResultat.alder else null,
                 profileringProvider(fnr),
             )
-            KontorTilordningService.tilordneKontor(kontorTilordning)
-            return TilordningSuccess
+            tilordneKontor(kontorTilordning)
+            return TilordningSuccessKontorEndret(kontorTilordning)
         } catch (e: Exception) {
             log.error("Feil ved tilordning kontor: ${e.message}", e)
             return TilordningFeil("Feil ved tilordning av kontor: ${e.message ?: e.toString()}")
@@ -160,13 +172,13 @@ class AutomatiskKontorRutingService(
                 is GTKontorFinnesIkke,
                 is GTKontorFunnet -> {
                     val gtKontor = getGTKontorOrFallback(gtKontorResultat)
-                    KontorTilordningService.tilordneKontor(
+                    tilordneKontor(
                         GTKontorEndretPgaAdressebeskyttelseEndret(
                             KontorTilordning(hendelse.fnr, gtKontor)
                         )
                     )
                     if (hendelse.erGradert()) {
-                        KontorTilordningService.tilordneKontor(
+                        tilordneKontor(
                             AOKontorEndretPgaAdressebeskyttelseEndret(
                                 KontorTilordning(hendelse.fnr, gtKontor)
                             )
@@ -185,7 +197,7 @@ class AutomatiskKontorRutingService(
     }
 
     suspend fun handterEndringISkjermingStatus(
-        endringISkjermingStatus: EndringISkjermingStatus
+        endringISkjermingStatus: SkjermetStatusEndret
     ): Result<EndringISkjermingResult> {
         return runCatching {
             val harStrengtFortroligAdresse = when (val result = harStrengtFortroligAdresseProvider(endringISkjermingStatus.fnr)) {
@@ -200,7 +212,7 @@ class AutomatiskKontorRutingService(
                 is GTKontorFunnet -> {
                     val gtKontor = getGTKontorOrFallback(gtKontorResultat)
                     if (endringISkjermingStatus.erSkjermet) {
-                        KontorTilordningService.tilordneKontor(
+                        tilordneKontor(
                             AOKontorEndretPgaSkjermingEndret(
                                 KontorTilordning(
                                     endringISkjermingStatus.fnr,
@@ -208,7 +220,7 @@ class AutomatiskKontorRutingService(
                                 )
                             )
                         )
-                        KontorTilordningService.tilordneKontor(
+                        tilordneKontor(
                             GTKontorEndretPgaSkjermingEndret(
                                 KontorTilordning(
                                     endringISkjermingStatus.fnr,
@@ -240,12 +252,3 @@ class AutomatiskKontorRutingService(
     }
 }
 
-fun AddressebeskyttelseEndret.erGradert(): Boolean {
-    return this.gradering == Gradering.STRENGT_FORTROLIG
-            || this.gradering == Gradering.FORTROLIG
-            || this.gradering == Gradering.STRENGT_FORTROLIG_UTLAND
-}
-
-fun AddressebeskyttelseEndret.erStrengtFortrolig(): Boolean {
-    return this.gradering == Gradering.STRENGT_FORTROLIG || this.gradering == Gradering.STRENGT_FORTROLIG_UTLAND
-}

@@ -10,12 +10,12 @@ import io.ktor.server.testing.testApplication
 import io.ktor.server.routing.routing
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
-import no.nav.http.client.poaoTilgang.GTKontorFunnet
 import no.nav.http.client.poaoTilgang.PoaoTilgangKtorHttpClient
 import no.nav.http.client.poaoTilgang.PoaoTilgangSerializer
 import no.nav.poao_tilgang.api.dto.response.Diskresjonskode
 import no.nav.poao_tilgang.api.dto.response.TilgangsattributterResponse
-import kotlin.test.Test
+import no.nav.services.GTKontorFunnet
+import org.junit.jupiter.api.Test
 
 class PoaoTilgangKtorHttpClientTest {
 

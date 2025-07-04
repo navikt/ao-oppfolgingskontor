@@ -2,6 +2,10 @@ package no.nav.kafka.consumers
 
 import kotlinx.coroutines.runBlocking
 import no.nav.db.Fnr
+import no.nav.domain.externalEvents.AddressebeskyttelseEndret
+import no.nav.domain.externalEvents.BostedsadresseEndret
+import no.nav.domain.externalEvents.IrrelevantHendelse
+import no.nav.domain.externalEvents.PersondataEndret
 import no.nav.http.client.FnrFunnet
 import no.nav.http.client.FnrIkkeFunnet
 import no.nav.http.client.FnrOppslagFeil
@@ -10,7 +14,6 @@ import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
 import no.nav.person.pdl.leesah.Personhendelse
-import no.nav.person.pdl.leesah.adressebeskyttelse.Gradering
 import no.nav.services.AutomatiskKontorRutingService
 import org.apache.kafka.streams.processor.api.Record
 import org.apache.kafka.streams.processor.api.RecordMetadata
@@ -36,7 +39,7 @@ class LeesahConsumer(
             .let { handterLeesahHendelse(it) }
     }
 
-    fun handterLeesahHendelse(hendelse: PersondataEndretHendelse): RecordProcessingResult<Unit, Unit> {
+    fun handterLeesahHendelse(hendelse: PersondataEndret): RecordProcessingResult<Unit, Unit> {
         val result = runBlocking {
             when (hendelse) {
                 is BostedsadresseEndret -> automatiskKontorRutingService.handterEndringForBostedsadresse(hendelse)
@@ -65,14 +68,12 @@ class LeesahConsumer(
     }
 }
 
-sealed class PersondataEndretHendelse(val fnr: Fnr)
-class BostedsadresseEndret(fnr: Fnr): PersondataEndretHendelse(fnr)
-class AddressebeskyttelseEndret(fnr: Fnr, val gradering: Gradering): PersondataEndretHendelse(fnr)
-class IrrelevantHendelse(fnr: Fnr, val opplysningstype: String): PersondataEndretHendelse(fnr)
-
-fun Pair<Fnr, Personhendelse>.toHendelse(): PersondataEndretHendelse {
+fun Pair<Fnr, Personhendelse>.toHendelse(): PersondataEndret {
     if (this.second.bostedsadresse != null) return BostedsadresseEndret(this.first)
-    if (this.second.adressebeskyttelse != null) return AddressebeskyttelseEndret(this.first, this.second.adressebeskyttelse.gradering)
+    if (this.second.adressebeskyttelse != null) return AddressebeskyttelseEndret(
+        this.first,
+        this.second.adressebeskyttelse.gradering
+    )
     return IrrelevantHendelse(this.first, this.second.opplysningstype)
 }
 

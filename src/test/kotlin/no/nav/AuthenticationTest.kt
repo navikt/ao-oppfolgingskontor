@@ -18,7 +18,7 @@ import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
 import no.nav.utils.getJsonHttpClient
 import no.nav.utils.kontorTilhorighetQuery
-import org.junit.Test
+import org.junit.jupiter.api.Test
 
 class AuthenticationTest {
 

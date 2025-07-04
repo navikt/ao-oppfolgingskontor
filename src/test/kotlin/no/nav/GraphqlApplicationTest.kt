@@ -36,7 +36,7 @@ import no.nav.utils.kontorHistorikk
 import no.nav.utils.kontorTilhorighet
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.junit.Test
+import org.junit.jupiter.api.Test
 import java.time.ZonedDateTime
 
 fun ApplicationTestBuilder.graphqlServerInTest() {

@@ -17,7 +17,7 @@ import no.nav.http.client.toGeografiskTilknytning
 import no.nav.http.graphql.generated.client.HentGtQuery
 import no.nav.http.graphql.generated.client.enums.GtType
 import no.nav.http.graphql.generated.client.hentgtquery.GeografiskTilknytning
-import org.junit.Test
+import org.junit.jupiter.api.Test
 
 class PdlClientTest {
 

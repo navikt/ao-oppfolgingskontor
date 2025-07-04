@@ -16,8 +16,9 @@ import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.processor.Punctuator
 import org.apache.kafka.streams.processor.api.ProcessorContext
 import org.apache.kafka.streams.processor.api.Record
-import org.junit.Before
-import org.junit.Test
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import java.time.Duration
 import java.time.OffsetDateTime
 
@@ -42,7 +43,7 @@ class RetryableProcessorTest {
  private val config = RetryConfig(retryInterval = Duration.ofMinutes(1), maxRetries = MaxRetries.Finite(2), stateStoreName = "test-store")
  private val inputTopicName = "input-topic"
 
- @Before
+ @BeforeEach
  fun setup() {
   flywayMigrate(TestDb.postgres)
   // --- 1. Lag Mocks ---

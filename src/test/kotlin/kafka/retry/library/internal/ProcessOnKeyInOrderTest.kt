@@ -6,7 +6,7 @@ import no.nav.kafka.retry.library.internal.FailedMessage
 import no.nav.kafka.retry.library.internal.RetryableFail
 import no.nav.kafka.retry.library.internal.Success
 import no.nav.kafka.retry.library.internal.proccessInOrderOnKey
-import org.junit.Test
+import org.junit.jupiter.api.Test
 import java.time.OffsetDateTime
 
 class ProcessOnKeyInOrderTest {

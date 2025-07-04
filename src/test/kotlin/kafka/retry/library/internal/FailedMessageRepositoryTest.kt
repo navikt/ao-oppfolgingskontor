@@ -5,8 +5,8 @@ import io.kotest.matchers.shouldNotBe
 import no.nav.kafka.retry.library.internal.FailedMessageRepository
 import no.nav.utils.TestDb
 import org.flywaydb.core.Flyway
-import org.junit.Before
-import org.junit.Test
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import javax.sql.DataSource
 import kotlin.text.toByteArray
 
@@ -15,7 +15,7 @@ class FailedMessageRepositoryTest {
     private var dataSource: DataSource = TestDb.postgres
     private var repository: FailedMessageRepository = FailedMessageRepository( topic)
 
-    @Before
+    @BeforeEach
     fun createTable() {
         /* Flyway migrering hvis vi ikke legge denne koden i et ekstern bibliotek */
         Flyway.configure()

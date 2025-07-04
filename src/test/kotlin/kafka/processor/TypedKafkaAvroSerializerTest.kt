@@ -1,30 +1,23 @@
 package kafka.processor
 
+import io.confluent.kafka.serializers.KafkaAvroSerializer
+import io.kotest.matchers.shouldNotBe
 import io.mockk.every
-import io.mockk.impl.annotations.MockK
-import io.mockk.junit4.MockKRule
 import io.mockk.just
+import io.mockk.mockk
 import io.mockk.runs
 import io.mockk.verify
 import no.nav.kafka.processor.TypedKafkaAvroSerializer
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import kotlin.test.assertContentEquals
-import kotlin.test.assertNotNull
 
 class TypedKafkaAvroSerializerTest {
 
- // The MockKRule initializes all fields annotated with @MockK
- @get:Rule
- val mockkRule = MockKRule(this)
-
- @MockK
- private lateinit var innerMock: io.confluent.kafka.serializers.KafkaAvroSerializer
-
+ private var innerMock: KafkaAvroSerializer = mockk()
  private lateinit var serializer: TypedKafkaAvroSerializer<String>
 
- @Before
+ @BeforeEach
  fun setUp() {
   // Create the instance to be tested
   serializer = TypedKafkaAvroSerializer()
@@ -63,7 +56,7 @@ class TypedKafkaAvroSerializerTest {
   val resultBytes = serializer.serialize(topic, dataToSerialize)
 
   // Verify that the result is what the inner mock returned
-  assertNotNull(resultBytes)
+  resultBytes shouldNotBe null
   assertContentEquals(expectedBytes, resultBytes)
 
   // Verify that the inner mock's serialize method was called

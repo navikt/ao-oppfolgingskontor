@@ -24,7 +24,7 @@ import no.nav.utils.KontorTilhorighet
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.getJsonHttpClient
 import no.nav.utils.kontorTilhorighet
-import org.junit.Test
+import org.junit.jupiter.api.Test
 
 class SettArbeidsoppfolgingsKontorTest {
 

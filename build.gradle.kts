@@ -40,6 +40,10 @@ tasks.shadowJar {
     mergeServiceFiles()
 }
 
+tasks.test {
+    useJUnitPlatform()
+}
+
 dependencies {
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.serialization.kotlinx.json)
@@ -89,10 +93,10 @@ dependencies {
     testImplementation(libs.embedded.postgres)
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.mock.oauth2.server)
-    testImplementation(libs.kotlin.test.junit)
     testImplementation(libs.kafka.streams.test.utils)
     testImplementation(libs.kotest.assertions)
     testImplementation(libs.mockk)
+    testImplementation(kotlin("test"))
 }
 
 graphql {
