@@ -37,20 +37,18 @@ class LeesahAvroSerdes (
             )
         }
 
-    private val keySerdeConfig = mapOf(
-        AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG to schemaRegistryUrl,
-    )
+
     private val keySerializer = TypedKafkaAvroSerializer<String>()
         .apply {
             configure(
-                keySerdeConfig,
+                schemaRegistryConfig,
                 true
             )
         }
     private val keyDeserializer = TypedKafkaAvroDeserializer(String::class.java)
         .apply {
             configure(
-                keySerdeConfig,
+                schemaRegistryConfig,
                 true
             )
         }
