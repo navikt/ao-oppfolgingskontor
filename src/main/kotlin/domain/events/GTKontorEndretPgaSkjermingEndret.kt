@@ -20,6 +20,11 @@ class GTKontorEndretPgaSkjermingEndret(kontorTilordning: KontorTilordning): GTKo
         )
     }
 
+    override fun equals(other: Any?): Boolean {
+        if (other !is GTKontorEndretPgaSkjermingEndret) return false
+        return this.tilordning == other.tilordning
+    }
+
     override fun logg() {
         log.info("GT kontor endret pga person ble skjermet")
     }

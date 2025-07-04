@@ -15,6 +15,7 @@ import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.ApplicationEnvironment
 import kotlinx.serialization.Serializable
+import no.nav.domain.HarSkjerming
 import no.nav.http.client.tokenexchange.SystemTokenPlugin
 import no.nav.http.client.tokenexchange.TexasTokenResponse
 import org.slf4j.LoggerFactory
@@ -47,7 +48,7 @@ class SkjermingsClient(
                 setBody(SkjermingRequestDto(fnr))
             }
             if (response.status.isSuccess()) {
-                SkjermingFunnet(response.body<Boolean>())
+                SkjermingFunnet(HarSkjerming(response.body<Boolean>()))
             } else {
                 SkjermingIkkeFunnet("Kunne ikke hente skjermingsstatus. Status: ${response.status}")
             }
@@ -64,5 +65,5 @@ data class SkjermingRequestDto(
 )
 
 sealed class SkjermingResult
-class SkjermingFunnet(val skjermet: Boolean) : SkjermingResult()
+class SkjermingFunnet(val skjermet: HarSkjerming) : SkjermingResult()
 class SkjermingIkkeFunnet(val melding: String) : SkjermingResult()

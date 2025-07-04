@@ -6,6 +6,7 @@ import no.nav.domain.KontorHistorikkInnslag
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.KontorType
+import no.nav.domain.Sensitivitet
 import no.nav.domain.System
 import no.nav.http.logger
 
@@ -22,8 +23,8 @@ enum class RutingResultat {
     }
 }
 
-class OppfolgingsperiodeStartetNoeTilordning(
-    fnr: Fnr,
+data class OppfolgingsperiodeStartetNoeTilordning(
+    val fnr: Fnr,
 ): AOKontorEndret(KontorTilordning(fnr, KontorId("4154")), System()) {
     private val rutingResultat: RutingResultat = RutingResultat.RutetTilNOE
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
@@ -41,8 +42,9 @@ class OppfolgingsperiodeStartetNoeTilordning(
     }
 }
 
-class OppfolgingsPeriodeStartetLokalKontorTilordning(
-    kontorTilordning: KontorTilordning,
+data class OppfolgingsPeriodeStartetLokalKontorTilordning(
+    val kontorTilordning: KontorTilordning,
+    val sensitivitet: Sensitivitet
 ): AOKontorEndret(kontorTilordning, System()) {
     val rutingResultat: RutingResultat = RutingResultat.RutetTilLokalkontor
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
@@ -62,7 +64,7 @@ class OppfolgingsPeriodeStartetLokalKontorTilordning(
     }
 }
 
-class OppfolgingsPeriodeStartetFallbackKontorTilordning(val fnr: Fnr) : AOKontorEndret(KontorTilordning(fnr, KontorId("2990")), System()) {
+data class OppfolgingsPeriodeStartetFallbackKontorTilordning(val fnr: Fnr) : AOKontorEndret(KontorTilordning(fnr, KontorId("2990")), System()) {
     val rutingResultat: RutingResultat = RutingResultat.RutetTilLokalkontor
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(

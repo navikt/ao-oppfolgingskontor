@@ -20,6 +20,11 @@ class GTKontorEndretPgaBostedsadresseEndret(tilordning: KontorTilordning) : GTKo
         )
     }
 
+    override fun equals(other: Any?): Boolean {
+        if(other !is GTKontorEndretPgaBostedsadresseEndret) return false
+        return this.tilordning == other.tilordning
+    }
+
     override fun logg() {
         logger.info("BostedsadresseEndret: kontorId=${tilordning.kontorId}")
     }

@@ -11,10 +11,15 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
+import no.nav.domain.HarSkjerming
+import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
+import no.nav.services.GTKontorAdressebeskyttelseFunnet
 import no.nav.services.GTKontorFeil
 import no.nav.services.GTKontorFunnet
+import no.nav.services.GTKontorMedSkjermingFunnet
 import no.nav.services.GTKontorResultat
+import no.nav.services.GTKontorVanligFunnet
 import org.slf4j.LoggerFactory
 
 class Norg2Client(
@@ -51,21 +56,23 @@ class Norg2Client(
         return response.body<NorgKontor>().toMinimaltKontor()
     }
 
-    suspend fun hentKontorForGt(gt: GeografiskTilknytning, brukerHarStrengtFortroligAdresse: Boolean, brukerErSkjermet: Boolean): GTKontorResultat {
+    suspend fun hentKontorForGt(gt: GeografiskTilknytningNr, brukerHarStrengtFortroligAdresse: HarStrengtFortroligAdresse, brukerErSkjermet: HarSkjerming): GTKontorResultat {
         try {
             val response = httpClient.get((hentKontorForGtPath(gt))) {
                 accept(ContentType.Application.Json)
-                if (brukerHarStrengtFortroligAdresse) {
+                if (brukerHarStrengtFortroligAdresse.value) {
                     parameter("disk", "SPSF")
                 }
-                if (brukerErSkjermet) {
+                if (brukerErSkjermet.value) {
                     parameter("skjermet", "true")
                 }
             }
             if (response.status != HttpStatusCode.OK)
-                throw RuntimeException("Kunne ikke hente kontor for GT $gt fra Norg2. Status: ${response.status}")
+                throw RuntimeException("Kunne ikke hente kontor for GT status: ${response.status}, $gt fra Norg2. Status: ${response.status}")
             return response.body<NorgKontor>().toMinimaltKontor()
-                .let { GTKontorFunnet(KontorId(it.kontorId)) }
+                .let {
+                    KontorId(it.kontorId).toGtKontorFunnet(brukerHarStrengtFortroligAdresse, brukerErSkjermet)
+                }
         } catch (e: Exception) {
             return GTKontorFeil(e.message ?: "Ukjent feil")
         }
@@ -75,7 +82,15 @@ class Norg2Client(
         const val hentEnheterPath = "/norg2/api/v1/enhet"
         const val hentEnhetPathWithParam = "/norg2/api/v1/enhet/{enhetId}"
         fun hentEnhetPath(kontorId: KontorId): (String) = "/norg2/api/v1/enhet/${kontorId.id}"
-        fun hentKontorForGtPath(gt: GeografiskTilknytning): (String) = "/norg2/api/v1/enhet/navkontor/${gt.value}"
+        fun hentKontorForGtPath(gt: GeografiskTilknytningNr): (String) = "/norg2/api/v1/enhet/navkontor/${gt.value}"
+    }
+}
+
+fun KontorId.toGtKontorFunnet(brukerHarStrengtFortroligAdresse: HarStrengtFortroligAdresse, brukerErSkjermet: HarSkjerming): GTKontorFunnet {
+    return when {
+        brukerHarStrengtFortroligAdresse.value -> GTKontorAdressebeskyttelseFunnet(this)
+        brukerErSkjermet.value -> GTKontorMedSkjermingFunnet(this)
+        else -> GTKontorVanligFunnet(this)
     }
 }
 
@@ -85,7 +100,9 @@ data class MinimaltNorgKontor(
 )
 
 @JvmInline
-value class GeografiskTilknytning(val value: String)
+value class GeografiskTilknytningNr(val value: String)
+@JvmInline
+value class GeografiskTilknytningLand(val value: String)
 
 fun NorgKontor.toMinimaltKontor() = MinimaltNorgKontor(
     kontorId = this.enhetNr,

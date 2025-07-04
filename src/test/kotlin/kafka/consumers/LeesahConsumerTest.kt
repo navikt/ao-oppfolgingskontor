@@ -1,8 +1,6 @@
 package kafka.consumers
 
-import io.kotest.matchers.equals.shouldBeEqual
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.types.shouldBeSameInstanceAs
 import io.kotest.matchers.types.shouldBeTypeOf
 import io.ktor.server.testing.testApplication
 import no.nav.db.Fnr
@@ -10,8 +8,10 @@ import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.GeografiskTilknyttetKontorEntity
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.db.table.GeografiskTilknytningKontorTable
+import no.nav.domain.HarSkjerming
+import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
-import no.nav.domain.externalEvents.AddressebeskyttelseEndret
+import no.nav.domain.externalEvents.AdressebeskyttelseEndret
 import no.nav.domain.externalEvents.BostedsadresseEndret
 import no.nav.http.client.FnrFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
@@ -23,6 +23,7 @@ import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.GTKontorFeil
 import no.nav.services.GTKontorFunnet
 import no.nav.services.GTKontorResultat
+import no.nav.services.GTKontorVanligFunnet
 import no.nav.services.KontorTilordningService
 import no.nav.utils.flywayMigrationInTest
 import org.jetbrains.exposed.sql.insert
@@ -63,7 +64,7 @@ class LeesahConsumerTest {
             val automatiskKontorRutingService = gittRutingServiceMedGtKontor(KontorId(nyKontorId))
             val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) })
 
-            leesahConsumer.handterLeesahHendelse(AddressebeskyttelseEndret(fnr, Gradering.STRENGT_FORTROLIG))
+            leesahConsumer.handterLeesahHendelse(AdressebeskyttelseEndret(fnr, Gradering.STRENGT_FORTROLIG))
 
             transaction {
                 val gtKontorEtterEndring = GeografiskTilknyttetKontorEntity[fnr]
@@ -87,7 +88,7 @@ class LeesahConsumerTest {
             val automatiskKontorRutingService = gittRutingServiceMedGtKontor(KontorId(nyKontorId))
             val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) })
 
-            leesahConsumer.handterLeesahHendelse(AddressebeskyttelseEndret(fnr, Gradering.UGRADERT))
+            leesahConsumer.handterLeesahHendelse(AdressebeskyttelseEndret(fnr, Gradering.UGRADERT))
 
             transaction {
                 val gtKontorEtterEndring = GeografiskTilknyttetKontorEntity[fnr]
@@ -128,7 +129,7 @@ class LeesahConsumerTest {
     }
 
     private fun defaultAutomatiskKontorRutingService(
-        gtProvider: suspend (fnr: String, strengtFortroligAdresse: Boolean, skjermet: Boolean) -> GTKontorResultat
+        gtProvider: suspend (fnr: String, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming) -> GTKontorResultat
     ): AutomatiskKontorRutingService {
         return AutomatiskKontorRutingService(
             KontorTilordningService::tilordneKontor,
@@ -136,14 +137,14 @@ class LeesahConsumerTest {
             gtKontorProvider = gtProvider,
             aldersProvider = { throw Throwable("Denne skal ikke brukes") },
             profileringProvider = { throw Throwable("Denne skal ikke brukes") },
-            erSkjermetProvider = { SkjermingFunnet(false) },
-            harStrengtFortroligAdresseProvider = { HarStrengtFortroligAdresseFunnet(false) }
+            erSkjermetProvider = { SkjermingFunnet(HarSkjerming(false)) },
+            harStrengtFortroligAdresseProvider = { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) }
         )
     }
 
     private fun gittRutingServiceMedGtKontor(kontorId: KontorId): AutomatiskKontorRutingService {
         return defaultAutomatiskKontorRutingService(
-            { a, b, c -> GTKontorFunnet(kontorId) }
+            { a, b, c -> GTKontorVanligFunnet(kontorId) }
         )
     }
 

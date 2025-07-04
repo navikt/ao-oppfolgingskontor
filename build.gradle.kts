@@ -42,6 +42,10 @@ tasks.shadowJar {
 
 tasks.test {
     useJUnitPlatform()
+    /* disable unused scanning which adds ~2 seconds to test-startup */
+    systemProperty("kotest.framework.discovery.jar.scan.disable", "true")
+    systemProperty("kotest.framework.classpath.scanning.config.disable", "true")
+    systemProperty("kotest.framework.classpath.scanning.autoscan.disable", "true")
 }
 
 dependencies {
@@ -95,6 +99,7 @@ dependencies {
     testImplementation(libs.mock.oauth2.server)
     testImplementation(libs.kafka.streams.test.utils)
     testImplementation(libs.kotest.assertions)
+    testImplementation(libs.kotest.runner)
     testImplementation(libs.mockk)
     testImplementation(kotlin("test"))
 }

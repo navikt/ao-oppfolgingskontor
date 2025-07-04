@@ -23,4 +23,15 @@ class AOKontorEndretPgaAdressebeskyttelseEndret(tilordning: KontorTilordning): A
     override fun logg() {
         logger.info("AdressebeskyttelseAOEndret: kontorId=${tilordning.kontorId}")
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (other is AOKontorEndretPgaAdressebeskyttelseEndret) {
+            return this.tilordning == other.tilordning
+        }
+        return false
+    }
+
+    override fun toString(): String {
+        return "${this.javaClass.simpleName}(tilordning=$tilordning)"
+    }
 }
