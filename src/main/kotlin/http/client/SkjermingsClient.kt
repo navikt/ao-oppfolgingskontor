@@ -42,7 +42,7 @@ class SkjermingsClient(
 
     suspend fun hentSkjerming(fnr: String): SkjermingResult {
         return try {
-            val response = httpClient.post("/skjerming") {
+            val response = httpClient.post("/skjermet") {
                 contentType(ContentType.Application.Json)
                 setBody(SkjermingRequestDto(fnr))
             }
