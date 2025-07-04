@@ -1,0 +1,26 @@
+name: Deploy alerts
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'nais/kafka-streams-alerts.yaml'
+      - '.github/workflows/alerts.yaml'
+
+concurrency:
+  group: deploy_alerts
+  cancel-in-progress: true
+
+jobs:
+  apply-alerts:
+    name: Apply alerts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: deploy alerts to dev
+        uses: nais/deploy/actions/deploy@v2
+        env:
+          CLUSTER: dev-gcp
+          RESOURCE: nais/kafka-streams-alerts.yaml

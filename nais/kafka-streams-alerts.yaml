@@ -1,0 +1,49 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: ao-oppfolgingskontor-kafka-streams-rules
+  namespace: dab
+  labels:
+    team: dab
+spec:
+  groups:
+    - name: KafkaStreamsHelse
+      rules:
+        # ALARM 1: Den mest kritiske og raskeste - når en tråd dør
+        - alert: KafkaStreamsTrådHarKrasjet
+          expr: |
+            increase(kafka_stream_failed_stream_threads_total{app="{{ aname }}"}[5m]) > 0
+          for: 0m # Fyr av umiddelbart
+          annotations:
+            consequence: "En Kafka Streams-tråd har krasjet. All meldingsprosessering kan være nede."
+            action: "Undersøk applikasjonsloggene umiddelbart for uhåndterte unntak (f.eks. NullPointerException eller deserialiseringsfeil). `kubectl logs -l app={{ aname }} -n dab`"
+            summary: "Telleren for feilede Kafka Streams-tråder har økt. Dette er en kritisk feil som krever umiddelbar oppmerksomhet."
+          labels:
+            namespace: dab # Denne er påkrevd av plattformen
+            severity: critical
+
+        # ALARM 2: Når hele klienten går inn i en offisiell feiltilstand
+        - alert: KafkaStreamsKlientHarFeilet
+          expr: |
+            kafka_stream_client_state{app="{{ aname }}", state="ERROR"} == 1
+          for: 2m
+          annotations:
+            consequence: "Kafka Streams-klienten har status ERROR. All meldingsprosessering har stoppet."
+            action: "Sjekk applikasjonslogger for vedvarende feil som hindrer klienten i å kjøre, f.eks. 'poison pill'-meldinger som ikke kan deserialiseres."
+            summary: "Kafka Streams-klienten har gått inn i en offisiell feiltilstand og vil ikke prosessere flere meldinger før applikasjonen restartes."
+          labels:
+            namespace: dab
+            severity: critical
+
+        # ALARM 3: En "catch-all" for når ingen tråder kjører
+        - alert: KafkaStreamsHarIngenAktiveTråder
+          expr: |
+            kafka_stream_alive_stream_threads{app="{{ aname }}"} == 0
+          for: 5m
+          annotations:
+            consequence: "Applikasjonen prosesserer ingen meldinger fra Kafka."
+            action: "Sjekk status på podden og undersøk logger. Applikasjonen kan ha feilet under oppstart eller alle tråder kan ha stoppet av ukjent årsak."
+            summary: "Antall aktive Kafka Streams-tråder er 0. Dette indikerer at meldingsflyten har stoppet helt opp."
+          labels:
+            namespace: dab
+            severity: critical
