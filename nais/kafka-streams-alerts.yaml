@@ -16,7 +16,7 @@ spec:
           for: 0m # Fyr av umiddelbart
           annotations:
             consequence: "En Kafka Streams-tråd har krasjet. All meldingsprosessering kan være nede."
-            action: "Undersøk applikasjonsloggene umiddelbart for uhåndterte unntak (f.eks. NullPointerException eller deserialiseringsfeil). `kubectl logs -l app={{ aname }} -n dab`"
+            action: "Undersøk applikasjonsloggene umiddelbart for uhåndterte unntak (f.eks. NullPointerException eller deserialiseringsfeil). `kubectl logs -l app=ao-oppfolgingskontor -n dab`"
             summary: "Telleren for feilede Kafka Streams-tråder har økt. Dette er en kritisk feil som krever umiddelbar oppmerksomhet."
           labels:
             namespace: dab # Denne er påkrevd av plattformen
