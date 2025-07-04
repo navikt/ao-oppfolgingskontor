@@ -14,6 +14,7 @@ import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.ApplicationEnvironment
+import kotlinx.serialization.Serializable
 import no.nav.http.client.tokenexchange.SystemTokenPlugin
 import no.nav.http.client.tokenexchange.TexasTokenResponse
 import org.slf4j.LoggerFactory
@@ -57,6 +58,7 @@ class SkjermingsClient(
     }
 }
 
+@Serializable
 data class SkjermingRequestDto(
     val personident: String
 )
