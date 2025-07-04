@@ -12,7 +12,7 @@ spec:
         # ALARM 1: Den mest kritiske og raskeste - når en tråd dør
         - alert: KafkaStreamsTrådHarKrasjet
           expr: |
-            increase(kafka_stream_failed_stream_threads_total{app="{{ aname }}"}[5m]) > 0
+            increase(kafka_stream_failed_stream_threads_total{app="ao-oppfolgingskontor"}[5m]) > 0
           for: 0m # Fyr av umiddelbart
           annotations:
             consequence: "En Kafka Streams-tråd har krasjet. All meldingsprosessering kan være nede."
@@ -25,7 +25,7 @@ spec:
         # ALARM 2: Når hele klienten går inn i en offisiell feiltilstand
         - alert: KafkaStreamsKlientHarFeilet
           expr: |
-            kafka_stream_client_state{app="{{ aname }}", state="ERROR"} == 1
+            kafka_stream_client_state{app="ao-oppfolgingskontor", state="ERROR"} == 1
           for: 2m
           annotations:
             consequence: "Kafka Streams-klienten har status ERROR. All meldingsprosessering har stoppet."
@@ -38,7 +38,7 @@ spec:
         # ALARM 3: En "catch-all" for når ingen tråder kjører
         - alert: KafkaStreamsHarIngenAktiveTråder
           expr: |
-            kafka_stream_alive_stream_threads{app="{{ aname }}"} == 0
+            kafka_stream_alive_stream_threads{app="ao-oppfolgingskontor"} == 0
           for: 5m
           annotations:
             consequence: "Applikasjonen prosesserer ingen meldinger fra Kafka."
