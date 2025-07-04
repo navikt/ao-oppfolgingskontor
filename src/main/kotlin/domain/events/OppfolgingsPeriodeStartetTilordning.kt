@@ -11,11 +11,13 @@ import no.nav.http.logger
 
 enum class RutingResultat {
     RutetTilNOE,
+    FallbackIngenGTFunnet,
     RutetTilLokalkontor;
     fun toKontorEndringsType(): KontorEndringsType {
         return when (this) {
             RutetTilNOE -> KontorEndringsType.AutomatiskRutetTilNOE
             RutetTilLokalkontor -> KontorEndringsType.AutomatiskRutetTilLokalkontor
+            FallbackIngenGTFunnet -> KontorEndringsType.AutomatiskRutetTilNavItManglerGt
         }
     }
 }
@@ -58,4 +60,24 @@ class OppfolgingsPeriodeStartetLokalKontorTilordning(
             "OppfolgingsPeriodeStartetTilordning: kontorId=${tilordning.kontorId}, rutingResultat=$rutingResultat, registrant=${registrant.getType()}"
         )
     }
+}
+
+class OppfolgingsPeriodeStartetFallbackKontorTilordning(val fnr: Fnr) : AOKontorEndret(KontorTilordning(fnr, KontorId("2990")), System()) {
+    val rutingResultat: RutingResultat = RutingResultat.RutetTilLokalkontor
+    override fun toHistorikkInnslag(): KontorHistorikkInnslag {
+        return KontorHistorikkInnslag(
+            kontorId = tilordning.kontorId,
+            fnr = tilordning.fnr,
+            registrant = registrant,
+            kontorendringstype = rutingResultat.toKontorEndringsType(),
+            kontorType = KontorType.ARBEIDSOPPFOLGING
+        )
+    }
+
+    override fun logg() {
+        logger.info(
+            "OppfolgingsPeriodeStartetFallbackKontorTilordning: kontorId=${tilordning.kontorId}, rutingResultat=$rutingResultat, registrant=${registrant.getType()}"
+        )
+    }
+
 }

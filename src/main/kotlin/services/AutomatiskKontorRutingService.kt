@@ -1,6 +1,7 @@
 package no.nav.services
 
 import no.nav.db.Fnr
+import no.nav.domain.INGEN_GT_KONTOR_FALLBACK
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.events.AOKontorEndret
@@ -9,11 +10,13 @@ import no.nav.domain.events.AOKontorEndretPgaSkjermingEndret
 import no.nav.domain.events.GTKontorEndretPgaAdressebeskyttelseEndret
 import no.nav.domain.events.GTKontorEndretPgaBostedsadresseEndret
 import no.nav.domain.events.GTKontorEndretPgaSkjermingEndret
+import no.nav.domain.events.OppfolgingsPeriodeStartetFallbackKontorTilordning
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.domain.events.OppfolgingsperiodeStartetNoeTilordning
 import no.nav.http.client.*
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
 import no.nav.http.client.poaoTilgang.GTKontorFeil
+import no.nav.http.client.poaoTilgang.GTKontorFinnesIkke
 import no.nav.http.client.poaoTilgang.GTKontorFunnet
 import no.nav.http.client.poaoTilgang.GTKontorResultat
 import no.nav.kafka.consumers.AddressebeskyttelseEndret
@@ -101,7 +104,7 @@ class AutomatiskKontorRutingService(
         }
 
         return when {
-            gtKontor == null -> OppfolgingsPeriodeStartetLokalKontorTilordning(KontorTilordning(fnr, KontorId("2990")))
+            gtKontor == null -> OppfolgingsPeriodeStartetFallbackKontorTilordning(fnr)
             else -> OppfolgingsPeriodeStartetLokalKontorTilordning(KontorTilordning(fnr, gtKontor))
         }
     }
@@ -122,13 +125,15 @@ class AutomatiskKontorRutingService(
 
             val gtKontorResultat = gtKontorProvider(hendelse.fnr, harStrengtFortroligAdresse, erSkjermet)
             return when (gtKontorResultat) {
-                is GTKontorFunnet -> { KontorTilordningService.tilordneKontor(
+                is GTKontorFunnet -> {
+                    KontorTilordningService.tilordneKontor(
                     GTKontorEndretPgaBostedsadresseEndret(
-                        KontorTilordning(
-                            hendelse.fnr,
-                            gtKontorResultat.kontorId
-                        )
+                        KontorTilordning(hendelse.fnr,gtKontorResultat.kontorId)
                     ))
+                    HåndterPersondataEndretSuccess
+                }
+                is GTKontorFinnesIkke -> {
+                    /* Vurder om gt kontor skal settes til fallback her */
                     HåndterPersondataEndretSuccess
                 }
                 is GTKontorFeil -> {
@@ -152,22 +157,18 @@ class AutomatiskKontorRutingService(
 
             val gtKontorResultat = gtKontorProvider(hendelse.fnr, hendelse.erStrengtFortrolig(), erSkjermet)
             return when (gtKontorResultat) {
+                is GTKontorFinnesIkke,
                 is GTKontorFunnet -> {
+                    val gtKontor = getGTKontorOrFallback(gtKontorResultat)
                     KontorTilordningService.tilordneKontor(
                         GTKontorEndretPgaAdressebeskyttelseEndret(
-                            KontorTilordning(
-                                hendelse.fnr,
-                                gtKontorResultat.kontorId
-                            )
+                            KontorTilordning(hendelse.fnr, gtKontor)
                         )
                     )
                     if (hendelse.erGradert()) {
                         KontorTilordningService.tilordneKontor(
                             AOKontorEndretPgaAdressebeskyttelseEndret(
-                                KontorTilordning(
-                                    hendelse.fnr,
-                                    gtKontorResultat.kontorId
-                                )
+                                KontorTilordning(hendelse.fnr, gtKontor)
                             )
                         )
                     }
@@ -195,13 +196,15 @@ class AutomatiskKontorRutingService(
 
             val gtKontorResultat = gtKontorProvider(endringISkjermingStatus.fnr, harStrengtFortroligAdresse, endringISkjermingStatus.erSkjermet)
             return when (gtKontorResultat) {
+                is GTKontorFinnesIkke,
                 is GTKontorFunnet -> {
+                    val gtKontor = getGTKontorOrFallback(gtKontorResultat)
                     if (endringISkjermingStatus.erSkjermet) {
                         KontorTilordningService.tilordneKontor(
                             AOKontorEndretPgaSkjermingEndret(
                                 KontorTilordning(
                                     endringISkjermingStatus.fnr,
-                                    gtKontorResultat.kontorId
+                                    gtKontor
                                 )
                             )
                         )
@@ -209,7 +212,7 @@ class AutomatiskKontorRutingService(
                             GTKontorEndretPgaSkjermingEndret(
                                 KontorTilordning(
                                     endringISkjermingStatus.fnr,
-                                    gtKontorResultat.kontorId
+                                    gtKontor
                                 )
                             )
                         )
@@ -225,6 +228,14 @@ class AutomatiskKontorRutingService(
                     return Result.failure(Exception(feilmelding))
                 }
             }
+        }
+    }
+
+    fun getGTKontorOrFallback(gtKontorResultat: GTKontorResultat): KontorId {
+        return when (gtKontorResultat) {
+            is GTKontorFunnet -> gtKontorResultat.kontorId
+            is GTKontorFinnesIkke -> INGEN_GT_KONTOR_FALLBACK
+            is GTKontorFeil -> throw IllegalStateException("Kunne ikke hente gt-kontor: ${gtKontorResultat.melding}")
         }
     }
 }

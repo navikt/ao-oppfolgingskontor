@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory
 
 sealed class GTKontorResultat
 data class GTKontorFunnet(val kontorId: KontorId) : GTKontorResultat()
+data object GTKontorFinnesIkke : GTKontorResultat()
 data class GTKontorFeil(val melding: String) : GTKontorResultat()
 
 fun ApplicationEnvironment.getPoaoTilgangScope(): String {

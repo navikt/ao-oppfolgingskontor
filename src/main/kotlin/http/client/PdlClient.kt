@@ -39,6 +39,7 @@ data class FnrOppslagFeil(val message: String) : FnrResult()
 sealed class GtForBrukerResult
 data class GtForBrukerFunnet(val gt: GeografiskTilknytning) : GtForBrukerResult()
 data class GtForBrukerIkkeFunnet(val message: String) : GtForBrukerResult()
+data class GtForBrukerOppslagFeil(val message: String) : GtForBrukerResult()
 
 sealed class HarStrengtFortroligAdresseResult
 class HarStrengtFortroligAdresseFunnet(val harStrengtFortroligAdresse: Boolean) : HarStrengtFortroligAdresseResult()
@@ -123,11 +124,11 @@ class PdlClient(
             val result = client.execute(query)
             if (result.errors != null && result.errors!!.isNotEmpty()) {
                 log.error("Feil ved henting av gt for bruker: \n\t${result.errors!!.joinToString { it.message }}")
-                return GtForBrukerIkkeFunnet(result.errors!!.joinToString { "${it.message}: ${it.extensions?.get("details")}"  })
+                return GtForBrukerOppslagFeil(result.errors!!.joinToString { "${it.message}: ${it.extensions?.get("details")}"  })
             }
             return result.toGeografiskTilknytning()
         } catch (e: Throwable) {
-            return GtForBrukerIkkeFunnet("Henting av GT for bruker feilet: ${e.message ?: e.toString()}")
+            return GtForBrukerOppslagFeil("Henting av GT for bruker feilet: ${e.message ?: e.toString()}")
                 .also { log.error(it.message, e) }
         }
     }

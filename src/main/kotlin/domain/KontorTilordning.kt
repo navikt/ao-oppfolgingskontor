@@ -7,3 +7,5 @@ class KontorTilordning(
     val fnr: Fnr,
     val kontorId: KontorId
 )
+
+val INGEN_GT_KONTOR_FALLBACK = KontorId("2990")
