@@ -13,9 +13,11 @@ import io.ktor.server.application.ApplicationEnvironment
 import no.nav.db.Fnr
 import no.nav.http.client.tokenexchange.SystemTokenPlugin
 import no.nav.http.client.tokenexchange.TexasTokenResponse
+import no.nav.http.graphql.generated.client.HentAdresseBeskyttelseQuery
 import no.nav.http.graphql.generated.client.HentAlderQuery
 import no.nav.http.graphql.generated.client.HentFnrQuery
 import no.nav.http.graphql.generated.client.HentGtQuery
+import no.nav.http.graphql.generated.client.enums.AdressebeskyttelseGradering
 import no.nav.http.graphql.generated.client.enums.GtType
 import no.nav.http.graphql.generated.client.enums.IdentGruppe
 import org.slf4j.LoggerFactory
@@ -37,6 +39,12 @@ data class FnrOppslagFeil(val message: String) : FnrResult()
 sealed class GtForBrukerResult
 data class GtForBrukerFunnet(val gt: GeografiskTilknytning) : GtForBrukerResult()
 data class GtForBrukerIkkeFunnet(val message: String) : GtForBrukerResult()
+data class GtForBrukerOppslagFeil(val message: String) : GtForBrukerResult()
+
+sealed class HarStrengtFortroligAdresseResult
+class HarStrengtFortroligAdresseFunnet(val harStrengtFortroligAdresse: Boolean) : HarStrengtFortroligAdresseResult()
+class HarStrengtFortroligAdresseIkkeFunnet(val message: String) : HarStrengtFortroligAdresseResult()
+class HarStrengtFortroligAdresseOppslagFeil(val message: String) : HarStrengtFortroligAdresseResult()
 
 fun ApplicationEnvironment.getPdlScope(): String {
     return config.property("apis.pdl.scope").getString()
@@ -116,12 +124,31 @@ class PdlClient(
             val result = client.execute(query)
             if (result.errors != null && result.errors!!.isNotEmpty()) {
                 log.error("Feil ved henting av gt for bruker: \n\t${result.errors!!.joinToString { it.message }}")
-                return GtForBrukerIkkeFunnet(result.errors!!.joinToString { "${it.message}: ${it.extensions?.get("details")}"  })
+                return GtForBrukerOppslagFeil(result.errors!!.joinToString { "${it.message}: ${it.extensions?.get("details")}"  })
             }
             return result.toGeografiskTilknytning()
         } catch (e: Throwable) {
-            return GtForBrukerIkkeFunnet("Henting av GT for bruker feilet: ${e.message ?: e.toString()}")
+            return GtForBrukerOppslagFeil("Henting av GT for bruker feilet: ${e.message ?: e.toString()}")
                 .also { log.error(it.message, e) }
+        }
+    }
+
+    suspend fun harStrengtFortroligAdresse(fnr: Fnr): HarStrengtFortroligAdresseResult {
+        try {
+            val query = HentAdresseBeskyttelseQuery(HentAdresseBeskyttelseQuery.Variables(fnr, false))
+            val result = client.execute(query)
+            if (result.errors != null && result.errors!!.isNotEmpty()) {
+                log.error("Feil ved henting av strengt fortrolig adresse for bruker: \n\t${result.errors!!.joinToString { it.message }}")
+                return HarStrengtFortroligAdresseOppslagFeil(result.errors!!.joinToString { "${it.message}: ${it.extensions?.get("details")}"  })
+            }
+            return result?.data?.hentPerson?.adressebeskyttelse
+                ?.firstOrNull()
+                ?.let { it.gradering == AdressebeskyttelseGradering.STRENGT_FORTROLIG || it.gradering == AdressebeskyttelseGradering.STRENGT_FORTROLIG_UTLAND }
+                ?.let { HarStrengtFortroligAdresseFunnet(it) }
+                ?: HarStrengtFortroligAdresseIkkeFunnet("Ingen adressebeskyttelse funnet for bruker $result")
+        } catch (e: Throwable) {
+            log.error("Henting av strengt fortrolig adresse for bruker feilet: ${e.message ?: e.toString()}", e)
+            return HarStrengtFortroligAdresseOppslagFeil("Henting av strengt fortrolig adresse for bruker feilet: ${e.message ?: e.toString()}")
         }
     }
 }

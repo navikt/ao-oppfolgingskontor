@@ -9,6 +9,7 @@ import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.testing.testApplication
 import no.nav.http.client.GtForBrukerFunnet
 import no.nav.http.client.GtForBrukerIkkeFunnet
+import no.nav.http.client.GtForBrukerOppslagFeil
 import no.nav.http.client.PdlClient
 import no.nav.http.client.mockPdl
 import no.nav.http.client.pdlTestUrl
@@ -62,7 +63,7 @@ class PdlClientTest {
         """.trimIndent())
         val pdlClient = PdlClient(pdlTestUrl,client)
         val gt = pdlClient.hentGt(fnr)
-        gt.shouldBeInstanceOf<GtForBrukerIkkeFunnet>()
+        gt.shouldBeInstanceOf<GtForBrukerOppslagFeil>()
         // Also picks some more details from the response but didnt bother mocking that
         gt.message shouldBe "${errorMessage}: null"
     }
@@ -73,7 +74,7 @@ class PdlClientTest {
         val client = mockPdl(HttpStatusCode.InternalServerError)
         val pdlClient = PdlClient(pdlTestUrl,client)
         val gt = pdlClient.hentGt(fnr)
-        gt.shouldBeInstanceOf<GtForBrukerIkkeFunnet>()
+        gt.shouldBeInstanceOf<GtForBrukerOppslagFeil>()
         // Also picks some more details from the response but didnt bother mocking that
         gt.message shouldBe """
             Henting av GT for bruker feilet: Server error(POST http://pdl.test.local/graphql: 500 Internal Server Error. Text: ""

@@ -6,6 +6,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.RecordProcessingResult
+import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.TilordningFeil
@@ -33,7 +34,7 @@ class OppfolgingsPeriodeConsumer(
                     return@runBlocking when (resultat) {
                         is TilordningFeil -> {
                             log.error(resultat.message)
-                            Skip
+                            Retry("Kunne ikke tilordne kontor ved start på oppfølgingspeiode: ${resultat.message}")
                         }
                         is TilordningSuccess -> Commit
                     }

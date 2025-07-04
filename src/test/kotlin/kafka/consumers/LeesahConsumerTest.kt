@@ -12,6 +12,8 @@ import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.db.table.GeografiskTilknytningKontorTable
 import no.nav.domain.KontorId
 import no.nav.http.client.FnrFunnet
+import no.nav.http.client.HarStrengtFortroligAdresseFunnet
+import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.poaoTilgang.GTKontorFeil
 import no.nav.http.client.poaoTilgang.GTKontorFunnet
 import no.nav.http.client.poaoTilgang.GTKontorResultat
@@ -100,7 +102,7 @@ class LeesahConsumerTest {
     fun `skal håndtere at gt-provider returnerer GTKontorFeil`() = testApplication {
         val fnr = "4044567890"
         val automatiskKontorRutingService = defaultAutomatiskKontorRutingService(
-            { GTKontorFeil("Noe gikk galt") }
+            { a, b, c -> GTKontorFeil("Noe gikk galt") }
         )
         val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) })
 
@@ -114,7 +116,7 @@ class LeesahConsumerTest {
     fun `skal håndtere at gt-provider kaster throwable`() = testApplication {
         val fnr = "4044567890"
         val automatiskKontorRutingService = defaultAutomatiskKontorRutingService(
-            { throw Throwable("Noe gikk galt") }
+            { a, b, c -> throw Throwable("Noe gikk galt") }
         )
         val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) })
 
@@ -125,19 +127,21 @@ class LeesahConsumerTest {
     }
 
     private fun defaultAutomatiskKontorRutingService(
-        gtProvider: suspend (fnr: String) -> GTKontorResultat
+        gtProvider: suspend (fnr: String, strengtFortroligAdresse: Boolean, skjermet: Boolean) -> GTKontorResultat
     ): AutomatiskKontorRutingService {
         return AutomatiskKontorRutingService(
             fnrProvider = { throw Throwable("Denne skal ikke brukes") },
             gtKontorProvider = gtProvider,
             aldersProvider = { throw Throwable("Denne skal ikke brukes") },
             profileringProvider = { throw Throwable("Denne skal ikke brukes") },
+            erSkjermetProvider = { SkjermingFunnet(false) },
+            harStrengtFortroligAdresseProvider = { HarStrengtFortroligAdresseFunnet(false) }
         )
     }
 
     private fun gittRutingServiceMedGtKontor(kontorId: KontorId): AutomatiskKontorRutingService {
         return defaultAutomatiskKontorRutingService(
-            { GTKontorFunnet(kontorId) }
+            { a, b, c -> GTKontorFunnet(kontorId) }
         )
     }
 

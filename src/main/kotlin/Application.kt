@@ -36,6 +36,10 @@ fun Application.module() {
     val arbeidssokerregisterClient = ArbeidssokerregisterClient(
         environment.getArbeidssokerregisteretUrl(),
         texasClient.tokenProvider(environment.getArbeidssokerregisteretScope()))
+    val skjermingsClient = SkjermingsClient(
+        environment.getSkjermedePersonerUrl(),
+        texasClient.tokenProvider(environment.getSkjermedePersonerScope())
+    )
     /*
     val poaoTilgangHttpClient = PoaoTilgangKtorHttpClient(
         environment.getPoaoTilgangUrl(),
@@ -44,15 +48,17 @@ fun Application.module() {
 
     val gtNorgService = GTNorgService(
         { pdlClient.hentGt(it) },
-        { norg2Client.hentKontorForGt(it) }
+        { gt, strengtFortroligAdresse, skjermet -> norg2Client.hentKontorForGt(gt, strengtFortroligAdresse, skjermet) }
     )
     val kontorNavnService = KontorNavnService(norg2Client)
     val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService)
     val automatiskKontorRutingService = AutomatiskKontorRutingService(
-        { gtNorgService.hentGtKontorForBruker(it) },
+        { fnr, strengtFortroligAdresse, skjermet -> gtNorgService.hentGtKontorForBruker(fnr, strengtFortroligAdresse, skjermet) },
         { pdlClient.hentAlder(it) },
         { pdlClient.hentFnrFraAktorId(it) },
-        { arbeidssokerregisterClient.hentProfilering(it) }
+        { arbeidssokerregisterClient.hentProfilering(it) },
+        { skjermingsClient.hentSkjerming(it) },
+        { pdlClient.harStrengtFortroligAdresse(it) }
     )
 
     install(KafkaStreamsPlugin) {

@@ -52,10 +52,16 @@ class Norg2Client(
         return response.body<NorgKontor>().toMinimaltKontor()
     }
 
-    suspend fun hentKontorForGt(gt: GeografiskTilknytning): GTKontorResultat {
+    suspend fun hentKontorForGt(gt: GeografiskTilknytning, brukerHarStrengtFortroligAdresse: Boolean, brukerErSkjermet: Boolean): GTKontorResultat {
         try {
             val response = httpClient.get((hentKontorForGtPath(gt))) {
                 accept(ContentType.Application.Json)
+                if (brukerHarStrengtFortroligAdresse) {
+                    parameter("disk", "SPSF")
+                }
+                if (brukerErSkjermet) {
+                    parameter("skjermet", "true")
+                }
             }
             if (response.status != HttpStatusCode.OK)
                 throw RuntimeException("Kunne ikke hente kontor for GT $gt fra Norg2. Status: ${response.status}")

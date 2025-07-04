@@ -21,7 +21,7 @@ import no.nav.kafka.consumers.FnrEllerAktorId
 import no.nav.kafka.consumers.LeesahConsumer
 import no.nav.kafka.consumers.OppfolgingsPeriodeConsumer
 import no.nav.kafka.consumers.SkjermingConsumer
-import no.nav.kafka.processor.LeesahAvroDeserializer
+import no.nav.kafka.processor.LeesahAvroSerdes
 import no.nav.services.AutomatiskKontorRutingService
 import org.apache.kafka.streams.KafkaStreams
 import org.jetbrains.exposed.sql.Database
@@ -57,8 +57,8 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
 
         val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, fnrProvider)
         val leesahTopic = environment.config.property("topics.inn.pdlLeesah").getString()
-        val spesificAvroValueSerde = LeesahAvroDeserializer(environment.config).valueDeserializer
-        val specificAvroKeySerde = LeesahAvroDeserializer(environment.config).keyAvroSerde
+        val spesificAvroValueSerde = LeesahAvroSerdes(environment.config).valueAvroSerde
+        val specificAvroKeySerde = LeesahAvroSerdes(environment.config).keyAvroSerde
 
         val skjermingConsumer = SkjermingConsumer(automatiskKontorRutingService)
         val skjermingTopic = environment.config.property("topics.inn.skjerming").getString()
