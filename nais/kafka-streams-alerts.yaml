@@ -25,7 +25,8 @@ spec:
         # ALARM 2: Når hele klienten går inn i en offisiell feiltilstand
         - alert: KafkaStreamsKlientHarFeilet
           expr: |
-            kafka_stream_client_state{app="ao-oppfolgingskontor", state="ERROR"} == 1
+            kafka_stream_client_state{app="ao-oppfolgingskontor"} == 6
+          # 6 er den offisielle feilstaten i Kafka Streams
           for: 2m
           annotations:
             consequence: "Kafka Streams-klienten har status ERROR. All meldingsprosessering har stoppet."
