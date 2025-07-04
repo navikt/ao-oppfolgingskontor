@@ -89,8 +89,9 @@ class AutomatiskKontorRutingService(
         alder: Int?,
         profilering: HentProfileringsResultat,
     ): AOKontorEndret {
-        log.info("Profilering: $profilering")
         if (alder == null) throw IllegalArgumentException("Alder == null")
+
+        log.info("Profilering: $profilering, alder: $alder")
 
         if (profilering is ProfileringFunnet &&
             profilering.profilering == ProfileringsResultat.ANTATT_GODE_MULIGHETER &&

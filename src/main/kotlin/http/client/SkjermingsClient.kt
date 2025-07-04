@@ -49,10 +49,10 @@ class SkjermingsClient(
             if (response.status.isSuccess()) {
                 SkjermingFunnet(response.body<Boolean>())
             } else {
-                SkjermingIkkeFunnet("Kunne ikke hente skjermingsstatus for fnr: $fnr. Status: ${response.status}")
+                SkjermingIkkeFunnet("Kunne ikke hente skjermingsstatus. Status: ${response.status}")
             }
         } catch (e: Exception) {
-            log.error("Feil ved henting av skjermingsstatus for fnr: $fnr", e)
+            log.error("Feil ved henting av skjermingsstatus", e)
             SkjermingIkkeFunnet("Feil ved henting av skjermingsstatus: ${e.message}")
         }
     }

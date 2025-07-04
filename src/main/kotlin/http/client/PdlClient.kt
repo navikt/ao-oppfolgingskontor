@@ -13,9 +13,11 @@ import io.ktor.server.application.ApplicationEnvironment
 import no.nav.db.Fnr
 import no.nav.http.client.tokenexchange.SystemTokenPlugin
 import no.nav.http.client.tokenexchange.TexasTokenResponse
+import no.nav.http.graphql.generated.client.HentAdresseBeskyttelseQuery
 import no.nav.http.graphql.generated.client.HentAlderQuery
 import no.nav.http.graphql.generated.client.HentFnrQuery
 import no.nav.http.graphql.generated.client.HentGtQuery
+import no.nav.http.graphql.generated.client.enums.AdressebeskyttelseGradering
 import no.nav.http.graphql.generated.client.enums.GtType
 import no.nav.http.graphql.generated.client.enums.IdentGruppe
 import org.slf4j.LoggerFactory
@@ -131,7 +133,22 @@ class PdlClient(
     }
 
     suspend fun harStrengtFortroligAdresse(fnr: Fnr): HarStrengtFortroligAdresseResult {
-        return HarStrengtFortroligAdresseOppslagFeil("Ikke implementert")
+        try {
+            val query = HentAdresseBeskyttelseQuery(HentAdresseBeskyttelseQuery.Variables(fnr, false))
+            val result = client.execute(query)
+            if (result.errors != null && result.errors!!.isNotEmpty()) {
+                log.error("Feil ved henting av strengt fortrolig adresse for bruker: \n\t${result.errors!!.joinToString { it.message }}")
+                return HarStrengtFortroligAdresseOppslagFeil(result.errors!!.joinToString { "${it.message}: ${it.extensions?.get("details")}"  })
+            }
+            return result?.data?.hentPerson?.adressebeskyttelse
+                ?.firstOrNull()
+                ?.let { it.gradering == AdressebeskyttelseGradering.STRENGT_FORTROLIG || it.gradering == AdressebeskyttelseGradering.STRENGT_FORTROLIG_UTLAND }
+                ?.let { HarStrengtFortroligAdresseFunnet(it) }
+                ?: HarStrengtFortroligAdresseIkkeFunnet("Ingen adressebeskyttelse funnet for bruker $this")
+        } catch (e: Throwable) {
+            log.error("Henting av strengt fortrolig adresse for bruker $fnr feilet: ${e.message ?: e.toString()}", e)
+            return HarStrengtFortroligAdresseOppslagFeil("Henting av strengt fortrolig adresse for bruker $fnr feilet: ${e.message ?: e.toString()}")
+        }
     }
 }
 
