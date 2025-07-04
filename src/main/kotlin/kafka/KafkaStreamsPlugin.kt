@@ -8,6 +8,8 @@ import io.ktor.server.application.ApplicationStopping
 import io.ktor.server.application.createApplicationPlugin
 import io.ktor.server.application.hooks.MonitoringEvent
 import io.ktor.server.application.log
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.binder.kafka.KafkaStreamsMetrics
 import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
 import no.nav.http.client.FnrResult
 import no.nav.kafka.config.AvroTopicConsumer
@@ -35,7 +37,8 @@ val shutDownTimeout = Duration.ofSeconds(1)
 class KafkaStreamsPluginConfig(
     var automatiskKontorRutingService: AutomatiskKontorRutingService? = null,
     var fnrProvider: (suspend (fnrEllerAktorId: FnrEllerAktorId) -> FnrResult)? = null,
-    var database: Database? = null
+    var database: Database? = null,
+    var meterRegistry: MeterRegistry? = null
 )
 
 val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
@@ -78,8 +81,11 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
             )),
             lockProvider
         )
-
         val kafkaStream = KafkaStreams(topology, configureKafkaStreams(environment.config))
+        if (this.pluginConfig.meterRegistry != null) {
+            val kafkaStreamsMetrics = KafkaStreamsMetrics(kafkaStream)
+            kafkaStreamsMetrics.bindTo(this.pluginConfig.meterRegistry!!)
+        }
 
         on(MonitoringEvent(ApplicationStarted)) { application ->
             application.log.info("Starter Kafka Streams")

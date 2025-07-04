@@ -1,21 +1,37 @@
 package no.nav
 
 import io.ktor.server.application.*
+import io.ktor.server.metrics.micrometer.*
 import io.ktor.server.plugins.calllogging.*
 import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics
+import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics
+import io.micrometer.core.instrument.binder.system.ProcessorMetrics
+import io.micrometer.prometheusmetrics.PrometheusConfig
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
 import org.slf4j.event.*
 
 val excludedPaths = listOf("/isAlive", "/isReady", "/metrics")
 
-fun Application.configureMonitoring() {
-//    install(DropwizardMetrics) {
-//        Slf4jReporter.forRegistry(registry)
-//            .outputTo(this@configureMonitoring.log)
-//            .convertRatesTo(TimeUnit.SECONDS)
-//            .convertDurationsTo(TimeUnit.MILLISECONDS)
-//            .build()
-//            .start(10, TimeUnit.SECONDS)
-//    }
+fun Application.configureMonitoring(): MeterRegistry {
+    val appMicrometerRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
+
+    install(MicrometerMetrics) {
+        registry = appMicrometerRegistry
+        meterBinders = listOf(
+            JvmMemoryMetrics(),
+            JvmGcMetrics(),
+            ProcessorMetrics(),
+        )
+    }
+    routing {
+        get("/metrics") {
+            call.respond(appMicrometerRegistry.scrape())
+        }
+    }
     install(CallLogging) {
         level = Level.INFO
         filter { call ->
@@ -30,4 +46,5 @@ fun Application.configureMonitoring() {
             "$status $method - $path in ${responseTime}ms"
         }
     }
+    return appMicrometerRegistry
 }

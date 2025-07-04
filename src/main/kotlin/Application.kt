@@ -24,7 +24,7 @@ fun main(args: Array<String>) {
 }
 
 fun Application.module() {
-    configureMonitoring()
+    val meterRegistry = configureMonitoring()
     configureHealthAndCompression()
     configureSecurity()
     val database = configureDatabase()
@@ -65,6 +65,7 @@ fun Application.module() {
         this.automatiskKontorRutingService = automatiskKontorRutingService
         this.fnrProvider = pdlClient::hentFnrFraAktorId
         this.database = database
+        this.meterRegistry = meterRegistry
     }
 
     configureGraphQlModule(norg2Client, kontorTilhorighetService)
