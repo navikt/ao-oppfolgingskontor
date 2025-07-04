@@ -37,10 +37,12 @@ data class TilordningFeil(val message: String) : TilordningResultat()
 
 
 class AutomatiskKontorRutingService(
-    private val gtKontorProvider: suspend (fnr: Fnr) -> GTKontorResultat,
+    private val gtKontorProvider: suspend (fnr: Fnr, strengtFortroligAdresse: Boolean, skjermet: Boolean) -> GTKontorResultat,
     private val aldersProvider: suspend (fnr: Fnr) -> AlderResult,
     private val fnrProvider: suspend (aktorId: String) -> FnrResult,
     private val profileringProvider: suspend (fnr: Fnr) -> HentProfileringsResultat,
+    private val erSkjermetProvider: suspend (fnr: Fnr) -> SkjermingResult,
+    private val harStrengtFortroligAdresseProvider: suspend (fnr: Fnr) -> HarStrengtFortroligAdresseResult,
 ) {
     val log = LoggerFactory.getLogger(this::class.java)
 
@@ -52,8 +54,17 @@ class AutomatiskKontorRutingService(
                 is FnrIkkeFunnet -> return TilordningFeil("Fant ikke fnr: ${fnrResult.message}")
                 is FnrOppslagFeil -> return TilordningFeil("Feil ved oppslag på fnr: ${fnrResult.message}")
             }
+            val erSkjermet = when(val skjermetResult = erSkjermetProvider(fnr)) {
+                is SkjermingFunnet -> skjermetResult.skjermet
+                is SkjermingIkkeFunnet -> return TilordningFeil("Kunne ikke hente skjerming ved kontortilordning: ${skjermetResult.melding}")
+            }
+            val harStrengtFortroligAdresse = when (val result = harStrengtFortroligAdresseProvider(fnr)) {
+                is HarStrengtFortroligAdresseIkkeFunnet -> return TilordningFeil("Kunne ikke hente adressebeskyttelse ved kontortilordning: ${result.message}")
+                is HarStrengtFortroligAdresseOppslagFeil -> return TilordningFeil("Kunne ikke hente adressebeskyttelse ved kontortilordning: ${result.message}")
+                is HarStrengtFortroligAdresseFunnet -> result.harStrengtFortroligAdresse
+            }
 
-            val gtKontorResultat = gtKontorProvider(fnr)
+            val gtKontorResultat = gtKontorProvider(fnr, harStrengtFortroligAdresse, erSkjermet)
             if (gtKontorResultat is GTKontorFeil) return TilordningFeil("Feil ved henting av gt-kontor: ${gtKontorResultat.melding}")
 
             val aldersResultat = aldersProvider(fnr)
@@ -98,7 +109,17 @@ class AutomatiskKontorRutingService(
         hendelse: BostedsadresseEndret,
     ): HåndterPersondataEndretResultat {
         try {
-            val gtKontorResultat = gtKontorProvider(hendelse.fnr)
+            val erSkjermet = when(val skjermetResult = erSkjermetProvider(hendelse.fnr)) {
+                is SkjermingFunnet -> skjermetResult.skjermet
+                is SkjermingIkkeFunnet -> return HåndterPersondataEndretFail(skjermetResult.melding)
+            }
+            val harStrengtFortroligAdresse = when (val result = harStrengtFortroligAdresseProvider(hendelse.fnr)) {
+                is HarStrengtFortroligAdresseIkkeFunnet -> return HåndterPersondataEndretFail("Kunne ikke hente adressebeskyttelse ved endring i bostedsadresse: ${result.message}")
+                is HarStrengtFortroligAdresseOppslagFeil -> return HåndterPersondataEndretFail("Kunne ikke hente adressebeskyttelse ved endring i bostedsadresse: ${result.message}")
+                is HarStrengtFortroligAdresseFunnet -> result.harStrengtFortroligAdresse
+            }
+
+            val gtKontorResultat = gtKontorProvider(hendelse.fnr, harStrengtFortroligAdresse, erSkjermet)
             return when (gtKontorResultat) {
                 is GTKontorFunnet -> { KontorTilordningService.tilordneKontor(
                     GTKontorEndretPgaBostedsadresseEndret(
@@ -123,7 +144,12 @@ class AutomatiskKontorRutingService(
         hendelse: AddressebeskyttelseEndret,
     ): HåndterPersondataEndretResultat {
         try {
-            val gtKontorResultat = gtKontorProvider(hendelse.fnr)
+            val erSkjermet = when(val skjermetResult = erSkjermetProvider(hendelse.fnr)) {
+                is SkjermingFunnet -> skjermetResult.skjermet
+                is SkjermingIkkeFunnet -> return HåndterPersondataEndretFail("Kunne ikke hente skjerming ved endring i adressebeskyttelse: ${skjermetResult.melding}")
+            }
+
+            val gtKontorResultat = gtKontorProvider(hendelse.fnr, hendelse.erStrengtFortrolig(), erSkjermet)
             return when (gtKontorResultat) {
                 is GTKontorFunnet -> {
                     KontorTilordningService.tilordneKontor(
@@ -160,7 +186,13 @@ class AutomatiskKontorRutingService(
         endringISkjermingStatus: EndringISkjermingStatus
     ): Result<EndringISkjermingResult> {
         return runCatching {
-            val gtKontorResultat = gtKontorProvider(endringISkjermingStatus.fnr)
+            val harStrengtFortroligAdresse = when (val result = harStrengtFortroligAdresseProvider(endringISkjermingStatus.fnr)) {
+                is HarStrengtFortroligAdresseIkkeFunnet -> return Result.failure(Exception("Kunne ikke hente adressebeskyttelse ved endring i skjermingstatus: ${result.message}"))
+                is HarStrengtFortroligAdresseOppslagFeil -> return Result.failure(Exception("Kunne ikke hente adressebeskyttelse ved endring i skjermingstatus: ${result.message}"))
+                is HarStrengtFortroligAdresseFunnet -> result.harStrengtFortroligAdresse
+            }
+
+            val gtKontorResultat = gtKontorProvider(endringISkjermingStatus.fnr, harStrengtFortroligAdresse, endringISkjermingStatus.erSkjermet)
             return when (gtKontorResultat) {
                 is GTKontorFunnet -> {
                     if (endringISkjermingStatus.erSkjermet) {
@@ -200,4 +232,8 @@ fun AddressebeskyttelseEndret.erGradert(): Boolean {
     return this.gradering == Gradering.STRENGT_FORTROLIG
             || this.gradering == Gradering.FORTROLIG
             || this.gradering == Gradering.STRENGT_FORTROLIG_UTLAND
+}
+
+fun AddressebeskyttelseEndret.erStrengtFortrolig(): Boolean {
+    return this.gradering == Gradering.STRENGT_FORTROLIG || this.gradering == Gradering.STRENGT_FORTROLIG_UTLAND
 }

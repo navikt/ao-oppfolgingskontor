@@ -49,6 +49,8 @@ spec:
           namespace: org
         - application: poao-tilgang
           namespace: poao
+        - application: skjermede-personer-pip
+          namespace: nom
   azure:
     application:
       enabled: true
@@ -63,3 +65,7 @@ spec:
       value: http://poao-tilgang.poao
     - name: PDL_URL
       value: https://pdl-api.prod-fss-pub.nais.io
+    - name: SKJERMEDE_PERSONER_PIP_SCOPE
+      value: api://prod-gcp.nom.skjermede-personer-pip/.default
+    - name: SKJERMEDE_PERSONER_PIP_URL
+      value: http://skjermede-personer-pip.nom

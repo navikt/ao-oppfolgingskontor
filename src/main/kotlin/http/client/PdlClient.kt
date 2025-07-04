@@ -38,6 +38,11 @@ sealed class GtForBrukerResult
 data class GtForBrukerFunnet(val gt: GeografiskTilknytning) : GtForBrukerResult()
 data class GtForBrukerIkkeFunnet(val message: String) : GtForBrukerResult()
 
+sealed class HarStrengtFortroligAdresseResult
+class HarStrengtFortroligAdresseFunnet(val harStrengtFortroligAdresse: Boolean) : HarStrengtFortroligAdresseResult()
+class HarStrengtFortroligAdresseIkkeFunnet(val message: String) : HarStrengtFortroligAdresseResult()
+class HarStrengtFortroligAdresseOppslagFeil(val message: String) : HarStrengtFortroligAdresseResult()
+
 fun ApplicationEnvironment.getPdlScope(): String {
     return config.property("apis.pdl.scope").getString()
 }
@@ -123,6 +128,10 @@ class PdlClient(
             return GtForBrukerIkkeFunnet("Henting av GT for bruker feilet: ${e.message ?: e.toString()}")
                 .also { log.error(it.message, e) }
         }
+    }
+
+    suspend fun harStrengtFortroligAdresse(fnr: Fnr): HarStrengtFortroligAdresseResult {
+        return HarStrengtFortroligAdresseOppslagFeil("Ikke implementert")
     }
 }
 
