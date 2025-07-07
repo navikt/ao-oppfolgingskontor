@@ -28,8 +28,8 @@ class GTNorgService(
                 is GtForBrukerOppslagFeil -> KontorForGtNrFeil(gtForBruker.message)
                 is GtLandForBrukerFunnet -> KontorForGtNrFantLand(
                     gtForBruker.land,
-                    skjerming = skjermet,
-                    strengtFortroligAdresse = strengtFortroligAdresse
+                    skjermet,
+                    strengtFortroligAdresse
                 )
                 is GtNummerForBrukerFunnet -> kontorForGtProvider(gtForBruker.gt, strengtFortroligAdresse, skjermet)
             }
@@ -45,7 +45,7 @@ class GTNorgService(
 sealed class KontorForGtNrResultat
 sealed class KontorForGtNrFunnet(val skjerming: HarSkjerming, val strengtFortroligAdresse: HarStrengtFortroligAdresse) : KontorForGtNrResultat()
 data class KontorForGtNrFantKontor(val kontorId: KontorId, val _skjerming: HarSkjerming, val _strengtFortroligAdresse: HarStrengtFortroligAdresse) : KontorForGtNrFunnet(_skjerming, _strengtFortroligAdresse)
-class KontorForGtNrFantLand(val landkode: GeografiskTilknytningLand, skjerming: HarSkjerming, strengtFortroligAdresse: HarStrengtFortroligAdresse) : KontorForGtNrFunnet(skjerming, strengtFortroligAdresse)
+data class KontorForGtNrFantLand(val landkode: GeografiskTilknytningLand, val _skjerming: HarSkjerming, val _strengtFortroligAdresse: HarStrengtFortroligAdresse) : KontorForGtNrFunnet(_skjerming, _strengtFortroligAdresse)
 data class KontorForGtFinnesIkke(val _skjerming: HarSkjerming, val _strengtFortroligAdresse: HarStrengtFortroligAdresse) : KontorForGtNrFunnet(_skjerming, _strengtFortroligAdresse)
 data class KontorForGtNrFeil(val melding: String) : KontorForGtNrResultat()
 
