@@ -84,7 +84,7 @@ data class OppfolgingsPeriodeStartetFallbackKontorTilordning(val fnr: Fnr, val s
 
 }
 
-data class OppfolgingsPeriodeStartetSensitivKontorTilordning(val fnr: Fnr, val sensitivitet: Sensitivitet): AOKontorEndret(KontorTilordning(fnr, KontorId("2990")), System()) {
+data class OppfolgingsPeriodeStartetSensitivKontorTilordning(val kontorTilordning: KontorTilordning, val sensitivitet: Sensitivitet): AOKontorEndret(kontorTilordning, System()) {
     val rutingResultat: RutingResultat = RutingResultat.RutetTilLokalkontor
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(

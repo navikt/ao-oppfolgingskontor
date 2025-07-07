@@ -62,6 +62,7 @@ class AutomatiskKontorRutingService(
     private val harStrengtFortroligAdresseProvider: suspend (fnr: Fnr) -> HarStrengtFortroligAdresseResult,
 ) {
     val log = LoggerFactory.getLogger(this::class.java)
+    private val VIKAFOSSEN = KontorId("2103")
 
     suspend fun tilordneKontorAutomatisk(oppfolgingsperiodeEndret: OppfolgingsperiodeEndret): TilordningResultat {
         if (oppfolgingsperiodeEndret is OppfolgingsperiodeAvsluttet) return TilordningSuccessIngenEndring
@@ -89,7 +90,6 @@ class AutomatiskKontorRutingService(
 
             val kontorTilordning = when (gtKontorResultat) {
                 is KontorForGtNrFunnet -> hentTilordning(fnr, gtKontorResultat, alder, profileringProvider(fnr))
-                is KontorForGtFinnesIkke -> OppfolgingsPeriodeStartetFallbackKontorTilordning(fnr, gtKontorResultat.sensitivitet())
                 is KontorForGtNrFeil -> return TilordningFeil("Feil ved henting av gt-kontor: ${gtKontorResultat.melding}")
             }
             tilordneKontor(kontorTilordning)
@@ -113,13 +113,22 @@ class AutomatiskKontorRutingService(
             profilering is ProfileringFunnet &&
             profilering.profilering == ProfileringsResultat.ANTATT_GODE_MULIGHETER &&
             alder in 31..59 -> OppfolgingsperiodeStartetNoeTilordning(fnr)
-//            gtKontor.sensitivitet().erSensitiv() -> OppfolgingsPeriodeStartetSensitivKontorTilordning(fnr, gtKontor.sensitivitet())
+            gtKontor.sensitivitet().erSensitiv() -> {
+                when(gtKontor) {
+                    is KontorForGtNrFantKontor -> OppfolgingsPeriodeStartetSensitivKontorTilordning(KontorTilordning(fnr, gtKontor.kontorId), gtKontor.sensitivitet())
+                    is KontorForGtNrFantLand, is KontorForGtFinnesIkke->
+                        if(gtKontor.sensitivitet().strengtFortroligAdresse.value) {
+                            OppfolgingsPeriodeStartetSensitivKontorTilordning(KontorTilordning(fnr, VIKAFOSSEN), gtKontor.sensitivitet())
+                        } else {
+                            throw IllegalStateException("Skal ikke skje")
+                        }
+                }
+            }
             else -> {
                 when (gtKontor) {
                     is KontorForGtNrFantKontor -> OppfolgingsPeriodeStartetLokalKontorTilordning(KontorTilordning(fnr, gtKontor.kontorId), gtKontor.sensitivitet())
                     is KontorForGtFinnesIkke -> {
-                        // Har ikke kontor men vet bruker er skjermet eller har strengt fortrolig adresse og da vet vi hvilket kontor som skal brukes
-                        OppfolgingsPeriodeStartetSensitivKontorTilordning(fnr, gtKontor.sensitivitet())
+                        OppfolgingsPeriodeStartetFallbackKontorTilordning(fnr, gtKontor.sensitivitet())
                     }
                     is KontorForGtNrFantLand -> OppfolgingsPeriodeStartetFallbackKontorTilordning(fnr, gtKontor.sensitivitet())
                 }

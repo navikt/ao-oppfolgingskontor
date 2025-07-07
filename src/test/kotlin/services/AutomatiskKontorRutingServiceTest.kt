@@ -95,7 +95,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                     OppfolgingsperiodeStartet(aktorId)
                 ) shouldBe TilordningSuccessKontorEndret(
                     OppfolgingsPeriodeStartetSensitivKontorTilordning(
-                        adressebeskyttetBruker.fnr(),
+                        KontorTilordning(adressebeskyttetBruker.fnr(), adressebeskyttetBruker.gtKontor()),
                         Sensitivitet(HarSkjerming(false), HarStrengtFortroligAdresse(true))
                     )
                 )
@@ -106,7 +106,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                     OppfolgingsperiodeStartet(aktorId)
                 ) shouldBe TilordningSuccessKontorEndret(
                     OppfolgingsPeriodeStartetSensitivKontorTilordning(
-                        skjermetBruker.fnr(),
+                        KontorTilordning(skjermetBruker.fnr(), adressebeskyttetBruker.gtKontor()),
                         Sensitivitet(
                             HarSkjerming(true),
                             HarStrengtFortroligAdresse(false)
