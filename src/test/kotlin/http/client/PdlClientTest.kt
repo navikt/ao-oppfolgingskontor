@@ -7,7 +7,6 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.testApplication
 import no.nav.http.client.GeografiskTilknytningLand
 import no.nav.http.client.GeografiskTilknytningNr
-import no.nav.http.client.GtForBrukerFunnet
 import no.nav.http.client.GtForBrukerIkkeFunnet
 import no.nav.http.client.GtForBrukerOppslagFeil
 import no.nav.http.client.GtLandForBrukerFunnet

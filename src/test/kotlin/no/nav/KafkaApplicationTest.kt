@@ -24,8 +24,7 @@ import no.nav.kafka.consumers.OppfolgingsPeriodeConsumer
 import no.nav.kafka.processor.ExplicitResultProcessor
 import no.nav.kafka.consumers.SkjermingConsumer
 import no.nav.services.AutomatiskKontorRutingService
-import no.nav.services.GTKontorFunnet
-import no.nav.services.GTKontorVanligFunnet
+import no.nav.services.KontorForGtNrFantKontor
 import no.nav.services.KontorTilordningService
 import no.nav.utils.flywayMigrationInTest
 import org.apache.kafka.common.serialization.Serdes
@@ -84,7 +83,7 @@ class KafkaApplicationTest {
             val periodeStart = ZonedDateTime.now().minusDays(2)
             val consumer = OppfolgingsPeriodeConsumer(AutomatiskKontorRutingService(
                 KontorTilordningService::tilordneKontor,
-                { _, _, _-> GTKontorVanligFunnet(kontor) },
+                { _, a, b-> KontorForGtNrFantKontor(kontor, b, a) },
                 { AlderFunnet(40) },
                 { FnrFunnet(fnr) },
                 { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
@@ -141,7 +140,7 @@ class KafkaApplicationTest {
 
         val automatiskKontorRutingService = AutomatiskKontorRutingService(
             KontorTilordningService::tilordneKontor,
-            { _, _, _-> GTKontorVanligFunnet(KontorId(skjermetKontor)) },
+            { _, b, a-> KontorForGtNrFantKontor(KontorId(skjermetKontor), a, b) },
             { AlderFunnet(40) },
             { FnrFunnet(fnr) },
             { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },

@@ -5,8 +5,8 @@ import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
 import no.nav.domain.Sensitivitet
+import no.nav.http.client.GeografiskTilknytningLand
 import no.nav.http.client.GeografiskTilknytningNr
-import no.nav.http.client.GtForBrukerFunnet
 import no.nav.http.client.GtForBrukerResult
 import no.nav.http.client.GtForBrukerIkkeFunnet
 import no.nav.http.client.GtForBrukerOppslagFeil
@@ -16,40 +16,42 @@ import org.slf4j.LoggerFactory
 
 class GTNorgService(
     private val gtForBrukerProvider: suspend (fnr: Fnr) -> GtForBrukerResult,
-    private val kontorForGtProvider: suspend (gt: GeografiskTilknytningNr, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming) -> GTKontorResultat,
+    private val kontorForGtProvider: suspend (gt: GeografiskTilknytningNr, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming) -> KontorForGtNrResultat,
 ) {
     val log = LoggerFactory.getLogger(this::class.java)
 
-    suspend fun hentGtKontorForBruker(fnr: Fnr, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming): GTKontorResultat {
+    suspend fun hentGtKontorForBruker(fnr: Fnr, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming): KontorForGtNrResultat {
         try {
             val gtForBruker = gtForBrukerProvider(fnr)
             return when (gtForBruker) {
-//                is GtForBrukerFunnet -> kontorForGtProvider(gtForBruker.gt, strengtFortroligAdresse, skjermet)
-                is GtForBrukerIkkeFunnet -> GTKontorFinnesIkke
-                is GtForBrukerOppslagFeil -> GTKontorFeil(gtForBruker.message)
-                is GtLandForBrukerFunnet -> TODO()
-                is GtNummerForBrukerFunnet -> TODO()
-                is GtForBrukerFunnet -> TODO()
+                is GtForBrukerIkkeFunnet -> KontorForGtFinnesIkke(skjermet, strengtFortroligAdresse)
+                is GtForBrukerOppslagFeil -> KontorForGtNrFeil(gtForBruker.message)
+                is GtLandForBrukerFunnet -> KontorForGtNrFantLand(
+                    gtForBruker.land,
+                    skjerming = skjermet,
+                    strengtFortroligAdresse = strengtFortroligAdresse
+                )
+                is GtNummerForBrukerFunnet -> kontorForGtProvider(gtForBruker.gt, strengtFortroligAdresse, skjermet)
             }
         } catch (e: Exception) {
             log.error("henting av GT kontor for bruker feilet (hardt!)", e)
-            return GTKontorFeil("Klarte ikke hente GT kontor for bruker: ${e.message}")
+            return KontorForGtNrFeil("Klarte ikke hente GT kontor for bruker: ${e.message}")
         }
     }
 }
+/*
+* Når vi får gt mand bare land fra PDL propagerer dette videre igjennom kontor-oppslag tjenesten
+* */
+sealed class KontorForGtNrResultat
+sealed class KontorForGtNrFunnet(val skjerming: HarSkjerming, val strengtFortroligAdresse: HarStrengtFortroligAdresse) : KontorForGtNrResultat()
+class KontorForGtNrFantKontor(val kontorId: KontorId, skjerming: HarSkjerming, strengtFortroligAdresse: HarStrengtFortroligAdresse) : KontorForGtNrFunnet(skjerming, strengtFortroligAdresse)
+class KontorForGtNrFantLand(val landkode: GeografiskTilknytningLand, skjerming: HarSkjerming, strengtFortroligAdresse: HarStrengtFortroligAdresse) : KontorForGtNrFunnet(skjerming, strengtFortroligAdresse)
+data class KontorForGtFinnesIkke(val _skjerming: HarSkjerming, val _strengtFortroligAdresse: HarStrengtFortroligAdresse) : KontorForGtNrFunnet(_skjerming, _strengtFortroligAdresse)
+data class KontorForGtNrFeil(val melding: String) : KontorForGtNrResultat()
 
-sealed class GTKontorResultat
-sealed class GTKontorFunnet(val kontorId: KontorId) : GTKontorResultat()
-class GTKontorMedSkjermingFunnet(kontorId: KontorId) : GTKontorFunnet(kontorId)
-class GTKontorAdressebeskyttelseFunnet(kontorId: KontorId) : GTKontorFunnet(kontorId)
-class GTKontorVanligFunnet(kontorId: KontorId) : GTKontorFunnet(kontorId)
-data object GTKontorFinnesIkke : GTKontorResultat()
-data class GTKontorFeil(val melding: String) : GTKontorResultat()
-
-fun GTKontorFunnet.sensitivitet(): Sensitivitet {
-    return when (this) {
-        is GTKontorAdressebeskyttelseFunnet -> Sensitivitet(HarSkjerming(false), HarStrengtFortroligAdresse(true))
-        is GTKontorMedSkjermingFunnet -> Sensitivitet(HarSkjerming(true), HarStrengtFortroligAdresse(false))
-        is GTKontorVanligFunnet -> Sensitivitet(HarSkjerming(false), HarStrengtFortroligAdresse(false))
-    }
+fun KontorForGtNrFunnet.sensitivitet(): Sensitivitet {
+    return Sensitivitet(
+        this.skjerming,
+        this.strengtFortroligAdresse
+    )
 }

@@ -15,13 +15,13 @@ import no.nav.domain.events.GTKontorEndretPgaSkjermingEndret
 import no.nav.domain.events.KontorEndretEvent
 import no.nav.domain.events.OppfolgingsPeriodeStartetFallbackKontorTilordning
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
+import no.nav.domain.events.OppfolgingsPeriodeStartetSensitivKontorTilordning
 import no.nav.domain.events.OppfolgingsperiodeStartetNoeTilordning
 import no.nav.domain.externalEvents.AdressebeskyttelseEndret
 import no.nav.domain.externalEvents.BostedsadresseEndret
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeEndret
 import no.nav.domain.externalEvents.SkjermetStatusEndret
-import no.nav.domain.externalEvents.erGradert
 import no.nav.domain.externalEvents.erStrengtFortrolig
 import no.nav.http.client.AlderFunnet
 import no.nav.http.client.AlderIkkeFunnet
@@ -54,7 +54,7 @@ data class TilordningFeil(val message: String) : TilordningResultat()
 
 class AutomatiskKontorRutingService(
     private val tilordneKontor: suspend (kontorEndretEvent: KontorEndretEvent) -> Unit,
-    private val gtKontorProvider: suspend (fnr: Fnr, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming) -> GTKontorResultat,
+    private val gtKontorProvider: suspend (fnr: Fnr, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming) -> KontorForGtNrResultat,
     private val aldersProvider: suspend (fnr: Fnr) -> AlderResult,
     private val fnrProvider: suspend (aktorId: String) -> FnrResult,
     private val profileringProvider: suspend (fnr: Fnr) -> HentProfileringsResultat,
@@ -88,9 +88,9 @@ class AutomatiskKontorRutingService(
             val gtKontorResultat = gtKontorProvider(fnr, harStrengtFortroligAdresse, erSkjermet)
 
             val kontorTilordning = when (gtKontorResultat) {
-                is GTKontorFunnet -> hentTilordning(fnr, gtKontorResultat, alder, profileringProvider(fnr))
-                is GTKontorFinnesIkke -> OppfolgingsPeriodeStartetFallbackKontorTilordning(fnr)
-                is GTKontorFeil -> return TilordningFeil("Feil ved henting av gt-kontor: ${gtKontorResultat.melding}")
+                is KontorForGtNrFunnet -> hentTilordning(fnr, gtKontorResultat, alder, profileringProvider(fnr))
+                is KontorForGtFinnesIkke -> OppfolgingsPeriodeStartetFallbackKontorTilordning(fnr, gtKontorResultat.sensitivitet())
+                is KontorForGtNrFeil -> return TilordningFeil("Feil ved henting av gt-kontor: ${gtKontorResultat.melding}")
             }
             tilordneKontor(kontorTilordning)
             return TilordningSuccessKontorEndret(kontorTilordning)
@@ -102,7 +102,7 @@ class AutomatiskKontorRutingService(
 
     private fun hentTilordning(
         fnr: String,
-        gtKontor: GTKontorFunnet,
+        gtKontor: KontorForGtNrFunnet,
         alder: Int,
         profilering: HentProfileringsResultat,
     ): AOKontorEndret {
@@ -113,7 +113,17 @@ class AutomatiskKontorRutingService(
             profilering is ProfileringFunnet &&
             profilering.profilering == ProfileringsResultat.ANTATT_GODE_MULIGHETER &&
             alder in 31..59 -> OppfolgingsperiodeStartetNoeTilordning(fnr)
-            else -> OppfolgingsPeriodeStartetLokalKontorTilordning(KontorTilordning(fnr, gtKontor.kontorId), gtKontor.sensitivitet())
+//            gtKontor.sensitivitet().erSensitiv() -> OppfolgingsPeriodeStartetSensitivKontorTilordning(fnr, gtKontor.sensitivitet())
+            else -> {
+                when (gtKontor) {
+                    is KontorForGtNrFantKontor -> OppfolgingsPeriodeStartetLokalKontorTilordning(KontorTilordning(fnr, gtKontor.kontorId), gtKontor.sensitivitet())
+                    is KontorForGtFinnesIkke -> {
+                        // Har ikke kontor men vet bruker er skjermet eller har strengt fortrolig adresse og da vet vi hvilket kontor som skal brukes
+                        OppfolgingsPeriodeStartetSensitivKontorTilordning(fnr, gtKontor.sensitivitet())
+                    }
+                    is KontorForGtNrFantLand -> OppfolgingsPeriodeStartetFallbackKontorTilordning(fnr, gtKontor.sensitivitet())
+                }
+            }
         }
     }
 
@@ -133,21 +143,23 @@ class AutomatiskKontorRutingService(
 
             val gtKontorResultat = gtKontorProvider(hendelse.fnr, harStrengtFortroligAdresse, erSkjermet)
             return when (gtKontorResultat) {
-                is GTKontorFunnet -> {
+                is KontorForGtNrFantLand -> TODO()
+                is KontorForGtNrFantKontor -> {
                     val kontorTilordning = GTKontorEndretPgaBostedsadresseEndret(
                         KontorTilordning(hendelse.fnr,gtKontorResultat.kontorId)
                     )
                     tilordneKontor(kontorTilordning)
                     HåndterPersondataEndretSuccess(listOf(kontorTilordning))
                 }
-                is GTKontorFinnesIkke -> {
+                is KontorForGtFinnesIkke -> {
                     /* Vurder om gt kontor skal settes til fallback her */
                     HåndterPersondataEndretSuccess(emptyList())
                 }
-                is GTKontorFeil -> {
+                is KontorForGtNrFeil -> {
                     val feilmelding = "Kunne ikke håndtere endring i bostedsadresse pga feil ved henting av gt-kontor: ${gtKontorResultat.melding}"
                     HåndterPersondataEndretFail(feilmelding)
                 }
+
             }
         } catch (error: Throwable) {
             return HåndterPersondataEndretFail("Uventet feil ved håndtering av endring i bostedsadresse: ${error.message}", error)
@@ -165,8 +177,8 @@ class AutomatiskKontorRutingService(
 
             val gtKontorResultat = gtKontorProvider(hendelse.fnr, hendelse.erStrengtFortrolig(), erSkjermet)
             return when (gtKontorResultat) {
-                is GTKontorFinnesIkke,
-                is GTKontorFunnet -> {
+                is KontorForGtFinnesIkke,
+                is KontorForGtNrFunnet -> {
                     val gtKontor = getGTKontorOrFallback(gtKontorResultat)
                     val gtKontorEndring = GTKontorEndretPgaAdressebeskyttelseEndret(
                         KontorTilordning(hendelse.fnr, gtKontor)
@@ -183,7 +195,7 @@ class AutomatiskKontorRutingService(
                     }
 
                 }
-                is GTKontorFeil -> {
+                is KontorForGtNrFeil -> {
                     val feilmelding = "Kunne ikke håndtere endring i adressebeskyttelse pga feil ved henting av gt-kontor: ${gtKontorResultat.melding}"
                     HåndterPersondataEndretFail(feilmelding)
                 }
@@ -205,8 +217,8 @@ class AutomatiskKontorRutingService(
 
             val gtKontorResultat = gtKontorProvider(endringISkjermingStatus.fnr, harStrengtFortroligAdresse, endringISkjermingStatus.erSkjermet)
             return when (gtKontorResultat) {
-                is GTKontorFinnesIkke,
-                is GTKontorFunnet -> {
+                is KontorForGtFinnesIkke,
+                is KontorForGtNrFunnet -> {
                     val gtKontor = getGTKontorOrFallback(gtKontorResultat)
                     val gtKontorEndring = GTKontorEndretPgaSkjermingEndret(
                         KontorTilordning(
@@ -229,7 +241,7 @@ class AutomatiskKontorRutingService(
                     }
 
                 }
-                is GTKontorFeil -> {
+                is KontorForGtNrFeil -> {
                     val feilmelding = "Kunne ikke håndtere endring i skjerming pga feil ved henting av gt-kontor: ${gtKontorResultat.melding}"
                     log.error(feilmelding)
                     return Result.failure(Exception(feilmelding))
@@ -238,11 +250,12 @@ class AutomatiskKontorRutingService(
         }
     }
 
-    fun getGTKontorOrFallback(gtKontorResultat: GTKontorResultat): KontorId {
+    fun getGTKontorOrFallback(gtKontorResultat: KontorForGtNrResultat): KontorId {
         return when (gtKontorResultat) {
-            is GTKontorFunnet -> gtKontorResultat.kontorId
-            is GTKontorFinnesIkke -> INGEN_GT_KONTOR_FALLBACK
-            is GTKontorFeil -> throw IllegalStateException("Kunne ikke hente gt-kontor: ${gtKontorResultat.melding}")
+            is KontorForGtNrFantKontor -> gtKontorResultat.kontorId
+            is KontorForGtFinnesIkke -> INGEN_GT_KONTOR_FALLBACK
+            is KontorForGtNrFeil -> throw IllegalStateException("Kunne ikke hente gt-kontor: ${gtKontorResultat.melding}")
+            is KontorForGtNrFantLand -> TODO()
         }
     }
 }

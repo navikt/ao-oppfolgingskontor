@@ -14,12 +14,9 @@ import kotlinx.serialization.Serializable
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
-import no.nav.services.GTKontorAdressebeskyttelseFunnet
-import no.nav.services.GTKontorFeil
-import no.nav.services.GTKontorFunnet
-import no.nav.services.GTKontorMedSkjermingFunnet
-import no.nav.services.GTKontorResultat
-import no.nav.services.GTKontorVanligFunnet
+import no.nav.services.KontorForGtNrFeil
+import no.nav.services.KontorForGtNrFantKontor
+import no.nav.services.KontorForGtNrResultat
 import org.slf4j.LoggerFactory
 
 class Norg2Client(
@@ -56,7 +53,7 @@ class Norg2Client(
         return response.body<NorgKontor>().toMinimaltKontor()
     }
 
-    suspend fun hentKontorForGt(gt: GeografiskTilknytningNr, brukerHarStrengtFortroligAdresse: HarStrengtFortroligAdresse, brukerErSkjermet: HarSkjerming): GTKontorResultat {
+    suspend fun hentKontorForGt(gt: GeografiskTilknytningNr, brukerHarStrengtFortroligAdresse: HarStrengtFortroligAdresse, brukerErSkjermet: HarSkjerming): KontorForGtNrResultat {
         try {
             val response = httpClient.get((hentKontorForGtPath(gt))) {
                 accept(ContentType.Application.Json)
@@ -74,7 +71,7 @@ class Norg2Client(
                     KontorId(it.kontorId).toGtKontorFunnet(brukerHarStrengtFortroligAdresse, brukerErSkjermet)
                 }
         } catch (e: Exception) {
-            return GTKontorFeil(e.message ?: "Ukjent feil")
+            return KontorForGtNrFeil(e.message ?: "Ukjent feil")
         }
     }
 
@@ -86,12 +83,12 @@ class Norg2Client(
     }
 }
 
-fun KontorId.toGtKontorFunnet(brukerHarStrengtFortroligAdresse: HarStrengtFortroligAdresse, brukerErSkjermet: HarSkjerming): GTKontorFunnet {
-    return when {
-        brukerHarStrengtFortroligAdresse.value -> GTKontorAdressebeskyttelseFunnet(this)
-        brukerErSkjermet.value -> GTKontorMedSkjermingFunnet(this)
-        else -> GTKontorVanligFunnet(this)
-    }
+fun KontorId.toGtKontorFunnet(brukerHarStrengtFortroligAdresse: HarStrengtFortroligAdresse, brukerErSkjermet: HarSkjerming): KontorForGtNrFantKontor {
+    return KontorForGtNrFantKontor(
+        kontorId = this,
+        skjerming = brukerErSkjermet,
+        strengtFortroligAdresse = brukerHarStrengtFortroligAdresse
+    )
 }
 
 data class MinimaltNorgKontor(

@@ -20,10 +20,9 @@ import no.nav.kafka.consumers.LeesahConsumer
 import no.nav.kafka.processor.Retry
 import no.nav.person.pdl.leesah.adressebeskyttelse.Gradering
 import no.nav.services.AutomatiskKontorRutingService
-import no.nav.services.GTKontorFeil
-import no.nav.services.GTKontorFunnet
-import no.nav.services.GTKontorResultat
-import no.nav.services.GTKontorVanligFunnet
+import no.nav.services.KontorForGtNrFeil
+import no.nav.services.KontorForGtNrResultat
+import no.nav.services.KontorForGtNrFantKontor
 import no.nav.services.KontorTilordningService
 import no.nav.utils.flywayMigrationInTest
 import org.jetbrains.exposed.sql.insert
@@ -104,7 +103,7 @@ class LeesahConsumerTest {
     fun `skal håndtere at gt-provider returnerer GTKontorFeil`() = testApplication {
         val fnr = "4044567890"
         val automatiskKontorRutingService = defaultAutomatiskKontorRutingService(
-            { a, b, c -> GTKontorFeil("Noe gikk galt") }
+            { a, b, c -> KontorForGtNrFeil("Noe gikk galt") }
         )
         val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) })
 
@@ -129,7 +128,7 @@ class LeesahConsumerTest {
     }
 
     private fun defaultAutomatiskKontorRutingService(
-        gtProvider: suspend (fnr: String, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming) -> GTKontorResultat
+        gtProvider: suspend (fnr: String, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming) -> KontorForGtNrResultat
     ): AutomatiskKontorRutingService {
         return AutomatiskKontorRutingService(
             KontorTilordningService::tilordneKontor,
@@ -144,7 +143,7 @@ class LeesahConsumerTest {
 
     private fun gittRutingServiceMedGtKontor(kontorId: KontorId): AutomatiskKontorRutingService {
         return defaultAutomatiskKontorRutingService(
-            { a, b, c -> GTKontorVanligFunnet(kontorId) }
+            { a, b, c -> KontorForGtNrFantKontor(kontorId, c, b) }
         )
     }
 

@@ -1,9 +1,7 @@
 package services
 
 import io.kotest.core.spec.style.DescribeSpec
-import io.kotest.matchers.equals.shouldBeEqual
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.types.shouldBeInstanceOf
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
@@ -16,6 +14,7 @@ import no.nav.domain.events.GTKontorEndretPgaBostedsadresseEndret
 import no.nav.domain.events.GTKontorEndretPgaSkjermingEndret
 import no.nav.domain.events.OppfolgingsPeriodeStartetFallbackKontorTilordning
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
+import no.nav.domain.events.OppfolgingsPeriodeStartetSensitivKontorTilordning
 import no.nav.domain.events.OppfolgingsperiodeStartetNoeTilordning
 import no.nav.domain.externalEvents.AdressebeskyttelseEndret
 import no.nav.domain.externalEvents.BostedsadresseEndret
@@ -43,10 +42,9 @@ import no.nav.kafka.consumers.EndringISkjermingResult
 import no.nav.kafka.consumers.HåndterPersondataEndretSuccess
 import no.nav.person.pdl.leesah.adressebeskyttelse.Gradering
 import no.nav.services.AutomatiskKontorRutingService
-import no.nav.services.GTKontorFinnesIkke
-import no.nav.services.GTKontorFunnet
-import no.nav.services.GTKontorResultat
-import no.nav.services.GTKontorVanligFunnet
+import no.nav.services.KontorForGtFinnesIkke
+import no.nav.services.KontorForGtNrFantKontor
+import no.nav.services.KontorForGtNrResultat
 import no.nav.services.TilordningFeil
 import no.nav.services.TilordningSuccessIngenEndring
 import no.nav.services.TilordningSuccessKontorEndret
@@ -83,7 +81,11 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                     OppfolgingsperiodeStartet(aktorId)
                 ) shouldBe TilordningSuccessKontorEndret(
                     OppfolgingsPeriodeStartetFallbackKontorTilordning(
-                        brukerSomManglerGt.fnr()
+                        brukerSomManglerGt.fnr(),
+                        Sensitivitet(
+                            HarSkjerming(false),
+                            HarStrengtFortroligAdresse(false)
+                        )
                     )
                 )
             }
@@ -92,12 +94,9 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 gitt(adressebeskyttetBruker).tilordneKontorAutomatisk(
                     OppfolgingsperiodeStartet(aktorId)
                 ) shouldBe TilordningSuccessKontorEndret(
-                    OppfolgingsPeriodeStartetLokalKontorTilordning(
-                        KontorTilordning(adressebeskyttetBruker.fnr(), adressebeskyttetBruker.gtKontor()),
-                        Sensitivitet(
-                            HarSkjerming(false),
-                            HarStrengtFortroligAdresse(true)
-                        )
+                    OppfolgingsPeriodeStartetSensitivKontorTilordning(
+                        adressebeskyttetBruker.fnr(),
+                        Sensitivitet(HarSkjerming(false), HarStrengtFortroligAdresse(true))
                     )
                 )
             }
@@ -106,8 +105,8 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 gitt(skjermetBruker).tilordneKontorAutomatisk(
                     OppfolgingsperiodeStartet(aktorId)
                 ) shouldBe TilordningSuccessKontorEndret(
-                    OppfolgingsPeriodeStartetLokalKontorTilordning(
-                        KontorTilordning(skjermetBruker.fnr(), skjermetBruker.gtKontor()),
+                    OppfolgingsPeriodeStartetSensitivKontorTilordning(
+                        skjermetBruker.fnr(),
                         Sensitivitet(
                             HarSkjerming(true),
                             HarStrengtFortroligAdresse(false)
@@ -327,7 +326,7 @@ fun gitt(bruker: Bruker): AutomatiskKontorRutingService {
         {},
         { _, strengtFortroligAdresse, skjerming ->
             when (bruker.gtKontor) {
-                is GTKontorFunnet -> bruker.gtKontor.kontorId.toGtKontorFunnet(strengtFortroligAdresse, skjerming)
+                is KontorForGtNrFantKontor -> bruker.gtKontor.kontorId.toGtKontorFunnet(strengtFortroligAdresse, skjerming)
                 else -> bruker.gtKontor
             }
         },
@@ -343,7 +342,7 @@ data class Bruker(
     val fnr: FnrResult,
     val alder: AlderResult,
     val profilering: HentProfileringsResultat,
-    val gtKontor: GTKontorResultat,
+    val gtKontor: KontorForGtNrResultat,
     val skjerming: SkjermingResult,
     val strengtFortroligAdresse: HarStrengtFortroligAdresseResult
 ) {
@@ -354,7 +353,7 @@ data class Bruker(
         throw IllegalStateException("Fnr is ${this.fnr}")
     }
     fun gtKontor(): KontorId {
-        if (gtKontor is GTKontorFunnet) {
+        if (gtKontor is KontorForGtNrFantKontor) {
             return gtKontor.kontorId
         }
         throw IllegalStateException("gtKontor is ${this.gtKontor}")
@@ -365,7 +364,7 @@ val ungBrukerMedGodeMuligheter = Bruker(
     FnrFunnet("123456789"),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
-    GTKontorVanligFunnet(KontorId("1234")),
+    KontorForGtNrFantKontor(KontorId("1234"), HarSkjerming(false), HarStrengtFortroligAdresse(false)),
     SkjermingFunnet(HarSkjerming(false)),
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
 )
@@ -373,7 +372,7 @@ val eldreBrukerMedGodeMuligheter = Bruker(
     FnrFunnet("223456789"),
     AlderFunnet(31),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
-    GTKontorVanligFunnet(KontorId("1234")),
+    KontorForGtNrFantKontor(KontorId("1234"), HarSkjerming(false), HarStrengtFortroligAdresse(false)),
     SkjermingFunnet(HarSkjerming(false)),
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
 )
@@ -381,7 +380,7 @@ val ungBrukerMedbehovForVeiledning = Bruker(
     FnrFunnet("323456789"),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_BEHOV_FOR_VEILEDNING),
-    GTKontorVanligFunnet(KontorId("1234")),
+    KontorForGtNrFantKontor(KontorId("1234"), HarSkjerming(false), HarStrengtFortroligAdresse(false)),
     SkjermingFunnet(HarSkjerming(false)),
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
 )
@@ -389,7 +388,9 @@ val brukerSomManglerGt = Bruker(
     FnrFunnet("423456789"),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
-    GTKontorFinnesIkke,
+    KontorForGtFinnesIkke(HarSkjerming(false),
+        HarStrengtFortroligAdresse(false)
+    ),
     SkjermingFunnet(HarSkjerming(false)),
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
 )
@@ -397,7 +398,7 @@ val skjermetBruker = Bruker(
     FnrFunnet("523456789"),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
-    GTKontorVanligFunnet(KontorId("1234")),
+    KontorForGtNrFantKontor(KontorId("1234"), HarSkjerming(true), HarStrengtFortroligAdresse(false)),
     SkjermingFunnet(HarSkjerming(true)),
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
 )
@@ -405,7 +406,7 @@ val adressebeskyttetBruker = Bruker(
     FnrFunnet("623456789"),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
-    GTKontorVanligFunnet(KontorId("1234")),
+    KontorForGtNrFantKontor(KontorId("1234"), HarSkjerming(false), HarStrengtFortroligAdresse(true)),
     SkjermingFunnet(HarSkjerming(false)),
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(true))
 )
@@ -414,7 +415,7 @@ val brukerMedFeilendeFnr = Bruker(
     FnrIkkeFunnet("feil i fnr"),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
-    GTKontorVanligFunnet(KontorId("1234")),
+    KontorForGtNrFantKontor(KontorId("1234"), HarSkjerming(false), HarStrengtFortroligAdresse(false)),
     SkjermingFunnet(HarSkjerming(false)),
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
 )
@@ -422,7 +423,7 @@ val brukerMedFeilendeAlder = Bruker(
     FnrFunnet("1"),
     AlderIkkeFunnet("feil i alder"),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
-    GTKontorVanligFunnet(KontorId("1234")),
+    KontorForGtNrFantKontor(KontorId("1234"), HarSkjerming(false), HarStrengtFortroligAdresse(false)),
     SkjermingFunnet(HarSkjerming(false)),
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
 )
@@ -430,7 +431,7 @@ val brukerMedFeilendeProfilering = Bruker(
     FnrFunnet("1"),
     AlderFunnet(20),
     ProfileringIkkeFunnet("feil i profilering"),
-    GTKontorVanligFunnet(KontorId("1234")),
+    KontorForGtNrFantKontor(KontorId("1234"), HarSkjerming(false), HarStrengtFortroligAdresse(false)),
     SkjermingFunnet(HarSkjerming(false)),
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
 )
@@ -438,7 +439,7 @@ val brukerMedFeilendeSkjerming = Bruker(
     FnrFunnet("1"),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
-    GTKontorVanligFunnet(KontorId("1234")),
+    KontorForGtNrFantKontor(KontorId("1234"), HarSkjerming(false), HarStrengtFortroligAdresse(false)),
     SkjermingIkkeFunnet("feil i skjerming"),
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
 )
@@ -446,7 +447,7 @@ val brukerMedFeilendeAdressebeskyttelse = Bruker(
     FnrFunnet("1"),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
-    GTKontorVanligFunnet(KontorId("1234")),
+    KontorForGtNrFantKontor(KontorId("1234"), HarSkjerming(false), HarStrengtFortroligAdresse(false)),
     SkjermingFunnet(HarSkjerming(false)),
     HarStrengtFortroligAdresseIkkeFunnet("feil i adressebeskyttelse")
 )

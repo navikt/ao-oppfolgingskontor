@@ -64,7 +64,7 @@ data class OppfolgingsPeriodeStartetLokalKontorTilordning(
     }
 }
 
-data class OppfolgingsPeriodeStartetFallbackKontorTilordning(val fnr: Fnr) : AOKontorEndret(KontorTilordning(fnr, KontorId("2990")), System()) {
+data class OppfolgingsPeriodeStartetFallbackKontorTilordning(val fnr: Fnr, val sensitivitet: Sensitivitet) : AOKontorEndret(KontorTilordning(fnr, KontorId("2990")), System()) {
     val rutingResultat: RutingResultat = RutingResultat.RutetTilLokalkontor
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(
@@ -82,4 +82,23 @@ data class OppfolgingsPeriodeStartetFallbackKontorTilordning(val fnr: Fnr) : AOK
         )
     }
 
+}
+
+data class OppfolgingsPeriodeStartetSensitivKontorTilordning(val fnr: Fnr, val sensitivitet: Sensitivitet): AOKontorEndret(KontorTilordning(fnr, KontorId("2990")), System()) {
+    val rutingResultat: RutingResultat = RutingResultat.RutetTilLokalkontor
+    override fun toHistorikkInnslag(): KontorHistorikkInnslag {
+        return KontorHistorikkInnslag(
+            kontorId = tilordning.kontorId,
+            fnr = tilordning.fnr,
+            registrant = registrant,
+            kontorendringstype = rutingResultat.toKontorEndringsType(),
+            kontorType = KontorType.ARBEIDSOPPFOLGING
+        )
+    }
+
+    override fun logg() {
+        logger.info(
+            "OppfolgingsPeriodeStartetSensitivKontorTilordning: kontorId=${tilordning.kontorId}, rutingResultat=$rutingResultat, registrant=${registrant.getType()}, sensitivitet=$sensitivitet"
+        )
+    }
 }
