@@ -262,9 +262,16 @@ class AutomatiskKontorRutingService(
     fun getGTKontorOrFallback(gtKontorResultat: KontorForGtNrResultat): KontorId {
         return when (gtKontorResultat) {
             is KontorForGtNrFantKontor -> gtKontorResultat.kontorId
-            is KontorForGtFinnesIkke -> INGEN_GT_KONTOR_FALLBACK
+            is KontorForGtNrFantLand,
+            is KontorForGtFinnesIkke -> {
+                if (gtKontorResultat.sensitivitet().strengtFortroligAdresse.value) {
+                    VIKAFOSSEN
+                } else if (gtKontorResultat.sensitivitet().skjermet.value) {
+                    throw IllegalStateException("Skjermede brukere uten geografisk tilknytning eller med land som GT kan ikke tilordnes kontor")
+                }
+                else INGEN_GT_KONTOR_FALLBACK
+            }
             is KontorForGtNrFeil -> throw IllegalStateException("Kunne ikke hente gt-kontor: ${gtKontorResultat.melding}")
-            is KontorForGtNrFantLand -> TODO()
         }
     }
 }

@@ -1,6 +1,7 @@
 package no.nav.domain.events
 
 import no.nav.db.Fnr
+import no.nav.domain.INGEN_GT_KONTOR_FALLBACK
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorHistorikkInnslag
 import no.nav.domain.KontorId
@@ -64,7 +65,7 @@ data class OppfolgingsPeriodeStartetLokalKontorTilordning(
     }
 }
 
-data class OppfolgingsPeriodeStartetFallbackKontorTilordning(val fnr: Fnr, val sensitivitet: Sensitivitet) : AOKontorEndret(KontorTilordning(fnr, KontorId("2990")), System()) {
+data class OppfolgingsPeriodeStartetFallbackKontorTilordning(val fnr: Fnr, val sensitivitet: Sensitivitet) : AOKontorEndret(KontorTilordning(fnr, INGEN_GT_KONTOR_FALLBACK), System()) {
     val rutingResultat: RutingResultat = RutingResultat.RutetTilLokalkontor
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(

@@ -4,6 +4,7 @@ import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
+import no.nav.domain.INGEN_GT_KONTOR_FALLBACK
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.Sensitivitet
@@ -200,20 +201,20 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
         }
 
         it("skal sette AO og GT kontor når bruker får strengt fortrolig adresse også når bruker har landskode") {
-            gitt(brukerMedLandskode)
+            gitt(brukerMedAdressebeskyttelseOgLandskode)
                 .handterEndringForAdressebeskyttelse(
-                    AdressebeskyttelseEndret(brukerMedLandskode.fnr(), Gradering.STRENGT_FORTROLIG)
+                    AdressebeskyttelseEndret(brukerMedAdressebeskyttelseOgLandskode.fnr(), Gradering.STRENGT_FORTROLIG)
                 ) shouldBe HåndterPersondataEndretSuccess(listOf(
                 GTKontorEndret.endretPgaAdressebeskyttelseEndret(
                     KontorTilordning(
-                        brukerMedLandskode.fnr(),
-                        brukerMedLandskode.gtKontor()
+                        brukerMedAdressebeskyttelseOgLandskode.fnr(),
+                        VIKAFOSSEN
                     )
                 ),
                 AOKontorEndretPgaAdressebeskyttelseEndret(
                     KontorTilordning(
-                        brukerMedLandskode.fnr(),
-                        brukerMedLandskode.gtKontor()
+                        brukerMedAdressebeskyttelseOgLandskode.fnr(),
+                        VIKAFOSSEN
                     )
                 )
             ))
@@ -257,13 +258,13 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                     GTKontorEndret.endretPgaSkjermingEndret(
                         KontorTilordning(
                             ungBrukerMedGodeMuligheter.fnr(),
-                            ungBrukerMedGodeMuligheter.gtKontor()
+                            INGEN_GT_KONTOR_FALLBACK
                         )
                     ),
                     AOKontorEndretPgaSkjermingEndret(
                         KontorTilordning(
                             ungBrukerMedGodeMuligheter.fnr(),
-                            ungBrukerMedGodeMuligheter.gtKontor()
+                            INGEN_GT_KONTOR_FALLBACK
                         )
                     ),
                 )
