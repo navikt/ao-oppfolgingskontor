@@ -10,6 +10,7 @@ import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics
 import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics
 import io.micrometer.core.instrument.binder.system.ProcessorMetrics
+import io.micrometer.core.instrument.binder.system.UptimeMetrics
 import io.micrometer.prometheusmetrics.PrometheusConfig
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
 import org.slf4j.event.*
@@ -25,6 +26,7 @@ fun Application.configureMonitoring(): MeterRegistry {
             JvmMemoryMetrics(),
             JvmGcMetrics(),
             ProcessorMetrics(),
+            UptimeMetrics()
         )
     }
     routing {
