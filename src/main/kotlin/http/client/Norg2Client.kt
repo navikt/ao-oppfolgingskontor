@@ -65,7 +65,7 @@ class Norg2Client(
                 }
             }
             if (response.status != HttpStatusCode.OK)
-                throw RuntimeException("Kunne ikke hente kontor for GT status: ${response.status}, $gt fra Norg2. Status: ${response.status}")
+                throw RuntimeException("Kunne ikke hente kontor for GT i norg, http-status: ${response.status}, gt: ${gt.value}")
             return response.body<NorgKontor>().toMinimaltKontor()
                 .let {
                     KontorId(it.kontorId).toGtKontorFunnet(brukerHarStrengtFortroligAdresse, brukerErSkjermet)
@@ -85,9 +85,9 @@ class Norg2Client(
 
 fun KontorId.toGtKontorFunnet(brukerHarStrengtFortroligAdresse: HarStrengtFortroligAdresse, brukerErSkjermet: HarSkjerming): KontorForGtNrFantKontor {
     return KontorForGtNrFantKontor(
-        kontorId = this,
-        skjerming = brukerErSkjermet,
-        strengtFortroligAdresse = brukerHarStrengtFortroligAdresse
+        this,
+        brukerErSkjermet,
+        brukerHarStrengtFortroligAdresse
     )
 }
 

@@ -44,7 +44,7 @@ class GTNorgService(
 * */
 sealed class KontorForGtNrResultat
 sealed class KontorForGtNrFunnet(val skjerming: HarSkjerming, val strengtFortroligAdresse: HarStrengtFortroligAdresse) : KontorForGtNrResultat()
-class KontorForGtNrFantKontor(val kontorId: KontorId, skjerming: HarSkjerming, strengtFortroligAdresse: HarStrengtFortroligAdresse) : KontorForGtNrFunnet(skjerming, strengtFortroligAdresse)
+data class KontorForGtNrFantKontor(val kontorId: KontorId, val _skjerming: HarSkjerming, val _strengtFortroligAdresse: HarStrengtFortroligAdresse) : KontorForGtNrFunnet(_skjerming, _strengtFortroligAdresse)
 class KontorForGtNrFantLand(val landkode: GeografiskTilknytningLand, skjerming: HarSkjerming, strengtFortroligAdresse: HarStrengtFortroligAdresse) : KontorForGtNrFunnet(skjerming, strengtFortroligAdresse)
 data class KontorForGtFinnesIkke(val _skjerming: HarSkjerming, val _strengtFortroligAdresse: HarStrengtFortroligAdresse) : KontorForGtNrFunnet(_skjerming, _strengtFortroligAdresse)
 data class KontorForGtNrFeil(val melding: String) : KontorForGtNrResultat()
