@@ -9,9 +9,7 @@ import no.nav.domain.KontorTilordning
 import no.nav.domain.Sensitivitet
 import no.nav.domain.events.AOKontorEndretPgaAdressebeskyttelseEndret
 import no.nav.domain.events.AOKontorEndretPgaSkjermingEndret
-import no.nav.domain.events.GTKontorEndretPgaAdressebeskyttelseEndret
-import no.nav.domain.events.GTKontorEndretPgaBostedsadresseEndret
-import no.nav.domain.events.GTKontorEndretPgaSkjermingEndret
+import no.nav.domain.events.GTKontorEndret
 import no.nav.domain.events.OppfolgingsPeriodeStartetFallbackKontorTilordning
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.domain.events.OppfolgingsPeriodeStartetSensitivKontorTilordning
@@ -157,8 +155,6 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 ) shouldBe TilordningFeil("Feil ved tilordning av kontor: Vi håndterer ikke skjermede brukere uten geografisk tilknytning")
             }
 
-
-
         }
 
         it("avsluttet oppfolgingsperiode skal ikke sette ao kontor") {
@@ -174,7 +170,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 .handterEndringForAdressebeskyttelse(
                     AdressebeskyttelseEndret(ungBrukerMedGodeMuligheter.fnr(), Gradering.FORTROLIG)
                 ) shouldBe HåndterPersondataEndretSuccess(listOf(
-                    GTKontorEndretPgaAdressebeskyttelseEndret(
+                    GTKontorEndret.endretPgaAdressebeskyttelseEndret(
                         KontorTilordning(
                             ungBrukerMedGodeMuligheter.fnr(),
                             ungBrukerMedGodeMuligheter.gtKontor()
@@ -188,7 +184,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 .handterEndringForAdressebeskyttelse(
                 AdressebeskyttelseEndret(ungBrukerMedGodeMuligheter.fnr(), Gradering.STRENGT_FORTROLIG)
             ) shouldBe HåndterPersondataEndretSuccess(listOf(
-                GTKontorEndretPgaAdressebeskyttelseEndret(
+                GTKontorEndret.endretPgaAdressebeskyttelseEndret(
                     KontorTilordning(
                         ungBrukerMedGodeMuligheter.fnr(),
                         ungBrukerMedGodeMuligheter.gtKontor()
@@ -198,6 +194,26 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                     KontorTilordning(
                         ungBrukerMedGodeMuligheter.fnr(),
                         ungBrukerMedGodeMuligheter.gtKontor()
+                    )
+                )
+            ))
+        }
+
+        it("skal sette AO og GT kontor når bruker får strengt fortrolig adresse også når bruker har landskode") {
+            gitt(brukerMedLandskode)
+                .handterEndringForAdressebeskyttelse(
+                    AdressebeskyttelseEndret(brukerMedLandskode.fnr(), Gradering.STRENGT_FORTROLIG)
+                ) shouldBe HåndterPersondataEndretSuccess(listOf(
+                GTKontorEndret.endretPgaAdressebeskyttelseEndret(
+                    KontorTilordning(
+                        brukerMedLandskode.fnr(),
+                        brukerMedLandskode.gtKontor()
+                    )
+                ),
+                AOKontorEndretPgaAdressebeskyttelseEndret(
+                    KontorTilordning(
+                        brukerMedLandskode.fnr(),
+                        brukerMedLandskode.gtKontor()
                     )
                 )
             ))
@@ -214,7 +230,31 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 )
             ) shouldBe  Result.success(EndringISkjermingResult(
                 listOf(
-                    GTKontorEndretPgaSkjermingEndret(
+                    GTKontorEndret.endretPgaSkjermingEndret(
+                        KontorTilordning(
+                            ungBrukerMedGodeMuligheter.fnr(),
+                            ungBrukerMedGodeMuligheter.gtKontor()
+                        )
+                    ),
+                    AOKontorEndretPgaSkjermingEndret(
+                        KontorTilordning(
+                            ungBrukerMedGodeMuligheter.fnr(),
+                            ungBrukerMedGodeMuligheter.gtKontor()
+                        )
+                    ),
+                )
+            ))
+        }
+
+        it("skal sette AO og GT kontor til skjermet kontor når bruker blir skjermet også når bruker har landskode") {
+            gitt(brukerMedLandskode).handterEndringISkjermingStatus(
+                SkjermetStatusEndret(
+                    ungBrukerMedGodeMuligheter.fnr(),
+                    HarSkjerming(true)
+                )
+            ) shouldBe  Result.success(EndringISkjermingResult(
+                listOf(
+                    GTKontorEndret.endretPgaSkjermingEndret(
                         KontorTilordning(
                             ungBrukerMedGodeMuligheter.fnr(),
                             ungBrukerMedGodeMuligheter.gtKontor()
@@ -238,7 +278,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 )
             ) shouldBe  Result.success(EndringISkjermingResult(
                 listOf(
-                    GTKontorEndretPgaSkjermingEndret(
+                    GTKontorEndret.endretPgaSkjermingEndret(
                         KontorTilordning(
                             ungBrukerMedGodeMuligheter.fnr(),
                             ungBrukerMedGodeMuligheter.gtKontor()
@@ -254,7 +294,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
             gitt(ungBrukerMedGodeMuligheter).handterEndringForBostedsadresse(
                 BostedsadresseEndret(ungBrukerMedGodeMuligheter.fnr())
             ) shouldBe HåndterPersondataEndretSuccess(listOf(
-                GTKontorEndretPgaBostedsadresseEndret(
+                GTKontorEndret.endretPgaBostedsadresseEndret(
                     KontorTilordning(
                         ungBrukerMedGodeMuligheter.fnr(),
                         ungBrukerMedGodeMuligheter.gtKontor()
@@ -267,7 +307,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
             gitt(adressebeskyttetBruker).handterEndringForBostedsadresse(
                 BostedsadresseEndret(adressebeskyttetBruker.fnr())
             ) shouldBe HåndterPersondataEndretSuccess(listOf(
-                GTKontorEndretPgaBostedsadresseEndret(
+                GTKontorEndret.endretPgaBostedsadresseEndret(
                     KontorTilordning(
                         adressebeskyttetBruker.fnr(),
                         adressebeskyttetBruker.gtKontor()
@@ -280,7 +320,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
             gitt(skjermetBruker).handterEndringForBostedsadresse(
                 BostedsadresseEndret(skjermetBruker.fnr())
             ) shouldBe HåndterPersondataEndretSuccess(listOf(
-                GTKontorEndretPgaBostedsadresseEndret(
+                GTKontorEndret.endretPgaBostedsadresseEndret(
                     KontorTilordning(
                         skjermetBruker.fnr(),
                         skjermetBruker.gtKontor()
@@ -326,7 +366,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
         describe("handterEndringISkjermingStatus") {
             val fnr = "123456789"
             val success = Result.success(EndringISkjermingResult(listOf(
-                GTKontorEndretPgaSkjermingEndret(
+                GTKontorEndret.endretPgaSkjermingEndret(
                     KontorTilordning(
                         fnr,
                         brukerMedFeilendeFnr.gtKontor()

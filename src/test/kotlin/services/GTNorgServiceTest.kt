@@ -19,10 +19,10 @@ import no.nav.services.KontorForGtNrFeil
 import org.junit.jupiter.api.Test
 
 class GTNorgServiceTest {
+    val fnr = "12345678901"
 
     @Test
     fun `skal håndtere gt for bruker ikke funnet`() = runTest {
-        val fnr = "12345678901"
         val gtService = GTNorgService(
             { GtForBrukerIkkeFunnet("Ingen geografisk tilknytning funnet for bruker") },
             { a, b, c -> throw IllegalStateException("Ikke implementert") }
@@ -42,7 +42,6 @@ class GTNorgServiceTest {
 
     @Test
     fun `skal håndtere gt er land`() = runTest {
-        val fnr = "12345678901"
         val gtLand = GeografiskTilknytningLand("DNK")
         val gtService = GTNorgService(
             { GtLandForBrukerFunnet(gtLand) },
@@ -64,7 +63,6 @@ class GTNorgServiceTest {
 
     @Test
     fun `skal håndtere gt er nr`() = runTest {
-        val fnr = "12345678901"
         val gtNr = GeografiskTilknytningNr("131")
         val kontor = KontorId("1234")
         val gtService = GTNorgService(
@@ -87,8 +85,6 @@ class GTNorgServiceTest {
 
     @Test
     fun `skal håndtere feil kastes i gt oppslag`() = runTest {
-        val fnr = "12345678901"
-        val kontor = KontorId("1234")
         val gtService = GTNorgService(
             { GtForBrukerOppslagFeil("Feil") },
             { a, b, c -> throw IllegalStateException("Ikke implementert") }
@@ -105,8 +101,6 @@ class GTNorgServiceTest {
 
     @Test
     fun `skal håndtere feil i gt oppslag`() = runTest {
-        val fnr = "12345678901"
-        val kontor = KontorId("1234")
         val gtService = GTNorgService(
             { throw Exception("Feil som ble kastet") },
             { a, b, c -> throw IllegalStateException("Ikke implementert") }

@@ -1,8 +1,12 @@
 package no.nav.domain.events
 
+import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorHistorikkInnslag
 import no.nav.domain.KontorTilordning
+import no.nav.domain.KontorType
 import no.nav.domain.Registrant
+import no.nav.domain.System
+import org.slf4j.LoggerFactory
 import java.time.OffsetDateTime
 
 sealed class KontorEndretEvent(
@@ -16,6 +20,29 @@ sealed class KontorEndretEvent(
     }
 }
 
-sealed class GTKontorEndret(tilordning: KontorTilordning) : KontorEndretEvent(tilordning)
+data class GTKontorEndret(val kontorTilordning: KontorTilordning, val kontorEndringsType: KontorEndringsType) : KontorEndretEvent(kontorTilordning) {
+    val log = LoggerFactory.getLogger(this::class.java)
+
+    override fun toHistorikkInnslag(): KontorHistorikkInnslag {
+        return KontorHistorikkInnslag(
+            kontorId = tilordning.kontorId,
+            fnr = tilordning.fnr,
+            registrant = System(),
+            kontorendringstype = kontorEndringsType,
+            kontorType = KontorType.GEOGRAFISK_TILKNYTNING
+        )
+    }
+
+    override fun logg() {
+        TODO("Not yet implemented")
+        log.info("GTKontorEndret: kontorId=${tilordning.kontorId}, kontorEndringsType=$kontorEndringsType")
+    }
+
+    companion object {
+        fun endretPgaAdressebeskyttelseEndret(tilordning: KontorTilordning) = GTKontorEndret(tilordning, KontorEndringsType.FikkAddressebeskyttelse)
+        fun endretPgaSkjermingEndret(tilordning: KontorTilordning) = GTKontorEndret(tilordning, KontorEndringsType.FikkSkjerming)
+        fun endretPgaBostedsadresseEndret(tilordning: KontorTilordning) = GTKontorEndret(tilordning, KontorEndringsType.EndretBostedsadresse)
+    }
+}
 sealed class AOKontorEndret(tilordning: KontorTilordning, val registrant: Registrant) : KontorEndretEvent(tilordning)
 sealed class ArenaKontorEndret(tilordning: KontorTilordning, val sistEndretDatoArena: OffsetDateTime, val offset: Long?, val partition: Int?) : KontorEndretEvent(tilordning)

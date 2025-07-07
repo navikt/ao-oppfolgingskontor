@@ -9,9 +9,7 @@ import no.nav.domain.KontorTilordning
 import no.nav.domain.events.AOKontorEndret
 import no.nav.domain.events.AOKontorEndretPgaAdressebeskyttelseEndret
 import no.nav.domain.events.AOKontorEndretPgaSkjermingEndret
-import no.nav.domain.events.GTKontorEndretPgaAdressebeskyttelseEndret
-import no.nav.domain.events.GTKontorEndretPgaBostedsadresseEndret
-import no.nav.domain.events.GTKontorEndretPgaSkjermingEndret
+import no.nav.domain.events.GTKontorEndret
 import no.nav.domain.events.KontorEndretEvent
 import no.nav.domain.events.OppfolgingsPeriodeStartetFallbackKontorTilordning
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
@@ -156,7 +154,7 @@ class AutomatiskKontorRutingService(
             return when (gtKontorResultat) {
                 is KontorForGtNrFantLand -> TODO()
                 is KontorForGtNrFantKontor -> {
-                    val kontorTilordning = GTKontorEndretPgaBostedsadresseEndret(
+                    val kontorTilordning = GTKontorEndret.endretPgaBostedsadresseEndret(
                         KontorTilordning(hendelse.fnr,gtKontorResultat.kontorId)
                     )
                     tilordneKontor(kontorTilordning)
@@ -191,7 +189,7 @@ class AutomatiskKontorRutingService(
                 is KontorForGtFinnesIkke,
                 is KontorForGtNrFunnet -> {
                     val gtKontor = getGTKontorOrFallback(gtKontorResultat)
-                    val gtKontorEndring = GTKontorEndretPgaAdressebeskyttelseEndret(
+                    val gtKontorEndring = GTKontorEndret.endretPgaAdressebeskyttelseEndret(
                         KontorTilordning(hendelse.fnr, gtKontor)
                     )
                     tilordneKontor(gtKontorEndring)
@@ -231,7 +229,7 @@ class AutomatiskKontorRutingService(
                 is KontorForGtFinnesIkke,
                 is KontorForGtNrFunnet -> {
                     val gtKontor = getGTKontorOrFallback(gtKontorResultat)
-                    val gtKontorEndring = GTKontorEndretPgaSkjermingEndret(
+                    val gtKontorEndring = GTKontorEndret.endretPgaSkjermingEndret(
                         KontorTilordning(
                             endringISkjermingStatus.fnr,
                             gtKontor
