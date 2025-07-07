@@ -61,8 +61,10 @@ class AutomatiskKontorRutingService(
     private val erSkjermetProvider: suspend (fnr: Fnr) -> SkjermingResult,
     private val harStrengtFortroligAdresseProvider: suspend (fnr: Fnr) -> HarStrengtFortroligAdresseResult,
 ) {
+    companion object {
+        val VIKAFOSSEN = KontorId("2103")
+    }
     val log = LoggerFactory.getLogger(this::class.java)
-    private val VIKAFOSSEN = KontorId("2103")
 
     suspend fun tilordneKontorAutomatisk(oppfolgingsperiodeEndret: OppfolgingsperiodeEndret): TilordningResultat {
         if (oppfolgingsperiodeEndret is OppfolgingsperiodeAvsluttet) return TilordningSuccessIngenEndring
@@ -120,7 +122,7 @@ class AutomatiskKontorRutingService(
                         if(gtKontor.sensitivitet().strengtFortroligAdresse.value) {
                             OppfolgingsPeriodeStartetSensitivKontorTilordning(KontorTilordning(fnr, VIKAFOSSEN), gtKontor.sensitivitet())
                         } else {
-                            throw IllegalStateException("Skal ikke skje")
+                            throw IllegalStateException("Vi håndterer ikke skjermede brukere uten geografisk tilknytning")
                         }
                 }
             }

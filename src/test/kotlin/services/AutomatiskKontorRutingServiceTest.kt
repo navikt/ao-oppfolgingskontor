@@ -27,6 +27,7 @@ import no.nav.http.client.AlderResult
 import no.nav.http.client.FnrFunnet
 import no.nav.http.client.FnrIkkeFunnet
 import no.nav.http.client.FnrResult
+import no.nav.http.client.GeografiskTilknytningLand
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseIkkeFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseResult
@@ -42,8 +43,10 @@ import no.nav.kafka.consumers.EndringISkjermingResult
 import no.nav.kafka.consumers.HåndterPersondataEndretSuccess
 import no.nav.person.pdl.leesah.adressebeskyttelse.Gradering
 import no.nav.services.AutomatiskKontorRutingService
+import no.nav.services.AutomatiskKontorRutingService.Companion.VIKAFOSSEN
 import no.nav.services.KontorForGtFinnesIkke
 import no.nav.services.KontorForGtNrFantKontor
+import no.nav.services.KontorForGtNrFantLand
 import no.nav.services.KontorForGtNrResultat
 import no.nav.services.TilordningFeil
 import no.nav.services.TilordningSuccessIngenEndring
@@ -125,6 +128,36 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                     )
                 )
             }
+
+            it("skal bruke fallbackkontor hvis bruker har landskode som gt") {
+                gitt(brukerMedLandskode).tilordneKontorAutomatisk(
+                    OppfolgingsperiodeStartet(aktorId)
+                ) shouldBe TilordningSuccessKontorEndret(
+                    OppfolgingsPeriodeStartetFallbackKontorTilordning(
+                        brukerMedLandskode.fnr(),
+                        Sensitivitet(HarSkjerming(false), HarStrengtFortroligAdresse(false))
+                    )
+                )
+            }
+
+            it("skal rute til vikafossen hvis bruker har landskode som gt, men adressebeskyttelse") {
+                gitt(brukerMedAdressebeskyttelseOgLandskode).tilordneKontorAutomatisk(
+                    OppfolgingsperiodeStartet(aktorId)
+                ) shouldBe TilordningSuccessKontorEndret(
+                    OppfolgingsPeriodeStartetSensitivKontorTilordning(
+                        KontorTilordning(brukerMedAdressebeskyttelseOgLandskode.fnr(), VIKAFOSSEN),
+                        Sensitivitet(HarSkjerming(false), HarStrengtFortroligAdresse(true))
+                    )
+                )
+            }
+
+            it("skal throwe hvis bruker har landskode som gt, men er skjermet") {
+                gitt(skjermetBrukerMedLandskode).tilordneKontorAutomatisk(
+                    OppfolgingsperiodeStartet(aktorId)
+                ) shouldBe TilordningFeil("Feil ved tilordning av kontor: Vi håndterer ikke skjermede brukere uten geografisk tilknytning")
+            }
+
+
 
         }
 
@@ -410,6 +443,30 @@ val adressebeskyttetBruker = Bruker(
     SkjermingFunnet(HarSkjerming(false)),
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(true))
 )
+val skjermetBrukerMedLandskode = Bruker(
+    FnrFunnet("723456789"),
+    AlderFunnet(20),
+    ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
+    KontorForGtNrFantLand(GeografiskTilknytningLand("JPN"), HarSkjerming(true), HarStrengtFortroligAdresse(false)),
+    SkjermingFunnet(HarSkjerming(true)),
+    HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)))
+val brukerMedLandskode = Bruker(
+    FnrFunnet("823456789"),
+    AlderFunnet(20),
+    ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
+    KontorForGtNrFantLand(GeografiskTilknytningLand("JPN"), HarSkjerming(false), HarStrengtFortroligAdresse(false)),
+    SkjermingFunnet(HarSkjerming(false)),
+    HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
+)
+val brukerMedAdressebeskyttelseOgLandskode = Bruker(
+    FnrFunnet("923456789"),
+    AlderFunnet(20),
+    ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
+    KontorForGtNrFantLand(GeografiskTilknytningLand("JPN"), HarSkjerming(false), HarStrengtFortroligAdresse(true)),
+    SkjermingFunnet(HarSkjerming(false)),
+    HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(true))
+)
+
 /* Brukere med feil */
 val brukerMedFeilendeFnr = Bruker(
     FnrIkkeFunnet("feil i fnr"),
