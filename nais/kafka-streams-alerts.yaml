@@ -9,42 +9,41 @@ spec:
   groups:
     - name: KafkaStreamsHelse
       rules:
-        # ALARM 1: Den mest kritiske og raskeste - når en tråd dør
-        - alert: KafkaStreamsTrådHarKrasjet
+        - alert: KafkaStreamsPodDown
+          # Logikk: For en gitt pod (gruppert på pod-label), finnes det en prosess-metrikk,
+          # MEN det finnes IKKE en kafka-metrikk?
           expr: |
-            increase(kafka_stream_failed_stream_threads_total{app="ao-oppfolgingskontor"}[5m]) > 0
-          for: 0m # Fyr av umiddelbart
+            (
+              count by (pod) (process_uptime_seconds{app="ao-oppfolgingskontor"}) > 0
+            )
+            AND ON (pod)
+            (
+              count by (pod) (kafka_stream_alive_stream_threads{app="ao-oppfolgingskontor"}) == 0
+            )
+          for: 5m
           annotations:
-            consequence: "En Kafka Streams-tråd har krasjet. All meldingsprosessering kan være nede."
-            action: "Undersøk applikasjonsloggene umiddelbart for uhåndterte unntak (f.eks. NullPointerException eller deserialiseringsfeil). `kubectl logs -l app=ao-oppfolgingskontor -n dab`"
-            summary: "Telleren for feilede Kafka Streams-tråder har økt. Dette er en kritisk feil som krever umiddelbar oppmerksomhet."
-          labels:
-            namespace: dab # Denne er påkrevd av plattformen
-            severity: critical
-
-        # ALARM 2: Når hele klienten går inn i en offisiell feiltilstand
-        - alert: KafkaStreamsKlientHarFeilet
-          expr: |
-            kafka_stream_client_state{app="ao-oppfolgingskontor"} == 6
-          # 6 er den offisielle feilstaten i Kafka Streams
-          for: 2m
-          annotations:
-            consequence: "Kafka Streams-klienten har status ERROR. All meldingsprosessering har stoppet."
-            action: "Sjekk applikasjonslogger for vedvarende feil som hindrer klienten i å kjøre, f.eks. 'poison pill'-meldinger som ikke kan deserialiseres."
-            summary: "Kafka Streams-klienten har gått inn i en offisiell feiltilstand og vil ikke prosessere flere meldinger før applikasjonen restartes."
+            consequence: "Kafka Streams-klienten har sannsynligvis krasjet i pod `{{ $labels.pod }}`."
+            action: "Undersøk logger for den spesifikke podden: `kubectl logs {{ $labels.pod }} -n dab`"
+            summary: "Pod `{{ $labels.pod }}` rapporterer at den kjører, men dens Kafka Streams-metrikker har forsvunnet."
           labels:
             namespace: dab
             severity: critical
-
-        # ALARM 3: En "catch-all" for når ingen tråder kjører
-        - alert: KafkaStreamsHarIngenAktiveTråder
+        - alert: AllKafkaStreamsDown
+          # Logikk: Antall poder som rapporterer prosess-uptime er større enn 0,
+          # MEN antall poder som rapporterer kafka-uptime er nøyaktig 0.
           expr: |
-            kafka_stream_alive_stream_threads{app="ao-oppfolgingskontor"} == 0
+            (
+              count(process_uptime_seconds{app="ao-oppfolgingskontor"}) > 0
+            )
+            AND
+            (
+              count(kafka_stream_alive_stream_threads{app="ao-oppfolgingskontor"}) == 0
+            )
           for: 5m
           annotations:
-            consequence: "Applikasjonen prosesserer ingen meldinger fra Kafka."
-            action: "Sjekk status på podden og undersøk logger. Applikasjonen kan ha feilet under oppstart eller alle tråder kan ha stoppet av ukjent årsak."
-            summary: "Antall aktive Kafka Streams-tråder er 0. Dette indikerer at meldingsflyten har stoppet helt opp."
+            consequence: "Kafka Streams har krasjet i ALLE poder for applikasjonen `{{ $labels.app }}`."
+            action: "Dette er en total tjenestesvikt for meldingsprosessering. Start en feilsøking på tvers av hele deployeringen."
+            summary: "Ingen av podene for `{{ $labels.app }}` rapporterer lenger Kafka Streams-metrikker, selv om podene ser ut til å kjøre."
           labels:
             namespace: dab
             severity: critical
