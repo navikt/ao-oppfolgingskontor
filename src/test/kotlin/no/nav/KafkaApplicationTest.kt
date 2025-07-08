@@ -8,6 +8,8 @@ import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.GeografiskTilknyttetKontorEntity
 import no.nav.db.entity.KontorHistorikkEntity
 import no.nav.db.table.KontorhistorikkTable
+import no.nav.domain.HarSkjerming
+import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
 import no.nav.http.client.AlderFunnet
 import no.nav.http.client.FnrFunnet
@@ -22,7 +24,7 @@ import no.nav.kafka.consumers.OppfolgingsPeriodeConsumer
 import no.nav.kafka.processor.ExplicitResultProcessor
 import no.nav.kafka.consumers.SkjermingConsumer
 import no.nav.services.AutomatiskKontorRutingService
-import no.nav.services.GTKontorFunnet
+import no.nav.services.KontorForGtNrFantKontor
 import no.nav.services.KontorTilordningService
 import no.nav.utils.flywayMigrationInTest
 import org.apache.kafka.common.serialization.Serdes
@@ -81,12 +83,12 @@ class KafkaApplicationTest {
             val periodeStart = ZonedDateTime.now().minusDays(2)
             val consumer = OppfolgingsPeriodeConsumer(AutomatiskKontorRutingService(
                 KontorTilordningService::tilordneKontor,
-                { _, _, _-> GTKontorFunnet(kontor) },
+                { _, a, b-> KontorForGtNrFantKontor(kontor, b, a) },
                 { AlderFunnet(40) },
                 { FnrFunnet(fnr) },
                 { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
-                { SkjermingFunnet(false) },
-                { HarStrengtFortroligAdresseFunnet(false) }
+                { SkjermingFunnet(HarSkjerming(false)) },
+                { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) }
             ))
             val topology = configureTopology(listOf(StringTopicConsumer(topic,consumer::consume)))
             val kafkaMockTopic = setupKafkaMock(topology, topic)
@@ -138,12 +140,12 @@ class KafkaApplicationTest {
 
         val automatiskKontorRutingService = AutomatiskKontorRutingService(
             KontorTilordningService::tilordneKontor,
-            { _, _, _-> GTKontorFunnet(KontorId(skjermetKontor)) },
+            { _, b, a-> KontorForGtNrFantKontor(KontorId(skjermetKontor), a, b) },
             { AlderFunnet(40) },
             { FnrFunnet(fnr) },
             { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
-            { SkjermingFunnet(false) },
-            { HarStrengtFortroligAdresseFunnet(false) }
+            { SkjermingFunnet(HarSkjerming(false)) },
+            { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) }
         )
         val skjermingConsumer = SkjermingConsumer(automatiskKontorRutingService)
 

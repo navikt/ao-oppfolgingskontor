@@ -7,6 +7,7 @@ import io.ktor.http.ContentType
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
+import io.ktor.server.routing.Routing
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
@@ -17,7 +18,7 @@ val norg2TestUrl = "https://norg2.test.no"
 
 val logger = LoggerFactory.getLogger("ApplicationTestBuilder.mockNorg2Host")
 
-fun ApplicationTestBuilder.mockNorg2Host(): Norg2Client {
+fun ApplicationTestBuilder.mockNorg2Host(block: Routing.() -> Unit = {}): Norg2Client {
     logger.info("Mocking norg2 host: $norg2TestUrl${Norg2Client.hentEnhetPathWithParam}")
     externalServices {
         hosts(norg2TestUrl) {
@@ -25,6 +26,7 @@ fun ApplicationTestBuilder.mockNorg2Host(): Norg2Client {
                 install(io.ktor.server.plugins.contentnegotiation.ContentNegotiation) {
                     json()
                 }
+                block()
                 get(Norg2Client.hentEnheterPath) {
                     val fileContent = javaClass.getResource("/norg2enheter.json")?.readText()
                         ?: throw IllegalStateException("File norg2enheter.json not found")

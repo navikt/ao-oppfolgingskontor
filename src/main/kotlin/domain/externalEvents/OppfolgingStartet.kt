@@ -1,5 +1,5 @@
 package no.nav.domain.externalEvents
 
 sealed class OppfolgingsperiodeEndret(val aktorId: String)
-class OppfolgingperiodeStartet(aktorId: String): OppfolgingsperiodeEndret(aktorId)
-class OppfolgingperiodeAvsluttet(aktorId: String): OppfolgingsperiodeEndret(aktorId)
+class OppfolgingsperiodeStartet(aktorId: String): OppfolgingsperiodeEndret(aktorId)
+class OppfolgingsperiodeAvsluttet(aktorId: String): OppfolgingsperiodeEndret(aktorId)

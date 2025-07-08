@@ -11,6 +11,7 @@ import io.ktor.client.plugins.logging.Logging
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.ApplicationEnvironment
 import no.nav.db.Fnr
+import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.http.client.tokenexchange.SystemTokenPlugin
 import no.nav.http.client.tokenexchange.TexasTokenResponse
 import no.nav.http.graphql.generated.client.HentAdresseBeskyttelseQuery
@@ -37,12 +38,13 @@ data class FnrIkkeFunnet(val message: String) : FnrResult()
 data class FnrOppslagFeil(val message: String) : FnrResult()
 
 sealed class GtForBrukerResult
-data class GtForBrukerFunnet(val gt: GeografiskTilknytning) : GtForBrukerResult()
+data class GtNummerForBrukerFunnet(val gt: GeografiskTilknytningNr) : GtForBrukerResult()
+data class GtLandForBrukerFunnet(val land: GeografiskTilknytningLand) : GtForBrukerResult()
 data class GtForBrukerIkkeFunnet(val message: String) : GtForBrukerResult()
 data class GtForBrukerOppslagFeil(val message: String) : GtForBrukerResult()
 
 sealed class HarStrengtFortroligAdresseResult
-class HarStrengtFortroligAdresseFunnet(val harStrengtFortroligAdresse: Boolean) : HarStrengtFortroligAdresseResult()
+class HarStrengtFortroligAdresseFunnet(val harStrengtFortroligAdresse: HarStrengtFortroligAdresse) : HarStrengtFortroligAdresseResult()
 class HarStrengtFortroligAdresseIkkeFunnet(val message: String) : HarStrengtFortroligAdresseResult()
 class HarStrengtFortroligAdresseOppslagFeil(val message: String) : HarStrengtFortroligAdresseResult()
 
@@ -143,11 +145,11 @@ class PdlClient(
             }
             return result?.data?.hentPerson?.adressebeskyttelse
                 ?.also {
-                    if (it.isEmpty()) return HarStrengtFortroligAdresseFunnet(false)
+                    if (it.isEmpty()) return HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
                 }
                 ?.firstOrNull()
                 ?.let { it.gradering == AdressebeskyttelseGradering.STRENGT_FORTROLIG || it.gradering == AdressebeskyttelseGradering.STRENGT_FORTROLIG_UTLAND }
-                ?.let { HarStrengtFortroligAdresseFunnet(it) }
+                ?.let { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(it)) }
                 ?: HarStrengtFortroligAdresseIkkeFunnet("Ingen adressebeskyttelse funnet for bruker $result")
         } catch (e: Throwable) {
             log.error("Henting av strengt fortrolig adresse for bruker feilet: ${e.message ?: e.toString()}", e)
@@ -159,11 +161,11 @@ class PdlClient(
 fun GraphQLClientResponse<HentGtQuery.Result>.toGeografiskTilknytning(): GtForBrukerResult {
     return this.data?.hentGeografiskTilknytning?.let {
             when (it.gtType) {
-                GtType.BYDEL -> it.gtBydel?.let { bydel -> GeografiskTilknytning(bydel) }
-                GtType.KOMMUNE -> it.gtKommune?.let { kommune -> GeografiskTilknytning(kommune) }
-                GtType.UTLAND -> it.gtLand?.let { land -> GeografiskTilknytning(land) }
+                GtType.BYDEL -> it.gtBydel?.let { bydel -> GeografiskTilknytningNr(bydel) }
+                GtType.KOMMUNE -> it.gtKommune?.let { kommune -> GeografiskTilknytningNr(kommune) }
+                GtType.UTLAND -> it.gtLand?.let { land -> return GtLandForBrukerFunnet(GeografiskTilknytningLand(land)) }
                 else -> null
-            }?.let { gt -> GtForBrukerFunnet(gt) }
+            }?.let { gt -> GtNummerForBrukerFunnet(gt) }
                 ?: GtForBrukerIkkeFunnet("Ingen gyldige verider i GT repons fra PDL funnet for type ${it.gtType} bydel: ${it.gtBydel}, kommune: ${it.gtKommune}, land: ${it.gtLand}")
         } ?: GtForBrukerIkkeFunnet("Ingen geografisk tilknytning funnet for bruker $this")
 }

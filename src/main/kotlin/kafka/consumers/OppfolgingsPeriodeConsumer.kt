@@ -1,11 +1,10 @@
 package no.nav.kafka.consumers
 
-import io.ktor.network.tls.CertificateAndKey
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import no.nav.domain.externalEvents.OppfolgingperiodeAvsluttet
-import no.nav.domain.externalEvents.OppfolgingperiodeStartet
+import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
+import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.domain.externalEvents.OppfolgingsperiodeEndret
 import no.nav.kafka.consumers.OppfolgingsPeriodeConsumer.StartetBegrunnelse
 import no.nav.kafka.processor.Commit
@@ -68,6 +67,6 @@ data class OppfolgingsperiodeDTO(
 )
 
 fun OppfolgingsperiodeDTO.toOppfolgingsperiodeEndret(aktorId: String): OppfolgingsperiodeEndret {
-    if (this.sluttDato == null) return OppfolgingperiodeStartet(aktorId)
-    return OppfolgingperiodeAvsluttet(aktorId)
+    if (this.sluttDato == null) return OppfolgingsperiodeStartet(aktorId)
+    return OppfolgingsperiodeAvsluttet(aktorId)
 }

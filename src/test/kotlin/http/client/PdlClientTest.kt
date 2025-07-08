@@ -3,13 +3,14 @@ package http.client
 import com.expediagroup.graphql.client.types.GraphQLClientResponse
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.ktor.client.plugins.logging.Logging
 import io.ktor.http.HttpStatusCode
-import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.testing.testApplication
-import no.nav.http.client.GtForBrukerFunnet
+import no.nav.http.client.GeografiskTilknytningLand
+import no.nav.http.client.GeografiskTilknytningNr
 import no.nav.http.client.GtForBrukerIkkeFunnet
 import no.nav.http.client.GtForBrukerOppslagFeil
+import no.nav.http.client.GtLandForBrukerFunnet
+import no.nav.http.client.GtNummerForBrukerFunnet
 import no.nav.http.client.PdlClient
 import no.nav.http.client.mockPdl
 import no.nav.http.client.pdlTestUrl
@@ -40,7 +41,7 @@ class PdlClientTest {
         )
         val pdlClient = PdlClient(pdlTestUrl,client)
         val gt = pdlClient.hentGt(fnr)
-        gt.shouldBeInstanceOf<GtForBrukerFunnet>()
+        gt.shouldBeInstanceOf<GtNummerForBrukerFunnet>()
         gt.gt.value shouldBe bydelGtNr
     }
 
@@ -84,13 +85,13 @@ class PdlClientTest {
     @Test
     fun `skal plukke riktig gt`() {
         val bydelResponse = response(GtType.BYDEL, gtBydel = "3333")
-        bydelResponse.toGeografiskTilknytning() shouldBe GtForBrukerFunnet(no.nav.http.client.GeografiskTilknytning("3333"))
+        bydelResponse.toGeografiskTilknytning() shouldBe GtNummerForBrukerFunnet(GeografiskTilknytningNr("3333"))
 
         val kommuneResponse = response(GtType.KOMMUNE, gtKommune = "4444")
-        kommuneResponse.toGeografiskTilknytning() shouldBe GtForBrukerFunnet(no.nav.http.client.GeografiskTilknytning("4444"))
+        kommuneResponse.toGeografiskTilknytning() shouldBe GtNummerForBrukerFunnet(GeografiskTilknytningNr("4444"))
 
         val landResponse = response(GtType.UTLAND, gtLand = "SVERIGE")
-        landResponse.toGeografiskTilknytning() shouldBe GtForBrukerFunnet(no.nav.http.client.GeografiskTilknytning("SVERIGE"))
+        landResponse.toGeografiskTilknytning() shouldBe GtLandForBrukerFunnet(GeografiskTilknytningLand("SVERIGE"))
 
         val feilResponse = response(gtType = GtType.UTLAND)
         feilResponse.toGeografiskTilknytning() shouldBe GtForBrukerIkkeFunnet("Ingen gyldige verider i GT repons fra PDL funnet for type UTLAND bydel: null, kommune: null, land: null")
