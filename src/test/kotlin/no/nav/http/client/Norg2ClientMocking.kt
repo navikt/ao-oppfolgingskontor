@@ -11,7 +11,6 @@ import io.ktor.server.routing.Routing
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
-import no.nav.http.client.Norg2Client.Companion.hentKontorForGtPath
 import no.nav.http.logger
 import org.slf4j.LoggerFactory
 
@@ -21,7 +20,6 @@ val logger = LoggerFactory.getLogger("ApplicationTestBuilder.mockNorg2Host")
 
 fun ApplicationTestBuilder.mockNorg2Host(block: Routing.() -> Unit = {}): Norg2Client {
     logger.info("Mocking norg2 host: $norg2TestUrl${Norg2Client.hentEnhetPathWithParam}")
-//    val TestGT = GeografiskTilknytningNr("434576")
     externalServices {
         hosts(norg2TestUrl) {
             routing {
