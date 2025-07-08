@@ -8,6 +8,7 @@ import io.ktor.server.application.ApplicationStopping
 import io.ktor.server.application.createApplicationPlugin
 import io.ktor.server.application.hooks.MonitoringEvent
 import io.ktor.server.application.log
+import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.binder.kafka.KafkaStreamsMetrics
 import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
@@ -24,8 +25,11 @@ import no.nav.kafka.consumers.SkjermingConsumer
 import no.nav.kafka.processor.LeesahAvroSerdes
 import no.nav.services.AutomatiskKontorRutingService
 import org.apache.kafka.streams.KafkaStreams
+import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler
 import org.jetbrains.exposed.sql.Database
+import org.slf4j.LoggerFactory
 import java.time.Duration
+import java.util.concurrent.atomic.AtomicInteger
 
 val KafkaStreamsStarting: EventDefinition<Application> = EventDefinition()
 val KafkaStreamsStarted: EventDefinition<Application> = EventDefinition()
@@ -33,6 +37,7 @@ val KafkaStreamsStopping: EventDefinition<Application> = EventDefinition()
 val KafkaStreamsStopped: EventDefinition<Application> = EventDefinition()
 
 val shutDownTimeout = Duration.ofSeconds(1)
+val logger = LoggerFactory.getLogger("no.nav.kafka.KafkaStreamsPlugin")
 
 class KafkaStreamsPluginConfig(
     var automatiskKontorRutingService: AutomatiskKontorRutingService? = null,
@@ -82,7 +87,14 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
             lockProvider
         )
         val kafkaStream = KafkaStreams(topology, configureKafkaStreams(environment.config))
+
+        kafkaStream.setUncaughtExceptionHandler {
+            logger.error("Uncaught exception in Kafka Streams. Shutting down client", it)
+            StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.SHUTDOWN_CLIENT
+        }
+
         if (this.pluginConfig.meterRegistry != null) {
+            configureStateListenerMetrics(kafkaStream, this.pluginConfig.meterRegistry!!)
             val kafkaStreamsMetrics = KafkaStreamsMetrics(kafkaStream)
             kafkaStreamsMetrics.bindTo(this.pluginConfig.meterRegistry!!)
         }
@@ -101,3 +113,22 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
             application.monitor.raise(KafkaStreamsStopped, application)
         }
     }
+
+private fun configureStateListenerMetrics(
+    kafkaStream: KafkaStreams,
+    meterRegistry: MeterRegistry
+) {
+    // 0=STOPPED/ERROR, 1=RUNNING, 2=REBALANCING
+    val kafkaStateGaugeValue = AtomicInteger(0)
+    Gauge.builder("kafka_streams_client_state_gauge", kafkaStateGaugeValue::get)
+        .description("Current state of the Kafka Streams client (0=STOPPED/ERROR, 1=RUNNING, 2=REBALANCING)")
+        .register(meterRegistry)
+
+    kafkaStream.setStateListener { newState, _ ->
+        when (newState) {
+            KafkaStreams.State.RUNNING -> kafkaStateGaugeValue.set(1)
+            KafkaStreams.State.REBALANCING -> kafkaStateGaugeValue.set(2)
+            else -> kafkaStateGaugeValue.set(0) // Dekker ERROR, NOT_RUNNING, PENDING_SHUTDOWN
+        }
+    }
+}

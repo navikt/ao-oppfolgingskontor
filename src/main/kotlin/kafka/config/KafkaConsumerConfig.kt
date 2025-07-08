@@ -3,7 +3,6 @@ package no.nav.kafka.config
 import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde
 import io.ktor.server.config.*
 import net.javacrumbs.shedlock.core.LockProvider
-import no.nav.kafka.exceptionHandler.RetryIfRetriableExceptionHandler
 import no.nav.kafka.retry.library.RetryConfig
 import no.nav.kafka.retry.library.RetryableTopology
 import no.nav.kafka.processor.ProcessRecord
@@ -16,6 +15,7 @@ import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
 import org.apache.kafka.streams.Topology
+import org.apache.kafka.streams.errors.LogAndFailProcessingExceptionHandler
 import java.util.Properties
 
 sealed class TopicConsumer(
@@ -87,7 +87,7 @@ private fun Properties.streamsConfig(config: NaisKafkaEnv, appConfig: Applicatio
 }
 
 fun Properties.streamsErrorHandlerConfig(): Properties {
-    put(StreamsConfig.PROCESSING_EXCEPTION_HANDLER_CLASS_CONFIG, RetryIfRetriableExceptionHandler::class.java.name)
+    put(StreamsConfig.PROCESSING_EXCEPTION_HANDLER_CLASS_CONFIG, LogAndFailProcessingExceptionHandler::class.java.name)
     return this
 }
 

@@ -9,41 +9,24 @@ spec:
   groups:
     - name: KafkaStreamsHelse
       rules:
-        - alert: KafkaStreamsPodDown
-          # Logikk: For en gitt pod (gruppert på pod-label), finnes det en prosess-metrikk,
-          # MEN det finnes IKKE en kafka-metrikk?
+        - alert: KafkaStreamsKlientErNede
           expr: |
-            (
-              count by (pod) (process_uptime_seconds{app="ao-oppfolgingskontor"}) > 0
-            )
-            AND ON (pod)
-            (
-              count by (pod) (kafka_stream_alive_stream_threads{app="ao-oppfolgingskontor"}) == 0
-            )
-          for: 5m
+            kafka_streams_client_state_gauge{app="ao-oppfolgingskontor"} == 0
+          for: 2m
           annotations:
-            consequence: "Kafka Streams-klienten har sannsynligvis krasjet i pod `{{ $labels.pod }}`."
-            action: "Undersøk logger for den spesifikke podden: `kubectl logs {{ $labels.pod }} -n dab`"
-            summary: "Pod `{{ $labels.pod }}` rapporterer at den kjører, men dens Kafka Streams-metrikker har forsvunnet."
+            consequence: "Kafka Streams-klienten har feilet og er ikke i RUNNING-tilstand."
+            action: "Klienten '{{ $labels.client_id }}' i pod '{{ $labels.pod }}' har status 0. Sjekk logger for denne podden: `kubectl logs {{ $labels.pod }} -n dab`"
           labels:
             namespace: dab
             severity: critical
-        - alert: AllKafkaStreamsDown
-          # Logikk: Antall poder som rapporterer prosess-uptime er større enn 0,
-          # MEN antall poder som rapporterer kafka-uptime er nøyaktig 0.
+        - alert: KafkaStreamsStuckRebalancing
           expr: |
-            (
-              count(process_uptime_seconds{app="ao-oppfolgingskontor"}) > 0
-            )
-            AND
-            (
-              count(kafka_stream_alive_stream_threads{app="ao-oppfolgingskontor"}) == 0
-            )
-          for: 5m
+            kafka_streams_client_state_gauge{app="ao-oppfolgingskontor"} == 2
+          for: 15m # Gi den god tid til å rebalansere normalt
           annotations:
-            consequence: "Kafka Streams har krasjet i ALLE poder for applikasjonen `{{ $labels.app }}`."
-            action: "Dette er en total tjenestesvikt for meldingsprosessering. Start en feilsøking på tvers av hele deployeringen."
-            summary: "Ingen av podene for `{{ $labels.app }}` rapporterer lenger Kafka Streams-metrikker, selv om podene ser ut til å kjøre."
+            consequence: "Kafka Streams-klienten har vært i REBALANCING-tilstand (status 2) i over 15 minutter."
+            action: "Undersøk om det er problemer med tilkobling til Kafka-clusteret, eller om det er en 'rebalance storm'."
+            summary: "Vedvarende rebalancing i Kafka Streams-klienten"
           labels:
             namespace: dab
-            severity: critical
+            severity: warning
