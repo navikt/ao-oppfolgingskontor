@@ -70,9 +70,6 @@ class PdlClient(
             install(SystemTokenPlugin) {
                 this.tokenProvider = azureTokenProvider
             }
-            install(Logging) {
-                level = LogLevel.INFO
-            }
             install(ContentNegotiation) {
                 json()
             }
@@ -115,7 +112,7 @@ class PdlClient(
                     ?.let { FnrFunnet(it) }
                     ?: run {
                         log.debug("Fant ${identer.size} på identer")
-                        FnrIkkeFunnet("Fant ingen gyldig fnr for bruker, antall identer: ${identer.size}")
+                        FnrIkkeFunnet("Fant ingen gyldig fnr for bruker, antall identer: ${identer.size}, indent-typer: ${identer.joinToString { it.gruppe.name }}")
                     }
             } ?: FnrIkkeFunnet("Ingen ident funnet, feltet `identer` i hentIdenter response var null")
     }
