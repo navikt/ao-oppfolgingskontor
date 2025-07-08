@@ -9,6 +9,7 @@ import io.ktor.server.config.MapApplicationConfig
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import no.nav.configureSecurity
+import no.nav.db.Fnr
 import no.nav.http.client.Norg2Client
 import no.nav.http.client.norg2TestUrl
 import no.nav.http.graphql.configureGraphQlModule
@@ -45,7 +46,7 @@ class AuthenticationTest {
             val response = client.post("/graphql") {
                 header("Authorization", "Bearer ${server.issueToken().serialize()}")
                 header("Content-Type", "application/json")
-                setBody(kontorTilhorighetQuery("8989889898"))
+                setBody(kontorTilhorighetQuery(Fnr("89898898980")))
             }
 
             response.status shouldBe HttpStatusCode.Companion.OK
@@ -61,7 +62,7 @@ class AuthenticationTest {
 
             val response = client.post("/graphql") {
                 header("Content-Type", "application/json")
-                setBody(kontorTilhorighetQuery("8989889898"))
+                setBody(kontorTilhorighetQuery(Fnr("89898898980")))
             }
 
             response.status shouldBe HttpStatusCode.Companion.Unauthorized

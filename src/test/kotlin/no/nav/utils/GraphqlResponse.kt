@@ -126,7 +126,7 @@ private fun alleKontorQuery(): String {
             { alleKontor { kontorId , kontorNavn } }
         """.trimIndent())
 }
-private fun graphqlPayload(fnr: String?, query: String): String {
+private fun graphqlPayload(fnr: Fnr?, query: String): String {
     fun variablesClause(fnr: Fnr): String {
         return """
             "variables": { "fnr": "$fnr" },

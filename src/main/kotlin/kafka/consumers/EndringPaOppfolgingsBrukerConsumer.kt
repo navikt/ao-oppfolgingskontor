@@ -2,6 +2,7 @@ package no.nav.kafka.consumers
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import no.nav.db.Fnr
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.table.ArenaKontorTable
 import no.nav.domain.KontorId
@@ -45,7 +46,7 @@ class EndringPaOppfolgingsBrukerConsumer() {
         KontorTilordningService.tilordneKontor(
             EndringPaaOppfolgingsBrukerFraArena(
                 tilordning = KontorTilordning(
-                    fnr = fnrString,
+                    fnr = Fnr(fnrString),
                     kontorId = KontorId(endringPaOppfolgingsBruker.oppfolgingsenhet),
                 ),
                 sistEndretDatoArena = endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime(),

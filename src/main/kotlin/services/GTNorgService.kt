@@ -43,13 +43,13 @@ class GTNorgService(
 * Når vi får gt mand bare land fra PDL propagerer dette videre igjennom kontor-oppslag tjenesten
 * */
 sealed class KontorForGtNrResultat
-sealed class KontorForGtNrFunnet(val skjerming: HarSkjerming, val strengtFortroligAdresse: HarStrengtFortroligAdresse) : KontorForGtNrResultat()
-data class KontorForGtNrFantKontor(val kontorId: KontorId, val _skjerming: HarSkjerming, val _strengtFortroligAdresse: HarStrengtFortroligAdresse) : KontorForGtNrFunnet(_skjerming, _strengtFortroligAdresse)
-data class KontorForGtNrFantLand(val landkode: GeografiskTilknytningLand, val _skjerming: HarSkjerming, val _strengtFortroligAdresse: HarStrengtFortroligAdresse) : KontorForGtNrFunnet(_skjerming, _strengtFortroligAdresse)
-data class KontorForGtFinnesIkke(val _skjerming: HarSkjerming, val _strengtFortroligAdresse: HarStrengtFortroligAdresse) : KontorForGtNrFunnet(_skjerming, _strengtFortroligAdresse)
+sealed class KontorForGtFantLandEllerKontor(val skjerming: HarSkjerming, val strengtFortroligAdresse: HarStrengtFortroligAdresse) : KontorForGtNrResultat()
+data class KontorForGtNrFantKontor(val kontorId: KontorId, val _skjerming: HarSkjerming, val _strengtFortroligAdresse: HarStrengtFortroligAdresse) : KontorForGtFantLandEllerKontor(_skjerming, _strengtFortroligAdresse)
+data class KontorForGtNrFantLand(val landkode: GeografiskTilknytningLand, val _skjerming: HarSkjerming, val _strengtFortroligAdresse: HarStrengtFortroligAdresse) : KontorForGtFantLandEllerKontor(_skjerming, _strengtFortroligAdresse)
+data class KontorForGtFinnesIkke(val _skjerming: HarSkjerming, val _strengtFortroligAdresse: HarStrengtFortroligAdresse) : KontorForGtFantLandEllerKontor(_skjerming, _strengtFortroligAdresse)
 data class KontorForGtNrFeil(val melding: String) : KontorForGtNrResultat()
 
-fun KontorForGtNrFunnet.sensitivitet(): Sensitivitet {
+fun KontorForGtFantLandEllerKontor.sensitivitet(): Sensitivitet {
     return Sensitivitet(
         this.skjerming,
         this.strengtFortroligAdresse

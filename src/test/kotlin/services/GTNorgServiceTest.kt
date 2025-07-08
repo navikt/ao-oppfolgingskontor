@@ -2,6 +2,7 @@ package services
 
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.test.runTest
+import no.nav.db.Fnr
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
@@ -19,7 +20,7 @@ import no.nav.services.KontorForGtNrFeil
 import org.junit.jupiter.api.Test
 
 class GTNorgServiceTest {
-    val fnr = "12345678901"
+    val fnr = Fnr("12345678901")
 
     @Test
     fun `skal håndtere gt for bruker ikke funnet`() = runTest {

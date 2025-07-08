@@ -9,6 +9,7 @@ import io.ktor.server.config.MapApplicationConfig
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
+import no.nav.db.Fnr
 import no.nav.domain.KontorType
 import no.nav.http.client.mockNorg2Host
 import no.nav.http.client.norg2TestUrl
@@ -55,7 +56,7 @@ class SettArbeidsoppfolgingsKontorTest {
     @Test
     fun `skal kunne sette arbeidsoppfølgingskontor`() = testApplication {
         withMockOAuth2Server {
-            val fnr = "72345678901"
+            val fnr = Fnr("72345678901")
             val kontorId = "4444"
             val veilederIdent = "Z990000"
             setupTestAppWithAuthAndGraphql()

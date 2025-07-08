@@ -19,6 +19,7 @@ import no.nav.http.client.SkjermingFunnet
 import no.nav.kafka.consumers.LeesahConsumer
 import no.nav.kafka.processor.Retry
 import no.nav.person.pdl.leesah.adressebeskyttelse.Gradering
+import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.KontorForGtNrFeil
 import no.nav.services.KontorForGtNrResultat
@@ -29,12 +30,13 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
 import java.time.ZonedDateTime
+import java.util.UUID
 
 class LeesahConsumerTest {
 
     @Test
     fun `skal sjekke gt kontor på nytt ved bostedsadresse endret`() = testApplication {
-        val fnr = "1234567890"
+        val fnr = Fnr("12345678901")
         val gammeltKontorId = "1234"
         val nyKontorId = "5678"
         application {
@@ -46,7 +48,7 @@ class LeesahConsumerTest {
             leesahConsumer.handterLeesahHendelse(BostedsadresseEndret(fnr))
 
             transaction {
-                val kontorEtterEndirng = GeografiskTilknyttetKontorEntity[fnr]
+                val kontorEtterEndirng = GeografiskTilknyttetKontorEntity[fnr.value]
                 kontorEtterEndirng.kontorId shouldBe nyKontorId
             }
         }
@@ -54,7 +56,7 @@ class LeesahConsumerTest {
 
     @Test
     fun `skal sette både gt-kontor og ao-kontor ved addressebeskyttelse endret hvis det er nytt kontor`() = testApplication {
-        val fnr = "1234567892"
+        val fnr = Fnr("12345678920")
         val gammeltKontorId = "1234"
         val nyKontorId = "5678"
         application {
@@ -66,10 +68,10 @@ class LeesahConsumerTest {
             leesahConsumer.handterLeesahHendelse(AdressebeskyttelseEndret(fnr, Gradering.STRENGT_FORTROLIG))
 
             transaction {
-                val gtKontorEtterEndring = GeografiskTilknyttetKontorEntity[fnr]
+                val gtKontorEtterEndring = GeografiskTilknyttetKontorEntity[fnr.value]
                 gtKontorEtterEndring.kontorId shouldBe nyKontorId
 
-                val aoKontorEtterEndirng = ArbeidsOppfolgingKontorEntity[fnr]
+                val aoKontorEtterEndirng = ArbeidsOppfolgingKontorEntity[fnr.value]
                 aoKontorEtterEndirng.kontorId shouldBe nyKontorId
             }
         }
@@ -77,7 +79,7 @@ class LeesahConsumerTest {
 
     @Test
     fun `skal ikke sette ao-kontor men gt-kontor ved addressebeskyttelse endret hvis det er nytt kontor`() = testApplication {
-        val fnr = "1234567894"
+        val fnr = Fnr("12345678940")
         val gammelKontorId = "1234"
         val nyKontorId = "5678"
         application {
@@ -90,10 +92,10 @@ class LeesahConsumerTest {
             leesahConsumer.handterLeesahHendelse(AdressebeskyttelseEndret(fnr, Gradering.UGRADERT))
 
             transaction {
-                val gtKontorEtterEndring = GeografiskTilknyttetKontorEntity[fnr]
+                val gtKontorEtterEndring = GeografiskTilknyttetKontorEntity[fnr.value]
                 gtKontorEtterEndring.kontorId shouldBe nyKontorId
 
-                val aoKontorEtterEndirng = ArbeidsOppfolgingKontorEntity[fnr]
+                val aoKontorEtterEndirng = ArbeidsOppfolgingKontorEntity[fnr.value]
                 aoKontorEtterEndirng.kontorId shouldBe gammelKontorId
             }
         }
@@ -101,7 +103,7 @@ class LeesahConsumerTest {
 
     @Test
     fun `skal håndtere at gt-provider returnerer GTKontorFeil`() = testApplication {
-        val fnr = "4044567890"
+        val fnr = Fnr("40445678901")
         val automatiskKontorRutingService = defaultAutomatiskKontorRutingService(
             { a, b, c -> KontorForGtNrFeil("Noe gikk galt") }
         )
@@ -115,7 +117,7 @@ class LeesahConsumerTest {
 
     @Test
     fun `skal håndtere at gt-provider kaster throwable`() = testApplication {
-        val fnr = "4044567890"
+        val fnr = Fnr("40445678901")
         val automatiskKontorRutingService = defaultAutomatiskKontorRutingService(
             { a, b, c -> throw Throwable("Noe gikk galt") }
         )
@@ -128,7 +130,7 @@ class LeesahConsumerTest {
     }
 
     private fun defaultAutomatiskKontorRutingService(
-        gtProvider: suspend (fnr: String, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming) -> KontorForGtNrResultat
+        gtProvider: suspend (fnr: Fnr, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming) -> KontorForGtNrResultat
     ): AutomatiskKontorRutingService {
         return AutomatiskKontorRutingService(
             KontorTilordningService::tilordneKontor,
@@ -137,7 +139,8 @@ class LeesahConsumerTest {
             aldersProvider = { throw Throwable("Denne skal ikke brukes") },
             profileringProvider = { throw Throwable("Denne skal ikke brukes") },
             erSkjermetProvider = { SkjermingFunnet(HarSkjerming(false)) },
-            harStrengtFortroligAdresseProvider = { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) }
+            harStrengtFortroligAdresseProvider = { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
+            isUnderOppfolgingProvider = { AktivOppfolgingsperiode(Fnr("66666666666"), UUID.randomUUID()) }
         )
     }
 
@@ -150,7 +153,7 @@ class LeesahConsumerTest {
     private fun gittNåværendeGtKontor(fnr: Fnr, kontorId: KontorId) {
         transaction {
             GeografiskTilknytningKontorTable.insert {
-                it[id] = fnr
+                it[id] = fnr.value
                 it[this.kontorId] = kontorId.id
                 it[this.createdAt] = ZonedDateTime.now().toOffsetDateTime()
                 it[this.updatedAt] = ZonedDateTime.now().toOffsetDateTime()
@@ -161,7 +164,7 @@ class LeesahConsumerTest {
     private fun gittNåværendeAOKontor(fnr: Fnr, kontorId: KontorId) {
         transaction {
             ArbeidsOppfolgingKontorTable.insert {
-                it[id] = fnr
+                it[id] = fnr.value
                 it[this.kontorId] = kontorId.id
                 it[endretAv] = "test"
                 it[endretAvType] = "VEILEDER"

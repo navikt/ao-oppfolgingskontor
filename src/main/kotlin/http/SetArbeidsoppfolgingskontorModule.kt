@@ -45,13 +45,13 @@ fun Application.configureArbeidsoppfolgingskontorModule(
                     val principal = call.principal<TokenValidationContextPrincipal>()
                     val veilederIdent = principal?.context?.getClaims(issuer)?.getStringClaim("NAVident")
                         ?: throw IllegalStateException("NAVident not found in token")
-                    val gammeltKontor = kontorTilhorighetService.getArbeidsoppfolgingKontorTilhorighet(kontorTilordning.fnr)
+                    val gammeltKontor = kontorTilhorighetService.getArbeidsoppfolgingKontorTilhorighet(Fnr(kontorTilordning.fnr))
                     val kontorId = KontorId(kontorTilordning.kontorId)
 
                     KontorTilordningService.tilordneKontor(
                         KontorSattAvVeileder(
                             tilhorighet = KontorTilordning(
-                                fnr = kontorTilordning.fnr,
+                                fnr = Fnr(kontorTilordning.fnr),
                                 kontorId = kontorId,
                             ),
                             registrant = Veileder(NavIdent(veilederIdent))
@@ -94,7 +94,7 @@ data class Kontor(
 data class ArbeidsoppfolgingsKontorTilordningDTO(
     val kontorId: String,
     val begrunnelse: String?,
-    val fnr: Fnr
+    val fnr: String
 )
 
 @Serializable

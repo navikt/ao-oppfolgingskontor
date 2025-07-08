@@ -81,8 +81,8 @@ class PdlClient(
         url = URI.create("$pdlGraphqlUrl/graphql").toURL(),
         httpClient = ktorHttpClient
     )
-    suspend fun hentAlder(fnr: String): AlderResult {
-        val query = HentAlderQuery(HentAlderQuery.Variables(fnr))
+    suspend fun hentAlder(fnr: Fnr): AlderResult {
+        val query = HentAlderQuery(HentAlderQuery.Variables(fnr.value))
         val result = client.execute(query)
         if (result.errors != null && result.errors!!.isNotEmpty()) {
             return AlderIkkeFunnet(result.errors!!.joinToString { it.message })
@@ -109,7 +109,7 @@ class PdlClient(
             ?.let { identer ->
                 identer.firstOrNull { it.gruppe == IdentGruppe.FOLKEREGISTERIDENT && !it.historisk }
                     ?.ident
-                    ?.let { FnrFunnet(it) }
+                    ?.let { FnrFunnet(Fnr(it)) }
                     ?: run {
                         log.debug("Fant ${identer.size} på identer")
                         FnrIkkeFunnet("Fant ingen gyldig fnr for bruker, antall identer: ${identer.size}, indent-typer: ${identer.joinToString { it.gruppe.name }}")
@@ -119,7 +119,7 @@ class PdlClient(
 
     suspend fun hentGt(fnr: Fnr): GtForBrukerResult {
         try {
-            val query = HentGtQuery(HentGtQuery.Variables(ident = fnr))
+            val query = HentGtQuery(HentGtQuery.Variables(ident = fnr.value))
             val result = client.execute(query)
             if (result.errors != null && result.errors!!.isNotEmpty()) {
                 log.error("Feil ved henting av gt for bruker: \n\t${result.errors!!.joinToString { it.message }}")
@@ -134,7 +134,7 @@ class PdlClient(
 
     suspend fun harStrengtFortroligAdresse(fnr: Fnr): HarStrengtFortroligAdresseResult {
         try {
-            val query = HentAdresseBeskyttelseQuery(HentAdresseBeskyttelseQuery.Variables(fnr, false))
+            val query = HentAdresseBeskyttelseQuery(HentAdresseBeskyttelseQuery.Variables(fnr.value, false))
             val result = client.execute(query)
             if (result.errors != null && result.errors!!.isNotEmpty()) {
                 log.error("Feil ved henting av strengt fortrolig adresse for bruker: \n\t${result.errors!!.joinToString { it.message }}")

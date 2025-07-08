@@ -39,9 +39,9 @@ class KontorTilhorighetService(
             ?.let { (kontor, kontorNavn) -> GeografiskTilknyttetKontor(kontorNavn,kontor.getKontorId()) }
     }
 
-    private fun getGTKontor(fnr: Fnr) = GeografiskTilknyttetKontorEntity.findById(fnr)
-    private fun getArenaKontor(fnr: Fnr) = ArenaKontorEntity.findById(fnr)
-    private fun getAOKontor(fnr: Fnr) = ArbeidsOppfolgingKontorEntity.findById(fnr)
+    private fun getGTKontor(fnr: Fnr) = GeografiskTilknyttetKontorEntity.findById(fnr.value)
+    private fun getArenaKontor(fnr: Fnr) = ArenaKontorEntity.findById(fnr.value)
+    private fun getAOKontor(fnr: Fnr) = ArbeidsOppfolgingKontorEntity.findById(fnr.value)
 
     suspend fun getKontorTilhorighet(fnr: Fnr): KontorTilhorighetQueryDto? {
         return newSuspendedTransaction {

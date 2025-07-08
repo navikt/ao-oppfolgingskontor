@@ -3,6 +3,7 @@ package services
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import no.nav.db.Fnr
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.INGEN_GT_KONTOR_FALLBACK
@@ -26,6 +27,7 @@ import no.nav.http.client.AlderIkkeFunnet
 import no.nav.http.client.AlderResult
 import no.nav.http.client.FnrFunnet
 import no.nav.http.client.FnrIkkeFunnet
+import no.nav.http.client.FnrOppslagFeil
 import no.nav.http.client.FnrResult
 import no.nav.http.client.GeografiskTilknytningLand
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
@@ -43,6 +45,7 @@ import no.nav.kafka.consumers.EndringISkjermingResult
 import no.nav.kafka.consumers.HåndterPersondataEndretFail
 import no.nav.kafka.consumers.HåndterPersondataEndretSuccess
 import no.nav.person.pdl.leesah.adressebeskyttelse.Gradering
+import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.AutomatiskKontorRutingService.Companion.VIKAFOSSEN
 import no.nav.services.KontorForGtFinnesIkke
@@ -50,9 +53,13 @@ import no.nav.services.KontorForGtNrFantKontor
 import no.nav.services.KontorForGtNrFantLand
 import no.nav.services.KontorForGtNrFeil
 import no.nav.services.KontorForGtNrResultat
+import no.nav.services.OppfolgingperiodeOppslagFeil
+import no.nav.services.OppfolgingsperiodeOppslagResult
 import no.nav.services.TilordningFeil
 import no.nav.services.TilordningSuccessIngenEndring
 import no.nav.services.TilordningSuccessKontorEndret
+import java.time.ZonedDateTime
+import java.util.UUID
 
 class AutomatiskKontorRutingServiceTest: DescribeSpec({
 
@@ -62,7 +69,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
         describe("start oppfolgingsperiode ") {
             it("skal sette AO kontor til lokalkontor for unge brukere (under 30)") {
                 gitt(ungBrukerMedGodeMuligheter).tilordneKontorAutomatisk(
-                    OppfolgingsperiodeStartet(aktorId)
+                    oppfolgingsperiodeStartet(ungBrukerMedGodeMuligheter)
                 ) shouldBe TilordningSuccessKontorEndret(
                     OppfolgingsPeriodeStartetLokalKontorTilordning(
                         KontorTilordning(ungBrukerMedGodeMuligheter.fnr(),  ungBrukerMedGodeMuligheter.gtKontor()),
@@ -73,7 +80,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
 
             it("skal sette AO kontor til NOE hvis gode muligheter og over 30 år") {
                 gitt(eldreBrukerMedGodeMuligheter).tilordneKontorAutomatisk(
-                    OppfolgingsperiodeStartet(aktorId)
+                    oppfolgingsperiodeStartet(eldreBrukerMedGodeMuligheter)
                 ) shouldBe TilordningSuccessKontorEndret(
                     OppfolgingsperiodeStartetNoeTilordning(
                         eldreBrukerMedGodeMuligheter.fnr()
@@ -83,7 +90,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
 
             it("skal sette AO kontor til fallback (it avdelingen) hvis gt ikke finnes") {
                 gitt(brukerSomManglerGt).tilordneKontorAutomatisk(
-                    OppfolgingsperiodeStartet(aktorId)
+                    oppfolgingsperiodeStartet(brukerSomManglerGt)
                 ) shouldBe TilordningSuccessKontorEndret(
                     OppfolgingsPeriodeStartetFallbackKontorTilordning(
                         brukerSomManglerGt.fnr(),
@@ -97,7 +104,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
 
             it("skal sette AO kontor til et adressebeskyttet kontor hvis adressebeskyttet bruker") {
                 gitt(adressebeskyttetBruker).tilordneKontorAutomatisk(
-                    OppfolgingsperiodeStartet(aktorId)
+                    oppfolgingsperiodeStartet(adressebeskyttetBruker)
                 ) shouldBe TilordningSuccessKontorEndret(
                     OppfolgingsPeriodeStartetSensitivKontorTilordning(
                         KontorTilordning(adressebeskyttetBruker.fnr(), adressebeskyttetBruker.gtKontor()),
@@ -108,7 +115,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
 
             it("skal sette AO kontor til et skjermet kontor hvis skjermet bruker") {
                 gitt(skjermetBruker).tilordneKontorAutomatisk(
-                    OppfolgingsperiodeStartet(aktorId)
+                    oppfolgingsperiodeStartet(skjermetBruker)
                 ) shouldBe TilordningSuccessKontorEndret(
                     OppfolgingsPeriodeStartetSensitivKontorTilordning(
                         KontorTilordning(skjermetBruker.fnr(), adressebeskyttetBruker.gtKontor()),
@@ -122,7 +129,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
 
             it("skal sette AO kontor til lokalkontor hvis har antatt behov for veiledening") {
                 gitt(ungBrukerMedbehovForVeiledning).tilordneKontorAutomatisk(
-                    OppfolgingsperiodeStartet(aktorId)
+                    oppfolgingsperiodeStartet(ungBrukerMedbehovForVeiledning)
                 ) shouldBe TilordningSuccessKontorEndret(
                     OppfolgingsPeriodeStartetLokalKontorTilordning(
                         KontorTilordning(ungBrukerMedbehovForVeiledning.fnr(), ungBrukerMedbehovForVeiledning.gtKontor()),
@@ -133,7 +140,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
 
             it("skal bruke fallbackkontor hvis bruker har landskode som gt") {
                 gitt(brukerMedLandskode).tilordneKontorAutomatisk(
-                    OppfolgingsperiodeStartet(aktorId)
+                    oppfolgingsperiodeStartet(brukerMedLandskode)
                 ) shouldBe TilordningSuccessKontorEndret(
                     OppfolgingsPeriodeStartetFallbackKontorTilordning(
                         brukerMedLandskode.fnr(),
@@ -144,7 +151,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
 
             it("skal rute til vikafossen hvis bruker har landskode som gt, men adressebeskyttelse") {
                 gitt(brukerMedAdressebeskyttelseOgLandskode).tilordneKontorAutomatisk(
-                    OppfolgingsperiodeStartet(aktorId)
+                    oppfolgingsperiodeStartet(brukerMedAdressebeskyttelseOgLandskode)
                 ) shouldBe TilordningSuccessKontorEndret(
                     OppfolgingsPeriodeStartetSensitivKontorTilordning(
                         KontorTilordning(brukerMedAdressebeskyttelseOgLandskode.fnr(), VIKAFOSSEN),
@@ -155,7 +162,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
 
             it("skal throwe hvis bruker har landskode som gt, men er skjermet") {
                 gitt(skjermetBrukerMedLandskode).tilordneKontorAutomatisk(
-                    OppfolgingsperiodeStartet(aktorId)
+                    oppfolgingsperiodeStartet(skjermetBrukerMedLandskode)
                 ) shouldBe TilordningFeil("Feil ved tilordning av kontor: Vi håndterer ikke skjermede brukere uten geografisk tilknytning")
             }
 
@@ -163,7 +170,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
 
         it("avsluttet oppfolgingsperiode skal ikke sette ao kontor") {
             gitt(ungBrukerMedGodeMuligheter).tilordneKontorAutomatisk(
-                OppfolgingsperiodeAvsluttet(aktorId)
+                OppfolgingsperiodeAvsluttet(ungBrukerMedGodeMuligheter.fnr())
             ) shouldBe TilordningSuccessIngenEndring
         }
     }
@@ -354,14 +361,12 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
     }
 
     describe("Feilhåndtering") {
-        val aktorId = "123456789"
+        val fnr = Fnr("12345678901")
         describe("tilordneKontorAutomatisk") {
             feilendeBrukere.map { bruker ->
-                gitt(bruker).tilordneKontorAutomatisk(
-                    OppfolgingsperiodeStartet(aktorId)
-                )
+                gitt(bruker).tilordneKontorAutomatisk(oppfolgingsperiodeStartet(fnr))
             } shouldBe listOf(
-                TilordningFeil("Fant ikke fnr: feil i fnr"),
+                TilordningFeil("Feil ved oppslag på fnr: feil i fnr"),
                 TilordningFeil("Kunne ikke hente alder: feil i alder"),
                 TilordningSuccessKontorEndret(
                     OppfolgingsPeriodeStartetLokalKontorTilordning(
@@ -380,56 +385,59 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
 
         describe("handterEndringISkjermingStatus") {
             it("handterEndringISkjermingStatus - feil ved henting av adressebeskyttelse skal returnere feil") {
-                val fnr = "123456789"
                 gitt(brukerMedFeilendeAdressebeskyttelse).handterEndringISkjermingStatus (
-                    SkjermetStatusEndret(fnr, HarSkjerming(true))
+                    SkjermetStatusEndret(brukerMedFeilendeAdressebeskyttelse.fnr(), HarSkjerming(true))
                 ).isFailure shouldBe true
             }
             it("handterEndringISkjermingStatus - feil ved henting av gt skal returnere feil") {
-                val fnr = "123456789"
                 gitt(brukerMedFeilendeKontorForGt).handterEndringISkjermingStatus (
-                    SkjermetStatusEndret(fnr, HarSkjerming(true))
+                    SkjermetStatusEndret(brukerMedFeilendeKontorForGt.fnr(), HarSkjerming(true))
                 ).isFailure shouldBe true
             }
         }
 
         describe("handterEndringForAdressebeskyttelse") {
             it("handterEndringForAdressebeskyttelse - feil ved henting av skjerming skal returnere feil") {
-                val fnr = "123456789"
                 gitt(brukerMedFeilendeSkjerming).handterEndringForAdressebeskyttelse (
-                    AdressebeskyttelseEndret(fnr, Gradering.STRENGT_FORTROLIG)
+                    AdressebeskyttelseEndret(brukerMedFeilendeSkjerming.fnr(), Gradering.STRENGT_FORTROLIG)
                 ).shouldBeInstanceOf<HåndterPersondataEndretFail>()
             }
             it("handterEndringForAdressebeskyttelse - feil ved henting av gt skal returnere feil") {
-                val fnr = "123456789"
                 gitt(brukerMedFeilendeKontorForGt).handterEndringForAdressebeskyttelse (
-                    AdressebeskyttelseEndret(fnr, Gradering.STRENGT_FORTROLIG)
+                    AdressebeskyttelseEndret(brukerMedFeilendeKontorForGt.fnr(), Gradering.STRENGT_FORTROLIG)
                 ).shouldBeInstanceOf<HåndterPersondataEndretFail>()
             }
         }
 
         describe("handterEndringForBostedsadresse") {
             it("handterEndringForBostedsadresse - feil ved henting av adressebeskyttelse skal returnere feil") {
-                val fnr = "123456789"
                 gitt(brukerMedFeilendeAdressebeskyttelse).handterEndringForBostedsadresse (
-                    BostedsadresseEndret(fnr)
+                    BostedsadresseEndret(brukerMedFeilendeAdressebeskyttelse.fnr())
                 ).shouldBeInstanceOf<HåndterPersondataEndretFail>()
             }
             it("handterEndringForBostedsadresse - feil ved henting av skjerming skal returnere feil") {
-                val fnr = "123456789"
                 gitt(brukerMedFeilendeSkjerming).handterEndringForBostedsadresse (
-                    BostedsadresseEndret(fnr)
+                    BostedsadresseEndret(brukerMedFeilendeSkjerming.fnr())
                 ).shouldBeInstanceOf<HåndterPersondataEndretFail>()
             }
             it("handterEndringForAdressebeskyttelse - feil ved henting av gt skal returnere feil") {
-                val fnr = "123456789"
                 gitt(brukerMedFeilendeKontorForGt).handterEndringForBostedsadresse (
-                    BostedsadresseEndret(fnr)
+                    BostedsadresseEndret(brukerMedFeilendeKontorForGt.fnr())
                 ).shouldBeInstanceOf<HåndterPersondataEndretFail>()
             }
         }
     }
 })
+
+fun oppfolgingsperiodeStartet(bruker: Bruker) = oppfolgingsperiodeStartet(bruker.fnr())
+
+fun oppfolgingsperiodeStartet(fnr: Fnr): OppfolgingsperiodeStartet {
+    return OppfolgingsperiodeStartet(
+        fnr,
+        ZonedDateTime.now(),
+        UUID.randomUUID()
+    )
+}
 
 fun gitt(bruker: Bruker): AutomatiskKontorRutingService {
     return AutomatiskKontorRutingService(
@@ -445,7 +453,16 @@ fun gitt(bruker: Bruker): AutomatiskKontorRutingService {
         { bruker.profilering },
         { bruker.skjerming },
         { bruker.strengtFortroligAdresse },
+        { bruker.oppfolgingsPeriodeResult }
     )
+}
+
+fun defaultOppfolgingsperiodeOppslagResult(fnr: FnrResult): OppfolgingsperiodeOppslagResult {
+    return when (fnr) {
+        is FnrFunnet -> return AktivOppfolgingsperiode(fnr.fnr, UUID.randomUUID())
+        is FnrIkkeFunnet -> OppfolgingperiodeOppslagFeil(fnr.message)
+        is FnrOppslagFeil -> OppfolgingperiodeOppslagFeil(fnr.message)
+    }
 }
 
 data class Bruker(
@@ -454,9 +471,10 @@ data class Bruker(
     val profilering: HentProfileringsResultat,
     val gtKontor: KontorForGtNrResultat,
     val skjerming: SkjermingResult,
-    val strengtFortroligAdresse: HarStrengtFortroligAdresseResult
+    val strengtFortroligAdresse: HarStrengtFortroligAdresseResult,
+    val oppfolgingsPeriodeResult: OppfolgingsperiodeOppslagResult = defaultOppfolgingsperiodeOppslagResult(fnr)
 ) {
-    fun fnr(): String {
+    fun fnr(): Fnr {
         if (fnr is FnrFunnet) {
             return fnr.fnr
         }
@@ -471,7 +489,7 @@ data class Bruker(
 }
 
 val ungBrukerMedGodeMuligheter = Bruker(
-    FnrFunnet("123456789"),
+    FnrFunnet(Fnr("12345678901")),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
     KontorForGtNrFantKontor(KontorId("1234"), HarSkjerming(false), HarStrengtFortroligAdresse(false)),
@@ -479,7 +497,7 @@ val ungBrukerMedGodeMuligheter = Bruker(
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
 )
 val eldreBrukerMedGodeMuligheter = Bruker(
-    FnrFunnet("223456789"),
+    FnrFunnet(Fnr("22345678901")),
     AlderFunnet(31),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
     KontorForGtNrFantKontor(KontorId("1234"), HarSkjerming(false), HarStrengtFortroligAdresse(false)),
@@ -487,7 +505,7 @@ val eldreBrukerMedGodeMuligheter = Bruker(
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
 )
 val ungBrukerMedbehovForVeiledning = Bruker(
-    FnrFunnet("323456789"),
+    FnrFunnet(Fnr("32345678901")),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_BEHOV_FOR_VEILEDNING),
     KontorForGtNrFantKontor(KontorId("1234"), HarSkjerming(false), HarStrengtFortroligAdresse(false)),
@@ -495,7 +513,7 @@ val ungBrukerMedbehovForVeiledning = Bruker(
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
 )
 val brukerSomManglerGt = Bruker(
-    FnrFunnet("423456789"),
+    FnrFunnet(Fnr("42345678901")),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
     KontorForGtFinnesIkke(HarSkjerming(false),
@@ -505,7 +523,7 @@ val brukerSomManglerGt = Bruker(
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
 )
 val skjermetBruker = Bruker(
-    FnrFunnet("523456789"),
+    FnrFunnet(Fnr("52345678901")),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
     KontorForGtNrFantKontor(KontorId("1234"), HarSkjerming(true), HarStrengtFortroligAdresse(false)),
@@ -513,7 +531,7 @@ val skjermetBruker = Bruker(
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
 )
 val adressebeskyttetBruker = Bruker(
-    FnrFunnet("623456789"),
+    FnrFunnet(Fnr("62345678901")),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
     KontorForGtNrFantKontor(KontorId("1234"), HarSkjerming(false), HarStrengtFortroligAdresse(true)),
@@ -521,14 +539,14 @@ val adressebeskyttetBruker = Bruker(
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(true))
 )
 val skjermetBrukerMedLandskode = Bruker(
-    FnrFunnet("723456789"),
+    FnrFunnet(Fnr("72345678901")),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
     KontorForGtNrFantLand(GeografiskTilknytningLand("JPN"), HarSkjerming(true), HarStrengtFortroligAdresse(false)),
     SkjermingFunnet(HarSkjerming(true)),
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)))
 val brukerMedLandskode = Bruker(
-    FnrFunnet("823456789"),
+    FnrFunnet(Fnr("82345678901")),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
     KontorForGtNrFantLand(GeografiskTilknytningLand("JPN"), HarSkjerming(false), HarStrengtFortroligAdresse(false)),
@@ -536,7 +554,7 @@ val brukerMedLandskode = Bruker(
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
 )
 val brukerMedAdressebeskyttelseOgLandskode = Bruker(
-    FnrFunnet("923456789"),
+    FnrFunnet(Fnr("92345678901")),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
     KontorForGtNrFantLand(GeografiskTilknytningLand("JPN"), HarSkjerming(false), HarStrengtFortroligAdresse(true)),
@@ -551,10 +569,10 @@ val brukerMedFeilendeFnr = Bruker(
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
     KontorForGtNrFantKontor(KontorId("1234"), HarSkjerming(false), HarStrengtFortroligAdresse(false)),
     SkjermingFunnet(HarSkjerming(false)),
-    HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
+    HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)),
 )
 val brukerMedFeilendeAlder = Bruker(
-    FnrFunnet("1"),
+    FnrFunnet(Fnr("11111111111")),
     AlderIkkeFunnet("feil i alder"),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
     KontorForGtNrFantKontor(KontorId("1234"), HarSkjerming(false), HarStrengtFortroligAdresse(false)),
@@ -562,7 +580,7 @@ val brukerMedFeilendeAlder = Bruker(
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
 )
 val brukerMedFeilendeProfilering = Bruker(
-    FnrFunnet("1"),
+    FnrFunnet(Fnr("11111111111")),
     AlderFunnet(20),
     ProfileringIkkeFunnet("feil i profilering"),
     KontorForGtNrFantKontor(KontorId("1234"), HarSkjerming(false), HarStrengtFortroligAdresse(false)),
@@ -570,7 +588,7 @@ val brukerMedFeilendeProfilering = Bruker(
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
 )
 val brukerMedFeilendeSkjerming = Bruker(
-    FnrFunnet("1"),
+    FnrFunnet(Fnr("11111111111")),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
     KontorForGtNrFantKontor(KontorId("1234"), HarSkjerming(false), HarStrengtFortroligAdresse(false)),
@@ -578,7 +596,7 @@ val brukerMedFeilendeSkjerming = Bruker(
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
 )
 val brukerMedFeilendeAdressebeskyttelse = Bruker(
-    FnrFunnet("1"),
+    FnrFunnet(Fnr("11111111111")),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
     KontorForGtNrFantKontor(KontorId("1234"), HarSkjerming(false), HarStrengtFortroligAdresse(false)),
@@ -586,7 +604,7 @@ val brukerMedFeilendeAdressebeskyttelse = Bruker(
     HarStrengtFortroligAdresseIkkeFunnet("feil i adressebeskyttelse")
 )
 val brukerMedFeilendeKontorForGt = Bruker(
-    FnrFunnet("1"),
+    FnrFunnet(Fnr("11111111111")),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
     KontorForGtNrFeil("Feil i gt-kontor oppslag"),

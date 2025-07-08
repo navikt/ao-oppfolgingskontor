@@ -24,7 +24,7 @@ object KontorTilordningService {
                 is AOKontorEndret -> {
                     ArbeidsOppfolgingKontorTable.upsert {
                         it[kontorId] = kontorTilhorighet.kontorId.id
-                        it[fnr] = kontorTilhorighet.fnr
+                        it[fnr] = kontorTilhorighet.fnr.value
                         it[endretAv] = kontorEndring.registrant.getIdent()
                         it[endretAvType] = kontorEndring.registrant.getType()
                         it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
@@ -33,7 +33,7 @@ object KontorTilordningService {
                 is ArenaKontorEndret -> {
                     ArenaKontorTable.upsert {
                         it[kontorId] = kontorTilhorighet.kontorId.id
-                        it[fnr] = kontorTilhorighet.fnr
+                        it[fnr] = kontorTilhorighet.fnr.value
                         it[kafkaOffset] = kontorEndring.offset?.toInt()
                         it[kafkaPartition] = kontorEndring.partition
                         it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
@@ -43,7 +43,7 @@ object KontorTilordningService {
                 is GTKontorEndret -> {
                     GeografiskTilknytningKontorTable.upsert {
                         it[kontorId] = kontorTilhorighet.kontorId.id
-                        it[fnr] = kontorTilhorighet.fnr
+                        it[fnr] = kontorTilhorighet.fnr.value
                         it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
                     }
                 }
@@ -58,7 +58,7 @@ object KontorTilordningService {
         val historikkInnslag = kontorEndring.toHistorikkInnslag()
         return KontorhistorikkTable.insert {
             it[kontorId] = historikkInnslag.kontorId.id
-            it[fnr] = historikkInnslag.fnr
+            it[fnr] = historikkInnslag.fnr.value
             it[endretAv] = historikkInnslag.registrant.getIdent()
             it[endretAvType] = historikkInnslag.registrant.getType()
             it[kontorendringstype] = historikkInnslag.kontorendringstype.name
