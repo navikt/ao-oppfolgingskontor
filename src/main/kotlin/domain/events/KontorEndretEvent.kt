@@ -34,7 +34,6 @@ data class GTKontorEndret(val kontorTilordning: KontorTilordning, val kontorEndr
     }
 
     override fun logg() {
-        TODO("Not yet implemented")
         log.info("GTKontorEndret: kontorId=${tilordning.kontorId}, kontorEndringsType=$kontorEndringsType")
     }
 

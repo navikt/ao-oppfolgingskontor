@@ -2,6 +2,7 @@ package services
 
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.INGEN_GT_KONTOR_FALLBACK
@@ -39,6 +40,7 @@ import no.nav.http.client.arbeidssogerregisteret.ProfileringIkkeFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
 import no.nav.http.client.toGtKontorFunnet
 import no.nav.kafka.consumers.EndringISkjermingResult
+import no.nav.kafka.consumers.HåndterPersondataEndretFail
 import no.nav.kafka.consumers.HåndterPersondataEndretSuccess
 import no.nav.person.pdl.leesah.adressebeskyttelse.Gradering
 import no.nav.services.AutomatiskKontorRutingService
@@ -46,6 +48,7 @@ import no.nav.services.AutomatiskKontorRutingService.Companion.VIKAFOSSEN
 import no.nav.services.KontorForGtFinnesIkke
 import no.nav.services.KontorForGtNrFantKontor
 import no.nav.services.KontorForGtNrFantLand
+import no.nav.services.KontorForGtNrFeil
 import no.nav.services.KontorForGtNrResultat
 import no.nav.services.TilordningFeil
 import no.nav.services.TilordningSuccessIngenEndring
@@ -329,6 +332,19 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 )
             ))
         }
+
+        it("skal synce gt kontor med norg for brukere med gt-landskode også") {
+            gitt(brukerMedLandskode).handterEndringForBostedsadresse(
+                BostedsadresseEndret(brukerMedLandskode.fnr())
+            ) shouldBe HåndterPersondataEndretSuccess(listOf(
+                GTKontorEndret.endretPgaBostedsadresseEndret(
+                    KontorTilordning(
+                        brukerMedLandskode.fnr(),
+                        INGEN_GT_KONTOR_FALLBACK
+                    )
+                )
+            ))
+        }
     }
 
     describe("Feilhåndtering") {
@@ -352,45 +368,59 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 ),
                 TilordningFeil("Kunne ikke hente skjerming ved kontortilordning: feil i skjerming"),
                 TilordningFeil("Kunne ikke hente adressebeskyttelse ved kontortilordning: feil i adressebeskyttelse"),
+                TilordningFeil("Feil ved henting av gt-kontor: Feil i gt-kontor oppslag"),
             )
-        }
-
-
-        it("handterEndringISkjermingStatus - feil ved henting av adressebeskyttelse skal returnere feil") {
-            val fnr = "123456789"
-            val bruker = feilendeBrukere.last()
-            gitt(bruker).handterEndringISkjermingStatus (
-                SkjermetStatusEndret(fnr, HarSkjerming(true))
-            ).isFailure shouldBe true
         }
 
         describe("handterEndringISkjermingStatus") {
-            val fnr = "123456789"
-            val success = Result.success(EndringISkjermingResult(listOf(
-                GTKontorEndret.endretPgaSkjermingEndret(
-                    KontorTilordning(
-                        fnr,
-                        brukerMedFeilendeFnr.gtKontor()
-                    )
-                ),
-                AOKontorEndretPgaSkjermingEndret(
-                    KontorTilordning(
-                        fnr,
-                        brukerMedFeilendeFnr.gtKontor()
-                    )
-                )
-            )
-            ))
-            feilendeBrukere.take(4) .map { bruker ->
-                gitt(bruker).handterEndringISkjermingStatus (
+            it("handterEndringISkjermingStatus - feil ved henting av adressebeskyttelse skal returnere feil") {
+                val fnr = "123456789"
+                gitt(brukerMedFeilendeAdressebeskyttelse).handterEndringISkjermingStatus (
                     SkjermetStatusEndret(fnr, HarSkjerming(true))
-                )
-            } shouldBe listOf(
-                success,
-                success,
-                success,
-                success,
-            )
+                ).isFailure shouldBe true
+            }
+            it("handterEndringISkjermingStatus - feil ved henting av gt skal returnere feil") {
+                val fnr = "123456789"
+                gitt(brukerMedFeilendeKontorForGt).handterEndringISkjermingStatus (
+                    SkjermetStatusEndret(fnr, HarSkjerming(true))
+                ).isFailure shouldBe true
+            }
+        }
+
+        describe("handterEndringForAdressebeskyttelse") {
+            it("handterEndringForAdressebeskyttelse - feil ved henting av skjerming skal returnere feil") {
+                val fnr = "123456789"
+                gitt(brukerMedFeilendeSkjerming).handterEndringForAdressebeskyttelse (
+                    AdressebeskyttelseEndret(fnr, Gradering.STRENGT_FORTROLIG)
+                ).shouldBeInstanceOf<HåndterPersondataEndretFail>()
+            }
+            it("handterEndringForAdressebeskyttelse - feil ved henting av gt skal returnere feil") {
+                val fnr = "123456789"
+                gitt(brukerMedFeilendeKontorForGt).handterEndringForAdressebeskyttelse (
+                    AdressebeskyttelseEndret(fnr, Gradering.STRENGT_FORTROLIG)
+                ).shouldBeInstanceOf<HåndterPersondataEndretFail>()
+            }
+        }
+
+        describe("handterEndringForBostedsadresse") {
+            it("handterEndringForBostedsadresse - feil ved henting av adressebeskyttelse skal returnere feil") {
+                val fnr = "123456789"
+                gitt(brukerMedFeilendeAdressebeskyttelse).handterEndringForBostedsadresse (
+                    BostedsadresseEndret(fnr)
+                ).shouldBeInstanceOf<HåndterPersondataEndretFail>()
+            }
+            it("handterEndringForBostedsadresse - feil ved henting av skjerming skal returnere feil") {
+                val fnr = "123456789"
+                gitt(brukerMedFeilendeSkjerming).handterEndringForBostedsadresse (
+                    BostedsadresseEndret(fnr)
+                ).shouldBeInstanceOf<HåndterPersondataEndretFail>()
+            }
+            it("handterEndringForAdressebeskyttelse - feil ved henting av gt skal returnere feil") {
+                val fnr = "123456789"
+                gitt(brukerMedFeilendeKontorForGt).handterEndringForBostedsadresse (
+                    BostedsadresseEndret(fnr)
+                ).shouldBeInstanceOf<HåndterPersondataEndretFail>()
+            }
         }
     }
 })
@@ -549,12 +579,21 @@ val brukerMedFeilendeAdressebeskyttelse = Bruker(
     SkjermingFunnet(HarSkjerming(false)),
     HarStrengtFortroligAdresseIkkeFunnet("feil i adressebeskyttelse")
 )
+val brukerMedFeilendeKontorForGt = Bruker(
+    FnrFunnet("1"),
+    AlderFunnet(20),
+    ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
+    KontorForGtNrFeil("Feil i gt-kontor oppslag"),
+    SkjermingFunnet(HarSkjerming(false)),
+    HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
+)
 val feilendeBrukere = listOf(
     brukerMedFeilendeFnr,
     brukerMedFeilendeAlder,
     brukerMedFeilendeProfilering,
     brukerMedFeilendeSkjerming,
-    brukerMedFeilendeAdressebeskyttelse
+    brukerMedFeilendeAdressebeskyttelse,
+    brukerMedFeilendeKontorForGt
 )
 
 val ingenSensitivitet = Sensitivitet(
