@@ -92,9 +92,9 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
             logger.error("Uncaught exception in Kafka Streams. Shutting down client", it)
             StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.SHUTDOWN_CLIENT
         }
-
         if (this.pluginConfig.meterRegistry != null) {
-            configureStateListenerMetrics(kafkaStream, this.pluginConfig.meterRegistry!!)
+            val applicationId = environment.config.property("kafka.application-id").getString()
+            configureStateListenerMetrics(applicationId, kafkaStream, this.pluginConfig.meterRegistry!!)
             val kafkaStreamsMetrics = KafkaStreamsMetrics(kafkaStream)
             kafkaStreamsMetrics.bindTo(this.pluginConfig.meterRegistry!!)
         }
@@ -115,14 +115,17 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
     }
 
 private fun configureStateListenerMetrics(
+    applicationId: String,
     kafkaStream: KafkaStreams,
     meterRegistry: MeterRegistry
 ) {
     // 0=STOPPED/ERROR, 1=RUNNING, 2=REBALANCING
     val kafkaStateGaugeValue = AtomicInteger(0)
-    Gauge.builder("kafka_streams_client_state_gauge", kafkaStateGaugeValue::get)
+    Gauge.builder("kafka_streams_application_state", kafkaStateGaugeValue::get)
         .description("Current state of the Kafka Streams client (0=STOPPED/ERROR, 1=RUNNING, 2=REBALANCING)")
+        .tag("streams_application_id", applicationId)
         .register(meterRegistry)
+
 
     kafkaStream.setStateListener { newState, _ ->
         when (newState) {

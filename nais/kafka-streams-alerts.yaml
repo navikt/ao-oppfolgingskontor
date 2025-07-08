@@ -11,21 +11,21 @@ spec:
       rules:
         - alert: KafkaStreamsKlientErNede
           expr: |
-            kafka_streams_client_state_gauge{app="ao-oppfolgingskontor"} == 0
+            kafka_streams_application_state{app="ao-oppfolgingskontor"} == 0
           for: 2m
           annotations:
             consequence: "Kafka Streams-klienten har feilet og er ikke i RUNNING-tilstand."
-            action: "Klienten '{{ $labels.client_id }}' i pod '{{ $labels.pod }}' har status 0. Sjekk logger for denne podden: `kubectl logs {{ $labels.pod }} -n dab`"
+            action: "Streams app '{{ $labels.streams_application_id }}' i pod '{{ $labels.pod }}' har status 0. Sjekk logger for denne podden: `kubectl logs {{ $labels.pod }} -n dab`"
           labels:
             namespace: dab
             severity: critical
         - alert: KafkaStreamsStuckRebalancing
           expr: |
-            kafka_streams_client_state_gauge{app="ao-oppfolgingskontor"} == 2
+            kafka_streams_application_state{app="ao-oppfolgingskontor"} == 2
           for: 15m # Gi den god tid til å rebalansere normalt
           annotations:
-            consequence: "Kafka Streams-klienten har vært i REBALANCING-tilstand (status 2) i over 15 minutter."
-            action: "Undersøk om det er problemer med tilkobling til Kafka-clusteret, eller om det er en 'rebalance storm'."
+            consequence: "Kafka Streams-klienten '{{ $labels.streams_application_id }}' har vært i REBALANCING-tilstand (status 2) i over 15 minutter."
+            action: "Undersøk om det er problemer med tilkobling til Kafka-clusteret, eller om det er en 'rebalance storm'. Sjekk logger for denne podden: `kubectl logs {{ $labels.pod }} -n dab`"
             summary: "Vedvarende rebalancing i Kafka Streams-klienten"
           labels:
             namespace: dab
