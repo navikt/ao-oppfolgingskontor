@@ -196,7 +196,8 @@ class AutomatiskKontorRutingService(
                 is KontorForGtNrFunnet -> {
                     val gtKontor = getGTKontorOrFallback(gtKontorResultat)
                     val gtKontorEndring = GTKontorEndret.endretPgaAdressebeskyttelseEndret(
-                        KontorTilordning(hendelse.fnr, gtKontor)
+                        KontorTilordning(hendelse.fnr, gtKontor),
+                            hendelse.erStrengtFortrolig()
                     )
                     tilordneKontor(gtKontorEndring)
                     if (hendelse.erStrengtFortrolig().value) {
@@ -237,7 +238,8 @@ class AutomatiskKontorRutingService(
                         KontorTilordning(
                             endringISkjermingStatus.fnr,
                             gtKontor
-                        )
+                        ),
+                        endringISkjermingStatus.erSkjermet
                     )
                     tilordneKontor(gtKontorEndring)
                     if (endringISkjermingStatus.erSkjermet.value) {

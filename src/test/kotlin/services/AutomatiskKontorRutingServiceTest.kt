@@ -178,7 +178,8 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                         KontorTilordning(
                             ungBrukerMedGodeMuligheter.fnr(),
                             ungBrukerMedGodeMuligheter.gtKontor()
-                        )
+                        ),
+                        HarStrengtFortroligAdresse(false)
                     )
                 ))
         }
@@ -192,7 +193,8 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                     KontorTilordning(
                         ungBrukerMedGodeMuligheter.fnr(),
                         ungBrukerMedGodeMuligheter.gtKontor()
-                    )
+                    ),
+                    HarStrengtFortroligAdresse(true)
                 ),
                 AOKontorEndretPgaAdressebeskyttelseEndret(
                     KontorTilordning(
@@ -212,7 +214,8 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                     KontorTilordning(
                         brukerMedAdressebeskyttelseOgLandskode.fnr(),
                         VIKAFOSSEN
-                    )
+                    ),
+                    HarStrengtFortroligAdresse(true)
                 ),
                 AOKontorEndretPgaAdressebeskyttelseEndret(
                     KontorTilordning(
@@ -238,7 +241,8 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                         KontorTilordning(
                             ungBrukerMedGodeMuligheter.fnr(),
                             ungBrukerMedGodeMuligheter.gtKontor()
-                        )
+                        ),
+                        HarSkjerming(true)
                     ),
                     AOKontorEndretPgaSkjermingEndret(
                         KontorTilordning(
@@ -262,7 +266,8 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                         KontorTilordning(
                             ungBrukerMedGodeMuligheter.fnr(),
                             INGEN_GT_KONTOR_FALLBACK
-                        )
+                        ),
+                        HarSkjerming(true)
                     ),
                     AOKontorEndretPgaSkjermingEndret(
                         KontorTilordning(
@@ -286,7 +291,8 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                         KontorTilordning(
                             ungBrukerMedGodeMuligheter.fnr(),
                             ungBrukerMedGodeMuligheter.gtKontor()
-                        )
+                        ),
+                        HarSkjerming(false)
                     )
                 )
             ))

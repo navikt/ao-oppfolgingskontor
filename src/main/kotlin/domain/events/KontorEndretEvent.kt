@@ -1,5 +1,7 @@
 package no.nav.domain.events
 
+import no.nav.domain.HarSkjerming
+import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorHistorikkInnslag
 import no.nav.domain.KontorTilordning
@@ -38,8 +40,12 @@ data class GTKontorEndret(val kontorTilordning: KontorTilordning, val kontorEndr
     }
 
     companion object {
-        fun endretPgaAdressebeskyttelseEndret(tilordning: KontorTilordning) = GTKontorEndret(tilordning, KontorEndringsType.FikkAddressebeskyttelse)
-        fun endretPgaSkjermingEndret(tilordning: KontorTilordning) = GTKontorEndret(tilordning, KontorEndringsType.FikkSkjerming)
+        fun endretPgaAdressebeskyttelseEndret(
+            tilordning: KontorTilordning,
+            erStrengtFortrolig: HarStrengtFortroligAdresse
+        ) = GTKontorEndret(tilordning, if (erStrengtFortrolig.value) KontorEndringsType.FikkAddressebeskyttelse else KontorEndringsType.AddressebeskyttelseMistet)
+        fun endretPgaSkjermingEndret(tilordning: KontorTilordning, erSkjermet: HarSkjerming) =
+            GTKontorEndret(tilordning, if (erSkjermet.value) KontorEndringsType.FikkSkjerming else KontorEndringsType.MistetSkjerming)
         fun endretPgaBostedsadresseEndret(tilordning: KontorTilordning) = GTKontorEndret(tilordning, KontorEndringsType.EndretBostedsadresse)
     }
 }
