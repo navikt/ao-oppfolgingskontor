@@ -49,7 +49,7 @@ class KafkaApplicationTest {
 
     @Test
     fun `skal lagre alle nye endringer på arena-kontor i historikk tabellen`() = testApplication {
-        val fnr = "12345678901"
+        val fnr = "12345768901"
 
         application {
             flywayMigrationInTest()

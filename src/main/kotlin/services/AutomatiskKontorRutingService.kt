@@ -306,6 +306,15 @@ class AutomatiskKontorRutingService(
         endringISkjermingStatus: SkjermetStatusEndret
     ): Result<EndringISkjermingResult> {
         return runCatching {
+            when (val result = isUnderOppfolgingProvider(FnrFunnet(endringISkjermingStatus.fnr))) {
+                is AktivOppfolgingsperiode -> {}
+                NotUnderOppfolging -> return Result.success(EndringISkjermingResult(emptyList()))
+                is OppfolgingperiodeOppslagFeil ->
+                    return Result.failure(
+                        Exception("Kunne håndtere endring i skjerming pga feil ved henting av oppfolgingsstatus: ${result.message}")
+                    )
+            }
+
             val harStrengtFortroligAdresse =
                 when (val result =
                     harStrengtFortroligAdresseProvider(endringISkjermingStatus.fnr)

@@ -53,6 +53,7 @@ import no.nav.services.KontorForGtNrFantKontor
 import no.nav.services.KontorForGtNrFantLand
 import no.nav.services.KontorForGtNrFeil
 import no.nav.services.KontorForGtNrResultat
+import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingperiodeOppslagFeil
 import no.nav.services.OppfolgingsperiodeOppslagResult
 import no.nav.services.TilordningFeil
@@ -232,6 +233,13 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 )
             ))
         }
+
+        it("skal ikke behandle brukere som ikke er under oppfølging") {
+            gitt(brukerIkkeUnderOppfolging)
+                .handterEndringForAdressebeskyttelse(
+                    AdressebeskyttelseEndret(brukerIkkeUnderOppfolging.fnr(), Gradering.STRENGT_FORTROLIG)
+                ) shouldBe HåndterPersondataEndretSuccess(emptyList())
+        }
     }
 
     describe("Endring i skjermingstatus") {
@@ -304,6 +312,12 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 )
             ))
         }
+
+        it("skal ikke behandle brukere som ikke er under oppfølging") {
+            gitt(brukerIkkeUnderOppfolging).handterEndringISkjermingStatus(
+                SkjermetStatusEndret(brukerIkkeUnderOppfolging.fnr(), HarSkjerming(true))
+            ) shouldBe Result.success(EndringISkjermingResult(emptyList()))
+        }
     }
 
     describe("Endring i bostedsadresse") {
@@ -357,6 +371,12 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                     )
                 )
             ))
+        }
+
+        it("skal ikke behandle brukere som ikke er under oppfølging") {
+            gitt(brukerIkkeUnderOppfolging).handterEndringForBostedsadresse(
+                BostedsadresseEndret(brukerIkkeUnderOppfolging.fnr())
+            ) shouldBe HåndterPersondataEndretSuccess(emptyList())
         }
     }
 
@@ -560,6 +580,15 @@ val brukerMedAdressebeskyttelseOgLandskode = Bruker(
     KontorForGtNrFantLand(GeografiskTilknytningLand("JPN"), HarSkjerming(false), HarStrengtFortroligAdresse(true)),
     SkjermingFunnet(HarSkjerming(false)),
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(true))
+)
+val brukerIkkeUnderOppfolging = Bruker(
+    FnrFunnet(Fnr("93345678901")),
+    AlderFunnet(20),
+    ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
+    KontorForGtNrFantKontor(KontorId("4141"), HarSkjerming(false), HarStrengtFortroligAdresse(false)),
+    SkjermingFunnet(HarSkjerming(false)),
+    HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)),
+    NotUnderOppfolging
 )
 
 /* Brukere med feil */
