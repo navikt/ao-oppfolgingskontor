@@ -1,5 +1,8 @@
 package no.nav.db
 
+/*
+* Kan innholde fnr, dnr eller npid
+* */
 @JvmInline
 value class Fnr(val value: String) {
     init {

@@ -107,7 +107,12 @@ class PdlClient(
         }
         return result.data?.hentIdenter?.identer
             ?.let { identer ->
-                identer.firstOrNull { it.gruppe == IdentGruppe.FOLKEREGISTERIDENT && !it.historisk }
+                identer
+                    .let { ids ->
+                        /* Foretrekk fnr før npid */
+                        ids.firstOrNull { it.gruppe == IdentGruppe.FOLKEREGISTERIDENT && !it.historisk }
+                            ?: ids.firstOrNull { it.gruppe == IdentGruppe.NPID && !it.historisk }
+                    }
                     ?.ident
                     ?.let { FnrFunnet(Fnr(it)) }
                     ?: run {

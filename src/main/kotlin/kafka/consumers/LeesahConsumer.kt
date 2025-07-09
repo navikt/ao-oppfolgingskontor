@@ -71,8 +71,8 @@ class LeesahConsumer(
         if (hendelse.personidenter.isEmpty()) {
             throw IllegalStateException("Personhendelse must have at least one personident")
         }
-        val fnrEllerAktorId: FnrEllerAktorId = hendelse.personidenter.first()
-        return fnrProvider(fnrEllerAktorId)
+        val fnrEllerAktorIdEllerNpid: FnrEllerAktorIdEllerNpid = hendelse.personidenter.first()
+        return fnrProvider(fnrEllerAktorIdEllerNpid)
     }
 }
 
@@ -86,4 +86,4 @@ fun Pair<Fnr, Personhendelse>.toHendelse(): PersondataEndret {
 sealed class HåndterPersondataEndretResultat()
 data class HåndterPersondataEndretSuccess(val endringer: List<KontorEndretEvent>): HåndterPersondataEndretResultat()
 class HåndterPersondataEndretFail(val message: String, val error: Throwable? = null): HåndterPersondataEndretResultat()
-typealias FnrEllerAktorId = String
+typealias FnrEllerAktorIdEllerNpid = String
