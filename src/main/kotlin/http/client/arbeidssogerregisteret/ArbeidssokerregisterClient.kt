@@ -39,9 +39,6 @@ class ArbeidssokerregisterClient(
             install(SystemTokenPlugin) {
                 this.tokenProvider = azureTokenProvider
             }
-            install(Logging) {
-                level = LogLevel.INFO
-            }
             install(ContentNegotiation) {
                 json(Json { ignoreUnknownKeys = true })
             }
