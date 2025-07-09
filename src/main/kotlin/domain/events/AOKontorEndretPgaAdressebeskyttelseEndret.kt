@@ -16,7 +16,8 @@ class AOKontorEndretPgaAdressebeskyttelseEndret(tilordning: KontorTilordning): A
             fnr = tilordning.fnr,
             registrant = System(),
             kontorendringstype = KontorEndringsType.FikkAddressebeskyttelse,
-            kontorType = KontorType.ARBEIDSOPPFOLGING
+            kontorType = KontorType.ARBEIDSOPPFOLGING,
+            oppfolgingId = tilordning.oppfolgingsperiodeId
         )
     }
 

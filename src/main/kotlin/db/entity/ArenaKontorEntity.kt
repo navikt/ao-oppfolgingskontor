@@ -1,5 +1,6 @@
 package no.nav.db.entity
 
+import no.nav.db.Fnr
 import no.nav.db.table.ArenaKontorTable
 import no.nav.domain.KontorId
 import org.jetbrains.exposed.dao.Entity

@@ -14,7 +14,8 @@ class KontorSattAvVeileder(tilhorighet: KontorTilordning, registrant: Registrant
             fnr = tilordning.fnr,
             registrant = registrant,
             kontorendringstype = KontorEndringsType.FlyttetAvVeileder,
-            kontorType = KontorType.ARBEIDSOPPFOLGING
+            kontorType = KontorType.ARBEIDSOPPFOLGING,
+            oppfolgingId = tilordning.oppfolgingsperiodeId
         )
     }
 

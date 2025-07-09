@@ -3,6 +3,7 @@ package no.nav.no.nav
 import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
 import io.ktor.server.testing.testApplication
+import no.nav.db.Fnr
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.GeografiskTilknyttetKontorEntity
@@ -11,6 +12,7 @@ import no.nav.db.table.KontorhistorikkTable
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
+import no.nav.domain.OppfolgingsperiodeId
 import no.nav.http.client.AlderFunnet
 import no.nav.http.client.FnrFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
@@ -23,10 +25,13 @@ import no.nav.kafka.config.streamsErrorHandlerConfig
 import no.nav.kafka.consumers.OppfolgingsPeriodeConsumer
 import no.nav.kafka.processor.ExplicitResultProcessor
 import no.nav.kafka.consumers.SkjermingConsumer
+import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.KontorForGtNrFantKontor
 import no.nav.services.KontorTilordningService
+import no.nav.services.OppfolgingsperiodeService
 import no.nav.utils.flywayMigrationInTest
+import no.nav.utils.gittBrukerUnderOppfolging
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
@@ -46,10 +51,11 @@ class KafkaApplicationTest {
 
     @Test
     fun `skal lagre alle nye endringer på arena-kontor i historikk tabellen`() = testApplication {
-        val fnr = "12345678901"
+        val fnr = "12345768901"
 
         application {
             flywayMigrationInTest()
+            gittBrukerUnderOppfolging(Fnr(fnr))
             val topology = configureTopology(listOf(
                 StringTopicConsumer(topic,endringPaOppfolgingsBrukerConsumer::consume)))
             val kafkaMockTopic = setupKafkaMock(topology, topic)
@@ -72,15 +78,15 @@ class KafkaApplicationTest {
 
     @Test
     fun `skal tilordne kontor til brukere som har fått startet oppfølging`() = testApplication {
-        val fnr = "22325678901"
+        val fnr = Fnr("22325678901")
         val kontor = KontorId("2228")
 //        val poaoTilgangClient = mockPoaoTilgangHost(kontor.id)
 
         application {
-
-            val dataSource = flywayMigrationInTest()
+            flywayMigrationInTest()
             val aktorId = "1234567890123"
             val periodeStart = ZonedDateTime.now().minusDays(2)
+            val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
             val consumer = OppfolgingsPeriodeConsumer(AutomatiskKontorRutingService(
                 KontorTilordningService::tilordneKontor,
                 { _, a, b-> KontorForGtNrFantKontor(kontor, b, a) },
@@ -88,18 +94,21 @@ class KafkaApplicationTest {
                 { FnrFunnet(fnr) },
                 { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
                 { SkjermingFunnet(HarSkjerming(false)) },
-                { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) }
-            ))
+                { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
+                { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId) }),
+                OppfolgingsperiodeService,
+                { FnrFunnet(fnr) }
+            )
             val topology = configureTopology(listOf(StringTopicConsumer(topic,consumer::consume)))
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(
-                fnr,
-                oppfolgingsperiodeMessage(UUID.randomUUID().toString(), periodeStart, null, aktorId)
+                fnr.value,
+                oppfolgingsperiodeMessage(oppfolgingsperiodeId, periodeStart, null, aktorId)
             )
             transaction {
-                ArbeidsOppfolgingKontorEntity.Companion.findById(fnr)?.kontorId shouldBe "4154"
+                ArbeidsOppfolgingKontorEntity.Companion.findById(fnr.value)?.kontorId shouldBe "4154"
                 KontorHistorikkEntity.Companion
-                    .find { KontorhistorikkTable.fnr eq fnr }
+                    .find { KontorhistorikkTable.fnr eq fnr.value }
                     .count().let {
                         withClue("Antall historikkinnslag skal være 1") {
                             it shouldBe 1
@@ -115,6 +124,7 @@ class KafkaApplicationTest {
 
         application {
             flywayMigrationInTest()
+            gittBrukerUnderOppfolging(Fnr(fnr))
             val topology = configureTopology(listOf(StringTopicConsumer(topic, endringPaOppfolgingsBrukerConsumer::consume)))
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(
@@ -134,7 +144,7 @@ class KafkaApplicationTest {
 
     @Test
     fun `skal behandle endring i skjerming sett kontor fra GT`() = testApplication {
-        val fnr = "55345678901"
+        val fnr = Fnr("55345678901")
         val ikkeSkjermetKontor = "1234"
         val skjermetKontor = "4555"
 
@@ -145,7 +155,8 @@ class KafkaApplicationTest {
             { FnrFunnet(fnr) },
             { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
             { SkjermingFunnet(HarSkjerming(false)) },
-            { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) }
+            { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
+            { AktivOppfolgingsperiode(fnr, OppfolgingsperiodeId(UUID.randomUUID())) }
         )
         val skjermingConsumer = SkjermingConsumer(automatiskKontorRutingService)
 
@@ -154,13 +165,13 @@ class KafkaApplicationTest {
             val topology = configureTopology(listOf(StringTopicConsumer(topic, skjermingConsumer::consume)))
             val kafkaMockTopic = setupKafkaMock(topology, topic)
 
-            kafkaMockTopic.pipeInput(fnr, "true")
+            kafkaMockTopic.pipeInput(fnr.value, "true")
 
             transaction {
-                GeografiskTilknyttetKontorEntity.Companion.findById(fnr)?.kontorId shouldBe skjermetKontor
-                ArbeidsOppfolgingKontorEntity.Companion.findById(fnr)?.kontorId shouldBe skjermetKontor
+                GeografiskTilknyttetKontorEntity.Companion.findById(fnr.value)?.kontorId shouldBe skjermetKontor
+                ArbeidsOppfolgingKontorEntity.Companion.findById(fnr.value)?.kontorId shouldBe skjermetKontor
                 KontorHistorikkEntity.Companion
-                    .find { KontorhistorikkTable.fnr eq fnr }
+                    .find { KontorhistorikkTable.fnr eq fnr.value }
                     .count() shouldBe 2
             }
         }
@@ -196,12 +207,12 @@ class KafkaApplicationTest {
     }
 
     fun oppfolgingsperiodeMessage(
-        uuid: String,
+        oppfolgingsperiodeId: OppfolgingsperiodeId,
         startDato: ZonedDateTime,
         sluttDato: ZonedDateTime?,
         aktorId: String
     ): String {
-        return """{"uuid":"$uuid", "startDato":"$startDato", "sluttDato":${sluttDato?.let { "\"$it\"" } ?: "null"}, "startetBegrunnelse": "SYKEMELDT_MER_OPPFOLGING" "aktorId":"$aktorId"}"""
+        return """{"uuid":"${oppfolgingsperiodeId.value}", "startDato":"$startDato", "sluttDato":${sluttDato?.let { "\"$it\"" } ?: "null"}, "startetBegrunnelse": "SYKEMELDT_MER_OPPFOLGING" "aktorId":"$aktorId"}"""
     }
 
     private fun configureTopology(topicAndConsumers: List<StringTopicConsumer>): Topology {

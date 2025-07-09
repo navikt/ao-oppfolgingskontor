@@ -15,6 +15,7 @@ import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.ApplicationEnvironment
 import kotlinx.serialization.Serializable
+import no.nav.db.Fnr
 import no.nav.domain.HarSkjerming
 import no.nav.http.client.tokenexchange.SystemTokenPlugin
 import no.nav.http.client.tokenexchange.TexasTokenResponse
@@ -41,11 +42,11 @@ class SkjermingsClient(
 
     val log = LoggerFactory.getLogger(this::class.java)
 
-    suspend fun hentSkjerming(fnr: String): SkjermingResult {
+    suspend fun hentSkjerming(fnr: Fnr): SkjermingResult {
         return try {
             val response = httpClient.post("/skjermet") {
                 contentType(ContentType.Application.Json)
-                setBody(SkjermingRequestDto(fnr))
+                setBody(SkjermingRequestDto(fnr.value))
             }
             if (response.status.isSuccess()) {
                 SkjermingFunnet(HarSkjerming(response.body<Boolean>()))

@@ -4,11 +4,14 @@ import com.expediagroup.graphql.server.ktor.graphQLPostRoute
 import io.kotest.matchers.shouldBe
 import io.ktor.client.call.body
 import io.ktor.http.HttpStatusCode
+import io.ktor.server.application.Application
 import io.ktor.server.auth.authentication
 import io.ktor.server.config.MapApplicationConfig
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
+import io.ktor.server.testing.TestApplicationEngine
 import io.ktor.server.testing.testApplication
+import no.nav.db.Fnr
 import no.nav.domain.KontorType
 import no.nav.http.client.mockNorg2Host
 import no.nav.http.client.norg2TestUrl
@@ -23,12 +26,18 @@ import no.nav.utils.GraphqlResponse
 import no.nav.utils.KontorTilhorighet
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.getJsonHttpClient
+import no.nav.utils.gittBrukerUnderOppfolging
 import no.nav.utils.kontorTilhorighet
+import org.jetbrains.exposed.sql.Database
 import org.junit.jupiter.api.Test
 
 class SettArbeidsoppfolgingsKontorTest {
 
-    fun ApplicationTestBuilder.setupTestAppWithAuthAndGraphql() {
+    /* application block seems to be run async so have to take block for extra db-setup as param */
+    fun ApplicationTestBuilder.setupTestAppWithAuthAndGraphql(
+        fnr: Fnr,
+        extraDatabaseSetup: Application.() -> Unit = {},
+    ) {
         environment {
             config = getMockOauth2ServerConfig()
         }
@@ -38,6 +47,7 @@ class SettArbeidsoppfolgingsKontorTest {
         val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService)
         application {
             flywayMigrationInTest()
+            extraDatabaseSetup()
             configureSecurity()
             installGraphQl(norg2Client, KontorTilhorighetService(KontorNavnService(norg2Client)))
             configureArbeidsoppfolgingskontorModule(
@@ -55,10 +65,12 @@ class SettArbeidsoppfolgingsKontorTest {
     @Test
     fun `skal kunne sette arbeidsoppfølgingskontor`() = testApplication {
         withMockOAuth2Server {
-            val fnr = "72345678901"
+            val fnr = Fnr("72345678901")
             val kontorId = "4444"
             val veilederIdent = "Z990000"
-            setupTestAppWithAuthAndGraphql()
+            setupTestAppWithAuthAndGraphql(fnr) {
+                gittBrukerUnderOppfolging(fnr)
+            }
             val httpClient = getJsonHttpClient()
 
             val response = httpClient.settKontor(server, fnr = fnr, kontorId = kontorId, navIdent = veilederIdent)
@@ -72,6 +84,21 @@ class SettArbeidsoppfolgingsKontorTest {
             kontorResponse.data?.kontorTilhorighet?.registrant shouldBe veilederIdent
             kontorResponse.data?.kontorTilhorighet?.registrantType shouldBe RegistrantTypeDto.VEILEDER
             kontorResponse.data?.kontorTilhorighet?.kontorType shouldBe KontorType.ARBEIDSOPPFOLGING
+        }
+    }
+
+    @Test
+    fun `skal svare med 409 når bruker ikke er under oppfølging`() = testApplication {
+        withMockOAuth2Server {
+            val fnr = Fnr("72345678901")
+            val kontorId = "4444"
+            val veilederIdent = "Z990000"
+            setupTestAppWithAuthAndGraphql(fnr)
+            val httpClient = getJsonHttpClient()
+
+            val response = httpClient.settKontor(server, fnr = fnr, kontorId = kontorId, navIdent = veilederIdent)
+
+            response.status shouldBe HttpStatusCode.Conflict
         }
     }
 

@@ -5,6 +5,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.testApplication
+import no.nav.db.Fnr
 import no.nav.http.client.GeografiskTilknytningLand
 import no.nav.http.client.GeografiskTilknytningNr
 import no.nav.http.client.GtForBrukerIkkeFunnet
@@ -24,7 +25,7 @@ class PdlClientTest {
 
     @Test
     fun `skal plukke ut riktig gt fra PDL response`() = testApplication {
-        val fnr = "12345678901"
+        val fnr = Fnr("12345678901")
         val bydelGtNr = "4141"
         val client = mockPdl("""
             {
@@ -47,7 +48,7 @@ class PdlClientTest {
 
     @Test
     fun `skal håndtere feil i graphql reponse på spørring på GT`() = testApplication {
-        val fnr = "12345678901"
+        val fnr = Fnr("12345678901")
         val pdlTestUrl = "http://pdl.test.local"
         val errorMessage = "Ingen GT funnet for bruker"
 
@@ -71,7 +72,7 @@ class PdlClientTest {
 
     @Test
     fun `skal håndtere http-feil ved graphql spørring på GT`() = testApplication {
-        val fnr = "12345678901"
+        val fnr = Fnr("12345678901")
         val client = mockPdl(HttpStatusCode.InternalServerError)
         val pdlClient = PdlClient(pdlTestUrl,client)
         val gt = pdlClient.hentGt(fnr)

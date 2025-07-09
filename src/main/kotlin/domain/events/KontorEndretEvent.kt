@@ -31,7 +31,8 @@ data class GTKontorEndret(val kontorTilordning: KontorTilordning, val kontorEndr
             fnr = tilordning.fnr,
             registrant = System(),
             kontorendringstype = kontorEndringsType,
-            kontorType = KontorType.GEOGRAFISK_TILKNYTNING
+            kontorType = KontorType.GEOGRAFISK_TILKNYTNING,
+            oppfolgingId = tilordning.oppfolgingsperiodeId
         )
     }
 

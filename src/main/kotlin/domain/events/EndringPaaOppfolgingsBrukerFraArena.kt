@@ -27,6 +27,7 @@ class EndringPaaOppfolgingsBrukerFraArena(
             registrant = registrant,
             kontorendringstype = KontorEndringsType.EndretIArena,
             kontorType = KontorType.ARENA,
+            oppfolgingId = tilordning.oppfolgingsperiodeId
         )
     }
 

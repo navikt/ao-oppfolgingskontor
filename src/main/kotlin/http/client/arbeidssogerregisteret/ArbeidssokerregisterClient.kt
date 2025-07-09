@@ -10,6 +10,7 @@ import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import kotlinx.serialization.json.Json
+import no.nav.db.Fnr
 import no.nav.http.client.tokenexchange.SystemTokenPlugin
 import no.nav.http.client.tokenexchange.TexasTokenResponse
 import org.slf4j.LoggerFactory
@@ -47,12 +48,12 @@ class ArbeidssokerregisterClient(
     )
 
     suspend fun hentProfilering(
-        identitetsnummer: String
+        identitetsnummer: Fnr
     ): HentProfileringsResultat {
         try {
             val result = client.post("$baseUrl/api/v1/veileder/arbeidssoekerperioder-aggregert") {
                 contentType(ContentType.Application.Json)
-                setBody(ArbeidssoekerperiodeRequest(identitetsnummer))
+                setBody(ArbeidssoekerperiodeRequest(identitetsnummer.value))
                 url.parameters.append("siste", "true")
             }
                 .body<List<ArbeidssoekerperiodeAggregertResponse>>()

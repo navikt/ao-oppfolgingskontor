@@ -1,5 +1,13 @@
 package no.nav.domain.externalEvents
 
-sealed class OppfolgingsperiodeEndret(val aktorId: String)
-class OppfolgingsperiodeStartet(aktorId: String): OppfolgingsperiodeEndret(aktorId)
-class OppfolgingsperiodeAvsluttet(aktorId: String): OppfolgingsperiodeEndret(aktorId)
+import no.nav.db.Fnr
+import java.time.ZonedDateTime
+import java.util.UUID
+
+sealed class OppfolgingsperiodeEndret(val fnr: Fnr)
+class OppfolgingsperiodeStartet(
+    fnr: Fnr,
+    val startDato: ZonedDateTime,
+    val oppfolgingsperiodeId: UUID,
+): OppfolgingsperiodeEndret(fnr)
+class OppfolgingsperiodeAvsluttet(fnr: Fnr): OppfolgingsperiodeEndret(fnr)
