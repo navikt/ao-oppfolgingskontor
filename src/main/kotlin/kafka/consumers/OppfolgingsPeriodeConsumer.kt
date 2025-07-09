@@ -43,8 +43,8 @@ class OppfolgingsPeriodeConsumer(
             return runBlocking {
                 val fnr: Fnr = when (val result = fnrProvider(aktorId)) {
                     is FnrFunnet -> result.fnr
-                    is FnrIkkeFunnet -> return@runBlocking Retry("")
-                    is FnrOppslagFeil -> return@runBlocking Retry("")
+                    is FnrIkkeFunnet -> return@runBlocking Retry("Kunne ikke behandle oppfolgingsperiode melding: ${result.message}")
+                    is FnrOppslagFeil -> return@runBlocking Retry("Kunne ikke behandle oppfolgingsperiode melding: ${result.message}")
                 }
 
                 val oppfolgingsperiode = Json
