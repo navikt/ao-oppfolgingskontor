@@ -8,6 +8,7 @@ import io.ktor.server.application.ApplicationStopping
 import io.ktor.server.application.createApplicationPlugin
 import io.ktor.server.application.hooks.MonitoringEvent
 import io.ktor.server.application.log
+import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.binder.kafka.KafkaStreamsMetrics
 import java.time.Duration
@@ -27,7 +28,10 @@ import no.nav.kafka.processor.LeesahAvroSerdes
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.OppfolgingsperiodeService
 import org.apache.kafka.streams.KafkaStreams
+import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler
 import org.jetbrains.exposed.sql.Database
+import org.slf4j.LoggerFactory
+import java.util.concurrent.atomic.AtomicInteger
 
 val KafkaStreamsStarting: EventDefinition<Application> = EventDefinition()
 val KafkaStreamsStarted: EventDefinition<Application> = EventDefinition()
@@ -35,6 +39,7 @@ val KafkaStreamsStopping: EventDefinition<Application> = EventDefinition()
 val KafkaStreamsStopped: EventDefinition<Application> = EventDefinition()
 
 val shutDownTimeout = Duration.ofSeconds(1)
+val logger = LoggerFactory.getLogger("no.nav.kafka.KafkaStreamsPlugin")
 
 class KafkaStreamsPluginConfig(
         var automatiskKontorRutingService: AutomatiskKontorRutingService? = null,
@@ -88,62 +93,71 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> =
         val skjermingConsumer = SkjermingConsumer(automatiskKontorRutingService)
         val skjermingTopic = environment.config.property("topics.inn.skjerming").getString()
 
-            val topology =
-                    configureTopology(
-                            listOf(
-                                    StringTopicConsumer(
-                                            oppfolgingsBrukerTopic,
-                                            { record, maybeRecordMetadata ->
-                                                endringPaOppfolgingsBrukerConsumer.consume(
-                                                        record,
-                                                        maybeRecordMetadata
-                                                )
-                                            }
-                                    ),
-                                    StringTopicConsumer(
-                                            oppfolgingsPeriodeTopic,
-                                            { record, maybeRecordMetadata ->
-                                                oppfolgingsPeriodeConsumer.consume(
-                                                        record,
-                                                        maybeRecordMetadata
-                                                )
-                                            }
-                                    ),
-                                    AvroTopicConsumer(
-                                            leesahTopic,
-                                            leesahConsumer::consume,
-                                            spesificAvroValueSerde,
-                                            specificAvroKeySerde
-                                    ),
-                                    StringTopicConsumer(
-                                            skjermingTopic,
-                                            { record, maybeRecordMetadata ->
-                                                skjermingConsumer.consume(
-                                                        record,
-                                                        maybeRecordMetadata
-                                                )
-                                            }
-                                    )
-                            ),
-                            lockProvider
-                    )
-            val kafkaStream = KafkaStreams(topology, configureKafkaStreams(environment.config))
-            if (this.pluginConfig.meterRegistry != null) {
-                val kafkaStreamsMetrics = KafkaStreamsMetrics(kafkaStream)
-                kafkaStreamsMetrics.bindTo(this.pluginConfig.meterRegistry!!)
-            }
+        val topology = configureTopology(listOf(
+            StringTopicConsumer(
+                oppfolgingsBrukerTopic,
+                { record, maybeRecordMetadata -> endringPaOppfolgingsBrukerConsumer.consume(record, maybeRecordMetadata) }
+            ),
+            StringTopicConsumer(
+                oppfolgingsPeriodeTopic,
+                { record, maybeRecordMetadata -> oppfolgingsPeriodeConsumer.consume(record, maybeRecordMetadata) }
+            ),
+            AvroTopicConsumer(
+                leesahTopic, leesahConsumer::consume, spesificAvroValueSerde, specificAvroKeySerde
+            ),
+            StringTopicConsumer(
+                skjermingTopic,
+                { record, maybeRecordMetadata -> skjermingConsumer.consume(record, maybeRecordMetadata) }
+            )),
+            lockProvider
+        )
+        val kafkaStream = KafkaStreams(topology, configureKafkaStreams(environment.config))
 
-            on(MonitoringEvent(ApplicationStarted)) { application ->
-                application.log.info("Starter Kafka Streams")
-                application.monitor.raise(KafkaStreamsStarting, application)
-                kafkaStream.start()
-                application.monitor.raise(KafkaStreamsStarted, application)
-            }
-
-            on(MonitoringEvent(ApplicationStopping)) { application ->
-                application.log.info("Stopper Kafka Streams")
-                application.monitor.raise(KafkaStreamsStopping, application)
-                kafkaStream.close(shutDownTimeout)
-                application.monitor.raise(KafkaStreamsStopped, application)
-            }
+        kafkaStream.setUncaughtExceptionHandler {
+            logger.error("Uncaught exception in Kafka Streams. Shutting down client", it)
+            StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.SHUTDOWN_CLIENT
         }
+        if (this.pluginConfig.meterRegistry != null) {
+            val applicationId = environment.config.property("kafka.application-id").getString()
+            configureStateListenerMetrics(applicationId, kafkaStream, this.pluginConfig.meterRegistry as MeterRegistry)
+            val kafkaStreamsMetrics = KafkaStreamsMetrics(kafkaStream)
+            kafkaStreamsMetrics.bindTo(this.pluginConfig.meterRegistry as MeterRegistry)
+        }
+
+        on(MonitoringEvent(ApplicationStarted)) { application ->
+            application.log.info("Starter Kafka Streams")
+            application.monitor.raise(KafkaStreamsStarting, application)
+            kafkaStream.start()
+            application.monitor.raise(KafkaStreamsStarted, application)
+        }
+
+        on(MonitoringEvent(ApplicationStopping)) { application ->
+            application.log.info("Stopper Kafka Streams")
+            application.monitor.raise(KafkaStreamsStopping, application)
+            kafkaStream.close(shutDownTimeout)
+            application.monitor.raise(KafkaStreamsStopped, application)
+        }
+    }
+}
+
+private fun configureStateListenerMetrics(
+    applicationId: String,
+    kafkaStream: KafkaStreams,
+    meterRegistry: MeterRegistry
+) {
+    // 0=STOPPED/ERROR, 1=RUNNING, 2=REBALANCING
+    val kafkaStateGaugeValue = AtomicInteger(0)
+    Gauge.builder("kafka_streams_application_state", kafkaStateGaugeValue::get)
+        .description("Current state of the Kafka Streams client (0=STOPPED/ERROR, 1=RUNNING, 2=REBALANCING)")
+        .tag("streams_application_id", applicationId)
+        .register(meterRegistry)
+
+
+    kafkaStream.setStateListener { newState, _ ->
+        when (newState) {
+            KafkaStreams.State.RUNNING -> kafkaStateGaugeValue.set(1)
+            KafkaStreams.State.REBALANCING -> kafkaStateGaugeValue.set(2)
+            else -> kafkaStateGaugeValue.set(0) // Dekker ERROR, NOT_RUNNING, PENDING_SHUTDOWN
+        }
+    }
+}
