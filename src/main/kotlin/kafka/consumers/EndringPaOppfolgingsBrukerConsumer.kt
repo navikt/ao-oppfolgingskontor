@@ -1,5 +1,6 @@
 package no.nav.kafka.consumers
 
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import no.nav.db.Fnr
@@ -10,8 +11,13 @@ import no.nav.domain.KontorTilordning
 import no.nav.domain.events.EndringPaaOppfolgingsBrukerFraArena
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.RecordProcessingResult
+import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
+import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.KontorTilordningService
+import no.nav.services.NotUnderOppfolging
+import no.nav.services.OppfolgingperiodeOppslagFeil
+import no.nav.services.OppfolgingsperiodeService
 import org.apache.kafka.streams.processor.api.Record
 import org.apache.kafka.streams.processor.api.RecordMetadata
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -43,11 +49,27 @@ class EndringPaOppfolgingsBrukerConsumer() {
             return Skip
         }
 
+        val fnr = Fnr(fnrString)
+        val oppfolgingperiode = runBlocking { OppfolgingsperiodeService.getCurrentOppfolgingsperiode(fnr) }
+        val oppfolgingsperiodeId = when (oppfolgingperiode) {
+            is AktivOppfolgingsperiode -> oppfolgingperiode.periodeId
+            NotUnderOppfolging -> {
+                log.warn("Bruker er ikke under oppfølging, hopper over melding om endring på oppfølgingsbruker")
+                return Skip
+            }
+            is OppfolgingperiodeOppslagFeil -> {
+                log.error("Klarte ikke hente oppfølgingsperiode: ${oppfolgingperiode.message}")
+                return Retry("Klarte ikke behandle melding om endring på oppfølgingsbruker, feil ved oppslag på oppfølgingsperiode: ${oppfolgingperiode.message}")
+            }
+        }
+
+
         KontorTilordningService.tilordneKontor(
             EndringPaaOppfolgingsBrukerFraArena(
                 tilordning = KontorTilordning(
                     fnr = Fnr(fnrString),
                     kontorId = KontorId(endringPaOppfolgingsBruker.oppfolgingsenhet),
+                    oppfolgingsperiodeId
                 ),
                 sistEndretDatoArena = endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime(),
                 offset = maybeRecordMetadata?.offset(),

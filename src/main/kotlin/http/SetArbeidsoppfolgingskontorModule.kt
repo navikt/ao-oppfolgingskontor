@@ -17,10 +17,15 @@ import no.nav.domain.KontorTilordning
 import no.nav.domain.NavIdent
 import no.nav.domain.Veileder
 import no.nav.domain.events.KontorSattAvVeileder
+import no.nav.http.client.FnrFunnet
 import no.nav.security.token.support.v3.TokenValidationContextPrincipal
+import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
 import no.nav.services.KontorTilordningService
+import no.nav.services.NotUnderOppfolging
+import no.nav.services.OppfolgingperiodeOppslagFeil
+import no.nav.services.OppfolgingsperiodeService
 import org.slf4j.LoggerFactory
 
 val logger = LoggerFactory.getLogger("Applcation.configureArbeidsoppfolgingskontorModule")
@@ -29,6 +34,7 @@ fun Application.configureArbeidsoppfolgingskontorModule(
     kontorNavnService: KontorNavnService,
     kontorTilhorighetService: KontorTilhorighetService
 ) {
+    val log = LoggerFactory.getLogger("Applcation.configureArbeidsoppfolgingskontorModule")
     val issuer = environment.config.property("auth.entraIssuer").getString()
 
     routing {
@@ -48,11 +54,27 @@ fun Application.configureArbeidsoppfolgingskontorModule(
                     val gammeltKontor = kontorTilhorighetService.getArbeidsoppfolgingKontorTilhorighet(Fnr(kontorTilordning.fnr))
                     val kontorId = KontorId(kontorTilordning.kontorId)
 
+                    val fnr = Fnr(kontorTilordning.fnr)
+                    val oppfolgingsperiode = OppfolgingsperiodeService.getCurrentOppfolgingsperiode(FnrFunnet(fnr))
+                    val oppfolgingsperiodeId = when(oppfolgingsperiode) {
+                        is AktivOppfolgingsperiode -> oppfolgingsperiode.periodeId
+                        NotUnderOppfolging -> {
+                            call.respond(HttpStatusCode.Conflict, "Bruker er ikke under oppfølging")
+                            return@post
+                        }
+                        is OppfolgingperiodeOppslagFeil -> {
+                            log.error("Klarte ikke hente oppfølgingsperiode: ${oppfolgingsperiode.message}")
+                            call.respond(HttpStatusCode.InternalServerError, "Klarte ikke hente oppfølgingsperiode")
+                            return@post
+                        }
+                    }
+
                     KontorTilordningService.tilordneKontor(
                         KontorSattAvVeileder(
                             tilhorighet = KontorTilordning(
-                                fnr = Fnr(kontorTilordning.fnr),
+                                fnr = fnr,
                                 kontorId = kontorId,
+                                oppfolgingsperiodeId
                             ),
                             registrant = Veileder(NavIdent(veilederIdent))
                         )
@@ -65,7 +87,7 @@ fun Application.configureArbeidsoppfolgingskontorModule(
                             fraKontor = gammeltKontor?.let {
                                 Kontor(
                                     kontorNavn = it.kontorNavn.navn,
-                                    kontorId = it.kontorId.id
+                                    kontorId = it.kontorId.id,
                                 )
                             },
                             tilKontor = Kontor(

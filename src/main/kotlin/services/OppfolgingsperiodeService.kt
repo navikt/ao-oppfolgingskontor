@@ -5,6 +5,7 @@ import java.util.UUID
 import no.nav.db.Fnr
 import no.nav.db.entity.OppfolgingsperiodeEntity
 import no.nav.db.table.OppfolgingsperiodeTable
+import no.nav.domain.OppfolgingsperiodeId
 import no.nav.http.client.FnrFunnet
 import no.nav.http.client.FnrIkkeFunnet
 import no.nav.http.client.FnrOppslagFeil
@@ -16,7 +17,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 
 sealed class OppfolgingsperiodeOppslagResult()
-data class AktivOppfolgingsperiode(val fnr: Fnr, val periodeId: UUID) : OppfolgingsperiodeOppslagResult()
+data class AktivOppfolgingsperiode(val fnr: Fnr, val periodeId: OppfolgingsperiodeId) : OppfolgingsperiodeOppslagResult()
 object NotUnderOppfolging : OppfolgingsperiodeOppslagResult()
 data class OppfolgingperiodeOppslagFeil(val message: String) : OppfolgingsperiodeOppslagResult()
 
@@ -48,18 +49,15 @@ object OppfolgingsperiodeService {
         return transaction { OppfolgingsperiodeEntity.findById(fnr.value) != null }
     }
 
-    suspend fun getOppfolgingsperiodeStatus(fnr: FnrResult): OppfolgingsperiodeOppslagResult {
+    suspend fun getCurrentOppfolgingsperiode(fnr: Fnr) = getCurrentOppfolgingsperiode(FnrFunnet(fnr))
+    suspend fun getCurrentOppfolgingsperiode(fnr: FnrResult): OppfolgingsperiodeOppslagResult {
         return try {
             when (fnr) {
                 is FnrFunnet -> transaction {
                     val entity = OppfolgingsperiodeEntity.findById(fnr.fnr.value)
-                    if (entity != null) {
-                        // Generate a UUID for the periodeId - in a real scenario this might come from
-                        // the database
-                        val periodeId = UUID.randomUUID()
-                        AktivOppfolgingsperiode(fnr.fnr, periodeId)
-                    } else {
-                        NotUnderOppfolging
+                    when (entity != null) {
+                        true -> AktivOppfolgingsperiode(fnr.fnr, OppfolgingsperiodeId(entity.oppfolgingsperiodeId))
+                        else -> NotUnderOppfolging
                     }
                 }
                 is FnrIkkeFunnet -> OppfolgingperiodeOppslagFeil("Kunne ikke finne oppfølgingsperiode: ${fnr.message}")

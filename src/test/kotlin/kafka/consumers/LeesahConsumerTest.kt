@@ -11,6 +11,7 @@ import no.nav.db.table.GeografiskTilknytningKontorTable
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
+import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.AdressebeskyttelseEndret
 import no.nav.domain.externalEvents.BostedsadresseEndret
 import no.nav.http.client.FnrFunnet
@@ -140,7 +141,7 @@ class LeesahConsumerTest {
             profileringProvider = { throw Throwable("Denne skal ikke brukes") },
             erSkjermetProvider = { SkjermingFunnet(HarSkjerming(false)) },
             harStrengtFortroligAdresseProvider = { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
-            isUnderOppfolgingProvider = { AktivOppfolgingsperiode(Fnr("66666666666"), UUID.randomUUID()) }
+            isUnderOppfolgingProvider = { AktivOppfolgingsperiode(Fnr("66666666666"), OppfolgingsperiodeId(UUID.randomUUID())) }
         )
     }
 

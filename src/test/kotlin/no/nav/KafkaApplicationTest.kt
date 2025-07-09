@@ -12,6 +12,7 @@ import no.nav.db.table.KontorhistorikkTable
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
+import no.nav.domain.OppfolgingsperiodeId
 import no.nav.http.client.AlderFunnet
 import no.nav.http.client.FnrFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
@@ -30,6 +31,7 @@ import no.nav.services.KontorForGtNrFantKontor
 import no.nav.services.KontorTilordningService
 import no.nav.services.OppfolgingsperiodeService
 import no.nav.utils.flywayMigrationInTest
+import no.nav.utils.gittBrukerUnderOppfolging
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
@@ -53,6 +55,7 @@ class KafkaApplicationTest {
 
         application {
             flywayMigrationInTest()
+            gittBrukerUnderOppfolging(Fnr(fnr))
             val topology = configureTopology(listOf(
                 StringTopicConsumer(topic,endringPaOppfolgingsBrukerConsumer::consume)))
             val kafkaMockTopic = setupKafkaMock(topology, topic)
@@ -80,11 +83,10 @@ class KafkaApplicationTest {
 //        val poaoTilgangClient = mockPoaoTilgangHost(kontor.id)
 
         application {
-
             flywayMigrationInTest()
             val aktorId = "1234567890123"
             val periodeStart = ZonedDateTime.now().minusDays(2)
-            val oppfolgingsperiodeId = UUID.randomUUID()
+            val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
             val consumer = OppfolgingsPeriodeConsumer(AutomatiskKontorRutingService(
                 KontorTilordningService::tilordneKontor,
                 { _, a, b-> KontorForGtNrFantKontor(kontor, b, a) },
@@ -101,7 +103,7 @@ class KafkaApplicationTest {
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(
                 fnr.value,
-                oppfolgingsperiodeMessage(oppfolgingsperiodeId.toString(), periodeStart, null, aktorId)
+                oppfolgingsperiodeMessage(oppfolgingsperiodeId, periodeStart, null, aktorId)
             )
             transaction {
                 ArbeidsOppfolgingKontorEntity.Companion.findById(fnr.value)?.kontorId shouldBe "4154"
@@ -122,6 +124,7 @@ class KafkaApplicationTest {
 
         application {
             flywayMigrationInTest()
+            gittBrukerUnderOppfolging(Fnr(fnr))
             val topology = configureTopology(listOf(StringTopicConsumer(topic, endringPaOppfolgingsBrukerConsumer::consume)))
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(
@@ -153,7 +156,7 @@ class KafkaApplicationTest {
             { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
             { SkjermingFunnet(HarSkjerming(false)) },
             { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
-            { AktivOppfolgingsperiode(fnr, UUID.randomUUID()) }
+            { AktivOppfolgingsperiode(fnr, OppfolgingsperiodeId(UUID.randomUUID())) }
         )
         val skjermingConsumer = SkjermingConsumer(automatiskKontorRutingService)
 
@@ -204,12 +207,12 @@ class KafkaApplicationTest {
     }
 
     fun oppfolgingsperiodeMessage(
-        uuid: String,
+        oppfolgingsperiodeId: OppfolgingsperiodeId,
         startDato: ZonedDateTime,
         sluttDato: ZonedDateTime?,
         aktorId: String
     ): String {
-        return """{"uuid":"$uuid", "startDato":"$startDato", "sluttDato":${sluttDato?.let { "\"$it\"" } ?: "null"}, "startetBegrunnelse": "SYKEMELDT_MER_OPPFOLGING" "aktorId":"$aktorId"}"""
+        return """{"uuid":"${oppfolgingsperiodeId.value}", "startDato":"$startDato", "sluttDato":${sluttDato?.let { "\"$it\"" } ?: "null"}, "startetBegrunnelse": "SYKEMELDT_MER_OPPFOLGING" "aktorId":"$aktorId"}"""
     }
 
     private fun configureTopology(topicAndConsumers: List<StringTopicConsumer>): Topology {

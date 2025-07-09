@@ -16,7 +16,8 @@ class AOKontorEndretPgaSkjermingEndret(kontorTilordning: KontorTilordning): AOKo
             fnr = this.tilordning.fnr,
             registrant = System(),
             kontorendringstype = KontorEndringsType.FikkSkjerming,
-            kontorType = KontorType.ARBEIDSOPPFOLGING
+            kontorType = KontorType.ARBEIDSOPPFOLGING,
+            oppfolgingId = this.tilordning.oppfolgingsperiodeId
         )
     }
 

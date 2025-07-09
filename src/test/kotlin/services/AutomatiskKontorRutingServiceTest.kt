@@ -9,6 +9,7 @@ import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.INGEN_GT_KONTOR_FALLBACK
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
+import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.Sensitivitet
 import no.nav.domain.events.AOKontorEndretPgaAdressebeskyttelseEndret
 import no.nav.domain.events.AOKontorEndretPgaSkjermingEndret
@@ -73,7 +74,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                     oppfolgingsperiodeStartet(ungBrukerMedGodeMuligheter)
                 ) shouldBe TilordningSuccessKontorEndret(
                     OppfolgingsPeriodeStartetLokalKontorTilordning(
-                        KontorTilordning(ungBrukerMedGodeMuligheter.fnr(),  ungBrukerMedGodeMuligheter.gtKontor()),
+                        KontorTilordning(ungBrukerMedGodeMuligheter.fnr(),  ungBrukerMedGodeMuligheter.gtKontor(), ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()),
                         ingenSensitivitet
                     )
                 )
@@ -84,7 +85,8 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                     oppfolgingsperiodeStartet(eldreBrukerMedGodeMuligheter)
                 ) shouldBe TilordningSuccessKontorEndret(
                     OppfolgingsperiodeStartetNoeTilordning(
-                        eldreBrukerMedGodeMuligheter.fnr()
+                        eldreBrukerMedGodeMuligheter.fnr(),
+                        eldreBrukerMedGodeMuligheter.oppfolgingsperiodeId()
                     )
                 )
             }
@@ -95,6 +97,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 ) shouldBe TilordningSuccessKontorEndret(
                     OppfolgingsPeriodeStartetFallbackKontorTilordning(
                         brukerSomManglerGt.fnr(),
+                        brukerSomManglerGt.oppfolgingsperiodeId(),
                         Sensitivitet(
                             HarSkjerming(false),
                             HarStrengtFortroligAdresse(false)
@@ -108,7 +111,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                     oppfolgingsperiodeStartet(adressebeskyttetBruker)
                 ) shouldBe TilordningSuccessKontorEndret(
                     OppfolgingsPeriodeStartetSensitivKontorTilordning(
-                        KontorTilordning(adressebeskyttetBruker.fnr(), adressebeskyttetBruker.gtKontor()),
+                        KontorTilordning(adressebeskyttetBruker.fnr(), adressebeskyttetBruker.gtKontor(), adressebeskyttetBruker.oppfolgingsperiodeId()),
                         Sensitivitet(HarSkjerming(false), HarStrengtFortroligAdresse(true))
                     )
                 )
@@ -119,7 +122,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                     oppfolgingsperiodeStartet(skjermetBruker)
                 ) shouldBe TilordningSuccessKontorEndret(
                     OppfolgingsPeriodeStartetSensitivKontorTilordning(
-                        KontorTilordning(skjermetBruker.fnr(), adressebeskyttetBruker.gtKontor()),
+                        KontorTilordning(skjermetBruker.fnr(), skjermetBruker.gtKontor(), skjermetBruker.oppfolgingsperiodeId()),
                         Sensitivitet(
                             HarSkjerming(true),
                             HarStrengtFortroligAdresse(false)
@@ -133,7 +136,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                     oppfolgingsperiodeStartet(ungBrukerMedbehovForVeiledning)
                 ) shouldBe TilordningSuccessKontorEndret(
                     OppfolgingsPeriodeStartetLokalKontorTilordning(
-                        KontorTilordning(ungBrukerMedbehovForVeiledning.fnr(), ungBrukerMedbehovForVeiledning.gtKontor()),
+                        KontorTilordning(ungBrukerMedbehovForVeiledning.fnr(), ungBrukerMedbehovForVeiledning.gtKontor(), ungBrukerMedbehovForVeiledning.oppfolgingsperiodeId()),
                         ingenSensitivitet
                     )
                 )
@@ -145,6 +148,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 ) shouldBe TilordningSuccessKontorEndret(
                     OppfolgingsPeriodeStartetFallbackKontorTilordning(
                         brukerMedLandskode.fnr(),
+                        brukerMedLandskode.oppfolgingsperiodeId(),
                         Sensitivitet(HarSkjerming(false), HarStrengtFortroligAdresse(false))
                     )
                 )
@@ -155,7 +159,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                     oppfolgingsperiodeStartet(brukerMedAdressebeskyttelseOgLandskode)
                 ) shouldBe TilordningSuccessKontorEndret(
                     OppfolgingsPeriodeStartetSensitivKontorTilordning(
-                        KontorTilordning(brukerMedAdressebeskyttelseOgLandskode.fnr(), VIKAFOSSEN),
+                        KontorTilordning(brukerMedAdressebeskyttelseOgLandskode.fnr(), VIKAFOSSEN, brukerMedAdressebeskyttelseOgLandskode.oppfolgingsperiodeId()),
                         Sensitivitet(HarSkjerming(false), HarStrengtFortroligAdresse(true))
                     )
                 )
@@ -185,7 +189,8 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                     GTKontorEndret.endretPgaAdressebeskyttelseEndret(
                         KontorTilordning(
                             ungBrukerMedGodeMuligheter.fnr(),
-                            ungBrukerMedGodeMuligheter.gtKontor()
+                            ungBrukerMedGodeMuligheter.gtKontor(),
+                            ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()
                         ),
                         HarStrengtFortroligAdresse(false)
                     )
@@ -200,14 +205,16 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 GTKontorEndret.endretPgaAdressebeskyttelseEndret(
                     KontorTilordning(
                         ungBrukerMedGodeMuligheter.fnr(),
-                        ungBrukerMedGodeMuligheter.gtKontor()
+                        ungBrukerMedGodeMuligheter.gtKontor(),
+                        ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()
                     ),
                     HarStrengtFortroligAdresse(true)
                 ),
                 AOKontorEndretPgaAdressebeskyttelseEndret(
                     KontorTilordning(
                         ungBrukerMedGodeMuligheter.fnr(),
-                        ungBrukerMedGodeMuligheter.gtKontor()
+                        ungBrukerMedGodeMuligheter.gtKontor(),
+                        ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()
                     )
                 )
             ))
@@ -221,14 +228,16 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 GTKontorEndret.endretPgaAdressebeskyttelseEndret(
                     KontorTilordning(
                         brukerMedAdressebeskyttelseOgLandskode.fnr(),
-                        VIKAFOSSEN
+                        VIKAFOSSEN,
+                        brukerMedAdressebeskyttelseOgLandskode.oppfolgingsperiodeId()
                     ),
                     HarStrengtFortroligAdresse(true)
                 ),
                 AOKontorEndretPgaAdressebeskyttelseEndret(
                     KontorTilordning(
                         brukerMedAdressebeskyttelseOgLandskode.fnr(),
-                        VIKAFOSSEN
+                        VIKAFOSSEN,
+                        brukerMedAdressebeskyttelseOgLandskode.oppfolgingsperiodeId()
                     )
                 )
             ))
@@ -255,14 +264,16 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                     GTKontorEndret.endretPgaSkjermingEndret(
                         KontorTilordning(
                             ungBrukerMedGodeMuligheter.fnr(),
-                            ungBrukerMedGodeMuligheter.gtKontor()
+                            ungBrukerMedGodeMuligheter.gtKontor(),
+                            ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()
                         ),
                         HarSkjerming(true)
                     ),
                     AOKontorEndretPgaSkjermingEndret(
                         KontorTilordning(
                             ungBrukerMedGodeMuligheter.fnr(),
-                            ungBrukerMedGodeMuligheter.gtKontor()
+                            ungBrukerMedGodeMuligheter.gtKontor(),
+                            ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()
                         )
                     ),
                 )
@@ -272,22 +283,24 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
         it("skal sette AO og GT kontor til skjermet kontor når bruker blir skjermet også når bruker har landskode") {
             gitt(brukerMedLandskode).handterEndringISkjermingStatus(
                 SkjermetStatusEndret(
-                    ungBrukerMedGodeMuligheter.fnr(),
+                    brukerMedLandskode.fnr(),
                     HarSkjerming(true)
                 )
             ) shouldBe  Result.success(EndringISkjermingResult(
                 listOf(
                     GTKontorEndret.endretPgaSkjermingEndret(
                         KontorTilordning(
-                            ungBrukerMedGodeMuligheter.fnr(),
-                            INGEN_GT_KONTOR_FALLBACK
+                            brukerMedLandskode.fnr(),
+                            INGEN_GT_KONTOR_FALLBACK,
+                            brukerMedLandskode.oppfolgingsperiodeId()
                         ),
                         HarSkjerming(true)
                     ),
                     AOKontorEndretPgaSkjermingEndret(
                         KontorTilordning(
-                            ungBrukerMedGodeMuligheter.fnr(),
-                            INGEN_GT_KONTOR_FALLBACK
+                            brukerMedLandskode.fnr(),
+                            INGEN_GT_KONTOR_FALLBACK,
+                            brukerMedLandskode.oppfolgingsperiodeId()
                         )
                     ),
                 )
@@ -305,7 +318,8 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                     GTKontorEndret.endretPgaSkjermingEndret(
                         KontorTilordning(
                             ungBrukerMedGodeMuligheter.fnr(),
-                            ungBrukerMedGodeMuligheter.gtKontor()
+                            ungBrukerMedGodeMuligheter.gtKontor(),
+                            ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()
                         ),
                         HarSkjerming(false)
                     )
@@ -328,7 +342,8 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 GTKontorEndret.endretPgaBostedsadresseEndret(
                     KontorTilordning(
                         ungBrukerMedGodeMuligheter.fnr(),
-                        ungBrukerMedGodeMuligheter.gtKontor()
+                        ungBrukerMedGodeMuligheter.gtKontor(),
+                        ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()
                     )
                 )
             ))
@@ -341,7 +356,8 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 GTKontorEndret.endretPgaBostedsadresseEndret(
                     KontorTilordning(
                         adressebeskyttetBruker.fnr(),
-                        adressebeskyttetBruker.gtKontor()
+                        adressebeskyttetBruker.gtKontor(),
+                        adressebeskyttetBruker.oppfolgingsperiodeId()
                     )
                 )
             ))
@@ -354,7 +370,8 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 GTKontorEndret.endretPgaBostedsadresseEndret(
                     KontorTilordning(
                         skjermetBruker.fnr(),
-                        skjermetBruker.gtKontor()
+                        skjermetBruker.gtKontor(),
+                        skjermetBruker.oppfolgingsperiodeId()
                     )
                 )
             ))
@@ -367,7 +384,8 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 GTKontorEndret.endretPgaBostedsadresseEndret(
                     KontorTilordning(
                         brukerMedLandskode.fnr(),
-                        INGEN_GT_KONTOR_FALLBACK
+                        INGEN_GT_KONTOR_FALLBACK,
+                        brukerMedLandskode.oppfolgingsperiodeId()
                     )
                 )
             ))
@@ -392,7 +410,8 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                     OppfolgingsPeriodeStartetLokalKontorTilordning(
                         KontorTilordning(
                             brukerMedFeilendeProfilering.fnr(),
-                            brukerMedFeilendeProfilering.gtKontor()
+                            brukerMedFeilendeProfilering.gtKontor(),
+                            brukerMedFeilendeProfilering.oppfolgingsperiodeId()
                         ),
                         ingenSensitivitet
                     )
@@ -479,7 +498,7 @@ fun gitt(bruker: Bruker): AutomatiskKontorRutingService {
 
 fun defaultOppfolgingsperiodeOppslagResult(fnr: FnrResult): OppfolgingsperiodeOppslagResult {
     return when (fnr) {
-        is FnrFunnet -> return AktivOppfolgingsperiode(fnr.fnr, UUID.randomUUID())
+        is FnrFunnet -> return AktivOppfolgingsperiode(fnr.fnr, OppfolgingsperiodeId(UUID.randomUUID()))
         is FnrIkkeFunnet -> OppfolgingperiodeOppslagFeil(fnr.message)
         is FnrOppslagFeil -> OppfolgingperiodeOppslagFeil(fnr.message)
     }
@@ -505,6 +524,12 @@ data class Bruker(
             return gtKontor.kontorId
         }
         throw IllegalStateException("gtKontor is ${this.gtKontor}")
+    }
+    fun oppfolgingsperiodeId(): OppfolgingsperiodeId {
+        if (oppfolgingsPeriodeResult is AktivOppfolgingsperiode) {
+            return oppfolgingsPeriodeResult.periodeId
+        }
+        throw IllegalStateException("OppfolgingsperiodeResult is ${this.oppfolgingsPeriodeResult}")
     }
 }
 

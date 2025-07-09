@@ -7,6 +7,7 @@ import no.nav.domain.KontorHistorikkInnslag
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.KontorType
+import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.Sensitivitet
 import no.nav.domain.System
 import no.nav.http.logger
@@ -26,7 +27,8 @@ enum class RutingResultat {
 
 data class OppfolgingsperiodeStartetNoeTilordning(
     val fnr: Fnr,
-): AOKontorEndret(KontorTilordning(fnr, KontorId("4154")), System()) {
+    val oppfolgingsperiodeId: OppfolgingsperiodeId,
+): AOKontorEndret(KontorTilordning(fnr, KontorId("4154"), oppfolgingsperiodeId), System()) {
     private val rutingResultat: RutingResultat = RutingResultat.RutetTilNOE
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(
@@ -34,7 +36,8 @@ data class OppfolgingsperiodeStartetNoeTilordning(
             fnr = tilordning.fnr,
             registrant = registrant,
             kontorendringstype = rutingResultat.toKontorEndringsType(),
-            kontorType = KontorType.ARBEIDSOPPFOLGING
+            kontorType = KontorType.ARBEIDSOPPFOLGING,
+            oppfolgingId = tilordning.oppfolgingsperiodeId
         )
     }
 
@@ -54,7 +57,8 @@ data class OppfolgingsPeriodeStartetLokalKontorTilordning(
             fnr = tilordning.fnr,
             registrant = registrant,
             kontorendringstype = rutingResultat.toKontorEndringsType(),
-            kontorType = KontorType.ARBEIDSOPPFOLGING
+            kontorType = KontorType.ARBEIDSOPPFOLGING,
+            oppfolgingId = tilordning.oppfolgingsperiodeId
         )
     }
 
@@ -65,7 +69,7 @@ data class OppfolgingsPeriodeStartetLokalKontorTilordning(
     }
 }
 
-data class OppfolgingsPeriodeStartetFallbackKontorTilordning(val fnr: Fnr, val sensitivitet: Sensitivitet) : AOKontorEndret(KontorTilordning(fnr, INGEN_GT_KONTOR_FALLBACK), System()) {
+data class OppfolgingsPeriodeStartetFallbackKontorTilordning(val fnr: Fnr, val oppfolgingsperiodeId: OppfolgingsperiodeId, val sensitivitet: Sensitivitet) : AOKontorEndret(KontorTilordning(fnr, INGEN_GT_KONTOR_FALLBACK, oppfolgingsperiodeId), System()) {
     val rutingResultat: RutingResultat = RutingResultat.RutetTilLokalkontor
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(
@@ -73,7 +77,8 @@ data class OppfolgingsPeriodeStartetFallbackKontorTilordning(val fnr: Fnr, val s
             fnr = tilordning.fnr,
             registrant = registrant,
             kontorendringstype = rutingResultat.toKontorEndringsType(),
-            kontorType = KontorType.ARBEIDSOPPFOLGING
+            kontorType = KontorType.ARBEIDSOPPFOLGING,
+            oppfolgingId = tilordning.oppfolgingsperiodeId
         )
     }
 
@@ -93,7 +98,8 @@ data class OppfolgingsPeriodeStartetSensitivKontorTilordning(val kontorTilordnin
             fnr = tilordning.fnr,
             registrant = registrant,
             kontorendringstype = rutingResultat.toKontorEndringsType(),
-            kontorType = KontorType.ARBEIDSOPPFOLGING
+            kontorType = KontorType.ARBEIDSOPPFOLGING,
+            oppfolgingId = tilordning.oppfolgingsperiodeId
         )
     }
 

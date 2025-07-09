@@ -8,4 +8,5 @@ data class KontorHistorikkInnslag(
     val registrant: Registrant,
     val kontorendringstype: KontorEndringsType,
     val kontorType: KontorType,
+    val oppfolgingId: OppfolgingsperiodeId
 )

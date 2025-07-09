@@ -62,7 +62,7 @@ fun Application.module() {
         { arbeidssokerregisterClient.hentProfilering(it) },
         { skjermingsClient.hentSkjerming(it) },
         { pdlClient.harStrengtFortroligAdresse(it) },
-        {  OppfolgingsperiodeService.getOppfolgingsperiodeStatus(it) }
+        {  OppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) }
     )
 
     install(KafkaStreamsPlugin) {
