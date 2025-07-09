@@ -1,6 +1,7 @@
 package kafka.consumers
 
 import io.kotest.matchers.date.shouldHaveSameInstantAs
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.ktor.server.testing.testApplication
 import java.time.ZonedDateTime
@@ -65,11 +66,8 @@ class OppfolgingsPeriodeConsumerTest {
                 consumer.consume(record, null)
 
                 transaction {
-                    val entityCount = OppfolgingsperiodeEntity.count()
-                    entityCount shouldBe 1
-
-                    // Get the actual entity
-                    val entity = OppfolgingsperiodeEntity.all().first()
+                    val entity = OppfolgingsperiodeEntity.findById(bruker.fnr.value)
+                    entity.shouldNotBeNull()
                     entity.fnr.value shouldBe bruker.fnr.value
                     entity.startDato shouldHaveSameInstantAs bruker.periodeStart.toOffsetDateTime()
                     entity.oppfolgingsperiodeId shouldBe bruker.oppfolgingsperiodeId.value
