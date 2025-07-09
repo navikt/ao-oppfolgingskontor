@@ -58,7 +58,7 @@ object KontorTilordningService {
         val historikkInnslag = kontorEndring.toHistorikkInnslag()
         return KontorhistorikkTable.insert {
             it[kontorId] = historikkInnslag.kontorId.id
-            it[fnr] = historikkInnslag.fnr.value
+            it[fnr] = historikkInnslag.ident.value
             it[endretAv] = historikkInnslag.registrant.getIdent()
             it[endretAvType] = historikkInnslag.registrant.getType()
             it[kontorendringstype] = historikkInnslag.kontorendringstype.name

@@ -20,7 +20,7 @@ import no.nav.kafka.config.StringTopicConsumer
 import no.nav.kafka.config.configureKafkaStreams
 import no.nav.kafka.config.configureTopology
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerConsumer
-import no.nav.kafka.consumers.FnrEllerAktorId
+import no.nav.kafka.consumers.FnrEllerAktorIdEllerNpid
 import no.nav.kafka.consumers.LeesahConsumer
 import no.nav.kafka.consumers.OppfolgingsPeriodeConsumer
 import no.nav.kafka.consumers.SkjermingConsumer
@@ -43,7 +43,7 @@ val logger = LoggerFactory.getLogger("no.nav.kafka.KafkaStreamsPlugin")
 
 class KafkaStreamsPluginConfig(
         var automatiskKontorRutingService: AutomatiskKontorRutingService? = null,
-        var fnrProvider: (suspend (fnrEllerAktorId: FnrEllerAktorId) -> FnrResult)? = null,
+        var fnrProvider: (suspend (fnrEllerAktorIdEllerNpid: FnrEllerAktorIdEllerNpid) -> FnrResult)? = null,
         var database: Database? = null,
         var meterRegistry: MeterRegistry? = null,
         var oppfolgingsperiodeService: OppfolgingsperiodeService? = null,

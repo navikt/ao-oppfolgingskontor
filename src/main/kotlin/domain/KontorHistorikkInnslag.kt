@@ -1,10 +1,10 @@
 package no.nav.domain
 
-import no.nav.db.Fnr
+import no.nav.db.Ident
 
 data class KontorHistorikkInnslag(
     val kontorId: KontorId,
-    val fnr: Fnr,
+    val ident: Ident,
     val registrant: Registrant,
     val kontorendringstype: KontorEndringsType,
     val kontorType: KontorType,

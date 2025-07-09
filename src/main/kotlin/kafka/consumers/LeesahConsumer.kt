@@ -2,6 +2,7 @@ package no.nav.kafka.consumers
 
 import kotlinx.coroutines.runBlocking
 import no.nav.db.Fnr
+import no.nav.db.Ident
 import no.nav.domain.events.KontorEndretEvent
 import no.nav.domain.externalEvents.AdressebeskyttelseEndret
 import no.nav.domain.externalEvents.BostedsadresseEndret
@@ -76,7 +77,7 @@ class LeesahConsumer(
     }
 }
 
-fun Pair<Fnr, Personhendelse>.toHendelse(): PersondataEndret {
+fun Pair<Ident, Personhendelse>.toHendelse(): PersondataEndret {
     if (this.second.bostedsadresse != null) return BostedsadresseEndret(this.first)
     if (this.second.adressebeskyttelse != null)
             return AdressebeskyttelseEndret(this.first, this.second.adressebeskyttelse.gradering)

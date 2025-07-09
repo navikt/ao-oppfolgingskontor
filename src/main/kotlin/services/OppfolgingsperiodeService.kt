@@ -3,6 +3,7 @@ package no.nav.services
 import java.time.ZonedDateTime
 import java.util.UUID
 import no.nav.db.Fnr
+import no.nav.db.Ident
 import no.nav.db.entity.OppfolgingsperiodeEntity
 import no.nav.db.table.OppfolgingsperiodeTable
 import no.nav.domain.OppfolgingsperiodeId
@@ -17,14 +18,14 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 
 sealed class OppfolgingsperiodeOppslagResult()
-data class AktivOppfolgingsperiode(val fnr: Fnr, val periodeId: OppfolgingsperiodeId) : OppfolgingsperiodeOppslagResult()
+data class AktivOppfolgingsperiode(val fnr: Ident, val periodeId: OppfolgingsperiodeId) : OppfolgingsperiodeOppslagResult()
 object NotUnderOppfolging : OppfolgingsperiodeOppslagResult()
 data class OppfolgingperiodeOppslagFeil(val message: String) : OppfolgingsperiodeOppslagResult()
 
 object OppfolgingsperiodeService {
     private val log = LoggerFactory.getLogger(this::class.java)
 
-    suspend fun saveOppfolgingsperiode(fnr: Fnr, startDato: ZonedDateTime, oppfolgingsperiodeId: UUID) {
+    suspend fun saveOppfolgingsperiode(fnr: Ident, startDato: ZonedDateTime, oppfolgingsperiodeId: UUID) {
         transaction {
             OppfolgingsperiodeTable.insert {
                 it[id] = fnr.value
@@ -34,7 +35,7 @@ object OppfolgingsperiodeService {
         }
     }
 
-    suspend fun deleteOppfolgingsperiode(fnr: Fnr) {
+    suspend fun deleteOppfolgingsperiode(fnr: Ident) {
         transaction {
             val deletedRows = OppfolgingsperiodeTable.deleteWhere { OppfolgingsperiodeTable.id eq fnr.value }
             if (deletedRows > 0) {

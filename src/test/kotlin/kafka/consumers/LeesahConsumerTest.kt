@@ -4,6 +4,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeTypeOf
 import io.ktor.server.testing.testApplication
 import no.nav.db.Fnr
+import no.nav.db.Ident
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.GeografiskTilknyttetKontorEntity
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
@@ -131,7 +132,7 @@ class LeesahConsumerTest {
     }
 
     private fun defaultAutomatiskKontorRutingService(
-        gtProvider: suspend (fnr: Fnr, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming) -> KontorForGtNrResultat
+        gtProvider: suspend (ident: Ident, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming) -> KontorForGtNrResultat
     ): AutomatiskKontorRutingService {
         return AutomatiskKontorRutingService(
             KontorTilordningService::tilordneKontor,

@@ -1,6 +1,7 @@
 package no.nav.services
 
 import no.nav.db.Fnr
+import no.nav.db.Ident
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
@@ -15,12 +16,12 @@ import no.nav.http.client.GtNummerForBrukerFunnet
 import org.slf4j.LoggerFactory
 
 class GTNorgService(
-    private val gtForBrukerProvider: suspend (fnr: Fnr) -> GtForBrukerResult,
+    private val gtForBrukerProvider: suspend (fnr: Ident) -> GtForBrukerResult,
     private val kontorForGtProvider: suspend (gt: GeografiskTilknytningNr, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming) -> KontorForGtNrResultat,
 ) {
     val log = LoggerFactory.getLogger(this::class.java)
 
-    suspend fun hentGtKontorForBruker(fnr: Fnr, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming): KontorForGtNrResultat {
+    suspend fun hentGtKontorForBruker(fnr: Ident, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming): KontorForGtNrResultat {
         try {
             val gtForBruker = gtForBrukerProvider(fnr)
             return when (gtForBruker) {

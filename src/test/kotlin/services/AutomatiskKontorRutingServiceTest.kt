@@ -4,6 +4,7 @@ import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import no.nav.db.Fnr
+import no.nav.db.Ident
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.INGEN_GT_KONTOR_FALLBACK
@@ -470,7 +471,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
 
 fun oppfolgingsperiodeStartet(bruker: Bruker) = oppfolgingsperiodeStartet(bruker.fnr())
 
-fun oppfolgingsperiodeStartet(fnr: Fnr): OppfolgingsperiodeStartet {
+fun oppfolgingsperiodeStartet(fnr: Ident): OppfolgingsperiodeStartet {
     return OppfolgingsperiodeStartet(
         fnr,
         ZonedDateTime.now(),
@@ -513,7 +514,7 @@ data class Bruker(
     val strengtFortroligAdresse: HarStrengtFortroligAdresseResult,
     val oppfolgingsPeriodeResult: OppfolgingsperiodeOppslagResult = defaultOppfolgingsperiodeOppslagResult(fnr)
 ) {
-    fun fnr(): Fnr {
+    fun fnr(): Ident {
         if (fnr is FnrFunnet) {
             return fnr.fnr
         }

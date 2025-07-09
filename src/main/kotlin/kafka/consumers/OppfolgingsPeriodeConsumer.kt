@@ -5,6 +5,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import no.nav.db.Fnr
+import no.nav.db.Ident
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeEndret
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
@@ -41,7 +42,7 @@ class OppfolgingsPeriodeConsumer(
         val aktorId = record.key()
         try {
             return runBlocking {
-                val fnr: Fnr = when (val result = fnrProvider(aktorId)) {
+                val ident: Ident = when (val result = fnrProvider(aktorId)) {
                     is FnrFunnet -> result.fnr
                     is FnrIkkeFunnet -> return@runBlocking Retry("Kunne ikke behandle oppfolgingsperiode melding: ${result.message}")
                     is FnrOppslagFeil -> return@runBlocking Retry("Kunne ikke behandle oppfolgingsperiode melding: ${result.message}")
@@ -49,12 +50,12 @@ class OppfolgingsPeriodeConsumer(
 
                 val oppfolgingsperiode = Json
                     .decodeFromString<OppfolgingsperiodeDTO>(record.value())
-                    .toOppfolgingsperiodeEndret(fnr)
+                    .toOppfolgingsperiodeEndret(ident)
 
                 when (oppfolgingsperiode) {
-                    is OppfolgingsperiodeAvsluttet -> oppfolgingsperiodeService.deleteOppfolgingsperiode(fnr)
+                    is OppfolgingsperiodeAvsluttet -> oppfolgingsperiodeService.deleteOppfolgingsperiode(ident)
                     is OppfolgingsperiodeStartet -> oppfolgingsperiodeService.saveOppfolgingsperiode(
-                        fnr,
+                        ident,
                         oppfolgingsperiode.startDato,
                         oppfolgingsperiode.oppfolgingsperiodeId)
                 }
@@ -93,7 +94,7 @@ data class OppfolgingsperiodeDTO(
         val startetBegrunnelse: StartetBegrunnelse
 )
 
-fun OppfolgingsperiodeDTO.toOppfolgingsperiodeEndret(fnr: Fnr): OppfolgingsperiodeEndret {
+fun OppfolgingsperiodeDTO.toOppfolgingsperiodeEndret(fnr: Ident): OppfolgingsperiodeEndret {
     if (this.sluttDato == null) return OppfolgingsperiodeStartet(
         fnr,
         this.startDato,

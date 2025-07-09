@@ -23,7 +23,7 @@ class EndringPaaOppfolgingsBrukerFraArena(
         val registrant = System()
         return KontorHistorikkInnslag(
             kontorId = tilordning.kontorId,
-            fnr = tilordning.fnr,
+            ident = tilordning.fnr,
             registrant = registrant,
             kontorendringstype = KontorEndringsType.EndretIArena,
             kontorType = KontorType.ARENA,
