@@ -4,7 +4,9 @@ import org.apache.avro.io.DatumWriter
 import org.apache.avro.io.EncoderFactory
 import org.apache.avro.specific.SpecificDatumWriter
 import org.apache.avro.specific.SpecificRecord
+import org.slf4j.LoggerFactory
 import java.io.ByteArrayOutputStream
+import java.io.IOException
 import java.nio.charset.StandardCharsets
 
 /**
@@ -12,6 +14,8 @@ import java.nio.charset.StandardCharsets
  * Bruker Avros innebygde verktøy for en standard-korrekt konvertering.
  */
 object AvroJsonConverter {
+    val logger = LoggerFactory.getLogger(AvroJsonConverter::class.java)
+
     /**
      * Konverterer et Avro SpecificRecord-objekt til en JSON-streng.
      *
@@ -23,12 +27,18 @@ object AvroJsonConverter {
     fun <T : SpecificRecord> convertAvroToJson(avroRecord: T?, pretty: Boolean? = true): String? {
         avroRecord ?: return null
 
-         return ByteArrayOutputStream().use { outputStream ->
+        return try {
+            ByteArrayOutputStream().use { outputStream ->
                 val writer: DatumWriter<T> = SpecificDatumWriter(avroRecord.schema)
                 val encoder = EncoderFactory.get().jsonEncoder(avroRecord.schema, outputStream, pretty ?: true)
                 writer.write(avroRecord, encoder)
                 encoder.flush()
                 outputStream.toString(StandardCharsets.UTF_8.name())
-         }
+            }
+        } catch (e: IOException) {
+            logger.error("Avro til json konvertering feilet ", e)
+            // Returner en feilmelding i JSON-format
+            """{"error": "Failed to convert Avro to JSON", "message": "${e.message}"}"""
+        }
     }
 }
