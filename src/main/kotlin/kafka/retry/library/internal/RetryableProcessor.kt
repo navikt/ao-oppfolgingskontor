@@ -1,6 +1,6 @@
 package no.nav.kafka.retry.library.internal
 
-import io.ktor.utils.io.KtorDsl
+import no.nav.kafka.retry.library.AvroJsonConverter
 import net.javacrumbs.shedlock.core.DefaultLockingTaskExecutor
 import net.javacrumbs.shedlock.core.LockConfiguration
 import net.javacrumbs.shedlock.core.LockProvider
@@ -11,6 +11,7 @@ import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
 import no.nav.kafka.retry.library.MaxRetries
 import no.nav.kafka.retry.library.RetryConfig
+import org.apache.avro.specific.SpecificRecord
 import org.apache.kafka.common.serialization.Deserializer
 import org.apache.kafka.common.serialization.Serializer
 import org.apache.kafka.streams.processor.PunctuationType
@@ -180,6 +181,12 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
         val keyString = key.toString()
         val keyBytes = keyInSerializer.serialize(topic, key)
         val valueBytes = valueInSerializer.serialize(topic, record.value())
+
+        val recordValue = record.value()
+        if (recordValue is SpecificRecord) {
+            val humanReadableValue = AvroJsonConverter.convertAvroToJson(recordValue)
+            store.enqueue(keyString, keyBytes, valueBytes, reason, humanReadableValue)
+        }
 
         store.enqueue(keyString, keyBytes, valueBytes, reason)
         metrics.messageEnqueued()

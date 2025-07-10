@@ -1,7 +1,7 @@
-package kafka.avro.util
+package kafka.retry.library
 
 import io.kotest.matchers.shouldBe
-import kafka.AvroJsonConverter
+import no.nav.kafka.retry.library.AvroJsonConverter
 import no.nav.person.pdl.leesah.Endringstype
 import no.nav.person.pdl.leesah.Personhendelse
 import no.nav.person.pdl.leesah.adressebeskyttelse.Adressebeskyttelse

@@ -1,4 +1,4 @@
-package kafka
+package no.nav.kafka.retry.library
 
 import org.apache.avro.io.DatumWriter
 import org.apache.avro.io.EncoderFactory

@@ -17,6 +17,7 @@ object FailedMessagesTable: IdTable<Long>("failed_messages") {
     val retryCount = integer("retry_count")
     val failureReason = text("failure_reason")
     val topic = text("topic")
+    val humanReadableValue = text("human_readable_value").nullable()
 }
 
 class FailedMessagesEntity(id: EntityID<Long>): LongEntity(id) {
@@ -29,4 +30,5 @@ class FailedMessagesEntity(id: EntityID<Long>): LongEntity(id) {
     val retryCount by FailedMessagesTable.retryCount
     val failureReason by FailedMessagesTable.failureReason
     val topic by FailedMessagesTable.topic
+    val humanReadableValue by FailedMessagesTable.humanReadableValue
 }
