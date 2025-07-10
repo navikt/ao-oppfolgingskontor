@@ -59,7 +59,7 @@ fun `should convert Avro to Json()`() {
  }
 
 @Test
-    fun `should return empty json when Avro is null`() {
+    fun `should return null when Avro is null`() {
     val actual = AvroJsonConverter.convertAvroToJson(null)
     actual shouldBe null
     }
