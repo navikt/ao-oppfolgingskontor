@@ -2,6 +2,8 @@ package no.nav.utils
 
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.client.request.bearerAuth
+import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
@@ -68,30 +70,33 @@ data class AlleKontor(
     val alleKontor: List<AlleKontorQueryDto>,
 )
 
-private suspend fun HttpClient.graphqlRequest(block: HttpRequestBuilder.() -> Unit): HttpResponse {
+private suspend fun HttpClient.graphqlRequest(bearerToken: String? = null, block: HttpRequestBuilder.() -> Unit): HttpResponse {
     return post("/graphql") {
         contentType(ContentType.Application.Json)
+        if (bearerToken != null) {
+            bearerAuth(bearerToken)
+        }
         this.block()
     }
 }
 
-suspend fun HttpClient.kontorTilhorighet(fnr: Fnr): HttpResponse {
-    return graphqlRequest {
+suspend fun HttpClient.kontorTilhorighet(fnr: Fnr, bearerToken: String? = null): HttpResponse {
+    return graphqlRequest(bearerToken) {
         setBody(kontorTilhorighetQuery(fnr))
     }
 }
-suspend fun HttpClient.alleKontorTilhorigheter(fnr: Fnr): HttpResponse {
-    return graphqlRequest {
+suspend fun HttpClient.alleKontorTilhorigheter(fnr: Fnr, bearerToken: String? = null): HttpResponse {
+    return graphqlRequest(bearerToken) {
         setBody(alleKontorTilhorigheterQuery(fnr).also { logger.info("GRAPHQL-query: $it") })
     }
 }
-suspend fun HttpClient.kontorHistorikk(fnr: Fnr): HttpResponse {
-    return graphqlRequest {
+suspend fun HttpClient.kontorHistorikk(fnr: Fnr, bearerToken: String? = null): HttpResponse {
+    return graphqlRequest(bearerToken) {
         setBody(kontorHistorikkQuery(fnr))
     }
 }
-suspend fun HttpClient.alleKontor(): HttpResponse {
-    return graphqlRequest {
+suspend fun HttpClient.alleKontor(bearerToken: String? = null): HttpResponse {
+    return graphqlRequest(bearerToken) {
         setBody(alleKontorQuery())
     }
 }

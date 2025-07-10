@@ -5,9 +5,13 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.ktor.client.call.body
 import io.ktor.http.HttpStatusCode
+import io.ktor.server.auth.authenticate
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
+import no.nav.Authenticated
+import no.nav.SystemPrincipal
+import no.nav.configureSecurity
 import no.nav.db.Fnr
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.db.table.ArenaKontorTable
@@ -17,6 +21,7 @@ import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorType
 import no.nav.domain.System
 import no.nav.http.client.mockNorg2Host
+import no.nav.http.client.mockPoaoTilgangHost
 import no.nav.http.graphql.installGraphQl
 import no.nav.http.graphql.schemas.KontorHistorikkQueryDto
 import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
@@ -41,9 +46,12 @@ import java.time.ZonedDateTime
 
 fun ApplicationTestBuilder.graphqlServerInTest() {
     val norg2Client = mockNorg2Host()
+    val poaoTilgangClient = mockPoaoTilgangHost(null)
     application {
         flywayMigrationInTest()
-        installGraphQl(norg2Client, KontorTilhorighetService(KontorNavnService(norg2Client)))
+        installGraphQl(norg2Client,
+            KontorTilhorighetService(KontorNavnService(norg2Client), poaoTilgangClient),
+            { Authenticated(SystemPrincipal("lol")) })
         routing {
             graphQLPostRoute()
         }

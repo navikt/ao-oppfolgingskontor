@@ -11,14 +11,20 @@ import io.ktor.server.response.respondText
 import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import no.nav.Authenticated
+import no.nav.NotAuthenticated
+import no.nav.authenticateCall
 import no.nav.db.Fnr
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
-import no.nav.domain.NavIdent
-import no.nav.domain.Veileder
 import no.nav.domain.events.KontorSattAvVeileder
+import no.nav.getIssuer
 import no.nav.http.client.FnrFunnet
-import no.nav.security.token.support.v3.TokenValidationContextPrincipal
+import no.nav.http.client.poaoTilgang.HarIkkeTilgang
+import no.nav.http.client.poaoTilgang.HarTilgang
+import no.nav.http.client.poaoTilgang.PoaoTilgangKtorHttpClient
+import no.nav.http.client.poaoTilgang.TilgangOppslagFeil
+import no.nav.http.graphql.AuthenticateRequest
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
@@ -26,16 +32,18 @@ import no.nav.services.KontorTilordningService
 import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingperiodeOppslagFeil
 import no.nav.services.OppfolgingsperiodeService
+import no.nav.toRegistrant
 import org.slf4j.LoggerFactory
 
 val logger = LoggerFactory.getLogger("Applcation.configureArbeidsoppfolgingskontorModule")
 
 fun Application.configureArbeidsoppfolgingskontorModule(
     kontorNavnService: KontorNavnService,
-    kontorTilhorighetService: KontorTilhorighetService
+    kontorTilhorighetService: KontorTilhorighetService,
+    poaoTilgangClient: PoaoTilgangKtorHttpClient,
+    authenticateRequest: AuthenticateRequest = { req -> req.call.authenticateCall(environment.getIssuer()) }
 ) {
     val log = LoggerFactory.getLogger("Applcation.configureArbeidsoppfolgingskontorModule")
-    val issuer = environment.config.property("auth.entraIssuer").getString()
 
     routing {
         install(ContentNegotiation) {
@@ -48,10 +56,30 @@ fun Application.configureArbeidsoppfolgingskontorModule(
             post("/api/kontor") {
                 runCatching {
                     val kontorTilordning = call.receive<ArbeidsoppfolgingsKontorTilordningDTO>()
-                    val principal = call.principal<TokenValidationContextPrincipal>()
-                    val veilederIdent = principal?.context?.getClaims(issuer)?.getStringClaim("NAVident")
-                        ?: throw IllegalStateException("NAVident not found in token")
-                    val gammeltKontor = kontorTilhorighetService.getArbeidsoppfolgingKontorTilhorighet(Fnr(kontorTilordning.fnr))
+                    val principal = when(val authresult = authenticateRequest(call.request)) {
+                        is Authenticated -> authresult.principal
+                        is NotAuthenticated -> {
+                            log.warn("Not authorized ${authresult.reason}")
+                            call.respond(HttpStatusCode.Unauthorized)
+                            return@post
+                        }
+                    }
+
+                    val harTilgang = poaoTilgangClient.harLeseTilgang(principal, Fnr(kontorTilordning.fnr))
+                    when (harTilgang) {
+                        is HarIkkeTilgang -> {
+                            logger.warn("Bruker/system har ikke tilgang til å endre kontor for bruker")
+                            call.respond(HttpStatusCode.Forbidden, "Du har ikke tilgang til å endre kontor for denne brukeren")
+                            return@post
+                        }
+                        HarTilgang -> {}
+                        is TilgangOppslagFeil -> {
+                            logger.warn(harTilgang.message)
+                            call.respond(HttpStatusCode.InternalServerError, "Noe gikk galt under oppslag av tilgang for bruker")
+                            return@post
+                        }
+                    }
+                    val gammeltKontor = kontorTilhorighetService.getArbeidsoppfolgingKontorTilhorighet(Fnr(kontorTilordning.fnr), principal)
                     val kontorId = KontorId(kontorTilordning.kontorId)
 
                     val fnr = Fnr(kontorTilordning.fnr)
@@ -76,7 +104,7 @@ fun Application.configureArbeidsoppfolgingskontorModule(
                                 kontorId = kontorId,
                                 oppfolgingsperiodeId
                             ),
-                            registrant = Veileder(NavIdent(veilederIdent))
+                            registrant = principal.toRegistrant()
                         )
                     )
                     kontorId to gammeltKontor
