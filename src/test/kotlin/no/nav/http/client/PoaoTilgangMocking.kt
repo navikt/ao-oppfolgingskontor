@@ -8,9 +8,15 @@ import io.ktor.server.application.install
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.testing.*
+import no.nav.http.client.poaoTilgang.DecisionDto
+import no.nav.http.client.poaoTilgang.EvalPolicyRes
 import no.nav.http.client.poaoTilgang.PoaoTilgangKtorHttpClient
+import no.nav.http.client.poaoTilgang.PoaoTilgangKtorHttpClient.Companion.evaluatePoliciesPath
+import no.nav.http.client.poaoTilgang.PolicyEvaluationResultDto
+import no.nav.poao_tilgang.api.dto.response.DecisionType
 import no.nav.poao_tilgang.api.dto.response.Diskresjonskode
 import no.nav.poao_tilgang.api.dto.response.TilgangsattributterResponse
+import java.util.UUID
 
 val poaoTilgangTestUrl = "http://poao.tilgang.test.no"
 private const val tilgangsattributterPath = "/api/v1/tilgangsattributter"
@@ -31,6 +37,21 @@ fun ApplicationTestBuilder.mockPoaoTilgangHost(kontorId: String?): PoaoTilgangKt
                             diskresjonskode = Diskresjonskode.UGRADERT
                         )
                     )
+                }
+
+                post(evaluatePoliciesPath) {
+                    call.respond(EvalPolicyRes(
+                        results = listOf(
+                            PolicyEvaluationResultDto(
+                                requestId = UUID.randomUUID().toString(),
+                                decision = DecisionDto(
+                                    type = DecisionType.PERMIT,
+                                    reason = null,
+                                    message = null
+                                )
+                            )
+                        )
+                    ))
                 }
             }
 

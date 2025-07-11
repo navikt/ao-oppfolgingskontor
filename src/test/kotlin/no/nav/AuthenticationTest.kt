@@ -1,55 +1,71 @@
 package no.nav.no.nav
 
+import com.expediagroup.graphql.server.ktor.graphQLPostRoute
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldNotContain
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
-import io.ktor.server.config.MapApplicationConfig
+import io.ktor.server.auth.authenticate
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import no.nav.configureSecurity
 import no.nav.db.Fnr
-import no.nav.http.client.Norg2Client
-import no.nav.http.client.norg2TestUrl
+import no.nav.domain.NavIdent
+import no.nav.getIssuer
+import no.nav.http.client.mockNorg2Host
+import no.nav.http.client.mockPoaoTilgangHost
 import no.nav.http.graphql.configureGraphQlModule
-import no.nav.http.graphql.getNorg2Url
+import no.nav.http.graphql.installGraphQl
 import no.nav.security.mock.oauth2.MockOAuth2Server
 import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
+import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.getJsonHttpClient
+import no.nav.utils.getMockOauth2ServerConfig
+import no.nav.utils.issueToken
+import no.nav.utils.kontorTilhorighet
 import no.nav.utils.kontorTilhorighetQuery
+import io.ktor.server.routing.routing
+import no.nav.authenticateCall
 import org.junit.jupiter.api.Test
 
 class AuthenticationTest {
 
     fun ApplicationTestBuilder.setupTestAppWithAuthAndGraphql() {
         environment {
-            config = getMockOauth2ServerConfig()
+            config = server.getMockOauth2ServerConfig()
         }
+        val poaoTilgangKtorHttpClient = mockPoaoTilgangHost(null)
+        val norg2Client = mockNorg2Host()
+        val kontorNavnService = KontorNavnService(norg2Client)
+        val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangKtorHttpClient)
         application {
-            val norg2Client = Norg2Client(environment.getNorg2Url())
+            flywayMigrationInTest()
             configureSecurity()
-            configureGraphQlModule(
-                norg2Client,
-                KontorTilhorighetService(KontorNavnService(norg2Client))
-            )
+            installGraphQl(norg2Client, kontorTilhorighetService) { req -> req.call.authenticateCall(environment.getIssuer()) }
+            routing {
+                authenticate {
+                    graphQLPostRoute()
+                }
+            }
         }
     }
 
     @Test
-    fun `graphql endepunkter skal kreve gyldig token`() = testApplication {
+    fun `graphql endepunkter skal godta gyldig token`() = testApplication {
         withMockOAuth2Server {
             setupTestAppWithAuthAndGraphql()
             val client = getJsonHttpClient()
+            val fnr = Fnr("89898898980")
+            val token = server.issueToken(NavIdent("Hei"))
 
-            val response = client.post("/graphql") {
-                header("Authorization", "Bearer ${server.issueToken().serialize()}")
-                header("Content-Type", "application/json")
-                setBody(kontorTilhorighetQuery(Fnr("89898898980")))
-            }
+            val response = client.kontorTilhorighet(fnr, token)
 
             response.status shouldBe HttpStatusCode.Companion.OK
+            response.bodyAsText() shouldNotContain "errors"
         }
     }
 
@@ -75,17 +91,5 @@ class AuthenticationTest {
         server.shutdown()
     }
 
-    /* Default issuer is "default" and default aud is "default" */
     val server = MockOAuth2Server()
-    private fun getMockOauth2ServerConfig(
-        acceptedIssuer: String = "default",
-        acceptedAudience: String = "default"): MapApplicationConfig {
-        return MapApplicationConfig().apply {
-            put("no.nav.security.jwt.issuers.size", "1")
-            put("no.nav.security.jwt.issuers.0.issuer_name", acceptedIssuer)
-            put("no.nav.security.jwt.issuers.0.discoveryurl", "${server.wellKnownUrl(acceptedIssuer)}")
-            put("no.nav.security.jwt.issuers.0.accepted_audience", acceptedAudience)
-            put("apis.norg2.url", norg2TestUrl)
-        }
-    }
 }

@@ -63,6 +63,8 @@ spec:
       value: http://norg2.org
     - name: POAO_TILGANG_URL
       value: http://poao-tilgang.poao
+    - name: POAO_TILGANG_SCOPE
+      value: api://prod-gcp.poao.poao-tilgang/.default
     - name: PDL_URL
       value: https://pdl-api.prod-fss-pub.nais.io
     - name: SKJERMEDE_PERSONER_PIP_SCOPE

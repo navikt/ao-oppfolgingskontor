@@ -7,12 +7,16 @@ import no.nav.http.client.*
 import no.nav.http.client.arbeidssogerregisteret.ArbeidssokerregisterClient
 import no.nav.http.client.arbeidssogerregisteret.getArbeidssokerregisteretScope
 import no.nav.http.client.arbeidssogerregisteret.getArbeidssokerregisteretUrl
+import no.nav.http.client.poaoTilgang.PoaoTilgangKtorHttpClient
+import no.nav.http.client.poaoTilgang.getPoaoTilgangScope
 import no.nav.http.client.tokenexchange.TexasSystemTokenClient
 import no.nav.http.client.tokenexchange.getNaisTokenEndpoint
 import no.nav.http.configureArbeidsoppfolgingskontorModule
+import no.nav.http.graphql.AuthenticateRequest
 import no.nav.http.graphql.configureGraphQlModule
 import no.nav.http.graphql.getNorg2Url
 import no.nav.http.graphql.getPDLUrl
+import no.nav.http.graphql.getPoaoTilgangUrl
 import no.nav.kafka.KafkaStreamsPlugin
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.GTNorgService
@@ -42,18 +46,17 @@ fun Application.module() {
         environment.getSkjermedePersonerUrl(),
         texasClient.tokenProvider(environment.getSkjermedePersonerScope())
     )
-    /*
     val poaoTilgangHttpClient = PoaoTilgangKtorHttpClient(
         environment.getPoaoTilgangUrl(),
         texasClient.tokenProvider(environment.getPoaoTilgangScope())
-    )*/
+    )
 
     val gtNorgService = GTNorgService(
         { pdlClient.hentGt(it) },
         { gt, strengtFortroligAdresse, skjermet -> norg2Client.hentKontorForGt(gt, strengtFortroligAdresse, skjermet) }
     )
     val kontorNavnService = KontorNavnService(norg2Client)
-    val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService)
+    val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangHttpClient)
     val automatiskKontorRutingService = AutomatiskKontorRutingService(
         KontorTilordningService::tilordneKontor,
         { fnr, strengtFortroligAdresse, skjermet -> gtNorgService.hentGtKontorForBruker(fnr, strengtFortroligAdresse, skjermet) },
@@ -74,6 +77,10 @@ fun Application.module() {
         this.pdlClient = pdlClient
     }
 
-    configureGraphQlModule(norg2Client, kontorTilhorighetService)
-    configureArbeidsoppfolgingskontorModule(kontorNavnService, KontorTilhorighetService(kontorNavnService))
+    val issuer = environment.getIssuer()
+    val authenticateRequest: AuthenticateRequest = { req -> req.call.authenticateCall(issuer) }
+    configureGraphQlModule(norg2Client, kontorTilhorighetService, authenticateRequest)
+    configureArbeidsoppfolgingskontorModule(kontorNavnService, kontorTilhorighetService, poaoTilgangHttpClient)
 }
+
+fun ApplicationEnvironment.getIssuer() = this.config.property("no.nav.security.jwt.issuers.0.issuer_name").getString()

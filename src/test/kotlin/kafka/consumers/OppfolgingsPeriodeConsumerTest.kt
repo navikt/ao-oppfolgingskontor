@@ -1,6 +1,6 @@
 package kafka.consumers
 
-import io.kotest.matchers.date.shouldHaveSameInstantAs
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.ktor.server.testing.testApplication
@@ -29,7 +29,6 @@ import no.nav.utils.randomFnr
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
-import java.time.ZoneId
 
 class OppfolgingsPeriodeConsumerTest {
 
@@ -97,11 +96,11 @@ class OppfolgingsPeriodeConsumerTest {
                     sluttDato = periodeSlutt,
                 )
 
-                val result = consumer.consume(record, null)
+                consumer.consume(record, null)
 
                 transaction {
-                    val entityCount = OppfolgingsperiodeEntity.count()
-                    entityCount shouldBe 0
+                    val periodeForBruker = OppfolgingsperiodeEntity.findById(bruker.fnr.value)
+                    periodeForBruker.shouldBeNull()
                 }
             }
         }
