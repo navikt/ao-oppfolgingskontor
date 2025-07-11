@@ -65,6 +65,25 @@ class FailedMessageRepositoryTest {
     }
 
     @Test
+    fun `should enqueue and correctly check for failed messages for messages with additional human readable value`() {
+        val key = "test-key"
+        val otherKey = "other-key"
+        val value = "some-avro-message".toByteArray()
+        val humanReadableValue = "Human readable value"
+
+        repository.hasFailedMessages(key) shouldBe false
+        repository.countTotalFailedMessages() shouldBe 0
+
+
+        repository.enqueue(key, key.toByteArray(), value, "Initial failure", humanReadableValue)
+
+        repository.hasFailedMessages(key) shouldBe true
+        repository.hasFailedMessages(otherKey) shouldBe false
+
+        repository.countTotalFailedMessages() shouldBe 1
+    }
+
+    @Test
     fun `should retrieve batch to retry in FIFO order`() {
         repository.enqueue("key1", "key1".toByteArray(), "val1".toByteArray(), "fail1")
         Thread.sleep(10) // Sørg for unik timestamp
