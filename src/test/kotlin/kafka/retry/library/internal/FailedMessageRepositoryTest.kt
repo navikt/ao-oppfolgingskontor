@@ -1,5 +1,6 @@
 package kafka.retry.library.internal
 
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import no.nav.kafka.retry.library.internal.FailedMessageRepository
@@ -134,6 +135,13 @@ class FailedMessageRepositoryTest {
         updatedMessage.retryCount shouldBe 1
         updatedMessage.failureReason shouldBe "Second failure"
         updatedMessage.lastAttemptTimestamp shouldNotBe null
+    }
+
+    @Test
+    fun `should fail on empty key`() {
+        shouldThrow<IllegalArgumentException> {
+            repository.hasFailedMessages("")
+        }
     }
 
 
