@@ -11,10 +11,11 @@ class KontorSattAvVeileder(tilhorighet: KontorTilordning, registrant: Registrant
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(
             kontorId = tilordning.kontorId,
-            fnr = tilordning.fnr,
+            ident = tilordning.fnr,
             registrant = registrant,
             kontorendringstype = KontorEndringsType.FlyttetAvVeileder,
-            kontorType = KontorType.ARBEIDSOPPFOLGING
+            kontorType = KontorType.ARBEIDSOPPFOLGING,
+            oppfolgingId = tilordning.oppfolgingsperiodeId
         )
     }
 

@@ -28,10 +28,11 @@ data class GTKontorEndret(val kontorTilordning: KontorTilordning, val kontorEndr
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(
             kontorId = tilordning.kontorId,
-            fnr = tilordning.fnr,
+            ident = tilordning.fnr,
             registrant = System(),
             kontorendringstype = kontorEndringsType,
-            kontorType = KontorType.GEOGRAFISK_TILKNYTNING
+            kontorType = KontorType.GEOGRAFISK_TILKNYTNING,
+            oppfolgingId = tilordning.oppfolgingsperiodeId
         )
     }
 

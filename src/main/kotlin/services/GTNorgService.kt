@@ -1,6 +1,7 @@
 package no.nav.services
 
 import no.nav.db.Fnr
+import no.nav.db.Ident
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
@@ -15,12 +16,12 @@ import no.nav.http.client.GtNummerForBrukerFunnet
 import org.slf4j.LoggerFactory
 
 class GTNorgService(
-    private val gtForBrukerProvider: suspend (fnr: Fnr) -> GtForBrukerResult,
+    private val gtForBrukerProvider: suspend (fnr: Ident) -> GtForBrukerResult,
     private val kontorForGtProvider: suspend (gt: GeografiskTilknytningNr, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming) -> KontorForGtNrResultat,
 ) {
     val log = LoggerFactory.getLogger(this::class.java)
 
-    suspend fun hentGtKontorForBruker(fnr: Fnr, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming): KontorForGtNrResultat {
+    suspend fun hentGtKontorForBruker(fnr: Ident, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming): KontorForGtNrResultat {
         try {
             val gtForBruker = gtForBrukerProvider(fnr)
             return when (gtForBruker) {
@@ -43,13 +44,13 @@ class GTNorgService(
 * Når vi får gt mand bare land fra PDL propagerer dette videre igjennom kontor-oppslag tjenesten
 * */
 sealed class KontorForGtNrResultat
-sealed class KontorForGtNrFunnet(val skjerming: HarSkjerming, val strengtFortroligAdresse: HarStrengtFortroligAdresse) : KontorForGtNrResultat()
-data class KontorForGtNrFantKontor(val kontorId: KontorId, val _skjerming: HarSkjerming, val _strengtFortroligAdresse: HarStrengtFortroligAdresse) : KontorForGtNrFunnet(_skjerming, _strengtFortroligAdresse)
-data class KontorForGtNrFantLand(val landkode: GeografiskTilknytningLand, val _skjerming: HarSkjerming, val _strengtFortroligAdresse: HarStrengtFortroligAdresse) : KontorForGtNrFunnet(_skjerming, _strengtFortroligAdresse)
-data class KontorForGtFinnesIkke(val _skjerming: HarSkjerming, val _strengtFortroligAdresse: HarStrengtFortroligAdresse) : KontorForGtNrFunnet(_skjerming, _strengtFortroligAdresse)
+sealed class KontorForGtFantLandEllerKontor(val skjerming: HarSkjerming, val strengtFortroligAdresse: HarStrengtFortroligAdresse) : KontorForGtNrResultat()
+data class KontorForGtNrFantKontor(val kontorId: KontorId, val _skjerming: HarSkjerming, val _strengtFortroligAdresse: HarStrengtFortroligAdresse) : KontorForGtFantLandEllerKontor(_skjerming, _strengtFortroligAdresse)
+data class KontorForGtNrFantLand(val landkode: GeografiskTilknytningLand, val _skjerming: HarSkjerming, val _strengtFortroligAdresse: HarStrengtFortroligAdresse) : KontorForGtFantLandEllerKontor(_skjerming, _strengtFortroligAdresse)
+data class KontorForGtFinnesIkke(val _skjerming: HarSkjerming, val _strengtFortroligAdresse: HarStrengtFortroligAdresse) : KontorForGtFantLandEllerKontor(_skjerming, _strengtFortroligAdresse)
 data class KontorForGtNrFeil(val melding: String) : KontorForGtNrResultat()
 
-fun KontorForGtNrFunnet.sensitivitet(): Sensitivitet {
+fun KontorForGtFantLandEllerKontor.sensitivitet(): Sensitivitet {
     return Sensitivitet(
         this.skjerming,
         this.strengtFortroligAdresse

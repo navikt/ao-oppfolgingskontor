@@ -1,13 +1,14 @@
 package no.nav.domain.externalEvents
 
 import no.nav.db.Fnr
+import no.nav.db.Ident
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.person.pdl.leesah.adressebeskyttelse.Gradering
 
-sealed class PersondataEndret(val fnr: Fnr)
-class BostedsadresseEndret(fnr: Fnr): PersondataEndret(fnr)
-class AdressebeskyttelseEndret(fnr: Fnr, val gradering: Gradering): PersondataEndret(fnr)
-class IrrelevantHendelse(fnr: Fnr, val opplysningstype: String): PersondataEndret(fnr)
+sealed class PersondataEndret(val ident: Ident)
+class BostedsadresseEndret(ident: Ident): PersondataEndret(ident)
+class AdressebeskyttelseEndret(ident: Ident, val gradering: Gradering): PersondataEndret(ident)
+class IrrelevantHendelse(ident: Ident, val opplysningstype: String): PersondataEndret(ident)
 
 fun AdressebeskyttelseEndret.erGradert(): Boolean {
     return this.gradering == Gradering.STRENGT_FORTROLIG

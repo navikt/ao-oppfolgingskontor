@@ -1,6 +1,7 @@
 package no.nav.kafka.consumers
 
 import kotlinx.coroutines.runBlocking
+import no.nav.db.Fnr
 import no.nav.domain.HarSkjerming
 import no.nav.domain.events.KontorEndretEvent
 import no.nav.domain.externalEvents.SkjermetStatusEndret
@@ -24,7 +25,7 @@ class SkjermingConsumer(
     fun handterEndringISKjermetStatus(fnr: String, skjermingStatus: Boolean): RecordProcessingResult<Unit, Unit> {
         return runBlocking {
             val result = automatiskKontorRutingService.handterEndringISkjermingStatus(
-                SkjermetStatusEndret(fnr, HarSkjerming(skjermingStatus))
+                SkjermetStatusEndret(Fnr(fnr), HarSkjerming(skjermingStatus))
             )
             when (result.isSuccess) {
                 true -> {

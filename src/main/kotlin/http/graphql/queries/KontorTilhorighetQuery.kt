@@ -14,11 +14,12 @@ class KontorQuery(
     val kontorTilhorighetService: KontorTilhorighetService
 ) : Query {
 
-    suspend fun kontorTilhorighet(fnr: Fnr, dataFetchingEnvironment: DataFetchingEnvironment): KontorTilhorighetQueryDto? {
-        return kontorTilhorighetService.getKontorTilhorighet(fnr)
+    suspend fun kontorTilhorighet(fnr: String, dataFetchingEnvironment: DataFetchingEnvironment): KontorTilhorighetQueryDto? {
+        return kontorTilhorighetService.getKontorTilhorighet(Fnr(fnr))
     }
 
-    suspend fun kontorTilhorigheter(fnr: Fnr, dataFetchingEnvironment: DataFetchingEnvironment): KontorTilhorigheterQueryDto {
+    suspend fun kontorTilhorigheter(fnr: String, dataFetchingEnvironment: DataFetchingEnvironment): KontorTilhorigheterQueryDto {
+        val fnr = Fnr(fnr)
         return KontorTilhorigheterQueryDto(
             arena = kontorTilhorighetService.getArenaKontorTilhorighet(fnr)?.toArenaKontorDto(),
             geografiskTilknytning = kontorTilhorighetService.getGeografiskTilknyttetKontorTilhorighet(fnr)?.toGeografiskTilknyttetKontorDto(),

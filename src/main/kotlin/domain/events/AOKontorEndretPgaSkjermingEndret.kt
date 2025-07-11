@@ -13,10 +13,11 @@ class AOKontorEndretPgaSkjermingEndret(kontorTilordning: KontorTilordning): AOKo
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(
             kontorId = this.tilordning.kontorId,
-            fnr = this.tilordning.fnr,
+            ident = this.tilordning.fnr,
             registrant = System(),
             kontorendringstype = KontorEndringsType.FikkSkjerming,
-            kontorType = KontorType.ARBEIDSOPPFOLGING
+            kontorType = KontorType.ARBEIDSOPPFOLGING,
+            oppfolgingId = this.tilordning.oppfolgingsperiodeId
         )
     }
 

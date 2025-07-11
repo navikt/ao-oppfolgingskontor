@@ -19,6 +19,7 @@ import no.nav.services.GTNorgService
 import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
 import no.nav.services.KontorTilordningService
+import no.nav.services.OppfolgingsperiodeService
 
 fun main(args: Array<String>) {
     EngineMain.main(args)
@@ -60,7 +61,8 @@ fun Application.module() {
         { pdlClient.hentFnrFraAktorId(it) },
         { arbeidssokerregisterClient.hentProfilering(it) },
         { skjermingsClient.hentSkjerming(it) },
-        { pdlClient.harStrengtFortroligAdresse(it) }
+        { pdlClient.harStrengtFortroligAdresse(it) },
+        {  OppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) }
     )
 
     install(KafkaStreamsPlugin) {
@@ -68,6 +70,8 @@ fun Application.module() {
         this.fnrProvider = pdlClient::hentFnrFraAktorId
         this.database = database
         this.meterRegistry = meterRegistry
+        this.oppfolgingsperiodeService = OppfolgingsperiodeService
+        this.pdlClient = pdlClient
     }
 
     configureGraphQlModule(norg2Client, kontorTilhorighetService)

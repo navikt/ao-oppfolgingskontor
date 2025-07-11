@@ -6,11 +6,11 @@ import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.api.createClientPlugin
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.logging.LogLevel
-import io.ktor.client.plugins.logging.Logging
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.ApplicationEnvironment
 import no.nav.db.Fnr
+import no.nav.db.Ident
+import no.nav.db.Npid
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.http.client.tokenexchange.SystemTokenPlugin
 import no.nav.http.client.tokenexchange.TexasTokenResponse
@@ -33,7 +33,7 @@ data class AlderFunnet(val alder: Int) : AlderResult()
 data class AlderIkkeFunnet(val message: String) : AlderResult()
 
 sealed class FnrResult
-data class FnrFunnet(val fnr: Fnr) : FnrResult()
+data class FnrFunnet(val fnr: Ident) : FnrResult()
 data class FnrIkkeFunnet(val message: String) : FnrResult()
 data class FnrOppslagFeil(val message: String) : FnrResult()
 
@@ -81,8 +81,8 @@ class PdlClient(
         url = URI.create("$pdlGraphqlUrl/graphql").toURL(),
         httpClient = ktorHttpClient
     )
-    suspend fun hentAlder(fnr: String): AlderResult {
-        val query = HentAlderQuery(HentAlderQuery.Variables(fnr))
+    suspend fun hentAlder(fnr: Ident): AlderResult {
+        val query = HentAlderQuery(HentAlderQuery.Variables(fnr.value))
         val result = client.execute(query)
         if (result.errors != null && result.errors!!.isNotEmpty()) {
             return AlderIkkeFunnet(result.errors!!.joinToString { it.message })
@@ -107,8 +107,14 @@ class PdlClient(
         }
         return result.data?.hentIdenter?.identer
             ?.let { identer ->
-                identer.firstOrNull { it.gruppe == IdentGruppe.FOLKEREGISTERIDENT && !it.historisk }
-                    ?.ident
+                identer
+                    .let { ids ->
+                        /* Foretrekk fnr før npid */
+                        ids.firstOrNull { it.gruppe == IdentGruppe.FOLKEREGISTERIDENT && !it.historisk }
+                            ?.let { Fnr(it.ident) }
+                            ?: ids.firstOrNull { it.gruppe == IdentGruppe.NPID && !it.historisk }
+                                ?.let { Npid(it.ident) }
+                    }
                     ?.let { FnrFunnet(it) }
                     ?: run {
                         log.debug("Fant ${identer.size} på identer")
@@ -117,9 +123,9 @@ class PdlClient(
             } ?: FnrIkkeFunnet("Ingen ident funnet, feltet `identer` i hentIdenter response var null")
     }
 
-    suspend fun hentGt(fnr: Fnr): GtForBrukerResult {
+    suspend fun hentGt(fnr: Ident): GtForBrukerResult {
         try {
-            val query = HentGtQuery(HentGtQuery.Variables(ident = fnr))
+            val query = HentGtQuery(HentGtQuery.Variables(ident = fnr.value))
             val result = client.execute(query)
             if (result.errors != null && result.errors!!.isNotEmpty()) {
                 log.error("Feil ved henting av gt for bruker: \n\t${result.errors!!.joinToString { it.message }}")
@@ -132,9 +138,9 @@ class PdlClient(
         }
     }
 
-    suspend fun harStrengtFortroligAdresse(fnr: Fnr): HarStrengtFortroligAdresseResult {
+    suspend fun harStrengtFortroligAdresse(fnr: Ident): HarStrengtFortroligAdresseResult {
         try {
-            val query = HentAdresseBeskyttelseQuery(HentAdresseBeskyttelseQuery.Variables(fnr, false))
+            val query = HentAdresseBeskyttelseQuery(HentAdresseBeskyttelseQuery.Variables(fnr.value, false))
             val result = client.execute(query)
             if (result.errors != null && result.errors!!.isNotEmpty()) {
                 log.error("Feil ved henting av strengt fortrolig adresse for bruker: \n\t${result.errors!!.joinToString { it.message }}")

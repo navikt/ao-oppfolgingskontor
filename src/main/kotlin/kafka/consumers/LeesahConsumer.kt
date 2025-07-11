@@ -2,6 +2,7 @@ package no.nav.kafka.consumers
 
 import kotlinx.coroutines.runBlocking
 import no.nav.db.Fnr
+import no.nav.db.Ident
 import no.nav.domain.events.KontorEndretEvent
 import no.nav.domain.externalEvents.AdressebeskyttelseEndret
 import no.nav.domain.externalEvents.BostedsadresseEndret
@@ -11,6 +12,7 @@ import no.nav.http.client.FnrFunnet
 import no.nav.http.client.FnrIkkeFunnet
 import no.nav.http.client.FnrOppslagFeil
 import no.nav.http.client.FnrResult
+import no.nav.http.client.PdlClient
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
@@ -21,23 +23,29 @@ import org.apache.kafka.streams.processor.api.RecordMetadata
 import org.slf4j.LoggerFactory
 
 class LeesahConsumer(
-    private val automatiskKontorRutingService: AutomatiskKontorRutingService,
-    private val fnrProvider: suspend (aktorId: String) -> FnrResult,
+        private val automatiskKontorRutingService: AutomatiskKontorRutingService,
+        private val fnrProvider: suspend (aktorId: String) -> FnrResult,
 ) {
     val log = LoggerFactory.getLogger(this::class.java)
 
-    fun consume(record: Record<String, Personhendelse>, maybeRecordMetadata: RecordMetadata?): RecordProcessingResult<Unit, Unit> {
+    fun consume(
+            record: Record<String, Personhendelse>,
+            maybeRecordMetadata: RecordMetadata?
+    ): RecordProcessingResult<Unit, Unit> {
         log.info("Consumer Personhendelse record ${record.value().opplysningstype} ${record.value().endringstype}")
         return record.value()
-            .let { hendelse ->
-                val fnrResult = runBlocking { finnFnr(hendelse) }
-                when (fnrResult) {
-                    is FnrFunnet -> fnrResult.fnr to hendelse
-                    is FnrIkkeFunnet -> return Retry("Kunne ikke håndtere leesah melding: Fnr ikke funnet for bruker: ${fnrResult.message}")
-                    is FnrOppslagFeil -> return Retry("Kunne ikke håndtere leesah melding: Feil ved oppslag på fnr:  ${fnrResult.message}")
+                .let { hendelse ->
+                    val fnrResult = runBlocking { finnFnr(hendelse) }
+                    when (fnrResult) {
+                        is FnrFunnet -> fnrResult.fnr to hendelse
+                        is FnrIkkeFunnet ->
+                                return Retry("Kunne ikke håndtere leesah melding: Fnr ikke funnet for bruker: ${fnrResult.message}")
+                        is FnrOppslagFeil ->
+                                return Retry("Kunne ikke håndtere leesah melding: Feil ved oppslag på fnr:  ${fnrResult.message}")
+                    }
                 }
-            }.toHendelse()
-            .let { handterLeesahHendelse(it) }
+                .toHendelse()
+                .let { handterLeesahHendelse(it) }
     }
 
     fun handterLeesahHendelse(hendelse: PersondataEndret): RecordProcessingResult<Unit, Unit> {
@@ -64,22 +72,19 @@ class LeesahConsumer(
         if (hendelse.personidenter.isEmpty()) {
             throw IllegalStateException("Personhendelse must have at least one personident")
         }
-        val fnrEllerAktorId: FnrEllerAktorId = hendelse.personidenter.first()
-        return fnrProvider(fnrEllerAktorId)
+        val fnrEllerAktorIdEllerNpid: FnrEllerAktorIdEllerNpid = hendelse.personidenter.first()
+        return fnrProvider(fnrEllerAktorIdEllerNpid)
     }
 }
 
-fun Pair<Fnr, Personhendelse>.toHendelse(): PersondataEndret {
+fun Pair<Ident, Personhendelse>.toHendelse(): PersondataEndret {
     if (this.second.bostedsadresse != null) return BostedsadresseEndret(this.first)
-    if (this.second.adressebeskyttelse != null) return AdressebeskyttelseEndret(
-        this.first,
-        this.second.adressebeskyttelse.gradering
-    )
+    if (this.second.adressebeskyttelse != null)
+            return AdressebeskyttelseEndret(this.first, this.second.adressebeskyttelse.gradering)
     return IrrelevantHendelse(this.first, this.second.opplysningstype)
 }
 
 sealed class HåndterPersondataEndretResultat()
 data class HåndterPersondataEndretSuccess(val endringer: List<KontorEndretEvent>): HåndterPersondataEndretResultat()
-class HåndterPersondataEndretFail(val message: String, val error: Throwable? = null) : HåndterPersondataEndretResultat()
-
-typealias FnrEllerAktorId = String
+class HåndterPersondataEndretFail(val message: String, val error: Throwable? = null): HåndterPersondataEndretResultat()
+typealias FnrEllerAktorIdEllerNpid = String

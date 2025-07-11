@@ -1,12 +1,13 @@
 package no.nav.domain.events
 
-import no.nav.db.Fnr
+import no.nav.db.Ident
 import no.nav.domain.INGEN_GT_KONTOR_FALLBACK
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorHistorikkInnslag
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.KontorType
+import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.Sensitivitet
 import no.nav.domain.System
 import no.nav.http.logger
@@ -25,16 +26,18 @@ enum class RutingResultat {
 }
 
 data class OppfolgingsperiodeStartetNoeTilordning(
-    val fnr: Fnr,
-): AOKontorEndret(KontorTilordning(fnr, KontorId("4154")), System()) {
+    val fnr: Ident,
+    val oppfolgingsperiodeId: OppfolgingsperiodeId,
+): AOKontorEndret(KontorTilordning(fnr, KontorId("4154"), oppfolgingsperiodeId), System()) {
     private val rutingResultat: RutingResultat = RutingResultat.RutetTilNOE
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(
             kontorId = tilordning.kontorId,
-            fnr = tilordning.fnr,
+            ident = tilordning.fnr,
             registrant = registrant,
             kontorendringstype = rutingResultat.toKontorEndringsType(),
-            kontorType = KontorType.ARBEIDSOPPFOLGING
+            kontorType = KontorType.ARBEIDSOPPFOLGING,
+            oppfolgingId = tilordning.oppfolgingsperiodeId
         )
     }
 
@@ -51,10 +54,11 @@ data class OppfolgingsPeriodeStartetLokalKontorTilordning(
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(
             kontorId = tilordning.kontorId,
-            fnr = tilordning.fnr,
+            ident = tilordning.fnr,
             registrant = registrant,
             kontorendringstype = rutingResultat.toKontorEndringsType(),
-            kontorType = KontorType.ARBEIDSOPPFOLGING
+            kontorType = KontorType.ARBEIDSOPPFOLGING,
+            oppfolgingId = tilordning.oppfolgingsperiodeId
         )
     }
 
@@ -65,15 +69,16 @@ data class OppfolgingsPeriodeStartetLokalKontorTilordning(
     }
 }
 
-data class OppfolgingsPeriodeStartetFallbackKontorTilordning(val fnr: Fnr, val sensitivitet: Sensitivitet) : AOKontorEndret(KontorTilordning(fnr, INGEN_GT_KONTOR_FALLBACK), System()) {
+data class OppfolgingsPeriodeStartetFallbackKontorTilordning(val ident: Ident, val oppfolgingsperiodeId: OppfolgingsperiodeId, val sensitivitet: Sensitivitet) : AOKontorEndret(KontorTilordning(ident, INGEN_GT_KONTOR_FALLBACK, oppfolgingsperiodeId), System()) {
     val rutingResultat: RutingResultat = RutingResultat.RutetTilLokalkontor
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(
             kontorId = tilordning.kontorId,
-            fnr = tilordning.fnr,
+            ident = tilordning.fnr,
             registrant = registrant,
             kontorendringstype = rutingResultat.toKontorEndringsType(),
-            kontorType = KontorType.ARBEIDSOPPFOLGING
+            kontorType = KontorType.ARBEIDSOPPFOLGING,
+            oppfolgingId = tilordning.oppfolgingsperiodeId
         )
     }
 
@@ -90,10 +95,11 @@ data class OppfolgingsPeriodeStartetSensitivKontorTilordning(val kontorTilordnin
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(
             kontorId = tilordning.kontorId,
-            fnr = tilordning.fnr,
+            ident = tilordning.fnr,
             registrant = registrant,
             kontorendringstype = rutingResultat.toKontorEndringsType(),
-            kontorType = KontorType.ARBEIDSOPPFOLGING
+            kontorType = KontorType.ARBEIDSOPPFOLGING,
+            oppfolgingId = tilordning.oppfolgingsperiodeId
         )
     }
 

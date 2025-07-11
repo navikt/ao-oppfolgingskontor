@@ -13,10 +13,11 @@ class AOKontorEndretPgaAdressebeskyttelseEndret(tilordning: KontorTilordning): A
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(
             kontorId = tilordning.kontorId,
-            fnr = tilordning.fnr,
+            ident = tilordning.fnr,
             registrant = System(),
             kontorendringstype = KontorEndringsType.FikkAddressebeskyttelse,
-            kontorType = KontorType.ARBEIDSOPPFOLGING
+            kontorType = KontorType.ARBEIDSOPPFOLGING,
+            oppfolgingId = tilordning.oppfolgingsperiodeId
         )
     }
 

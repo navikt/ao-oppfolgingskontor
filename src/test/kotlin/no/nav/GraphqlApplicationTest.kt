@@ -54,7 +54,7 @@ class GraphqlApplicationTest {
 
     @Test
     fun `skal kunne hente kontor via graphql`() = testApplication {
-        val fnr = "22345678901"
+        val fnr = Fnr("22345678901")
         val kontorId = "4142"
         val client = getJsonHttpClient()
         graphqlServerInTest()
@@ -73,7 +73,7 @@ class GraphqlApplicationTest {
 
     @Test
     fun `skal kunne hente kontorhistorikk via graphql`() = testApplication {
-        val fnr = "32645671901"
+        val fnr = Fnr("32645671901")
         val kontorId = "4144"
         val client = getJsonHttpClient()
         graphqlServerInTest()
@@ -102,7 +102,7 @@ class GraphqlApplicationTest {
 
     @Test
     fun `skal kunne hente alle kontor via graphql`() = testApplication {
-        val fnr = "32345678901"
+        val fnr = Fnr("32345678901")
         val kontorId = "4142"
         val client = getJsonHttpClient()
         graphqlServerInTest()
@@ -120,7 +120,7 @@ class GraphqlApplicationTest {
 
     @Test
     fun `skal få GT kontor på tilhørighet hvis ingen andre kontor er satt via graphql`() = testApplication {
-        val fnr = "32345678901"
+        val fnr = Fnr("32345678901")
         val kontorId = "4142"
         val client = getJsonHttpClient()
         graphqlServerInTest()
@@ -138,7 +138,7 @@ class GraphqlApplicationTest {
 
     @Test
     fun `skal kunne hente ao-kontor, arena-kontor og gt-kontor samtidig`() = testApplication {
-        val fnr = "62345678901"
+        val fnr = Fnr("62345678901")
         val GTkontorId = "4151"
         val AOKontor = "4152"
         val arenaKontorId = "4150"
@@ -164,13 +164,13 @@ class GraphqlApplicationTest {
     private fun gittBrukerMedKontorIArena(fnr: Fnr, kontorId: String) {
         transaction {
             ArenaKontorTable.insert {
-                it[id] = fnr
+                it[id] = fnr.value
                 it[this.kontorId] = kontorId
                 it[this.createdAt] = insertTime.toOffsetDateTime()
                 it[this.updatedAt] = insertTime.toOffsetDateTime()
             }
             KontorhistorikkTable.insert {
-                it[this.fnr] = fnr
+                it[this.fnr] = fnr.value
                 it[this.kontorId] = kontorId
                 it[this.kontorendringstype] = KontorEndringsType.EndretIArena.name
                 it[this.endretAvType] = System().getType()
@@ -184,13 +184,13 @@ class GraphqlApplicationTest {
     private fun gittBrukerMedGeografiskTilknyttetKontor(fnr: Fnr, kontorId: String) {
         transaction {
             GeografiskTilknytningKontorTable.insert {
-                it[id] = fnr
+                it[id] = fnr.value
                 it[this.kontorId] = kontorId
                 it[this.createdAt] = insertTime.toOffsetDateTime()
                 it[this.updatedAt] = insertTime.toOffsetDateTime()
             }
             KontorhistorikkTable.insert {
-                it[this.fnr] = fnr
+                it[this.fnr] = fnr.value
                 it[this.kontorId] = kontorId
                 it[this.kontorendringstype] = KontorEndringsType.FlyttetAvVeileder.name
                 it[this.endretAvType] = "veileder"
@@ -204,13 +204,13 @@ class GraphqlApplicationTest {
     private fun gittBrukerMedAOKontor(fnr: Fnr, kontorId: String) {
         transaction {
             ArbeidsOppfolgingKontorTable.insert {
-                it[id] = fnr
+                it[id] = fnr.value
                 it[this.kontorId] = kontorId
                 it[this.createdAt] = insertTime.toOffsetDateTime()
                 it[this.updatedAt] = insertTime.toOffsetDateTime()
             }
             KontorhistorikkTable.insert {
-                it[this.fnr] = fnr
+                it[this.fnr] = fnr.value
                 it[this.kontorId] = kontorId
                 it[this.kontorendringstype] = KontorEndringsType.FlyttetAvVeileder.name
                 it[this.endretAvType] = "veileder"
