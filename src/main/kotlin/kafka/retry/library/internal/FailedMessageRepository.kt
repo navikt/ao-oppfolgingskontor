@@ -34,6 +34,17 @@ class FailedMessageRepository(val repositoryTopic: String) {
         }
     }
 
+    fun enqueue(keyString: String, keyBytes: ByteArray, value: ByteArray, reason: String, humanReadableValue: String?): Unit = transaction {
+        FailedMessagesTable.insert {
+            it[messageKeyText] = keyString
+            it[messageKeyBytes] = keyBytes
+            it[messageValue] = value
+            it[failureReason] = reason
+            it[topic] = repositoryTopic
+            it[this.humanReadableValue] = humanReadableValue
+        }
+    }
+
     // Henter en batch med meldinger klare for reprosessering
     fun getBatchToRetry(limit: Int): List<FailedMessage> = transaction {
         FailedMessagesEntity
