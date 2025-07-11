@@ -186,9 +186,10 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
         if (recordValue is SpecificRecord) {
             val humanReadableValue = AvroJsonConverter.convertAvroToJson(recordValue)
             store.enqueue(keyString, keyBytes, valueBytes, reason, humanReadableValue)
+        } else {
+            store.enqueue(keyString, keyBytes, valueBytes, reason)
         }
 
-        store.enqueue(keyString, keyBytes, valueBytes, reason)
         metrics.messageEnqueued()
         logger.info("Message for key '$keyString' was enqueued for retry. Reason: $reason")
     }
