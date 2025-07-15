@@ -11,13 +11,13 @@ auth:
   naisTokenEndpoint: "$NAIS_TOKEN_ENDPOINT"
 
 no:
-  nav:
-    security:
-      jwt:
-        issuers:
-          - discoveryurl: "$AZURE_APP_WELL_KNOWN_URL"
-            accepted_audience: "$AZURE_APP_CLIENT_ID"
-            issuer_name: "EntraAD"
+    nav:
+        security:
+            jwt:
+                issuers:
+                    - discoveryurl: "$AZURE_APP_WELL_KNOWN_URL:null"
+                      accepted_audience: "$AZURE_APP_CLIENT_ID:null"
+                      issuer_name: "EntraAD"
 
 apis:
   norg2:
