@@ -83,4 +83,10 @@ fun Application.module() {
     configureArbeidsoppfolgingskontorModule(kontorNavnService, kontorTilhorighetService, poaoTilgangHttpClient)
 }
 
-fun ApplicationEnvironment.getIssuer() = this.config.property("no.nav.security.jwt.issuers.0.issuer_name").getString()
+fun ApplicationEnvironment.getIssuer(): String {
+    val issuers = config.configList("no.nav.security.jwt.issuers")
+    val firstIssuerConfig = issuers.first()
+    return firstIssuerConfig.property("issuer_name").getString()
+}
+
+
