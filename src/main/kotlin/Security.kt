@@ -12,9 +12,10 @@ import no.nav.security.token.support.v3.tokenValidationSupport
 import java.util.UUID
 
 fun Application.configureSecurity() {
+    val config = environment.config
     install(Authentication) {
         tokenValidationSupport(
-            config = this@configureSecurity.environment.config,
+            config = config,
             resourceRetriever = DefaultResourceRetriever(),
             name = "EntraAD"
         )
