@@ -15,7 +15,8 @@ fun Application.configureSecurity() {
     install(Authentication) {
         tokenValidationSupport(
             config = this@configureSecurity.environment.config,
-            resourceRetriever = DefaultResourceRetriever()
+            resourceRetriever = DefaultResourceRetriever(),
+            name = "EntraAD"
         )
     }
 }
