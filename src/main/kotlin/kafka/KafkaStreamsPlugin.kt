@@ -51,26 +51,30 @@ class KafkaStreamsPluginConfig(
 )
 
 val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createApplicationPlugin("KafkaStreams", ::KafkaStreamsPluginConfig) {
-        val database =
-                requireNotNull(this.pluginConfig.database) {
-                    "DataSource must be configured for KafkaStreamsPlugin"
-                }
-        val fnrProvider =
-                requireNotNull(this.pluginConfig.fnrProvider) {
-                    "fnrProvider must be configured for KafkaStreamPlugin"
-                }
-        val automatiskKontorRutingService =
-                requireNotNull(this.pluginConfig.automatiskKontorRutingService) {
-                    "AutomatiskKontorRutingService must be configured for KafkaStreamPlugin"
-                }
-        val oppfolgingsperiodeService =
-                requireNotNull(this.pluginConfig.oppfolgingsperiodeService) {
-                    "OppfolgingsperiodeService must be configured for KafkaStreamPlugin"
-                }
-        val pdlClient =
-                requireNotNull(this.pluginConfig.pdlClient) {
-                    "PdlClient must be configured for KafkaStreamPlugin"
-                }
+    val database =
+            requireNotNull(this.pluginConfig.database) {
+                "DataSource must be configured for KafkaStreamsPlugin"
+            }
+    val fnrProvider =
+            requireNotNull(this.pluginConfig.fnrProvider) {
+                "fnrProvider must be configured for KafkaStreamPlugin"
+            }
+    val automatiskKontorRutingService =
+            requireNotNull(this.pluginConfig.automatiskKontorRutingService) {
+                "AutomatiskKontorRutingService must be configured for KafkaStreamPlugin"
+            }
+    val oppfolgingsperiodeService =
+            requireNotNull(this.pluginConfig.oppfolgingsperiodeService) {
+                "OppfolgingsperiodeService must be configured for KafkaStreamPlugin"
+            }
+    val pdlClient =
+            requireNotNull(this.pluginConfig.pdlClient) {
+                "PdlClient must be configured for KafkaStreamPlugin"
+            }
+    val meterRegistry =
+        requireNotNull(this.pluginConfig.meterRegistry) {
+            "MeterRegistry must be configured for KafkaStreamPlugin"
+        }
 
     val lockProvider = ExposedLockProvider(database)
 
@@ -116,12 +120,11 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         logger.error("Uncaught exception in Kafka Streams. Shutting down client", it)
         StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.SHUTDOWN_CLIENT
     }
-    if (this.pluginConfig.meterRegistry != null) {
-        val applicationId = environment.config.property("kafka.application-id").getString()
-        configureStateListenerMetrics(applicationId, kafkaStream, this.pluginConfig.meterRegistry as MeterRegistry)
-        val kafkaStreamsMetrics = KafkaStreamsMetrics(kafkaStream)
-        kafkaStreamsMetrics.bindTo(this.pluginConfig.meterRegistry as MeterRegistry)
-    }
+
+    val applicationId = environment.config.property("kafka.application-id").getString()
+    val kafkaStreamsApplicationStateInteger = configureStateListenerMetrics(applicationId, kafkaStream, this.pluginConfig.meterRegistry as MeterRegistry)
+    val kafkaStreamsMetrics = KafkaStreamsMetrics(kafkaStream)
+    kafkaStreamsMetrics.bindTo(this.pluginConfig.meterRegistry as MeterRegistry)
 
     on(MonitoringEvent(ApplicationStarted)) { application ->
         application.log.info("Starter Kafka Streams")
@@ -132,6 +135,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
 
     on(MonitoringEvent(ApplicationStopping)) { application ->
         application.log.info("Stopper Kafka Streams")
+        kafkaStreamsApplicationStateInteger.set(0)
         application.monitor.raise(KafkaStreamsStopping, application)
         kafkaStream.close(shutDownTimeout)
         application.monitor.raise(KafkaStreamsStopped, application)
@@ -143,7 +147,7 @@ private fun configureStateListenerMetrics(
     applicationId: String,
     kafkaStream: KafkaStreams,
     meterRegistry: MeterRegistry
-) {
+): AtomicInteger {
     // 0=STOPPED/ERROR, 1=RUNNING, 2=REBALANCING
     val kafkaStateGaugeValue = AtomicInteger(0)
     Gauge.builder("kafka_streams_application_state", kafkaStateGaugeValue::get)
@@ -168,4 +172,6 @@ private fun configureStateListenerMetrics(
             } // Dekker ERROR, NOT_RUNNING, PENDING_SHUTDOWN
         }
     }
+
+    return kafkaStateGaugeValue
 }
