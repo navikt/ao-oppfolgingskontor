@@ -8,8 +8,6 @@ ktor:
         port: 8080
 
 auth:
-  entraIssuer: "$AZURE_OPENID_CONFIG_ISSUER"
-  naisTokenExchangeEndpoint: "$NAIS_TOKEN_EXCHANGE_ENDPOINT"
   naisTokenEndpoint: "$NAIS_TOKEN_ENDPOINT"
 
 no:
@@ -17,9 +15,9 @@ no:
     security:
       jwt:
         issuers:
-          - issuer_name: "$AZURE_OPENID_CONFIG_ISSUER"
-            discoveryurl: "$AZURE_APP_WELL_KNOWN_URL"
+          - discoveryurl: "$AZURE_APP_WELL_KNOWN_URL"
             accepted_audience: "$AZURE_APP_CLIENT_ID"
+            issuer_name: "EntraAD"
 
 apis:
   norg2:
