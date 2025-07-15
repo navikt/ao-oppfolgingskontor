@@ -17,7 +17,7 @@ import no.nav.http.client.FnrResult
 import no.nav.http.client.PdlClient
 import no.nav.kafka.config.AvroTopicConsumer
 import no.nav.kafka.config.StringTopicConsumer
-import no.nav.kafka.config.configureKafkaStreams
+import no.nav.kafka.config.kafkaStreamsProps
 import no.nav.kafka.config.configureTopology
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerConsumer
 import no.nav.kafka.consumers.FnrEllerAktorIdEllerNpid
@@ -110,7 +110,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         )),
         lockProvider
     )
-    val kafkaStream = KafkaStreams(topology, configureKafkaStreams(environment.config))
+    val kafkaStream = KafkaStreams(topology, kafkaStreamsProps(environment.config))
 
     kafkaStream.setUncaughtExceptionHandler {
         logger.error("Uncaught exception in Kafka Streams. Shutting down client", it)
@@ -154,9 +154,18 @@ private fun configureStateListenerMetrics(
 
     kafkaStream.setStateListener { newState, _ ->
         when (newState) {
-            KafkaStreams.State.RUNNING -> kafkaStateGaugeValue.set(1)
-            KafkaStreams.State.REBALANCING -> kafkaStateGaugeValue.set(2)
-            else -> kafkaStateGaugeValue.set(0) // Dekker ERROR, NOT_RUNNING, PENDING_SHUTDOWN
+            KafkaStreams.State.RUNNING -> {
+                logger.info("Setting kafka_streams_application_state gause to RUNNING")
+                kafkaStateGaugeValue.set(1)
+            }
+            KafkaStreams.State.REBALANCING -> {
+                logger.warn("Setting kafka_streams_application_state to REBALANCING")
+                kafkaStateGaugeValue.set(2)
+            }
+            else -> {
+                logger.error("Setting kafka_streams_application_state to STOPPED/ERROR")
+                kafkaStateGaugeValue.set(0)
+            } // Dekker ERROR, NOT_RUNNING, PENDING_SHUTDOWN
         }
     }
 }

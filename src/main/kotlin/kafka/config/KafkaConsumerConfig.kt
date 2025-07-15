@@ -67,7 +67,7 @@ fun configureTopology(
     return builder.build()
 }
 
-fun configureKafkaStreams(config: ApplicationConfig): Properties {
+fun kafkaStreamsProps(config: ApplicationConfig): Properties {
     val naisKafkaEnv = config.toKafkaEnv()
     return Properties()
         .streamsConfig(naisKafkaEnv, config)
