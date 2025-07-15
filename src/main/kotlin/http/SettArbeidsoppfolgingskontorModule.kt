@@ -52,7 +52,7 @@ fun Application.configureArbeidsoppfolgingskontorModule(
                 explicitNulls = false
             })
         }
-        authenticate {
+        authenticate("EntraAD") {
             post("/api/kontor") {
                 runCatching {
                     val kontorTilordning = call.receive<ArbeidsoppfolgingsKontorTilordningDTO>()

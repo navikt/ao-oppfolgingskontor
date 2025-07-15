@@ -87,7 +87,7 @@ fun Application.configureGraphQlModule(norg2Client: Norg2Client, kontorTilhorigh
     installGraphQl(norg2Client, kontorTilhorighetService, authenticateCall)
 
     routing {
-        authenticate {
+        authenticate("EntraAD") {
             graphQLPostRoute()
         }
         graphQLSDLRoute()

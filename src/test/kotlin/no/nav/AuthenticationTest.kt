@@ -3,6 +3,7 @@ package no.nav.no.nav
 import com.expediagroup.graphql.server.ktor.graphQLPostRoute
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
+import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -17,7 +18,6 @@ import no.nav.domain.NavIdent
 import no.nav.getIssuer
 import no.nav.http.client.mockNorg2Host
 import no.nav.http.client.mockPoaoTilgangHost
-import no.nav.http.graphql.configureGraphQlModule
 import no.nav.http.graphql.installGraphQl
 import no.nav.security.mock.oauth2.MockOAuth2Server
 import no.nav.services.KontorNavnService
@@ -47,7 +47,7 @@ class AuthenticationTest {
             configureSecurity()
             installGraphQl(norg2Client, kontorTilhorighetService) { req -> req.call.authenticateCall(environment.getIssuer()) }
             routing {
-                authenticate {
+                authenticate("EntraAD") {
                     graphQLPostRoute()
                 }
             }
@@ -82,6 +82,27 @@ class AuthenticationTest {
             }
 
             response.status shouldBe HttpStatusCode.Companion.Unauthorized
+        }
+    }
+
+    @Test
+    fun `skal gi 401 ved feil aud token på graphql`() = testApplication {
+        withMockOAuth2Server {
+            setupTestAppWithAuthAndGraphql()
+            val client = getJsonHttpClient()
+
+            val response = client.post("/graphql") {
+                header("Content-Type", "application/json")
+                bearerAuth(server.issueToken(
+                    claims = mapOf(
+                        "idtyp" to "app",
+                        "azp_name" to "cluster:namespace:app",
+                    )
+                ).serialize())
+                setBody(kontorTilhorighetQuery(Fnr("89898898980")))
+            }
+
+            response.status shouldBe HttpStatusCode.Companion.OK
         }
     }
 

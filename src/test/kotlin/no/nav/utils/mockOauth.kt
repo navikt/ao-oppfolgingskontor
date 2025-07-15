@@ -15,7 +15,6 @@ fun MockOAuth2Server.getMockOauth2ServerConfig(
         put("no.nav.security.jwt.issuers.0.issuer_name", acceptedIssuer)
         put("no.nav.security.jwt.issuers.0.discoveryurl", "${server.wellKnownUrl(acceptedIssuer)}")
         put("no.nav.security.jwt.issuers.0.accepted_audience", acceptedAudience)
-        put("apis.norg2.url", norg2TestUrl)
     }
 }
 

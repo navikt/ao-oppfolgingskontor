@@ -56,7 +56,7 @@ class SettArbeidsoppfolgingsKontorTest {
                 poaoTilgangClient
             )
             routing {
-                authenticate {
+                authenticate("EntraAD") {
                     graphQLPostRoute()
                 }
             }
