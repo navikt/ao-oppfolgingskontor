@@ -122,9 +122,9 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     }
 
     val applicationId = environment.config.property("kafka.application-id").getString()
-    val kafkaStreamsApplicationStateInteger = configureStateListenerMetrics(applicationId, kafkaStream, this.pluginConfig.meterRegistry as MeterRegistry)
+    val kafkaStreamsApplicationStateInteger = configureStateListenerMetrics(applicationId, kafkaStream, meterRegistry)
     val kafkaStreamsMetrics = KafkaStreamsMetrics(kafkaStream)
-    kafkaStreamsMetrics.bindTo(this.pluginConfig.meterRegistry as MeterRegistry)
+    kafkaStreamsMetrics.bindTo(meterRegistry)
 
     on(MonitoringEvent(ApplicationStarted)) { application ->
         application.log.info("Starter Kafka Streams")
