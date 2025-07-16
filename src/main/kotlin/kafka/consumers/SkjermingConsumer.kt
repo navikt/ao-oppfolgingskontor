@@ -17,7 +17,7 @@ class SkjermingConsumer(
 ) {
     val log = LoggerFactory.getLogger(SkjermingConsumer::class.java)
 
-    fun consume(record: Record<String, String>, maybeRecordMetadata: Any?): RecordProcessingResult<Unit, Unit> {
+    fun consume(record: Record<String, String>): RecordProcessingResult<Unit, Unit> {
         println("Processing Skjerming record: ${record.value()}")
         return handterEndringISKjermetStatus(record.key(), record.value().toBoolean())
     }

@@ -46,7 +46,7 @@ fun configureTopology(
                     inputTopic = topicAndConsumer.topic,
                     keySerde = Serdes.String(),
                     valueSerde = Serdes.String(),
-                    businessLogic = { topicAndConsumer.processRecord(it, null) },
+                    businessLogic = { topicAndConsumer.processRecord(it) },
                     config = RetryConfig(topicAndConsumer.topic),
                     lockProvider = lockProvider
                 )
@@ -57,7 +57,7 @@ fun configureTopology(
                     inputTopic = topicAndConsumer.topic,
                     keySerde = topicAndConsumer.keySerde,
                     valueSerde = topicAndConsumer.valueSerde,
-                    businessLogic = { topicAndConsumer.processRecord(it, null) },
+                    businessLogic = { topicAndConsumer.processRecord(it) },
                     config = RetryConfig(topicAndConsumer.topic),
                     lockProvider = lockProvider
                 )

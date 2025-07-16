@@ -98,20 +98,17 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
 
     val topology = configureTopology(listOf(
         StringTopicConsumer(
-            oppfolgingsBrukerTopic,
-            { record, maybeRecordMetadata -> endringPaOppfolgingsBrukerConsumer.consume(record, maybeRecordMetadata) }
-        ),
+            oppfolgingsBrukerTopic
+        ) { record -> endringPaOppfolgingsBrukerConsumer.consume(record) },
         StringTopicConsumer(
-            oppfolgingsPeriodeTopic,
-            { record, maybeRecordMetadata -> oppfolgingsPeriodeConsumer.consume(record, maybeRecordMetadata) }
-        ),
+            oppfolgingsPeriodeTopic
+        ) { record -> oppfolgingsPeriodeConsumer.consume(record) },
         AvroTopicConsumer(
             leesahTopic, leesahConsumer::consume, spesificAvroValueSerde, specificAvroKeySerde
         ),
         StringTopicConsumer(
-            skjermingTopic,
-            { record, maybeRecordMetadata -> skjermingConsumer.consume(record, maybeRecordMetadata) }
-        )),
+            skjermingTopic
+        ) { record -> skjermingConsumer.consume(record) }),
         lockProvider
     )
     val kafkaStream = KafkaStreams(topology, kafkaStreamsProps(environment.config))

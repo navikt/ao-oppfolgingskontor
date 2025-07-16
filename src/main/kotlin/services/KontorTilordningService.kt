@@ -34,8 +34,6 @@ object KontorTilordningService {
                     ArenaKontorTable.upsert {
                         it[kontorId] = kontorTilhorighet.kontorId.id
                         it[fnr] = kontorTilhorighet.fnr.value
-                        it[kafkaOffset] = kontorEndring.offset?.toInt()
-                        it[kafkaPartition] = kontorEndring.partition
                         it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
                         it[sistEndretDatoArena] = kontorEndring.sistEndretDatoArena
                     }

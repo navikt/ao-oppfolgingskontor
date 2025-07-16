@@ -55,7 +55,7 @@ class RetryableProcessorIntegrationTest {
             }
         }
 
-        val (testDriver, testInputTopic) = setupKafkaTestDriver(topic) { record, metadata ->
+        val (testDriver, testInputTopic) = setupKafkaTestDriver(topic) { record ->
             val failed = failFirstThenOk()
             if (failed == Res.Fail) {
                 Retry("Dette gikk galt")
@@ -84,7 +84,7 @@ class RetryableProcessorIntegrationTest {
         val topic = "test-topic"
         val failedMessageRepository = FailedMessageRepository(topic)
 
-        val (testDriver, testInputTopic) =  setupKafkaTestDriver(topic) { record, metadata -> Retry("Dette gikk galt") }
+        val (testDriver, testInputTopic) =  setupKafkaTestDriver(topic) { _ -> Retry("Dette gikk galt") }
 
         testInputTopic.pipeInput("key2", "value2")
         testInputTopic.pipeInput("key2", "value2")
@@ -107,7 +107,7 @@ class RetryableProcessorIntegrationTest {
         val topic = "test-topic"
         val failedMessageRepository = FailedMessageRepository(topic)
 
-        val (testDriver, testInputTopic) =  setupKafkaTestDriver(topic) { record, metadata -> throw Error("Test") }
+        val (testDriver, testInputTopic) =  setupKafkaTestDriver(topic) { _ -> throw Error("Test") }
 
         testInputTopic.pipeInput("key3", "value2")
 
