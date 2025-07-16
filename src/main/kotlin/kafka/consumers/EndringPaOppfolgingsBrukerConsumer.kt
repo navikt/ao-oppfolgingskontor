@@ -71,8 +71,6 @@ class EndringPaOppfolgingsBrukerConsumer() {
                     oppfolgingsperiodeId
                 ),
                 sistEndretDatoArena = endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime(),
-                offset = null,
-                partition = null,
             )
         )
         return Commit
