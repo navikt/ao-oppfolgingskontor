@@ -2,11 +2,9 @@ package no.nav.db
 
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
-import io.ktor.server.application.Application
-import io.ktor.server.application.install
+import io.ktor.server.application.*
 import io.ktor.server.config.ApplicationConfig
 import org.jetbrains.exposed.sql.Database
-import javax.sql.DataSource
 
 object PostgresDataSource {
     private var dataSource: HikariDataSource? = null
@@ -21,14 +19,8 @@ object PostgresDataSource {
 }
 
 private fun configureDb(config: ApplicationConfig): HikariDataSource {
-    val host = config.property("postgres.host").getString()
-    val port = config.property("postgres.port").getString()
-    val databaseName = config.property("postgres.database-name").getString()
     val user = config.property("postgres.user").getString()
     val pw = config.property("postgres.password").getString()
-    val sslRootCert = config.property("postgres.ssl-root-cert").getString()
-    val sslMode = config.property("postgres.ssl-mode").getString()
-    val sslCert = config.property("postgres.ssl-cert").getString()
 
     return HikariDataSource(HikariConfig().apply {
         driverClassName = "org.postgresql.Driver"
@@ -48,6 +40,10 @@ fun Application.configureDatabase() : Database {
     val database = Database.connect(dataSource)
     install(FlywayPlugin) {
         this.dataSource = dataSource
+    }
+    this.monitor.subscribe(ApplicationStopping)
+    {
+        dataSource.close()
     }
     return database
 }
