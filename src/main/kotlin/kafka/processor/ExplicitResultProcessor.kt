@@ -5,7 +5,6 @@ import org.apache.kafka.streams.processor.api.Processor
 import org.apache.kafka.streams.processor.api.ProcessorContext
 import org.apache.kafka.streams.processor.api.Record
 import org.slf4j.LoggerFactory
-import kotlin.jvm.optionals.getOrNull
 
 class UnhandledRecordProcessingException(cause: Throwable): Exception("Unhandled record processing exception", cause)
 
@@ -24,13 +23,13 @@ class ExplicitResultProcessor<K,V>(val processRecord: ProcessRecord<K,V, Unit, U
 
         runCatching {
             context.recordMetadata().map { log.info("Kafka topic: ${it.topic()}, partition: ${it.partition()}, offset: ${it.offset()}") }
-            processRecord(record, context.recordMetadata().getOrNull())
+            processRecord(record)
         }
             .onSuccess {
                 when (it) {
                     is Commit -> context.commit()
                     is Forward -> context.forward(it.forwardedRecord)
-                    is Retry -> {}
+                    is Retry -> Unit
                     is Skip -> context.commit()
                 }
             }

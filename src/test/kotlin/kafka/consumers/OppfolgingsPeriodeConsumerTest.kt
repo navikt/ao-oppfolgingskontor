@@ -63,7 +63,7 @@ class OppfolgingsPeriodeConsumerTest {
                     sluttDato = null,
                 )
 
-                consumer.consume(record, null)
+                consumer.consume(record)
 
                 transaction {
                     val entity = OppfolgingsperiodeEntity.findById(bruker.fnr.value)
@@ -96,7 +96,7 @@ class OppfolgingsPeriodeConsumerTest {
                     sluttDato = periodeSlutt,
                 )
 
-                consumer.consume(record, null)
+                consumer.consume(record)
 
                 transaction {
                     val periodeForBruker = OppfolgingsperiodeEntity.findById(bruker.fnr.value)
@@ -124,8 +124,8 @@ class OppfolgingsPeriodeConsumerTest {
                 val startPeriodeRecord = oppfolgingsperiodeMessage(bruker, sluttDato = null)
                 val avsluttePeriodeRecord = oppfolgingsperiodeMessage(bruker, sluttDato = periodeSlutt)
 
-                consumer.consume(startPeriodeRecord, null)
-                consumer.consume(avsluttePeriodeRecord, null)
+                consumer.consume(startPeriodeRecord)
+                consumer.consume(avsluttePeriodeRecord)
 
                 transaction {
                     val oppfolgingForBruker = OppfolgingsperiodeEntity.findById(bruker.fnr.value)

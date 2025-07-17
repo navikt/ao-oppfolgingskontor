@@ -19,7 +19,6 @@ import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingperiodeOppslagFeil
 import no.nav.services.OppfolgingsperiodeService
 import org.apache.kafka.streams.processor.api.Record
-import org.apache.kafka.streams.processor.api.RecordMetadata
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.time.OffsetDateTime
@@ -29,7 +28,7 @@ class EndringPaOppfolgingsBrukerConsumer() {
 
     val json = Json { ignoreUnknownKeys = true }
 
-    fun consume(record: Record<String, String>, maybeRecordMetadata: RecordMetadata?): RecordProcessingResult<Unit, Unit> {
+    fun consume(record: Record<String, String>): RecordProcessingResult<Unit, Unit> {
         log.info("Consumed record")
         val fnrString = record.key()
         val endringPaOppfolgingsBruker = json.decodeFromString<EndringPaOppfolgingsBruker>(record.value())
@@ -72,8 +71,6 @@ class EndringPaOppfolgingsBrukerConsumer() {
                     oppfolgingsperiodeId
                 ),
                 sistEndretDatoArena = endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime(),
-                offset = maybeRecordMetadata?.offset(),
-                partition = maybeRecordMetadata?.partition(),
             )
         )
         return Commit

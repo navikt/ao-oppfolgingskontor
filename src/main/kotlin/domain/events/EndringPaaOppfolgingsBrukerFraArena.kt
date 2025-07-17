@@ -11,13 +11,9 @@ import java.time.OffsetDateTime
 class EndringPaaOppfolgingsBrukerFraArena(
     tilordning: KontorTilordning,
     sistEndretDatoArena: OffsetDateTime,
-    offset: Long?,
-    partition: Int?
 ): ArenaKontorEndret(
     tilordning = tilordning,
-    sistEndretDatoArena = sistEndretDatoArena,
-    offset = offset,
-    partition = partition
+    sistEndretDatoArena = sistEndretDatoArena
 ) {
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         val registrant = System()
@@ -32,6 +28,6 @@ class EndringPaaOppfolgingsBrukerFraArena(
     }
 
     override fun logg() {
-        logger.info("ArenaKontorTilordning: kontorId=${tilordning.kontorId}, offset=$offset, partition=$partition")
+        logger.info("ArenaKontorTilordning: kontorId={}, oppfolginsperiode={}", tilordning.kontorId, tilordning.oppfolgingsperiodeId)
     }
 }

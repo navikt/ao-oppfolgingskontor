@@ -1,7 +1,6 @@
 package no.nav.kafka.consumers
 
 import kotlinx.coroutines.runBlocking
-import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.domain.events.KontorEndretEvent
 import no.nav.domain.externalEvents.AdressebeskyttelseEndret
@@ -12,14 +11,12 @@ import no.nav.http.client.FnrFunnet
 import no.nav.http.client.FnrIkkeFunnet
 import no.nav.http.client.FnrOppslagFeil
 import no.nav.http.client.FnrResult
-import no.nav.http.client.PdlClient
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
 import no.nav.person.pdl.leesah.Personhendelse
 import no.nav.services.AutomatiskKontorRutingService
 import org.apache.kafka.streams.processor.api.Record
-import org.apache.kafka.streams.processor.api.RecordMetadata
 import org.slf4j.LoggerFactory
 
 class LeesahConsumer(
@@ -29,8 +26,7 @@ class LeesahConsumer(
     val log = LoggerFactory.getLogger(this::class.java)
 
     fun consume(
-            record: Record<String, Personhendelse>,
-            maybeRecordMetadata: RecordMetadata?
+            record: Record<String, Personhendelse>
     ): RecordProcessingResult<Unit, Unit> {
         log.info("Consumer Personhendelse record ${record.value().opplysningstype} ${record.value().endringstype}")
         return record.value()
