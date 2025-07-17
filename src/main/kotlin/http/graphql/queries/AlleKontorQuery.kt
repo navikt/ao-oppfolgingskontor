@@ -12,13 +12,13 @@ class AlleKontorQuery(
 
     suspend fun alleKontor(): List<AlleKontorQueryDto> {
         return runCatching {
-            norg2Client.hentAlleEnheter()
-                .map {
-                    AlleKontorQueryDto(
-                        it.kontorId,
-                        it.navn
-                    )
-                }
+            val lokalKontor = norg2Client.hentAlleEnheter()
+                .map { AlleKontorQueryDto(it.kontorId,it.navn) }
+            listOf(
+                AlleKontorQueryDto("4154","Nasjonal oppfølgingsenhet"),
+                AlleKontorQueryDto("0393","Nav utland og fellestjenester Oslo"),
+                AlleKontorQueryDto("2103","Nav Vikafossen"),
+            ) + lokalKontor
         }
             .onSuccess { it }
             .onFailure {

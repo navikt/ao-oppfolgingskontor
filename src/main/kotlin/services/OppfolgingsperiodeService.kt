@@ -50,8 +50,8 @@ object OppfolgingsperiodeService {
         return transaction { OppfolgingsperiodeEntity.findById(fnr.value) != null }
     }
 
-    suspend fun getCurrentOppfolgingsperiode(fnr: Fnr) = getCurrentOppfolgingsperiode(FnrFunnet(fnr))
-    suspend fun getCurrentOppfolgingsperiode(fnr: FnrResult): OppfolgingsperiodeOppslagResult {
+    fun getCurrentOppfolgingsperiode(fnr: Fnr) = getCurrentOppfolgingsperiode(FnrFunnet(fnr))
+    fun getCurrentOppfolgingsperiode(fnr: FnrResult): OppfolgingsperiodeOppslagResult {
         return try {
             when (fnr) {
                 is FnrFunnet -> transaction {
