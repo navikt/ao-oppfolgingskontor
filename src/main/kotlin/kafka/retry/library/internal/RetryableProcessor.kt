@@ -79,7 +79,7 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
             val result = businessLogic(record)
             when (result) {
                 Commit, Skip -> {}
-                is Forward -> context.forward(result.forwardedRecord)
+                is Forward -> context.forward(result.forwardedRecord, result.topic)
                 is Retry -> enqueue(record, result.reason)
             }
         } catch (e: Throwable) {
@@ -148,7 +148,7 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
                 store.delete(result.msg.id)
                 metrics.retrySucceeded()
                 if (result.processingResult is Forward<KOut, VOut>) {
-                    context.forward(result.processingResult.forwardedRecord)
+                    context.forward(result.processingResult.forwardedRecord, result.processingResult.topic)
                 }
                 logger.info("Successfully reprocessed message ${result.msg.id} for key '${result.msg.messageKeyText}'.")
             }

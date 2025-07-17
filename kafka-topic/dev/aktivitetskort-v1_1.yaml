@@ -1,0 +1,24 @@
+apiVersion: kafka.nais.io/v1
+kind: Topic
+metadata:
+  name: endring-pa-arbeidsoppfolgingskontor-v1.0
+  namespace: dab
+  labels:
+    team: dab
+  annotations:
+    kafka.nais.io/removeDataWhenResourceIsDeleted: "true"
+spec:
+  pool: nav-dev
+  config:
+    cleanupPolicy: delete # delete = ingen compaction
+    retentionHours: -1 # evig retention
+    minimumInSyncReplicas: 1
+    partitions: 2
+    replication: 1
+  acl:
+    - team: dab
+      application: ao-oppfolgingskontor
+      access: write
+    - team: pto
+      application: pto-kafka-manager
+      access: read

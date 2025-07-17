@@ -30,7 +30,7 @@ class SkjermingConsumer(
             when (result.isSuccess) {
                 true -> {
                     log.info("Behandling endring i skjerming med resultat: ${result.getOrNull()}")
-                    Commit
+                    Commit()
                 }
                 false -> {
                     val exception = result.exceptionOrNull()

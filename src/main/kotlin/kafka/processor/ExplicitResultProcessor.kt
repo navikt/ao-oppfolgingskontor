@@ -28,7 +28,7 @@ class ExplicitResultProcessor<K,V>(val processRecord: ProcessRecord<K,V, Unit, U
             .onSuccess {
                 when (it) {
                     is Commit -> context.commit()
-                    is Forward -> context.forward(it.forwardedRecord)
+                    is Forward -> context.forward(it.forwardedRecord, it.topic)
                     is Retry -> Unit
                     is Skip -> context.commit()
                 }

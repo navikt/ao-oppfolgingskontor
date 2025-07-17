@@ -64,13 +64,13 @@ class OppfolgingsPeriodeConsumer(
                                 log.error(tilordningResultat.message)
                                 Retry("Kunne ikke tilordne kontor ved start på oppfølgingspeiode: ${tilordningResultat.message}")
                             }
-                            is TilordningSuccess -> Commit
+                            is TilordningSuccess -> Commit()
                         }
                     }
             }
         } catch (e: Exception) {
             log.error("Klarte ikke behandle oppfolgingsperiode melding", e)
-            return Skip
+            return Skip()
         }
     }
 

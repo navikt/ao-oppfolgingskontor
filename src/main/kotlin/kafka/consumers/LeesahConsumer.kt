@@ -1,7 +1,9 @@
 package no.nav.kafka.consumers
 
+import kafka.out.toRecord
 import kotlinx.coroutines.runBlocking
 import no.nav.db.Ident
+import no.nav.domain.events.AOKontorEndret
 import no.nav.domain.events.KontorEndretEvent
 import no.nav.domain.externalEvents.AdressebeskyttelseEndret
 import no.nav.domain.externalEvents.BostedsadresseEndret
@@ -11,7 +13,9 @@ import no.nav.http.client.FnrFunnet
 import no.nav.http.client.FnrIkkeFunnet
 import no.nav.http.client.FnrOppslagFeil
 import no.nav.http.client.FnrResult
+import no.nav.kafka.arbeidsoppfolgingkontorSinkName
 import no.nav.kafka.processor.Commit
+import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
 import no.nav.person.pdl.leesah.Personhendelse
@@ -27,7 +31,7 @@ class LeesahConsumer(
 
     fun consume(
             record: Record<String, Personhendelse>
-    ): RecordProcessingResult<Unit, Unit> {
+    ): RecordProcessingResult<String, String> {
         log.info("Consumer Personhendelse record ${record.value().opplysningstype} ${record.value().endringstype}")
         return record.value()
                 .let { hendelse ->
@@ -44,7 +48,7 @@ class LeesahConsumer(
                 .let { handterLeesahHendelse(it) }
     }
 
-    fun handterLeesahHendelse(hendelse: PersondataEndret): RecordProcessingResult<Unit, Unit> {
+    fun handterLeesahHendelse(hendelse: PersondataEndret): RecordProcessingResult<String, String> {
         val result = runBlocking {
             when (hendelse) {
                 is BostedsadresseEndret -> automatiskKontorRutingService.handterEndringForBostedsadresse(hendelse)
@@ -56,7 +60,13 @@ class LeesahConsumer(
             }
         }
         return when (result) {
-            is HåndterPersondataEndretSuccess -> Commit
+            is HåndterPersondataEndretSuccess -> {
+                val aoKontorEndring = result.endringer.firstOrNull { it is AOKontorEndret } as AOKontorEndret?
+                return when {
+                    aoKontorEndring != null -> Forward(aoKontorEndring.toRecord(), arbeidsoppfolgingkontorSinkName)
+                    else -> Commit()
+                }
+            }
             is HåndterPersondataEndretFail -> {
                 log.error(result.message, result.error)
                 Retry(result.message)
