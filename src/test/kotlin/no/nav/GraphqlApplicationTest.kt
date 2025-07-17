@@ -123,7 +123,7 @@ class GraphqlApplicationTest {
         response.status shouldBe HttpStatusCode.Companion.OK
         val payload = response.body<GraphqlResponse<AlleKontor>>()
         payload.errors shouldBe null
-        payload.data!!.alleKontor shouldHaveSize 248
+        payload.data!!.alleKontor shouldHaveSize (248 + 3)
     }
 
     @Test
