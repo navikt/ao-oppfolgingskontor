@@ -60,7 +60,7 @@ class RetryableProcessorIntegrationTest {
             if (failed == Res.Fail) {
                 Retry("Dette gikk galt")
             } else {
-                Commit
+                Commit()
             }
         }
 

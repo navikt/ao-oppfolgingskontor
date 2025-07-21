@@ -113,7 +113,7 @@ class LeesahConsumerTest {
 
         val resultat = leesahConsumer.handterLeesahHendelse(BostedsadresseEndret(fnr))
 
-        resultat.shouldBeTypeOf<Retry>()
+        resultat.shouldBeTypeOf<Retry<String, String>>()
         resultat.reason shouldBe "Kunne ikke håndtere endring i bostedsadresse pga feil ved henting av gt-kontor: Noe gikk galt"
     }
 
@@ -127,7 +127,7 @@ class LeesahConsumerTest {
 
         val resultat = leesahConsumer.handterLeesahHendelse(BostedsadresseEndret(fnr))
 
-        resultat.shouldBeTypeOf<Retry>()
+        resultat.shouldBeTypeOf<Retry<String, String>>()
         resultat.reason shouldBe "Uventet feil ved håndtering av endring i bostedsadresse: Noe gikk galt"
     }
 

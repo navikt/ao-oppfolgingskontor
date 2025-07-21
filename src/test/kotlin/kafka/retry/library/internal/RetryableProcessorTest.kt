@@ -80,7 +80,7 @@ class RetryableProcessorTest {
     if (record.value().contains("FAIL")) {
      throw RuntimeException("Simulated failure")
     }
-    Commit
+    Commit()
    },
    TestLockProvider
   )
@@ -227,7 +227,7 @@ class RetryableProcessorTest {
     if (record.value().master == "feil") {
      throw RuntimeException("Simulated failure")
     }
-    Commit
+    Commit()
    },
    TestLockProvider
   )

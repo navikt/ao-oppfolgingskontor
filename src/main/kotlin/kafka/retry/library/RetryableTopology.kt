@@ -50,16 +50,16 @@ object RetryableTopology {
      * Prosesserer meldinger av enhver type <K, V> og håndterer feil,
      * men sender ingenting videre i topologien.
      */
-    inline fun <reified K, reified V> addTerminalRetryableProcessor(
+    inline fun <reified K, reified V, reified KOut, reified VOut> addTerminalRetryableProcessor(
         builder: StreamsBuilder,
         inputTopic: String,
         keySerde: Serde<K>,
         valueSerde: Serde<V>,
         config: RetryConfig,
-        noinline businessLogic: (record: Record<K, V>) -> RecordProcessingResult<Unit, Unit>,
+        noinline businessLogic: (record: Record<K, V>) -> RecordProcessingResult<KOut, VOut>,
         lockProvider: LockProvider,
     ) {
-        addTransformingRetryableProcessor<K, V, Unit, Unit>(
+        addTransformingRetryableProcessor<K, V, KOut, VOut>(
             builder, inputTopic,
             keyInSerde = keySerde,
             valueInSerde = valueSerde,

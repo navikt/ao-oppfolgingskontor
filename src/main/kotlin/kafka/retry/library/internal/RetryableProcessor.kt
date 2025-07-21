@@ -78,7 +78,7 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
         try {
             val result = businessLogic(record)
             when (result) {
-                Commit, Skip -> {}
+                is Commit, is Skip -> {}
                 is Forward -> context.forward(result.forwardedRecord, result.topic)
                 is Retry -> enqueue(record, result.reason)
             }
