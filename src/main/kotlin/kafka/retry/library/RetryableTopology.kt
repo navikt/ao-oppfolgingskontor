@@ -2,7 +2,6 @@ package no.nav.kafka.retry.library
 import net.javacrumbs.shedlock.core.LockProvider
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.retry.library.internal.FailedMessageRepository
-import no.nav.kafka.retry.library.internal.PostgresRetryStoreBuilder
 import no.nav.kafka.retry.library.internal.RetryableProcessor
 import org.apache.kafka.common.serialization.Serde
 import org.apache.kafka.streams.StreamsBuilder
@@ -10,7 +9,6 @@ import org.apache.kafka.streams.kstream.Consumed
 import org.apache.kafka.streams.kstream.KStream
 import org.apache.kafka.streams.processor.api.ProcessorSupplier
 import org.apache.kafka.streams.processor.api.Record
-import javax.sql.DataSource
 
 /**
  * Legger til en gjenbrukbar, feiltolerant prosessor i en Kafka Streams-topologi.
@@ -21,21 +19,21 @@ import javax.sql.DataSource
  * ```kotlin
 // Terminal node eksempel - hvis du ikke ønsker å sende videre
 val builder = StreamsBuilder()
-RetryableTopology.addTerminalRetryableProcessor<String, String>(
+RetryableTopology.addRetryableProcessor<String, String>(
 builder = builder,
 inputTopic = "input-topic",
 // ...
-businessLogic = { record -> /* gjør noe, returner Unit */ }
+businessLogic = { record -> /* gjør noe, returner ProcessingResylt */ }
 )
 // Bygg topologien: val topology = builder.build()
 
 // Transformerende eksempel - hvis du ønsker å sende videre
 val builder = StreamsBuilder()
-val outputStream = RetryableTopology.addTransformingRetryableProcessor<String, String, String, Long>(
+val outputStream = RetryableTopology.addRetryableProcessor<String, String, String, Long>(
 builder = builder,
 inputTopic = "input-topic",
 // ...
-businessLogic = { record -> Record(record.key(), record.value().length.toLong(), record.timestamp()) }
+businessLogic = { record -> Forward(Record(record.key(), record.value().length.toLong(), record.timestamp())) }
 )
 
 outputStream.to("output-topic")
@@ -47,10 +45,9 @@ object RetryableTopology {
 
     /**
      * Versjon for "terminal node"-bruk.
-     * Prosesserer meldinger av enhver type <K, V> og håndterer feil,
-     * men sender ingenting videre i topologien.
+     * Prosesserer meldinger av enhver type <K, V> og utfører en handling definert i 'businessLogic og håndterer feil.
      */
-    inline fun <reified K, reified V> addTerminalRetryableProcessor(
+    inline fun <reified K, reified V> addRetryableProcessor(
         builder: StreamsBuilder,
         inputTopic: String,
         keySerde: Serde<K>,
@@ -59,7 +56,7 @@ object RetryableTopology {
         noinline businessLogic: (record: Record<K, V>) -> RecordProcessingResult<Unit, Unit>,
         lockProvider: LockProvider,
     ) {
-        addTransformingRetryableProcessor<K, V, Unit, Unit>(
+        addRetryableProcessor<K, V, Unit, Unit>(
             builder, inputTopic,
             keyInSerde = keySerde,
             valueInSerde = valueSerde,
@@ -70,23 +67,21 @@ object RetryableTopology {
     }
 
     /**
-     * Legger til en transformerende retry-prosessor i topologien.
-     * Den konsumerer fra 'inputTopic', prosesserer, og returnerer en ny KStream
-     * med de vellykkede resultatene.
+     * Legger til en  retry-prosessor med en typet context (KStream<KOut,VOut>) i topologien.
+     * For å sende meldinger videre i topologien må 'businenessLogic' returnere en RecordProcessingResult av type Forward.
+     * Vær oppmerksom på at contexten ved retry av meldinger er contexten ved punctueringstidspunktet, og vil ikke ha korrekt offset/partition
      */
-    inline fun <reified KIn, reified VIn, reified KOut, reified VOut> addTransformingRetryableProcessor(
+    inline fun <reified KIn, reified VIn, reified KOut, reified VOut> addRetryableProcessor(
         builder: StreamsBuilder,
         inputTopic: String,
         keyInSerde: Serde<KIn>, // Kun input-SerDes er nødvendig
         valueInSerde: Serde<VIn>,
-        config: RetryConfig = RetryConfig(inputTopic),
+        config: RetryConfig = RetryConfig(),
         noinline businessLogic: (record: Record<KIn, VIn>) -> RecordProcessingResult<KOut, VOut>,
         lockProvider: LockProvider,
     ): KStream<KOut, VOut> {
 
         val repository = FailedMessageRepository(inputTopic)
-        val storeBuilder = PostgresRetryStoreBuilder(config.stateStoreName, repository)
-        builder.addStateStore(storeBuilder)
 
         val processorSupplier = ProcessorSupplier<KIn, VIn, KOut, VOut> {
             RetryableProcessor(
@@ -101,11 +96,6 @@ object RetryableTopology {
                 lockProvider = lockProvider
             )
         }
-
-        val inputStream = builder.stream(inputTopic, Consumed.with(keyInSerde, valueInSerde))
-        val processedStream =  inputStream.process(processorSupplier, config.stateStoreName)
-        // Vi må filtrere ut null-verdiene som terminal-versjonen introduserer.
-        @Suppress("UNCHECKED_CAST")
-        return processedStream.filterNot { _, value -> value == null } as KStream<KOut, VOut>
+        return builder.stream(inputTopic, Consumed.with(keyInSerde, valueInSerde)).process(processorSupplier)
     }
 }

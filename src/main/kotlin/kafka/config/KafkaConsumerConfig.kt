@@ -41,24 +41,24 @@ fun configureTopology(
     topicAndConsumers.forEach { topicAndConsumer ->
         when (topicAndConsumer) {
             is StringTopicConsumer -> {
-                RetryableTopology.addTerminalRetryableProcessor(
+                RetryableTopology.addRetryableProcessor(
                     builder = builder,
                     inputTopic = topicAndConsumer.topic,
                     keySerde = Serdes.String(),
                     valueSerde = Serdes.String(),
                     businessLogic = { topicAndConsumer.processRecord(it) },
-                    config = RetryConfig(topicAndConsumer.topic),
+                    config = RetryConfig(),
                     lockProvider = lockProvider
                 )
             }
             is AvroTopicConsumer -> {
-                RetryableTopology.addTerminalRetryableProcessor(
+                RetryableTopology.addRetryableProcessor(
                     builder = builder,
                     inputTopic = topicAndConsumer.topic,
                     keySerde = topicAndConsumer.keySerde,
                     valueSerde = topicAndConsumer.valueSerde,
                     businessLogic = { topicAndConsumer.processRecord(it) },
-                    config = RetryConfig(topicAndConsumer.topic),
+                    config = RetryConfig(),
                     lockProvider = lockProvider
                 )
             }
