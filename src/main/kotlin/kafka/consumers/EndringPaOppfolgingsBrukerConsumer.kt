@@ -28,13 +28,13 @@ class EndringPaOppfolgingsBrukerConsumer() {
 
     val json = Json { ignoreUnknownKeys = true }
 
-    fun consume(record: Record<String, String>): RecordProcessingResult<Unit, Unit> {
+    fun consume(record: Record<String, String>): RecordProcessingResult<String, String> {
         log.info("Consumed record")
         val fnrString = record.key()
         val endringPaOppfolgingsBruker = json.decodeFromString<EndringPaOppfolgingsBruker>(record.value())
         if (endringPaOppfolgingsBruker.oppfolgingsenhet.isNullOrBlank()) {
             log.warn("Mottok endring på oppfølgingsbruker uten gyldig kontorId")
-            return Commit
+            return Commit()
         }
 
         val sistEndretKontorEntity = transaction {
@@ -45,7 +45,7 @@ class EndringPaOppfolgingsBrukerConsumer() {
 
         if(sistEndretKontorEntity != null && sistEndretKontorEntity.sistEndretDatoArena > endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime()) {
             log.warn("Sist endret kontor er eldre enn endring på oppfølgingsbruker")
-            return Skip
+            return Skip()
         }
 
         val fnr = Fnr(fnrString)
@@ -54,7 +54,7 @@ class EndringPaOppfolgingsBrukerConsumer() {
             is AktivOppfolgingsperiode -> oppfolgingperiode.periodeId
             NotUnderOppfolging -> {
                 log.warn("Bruker er ikke under oppfølging, hopper over melding om endring på oppfølgingsbruker")
-                return Skip
+                return Skip()
             }
             is OppfolgingperiodeOppslagFeil -> {
                 log.error("Klarte ikke hente oppfølgingsperiode: ${oppfolgingperiode.message}")
@@ -73,7 +73,7 @@ class EndringPaOppfolgingsBrukerConsumer() {
                 sistEndretDatoArena = endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime(),
             )
         )
-        return Commit
+        return Commit()
     }
 }
 

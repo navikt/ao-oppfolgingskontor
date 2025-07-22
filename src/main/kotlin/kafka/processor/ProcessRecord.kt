@@ -4,9 +4,9 @@ import org.apache.kafka.streams.processor.api.Record
 
 sealed class RecordProcessingResult<KOut, VOut>
 
-class Forward<K, V>(val forwardedRecord: Record<K, V>): RecordProcessingResult<K, V>()
-object Commit: RecordProcessingResult<Unit, Unit>()
-object Skip: RecordProcessingResult<Unit, Unit>()
-class Retry(val reason: String): RecordProcessingResult<Unit, Unit>()
+class Forward<K, V>(val forwardedRecord: Record<K, V>, val topic: String): RecordProcessingResult<K, V>()
+class Commit<K, V>: RecordProcessingResult<K, V>()
+class Skip<K, V>: RecordProcessingResult<K, V>()
+class Retry<K, V>(val reason: String): RecordProcessingResult<K, V>()
 
 typealias ProcessRecord <K, V, KOut, VOut> = (record: Record<K, V>) -> RecordProcessingResult<KOut, VOut>

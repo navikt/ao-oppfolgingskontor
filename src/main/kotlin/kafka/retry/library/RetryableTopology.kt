@@ -1,5 +1,6 @@
 package no.nav.kafka.retry.library
 import net.javacrumbs.shedlock.core.LockProvider
+import no.nav.kafka.config.processorName
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.retry.library.internal.FailedMessageRepository
 import no.nav.kafka.retry.library.internal.RetryableProcessor
@@ -7,6 +8,7 @@ import org.apache.kafka.common.serialization.Serde
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.kstream.Consumed
 import org.apache.kafka.streams.kstream.KStream
+import org.apache.kafka.streams.kstream.Named
 import org.apache.kafka.streams.processor.api.ProcessorSupplier
 import org.apache.kafka.streams.processor.api.Record
 
@@ -47,19 +49,19 @@ object RetryableTopology {
      * Versjon for "terminal node"-bruk.
      * Prosesserer meldinger av enhver type <K, V> og utfører en handling definert i 'businessLogic og håndterer feil.
      */
-    inline fun <reified K, reified V> addRetryableProcessor(
+    inline fun <reified K, reified V> aaddRetryableProcessor(
         builder: StreamsBuilder,
         inputTopic: String,
-        keySerde: Serde<K>,
-        valueSerde: Serde<V>,
+        keyInSerde: Serde<K>,
+        valueInSerde: Serde<V>,
         config: RetryConfig,
         noinline businessLogic: (record: Record<K, V>) -> RecordProcessingResult<Unit, Unit>,
         lockProvider: LockProvider,
     ) {
         addRetryableProcessor<K, V, Unit, Unit>(
             builder, inputTopic,
-            keyInSerde = keySerde,
-            valueInSerde = valueSerde,
+            keyInSerde = keyInSerde,
+            valueInSerde = valueInSerde,
             config = config,
             businessLogic = businessLogic,
             lockProvider = lockProvider
@@ -83,7 +85,7 @@ object RetryableTopology {
 
         val repository = FailedMessageRepository(inputTopic)
 
-        val processorSupplier = ProcessorSupplier<KIn, VIn, KOut, VOut> {
+        val processorSupplier = ProcessorSupplier {
             RetryableProcessor(
                 config = config,
                 keyInSerializer = keyInSerde.serializer(),
@@ -96,6 +98,7 @@ object RetryableTopology {
                 lockProvider = lockProvider
             )
         }
-        return builder.stream(inputTopic, Consumed.with(keyInSerde, valueInSerde)).process(processorSupplier)
+        return builder.stream(inputTopic, Consumed.with(keyInSerde, valueInSerde))
+            .process(processorSupplier,  Named.`as`(processorName(inputTopic)),)
     }
 }

@@ -18,23 +18,54 @@ import org.apache.kafka.streams.Topology
 import org.apache.kafka.streams.errors.LogAndFailProcessingExceptionHandler
 import java.util.Properties
 
-sealed class TopicConsumer(
-    val topic: String,
-)
+sealed class TopicConsumer(val topic: String)
+
 class StringTopicConsumer(
     topic: String,
-    val processRecord: ProcessRecord<String, String, Unit, Unit>,
+    val processRecord: ProcessRecord<String, String, String, String>,
+    val sink: StringStringSinkConfig? = null
 ): TopicConsumer(topic)
+
 class AvroTopicConsumer(
     topic: String,
-    val processRecord: ProcessRecord<String, Personhendelse, Unit, Unit>,
+    val processRecord: ProcessRecord<String, Personhendelse, String, String>,
     val valueSerde: SpecificAvroSerde<Personhendelse>,
-    val keySerde: Serde<String>
+    val keySerde: Serde<String>,
+    val sink: StringStringSinkConfig?
 ): TopicConsumer(topic)
+
+open class SinkConfig<K, V>(
+    val sinkName: String,
+    val outputTopicName: String,
+    val keySerde: Serde<K>,
+    val valueSerde: Serde<V>,
+) {
+    override fun equals(other: Any?): Boolean {
+        if (other !is SinkConfig<*, *>) return false
+        if (sinkName != other.sinkName) return false
+        if (outputTopicName != other.outputTopicName) return false
+        if (keySerde != other.keySerde) return false
+        if (valueSerde != other.valueSerde) return false
+        return true
+    }
+}
+class StringStringSinkConfig(
+    sinkName: String,
+    outputTopicName: String,
+): SinkConfig<String, String>(
+    sinkName,
+    outputTopicName,
+    Serdes.String(),
+    Serdes.String(),
+)
+
+fun processorName(topic: String): String {
+    return "${topic}-processor"
+}
 
 fun configureTopology(
     topicAndConsumers: List<TopicConsumer>,
-    lockProvider: LockProvider
+    lockProvider: LockProvider,
 ): Topology {
     val builder = StreamsBuilder()
 
@@ -44,8 +75,8 @@ fun configureTopology(
                 RetryableTopology.addRetryableProcessor(
                     builder = builder,
                     inputTopic = topicAndConsumer.topic,
-                    keySerde = Serdes.String(),
-                    valueSerde = Serdes.String(),
+                    keyInSerde = Serdes.String(),
+                    valueInSerde = Serdes.String(),
                     businessLogic = { topicAndConsumer.processRecord(it) },
                     config = RetryConfig(),
                     lockProvider = lockProvider
@@ -55,8 +86,8 @@ fun configureTopology(
                 RetryableTopology.addRetryableProcessor(
                     builder = builder,
                     inputTopic = topicAndConsumer.topic,
-                    keySerde = topicAndConsumer.keySerde,
-                    valueSerde = topicAndConsumer.valueSerde,
+                    keyInSerde = topicAndConsumer.keySerde,
+                    valueInSerde = topicAndConsumer.valueSerde,
                     businessLogic = { topicAndConsumer.processRecord(it) },
                     config = RetryConfig(),
                     lockProvider = lockProvider
@@ -64,7 +95,30 @@ fun configureTopology(
             }
         }
     }
-    return builder.build()
+
+    val topology = builder.build()
+    topicAndConsumers.mapNotNull { topicConfig ->
+        when (topicConfig) {
+            is StringTopicConsumer -> topicConfig.sink?.let { processorName(topicConfig.topic) to it }
+            is AvroTopicConsumer -> topicConfig.sink?.let { processorName(topicConfig.topic) to it }
+        }
+    }
+        .groupBy { it.second.sinkName }
+        .forEach { entry ->
+            val sinkName = entry.key
+            val parents = entry.value.map { it.first }
+            require(entry.value.map { it.second }.distinct().size == 1) { "Sink configs for same sink name must be equal, found different configs for sink: $sinkName" }
+            val sinkConfig = entry.value.first().second
+            topology.addSink(
+                sinkConfig.sinkName,
+                sinkConfig.outputTopicName,
+                sinkConfig.keySerde.serializer(),
+                sinkConfig.valueSerde.serializer(),
+                *parents.toTypedArray()
+            )
+        }
+
+    return topology
 }
 
 fun kafkaStreamsProps(config: ApplicationConfig): Properties {

@@ -16,6 +16,7 @@ import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
 import no.nav.http.client.FnrResult
 import no.nav.http.client.PdlClient
 import no.nav.kafka.config.AvroTopicConsumer
+import no.nav.kafka.config.StringStringSinkConfig
 import no.nav.kafka.config.StringTopicConsumer
 import no.nav.kafka.config.kafkaStreamsProps
 import no.nav.kafka.config.configureTopology
@@ -31,6 +32,7 @@ import org.apache.kafka.streams.KafkaStreams
 import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler
 import org.jetbrains.exposed.sql.Database
 import org.slf4j.LoggerFactory
+import topics
 import java.util.concurrent.atomic.AtomicInteger
 
 val KafkaStreamsStarting: EventDefinition<Application> = EventDefinition()
@@ -50,66 +52,69 @@ class KafkaStreamsPluginConfig(
         var pdlClient: PdlClient? = null
 )
 
-val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createApplicationPlugin("KafkaStreams", ::KafkaStreamsPluginConfig) {
-    val database =
-            requireNotNull(this.pluginConfig.database) {
-                "DataSource must be configured for KafkaStreamsPlugin"
-            }
-    val fnrProvider =
-            requireNotNull(this.pluginConfig.fnrProvider) {
-                "fnrProvider must be configured for KafkaStreamPlugin"
-            }
-    val automatiskKontorRutingService =
-            requireNotNull(this.pluginConfig.automatiskKontorRutingService) {
-                "AutomatiskKontorRutingService must be configured for KafkaStreamPlugin"
-            }
-    val oppfolgingsperiodeService =
-            requireNotNull(this.pluginConfig.oppfolgingsperiodeService) {
-                "OppfolgingsperiodeService must be configured for KafkaStreamPlugin"
-            }
-    val pdlClient =
-            requireNotNull(this.pluginConfig.pdlClient) {
-                "PdlClient must be configured for KafkaStreamPlugin"
-            }
-    val meterRegistry =
-        requireNotNull(this.pluginConfig.meterRegistry) {
-            "MeterRegistry must be configured for KafkaStreamPlugin"
-        }
+const val arbeidsoppfolgingkontorSinkName = "endring-pa-arbeidsoppfolgingskontor"
 
-    val lockProvider = ExposedLockProvider(database)
+val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createApplicationPlugin("KafkaStreams", ::KafkaStreamsPluginConfig) {
+    val topics = environment.topics()
+    val database = requireNotNull(this.pluginConfig.database) {
+        "DataSource must be configured for KafkaStreamsPlugin"
+    }
+    val fnrProvider = requireNotNull(this.pluginConfig.fnrProvider) {
+        "fnrProvider must be configured for KafkaStreamPlugin"
+    }
+    val automatiskKontorRutingService = requireNotNull(this.pluginConfig.automatiskKontorRutingService) {
+        "AutomatiskKontorRutingService must be configured for KafkaStreamPlugin"
+    }
+    val oppfolgingsperiodeService = requireNotNull(this.pluginConfig.oppfolgingsperiodeService) {
+        "OppfolgingsperiodeService must be configured for KafkaStreamPlugin"
+    }
+    val pdlClient = requireNotNull(this.pluginConfig.pdlClient) {
+        "PdlClient must be configured for KafkaStreamPlugin"
+    }
+    val meterRegistry = requireNotNull(this.pluginConfig.meterRegistry) {
+        "MeterRegistry must be configured for KafkaStreamPlugin"
+    }
 
     val endringPaOppfolgingsBrukerConsumer = EndringPaOppfolgingsBrukerConsumer()
-    val oppfolgingsBrukerTopic = environment.config.property("topics.inn.endringPaOppfolgingsbruker").getString()
 
     val oppfolgingsPeriodeConsumer = OppfolgingsPeriodeConsumer(
         automatiskKontorRutingService,
-        oppfolgingsperiodeService,
-        { aktorId -> pdlClient.hentFnrFraAktorId(aktorId) }
-    )
-    val oppfolgingsPeriodeTopic = environment.config.property("topics.inn.oppfolgingsperiodeV1").getString()
+        oppfolgingsperiodeService
+    ) { aktorId -> pdlClient.hentFnrFraAktorId(aktorId) }
 
     val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, fnrProvider)
-    val leesahTopic = environment.config.property("topics.inn.pdlLeesah").getString()
     val spesificAvroValueSerde = LeesahAvroSerdes(environment.config).valueAvroSerde
     val specificAvroKeySerde = LeesahAvroSerdes(environment.config).keyAvroSerde
 
     val skjermingConsumer = SkjermingConsumer(automatiskKontorRutingService)
-    val skjermingTopic = environment.config.property("topics.inn.skjerming").getString()
 
+    val aoKontorEndretSink = StringStringSinkConfig(
+        arbeidsoppfolgingkontorSinkName,
+        topics.ut.endringPaArbeidsoppfolgingskontor
+    )
     val topology = configureTopology(listOf(
-        StringTopicConsumer(
-            oppfolgingsBrukerTopic
-        ) { record -> endringPaOppfolgingsBrukerConsumer.consume(record) },
-        StringTopicConsumer(
-            oppfolgingsPeriodeTopic
-        ) { record -> oppfolgingsPeriodeConsumer.consume(record) },
-        AvroTopicConsumer(
-            leesahTopic, leesahConsumer::consume, spesificAvroValueSerde, specificAvroKeySerde
+            StringTopicConsumer(
+                topics.inn.endringPaOppfolgingsbruker,
+                endringPaOppfolgingsBrukerConsumer::consume,
+                aoKontorEndretSink
+            ),
+            StringTopicConsumer(
+                topics.inn.oppfolgingsperiodeV1,
+                oppfolgingsPeriodeConsumer::consume,
+                aoKontorEndretSink
+            ),
+            AvroTopicConsumer(
+                topics.inn.pdlLeesah,
+                leesahConsumer::consume, spesificAvroValueSerde, specificAvroKeySerde,
+                aoKontorEndretSink
+            ),
+            StringTopicConsumer(
+                topics.inn.skjerming,
+                skjermingConsumer::consume,
+                aoKontorEndretSink
+            )
         ),
-        StringTopicConsumer(
-            skjermingTopic
-        ) { record -> skjermingConsumer.consume(record) }),
-        lockProvider
+        ExposedLockProvider(database),
     )
     val kafkaStream = KafkaStreams(topology, kafkaStreamsProps(environment.config))
 
@@ -151,7 +156,6 @@ private fun configureStateListenerMetrics(
         .description("Current state of the Kafka Streams client (0=STOPPED/ERROR, 1=RUNNING, 2=REBALANCING)")
         .tag("streams_application_id", applicationId)
         .register(meterRegistry)
-
 
     kafkaStream.setStateListener { newState, _ ->
         when (newState) {

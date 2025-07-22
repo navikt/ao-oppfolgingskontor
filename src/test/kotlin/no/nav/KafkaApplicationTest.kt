@@ -3,6 +3,7 @@ package no.nav.no.nav
 import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
 import io.ktor.server.testing.testApplication
+import kafka.retry.TestLockProvider
 import no.nav.db.Fnr
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.ArenaKontorEntity
@@ -20,10 +21,10 @@ import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
 import no.nav.kafka.config.StringTopicConsumer
+import no.nav.kafka.config.configureTopology
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerConsumer
 import no.nav.kafka.config.streamsErrorHandlerConfig
 import no.nav.kafka.consumers.OppfolgingsPeriodeConsumer
-import no.nav.kafka.processor.ExplicitResultProcessor
 import no.nav.kafka.consumers.SkjermingConsumer
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
@@ -33,12 +34,10 @@ import no.nav.services.OppfolgingsperiodeService
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.gittBrukerUnderOppfolging
 import org.apache.kafka.common.serialization.Serdes
-import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
 import org.apache.kafka.streams.TestInputTopic
 import org.apache.kafka.streams.Topology
 import org.apache.kafka.streams.TopologyTestDriver
-import org.apache.kafka.streams.processor.api.ProcessorSupplier
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
 import java.time.ZonedDateTime
@@ -216,14 +215,7 @@ class KafkaApplicationTest {
     }
 
     private fun configureTopology(topicAndConsumers: List<StringTopicConsumer>): Topology {
-        val builder = StreamsBuilder()
-        topicAndConsumers.forEach { topicAndConsumer ->
-            builder.stream<String, String>(topicAndConsumer.topic)
-                .process(ProcessorSupplier {
-                    ExplicitResultProcessor(topicAndConsumer.processRecord)
-                })
-        }
-        return builder.build()
+        return configureTopology(topicAndConsumers, TestLockProvider)
     }
 }
 

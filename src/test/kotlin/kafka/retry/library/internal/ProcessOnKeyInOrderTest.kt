@@ -29,7 +29,7 @@ class ProcessOnKeyInOrderTest {
             simpleFailedMessage.copy(id = 1),
             simpleFailedMessage.copy(id = 3),
         ).proccessInOrderOnKey {
-            Success<String, String, Unit, Unit>(it, Commit)
+            Success<String, String, Unit, Unit>(it, Commit())
         }.map { it.msg.id } shouldBe listOf(2L, 1L, 3L)
     }
 
@@ -43,7 +43,7 @@ class ProcessOnKeyInOrderTest {
             if (it.failureReason == "Fail on retry") {
                 RetryableFail(it, error = Exception("Retry"))
             } else {
-                Success<String, String, Unit, Unit>(it, Commit)
+                Success<String, String, Unit, Unit>(it, Commit())
             }
         }.map { it.msg.id } shouldBe listOf(2L)
     }
@@ -58,7 +58,7 @@ class ProcessOnKeyInOrderTest {
             if (it.failureReason == "Fail on retry") {
                 RetryableFail(it, error = Exception("Retry"))
             } else {
-                Success<String, String, Unit, Unit>(it, Commit)
+                Success<String, String, Unit, Unit>(it, Commit())
             }
         }.map { it.msg.id } shouldBe listOf(2L, 3L, 1L)
     }
