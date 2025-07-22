@@ -7,7 +7,9 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.testApplication
 import no.nav.db.Fnr
+import no.nav.db.Npid
 import no.nav.http.client.AlderFunnet
+import no.nav.http.client.FnrFunnet
 import no.nav.http.client.GeografiskTilknytningLand
 import no.nav.http.client.GeografiskTilknytningNr
 import no.nav.http.client.GtForBrukerIkkeFunnet
@@ -22,6 +24,7 @@ import no.nav.http.client.pdlTestUrl
 import no.nav.http.client.toGeografiskTilknytning
 import no.nav.http.graphql.generated.client.HentGtQuery
 import no.nav.http.graphql.generated.client.enums.GtType
+import no.nav.http.graphql.generated.client.enums.IdentGruppe
 import no.nav.http.graphql.generated.client.hentgtquery.GeografiskTilknytning
 import org.junit.jupiter.api.Test
 import java.time.LocalDate
@@ -182,6 +185,78 @@ class PdlClientTest {
         val adressebeskyttelse = pdlClient.harStrengtFortroligAdresse(fnr)
 
         adressebeskyttelse.shouldBeInstanceOf<HarStrengtFortroligAdresseOppslagFeil>()
+    }
+
+    @Test
+    fun `hentFnrFraAktorId skal returnere fnr for aktorId`() = testApplication {
+        val aktorId = "12345678901"
+        val fnr = Fnr("12345678901")
+        val client = mockPdl("""
+            {
+                "data": { 
+                    "hentIdenter": {
+                        "identer": [
+                          {
+                            "ident": "44444444",
+                            "historisk": false,
+                            "gruppe": "${IdentGruppe.NPID}"
+                          },
+                          {
+                            "ident": "55555555",
+                            "historisk": false,
+                            "gruppe": "${IdentGruppe.AKTORID}"
+                          },
+                          {
+                            "ident": "$fnr",
+                            "historisk": false,
+                            "gruppe": "${IdentGruppe.FOLKEREGISTERIDENT}"
+                          }
+                        ]
+                    }
+                },
+                "errors": null
+            }
+        """.trimIndent())
+        val pdlClient = PdlClient(pdlTestUrl,client)
+
+        val fnrResult = pdlClient.hentFnrFraAktorId(aktorId)
+
+        fnrResult.shouldBeInstanceOf<FnrFunnet>()
+        fnrResult.ident.value shouldBe fnr.value
+    }
+
+    @Test
+    fun `hentFnrFraAktorId skal returnere npid for aktorId hvis ikke fnr finnes`() = testApplication {
+        val aktorId = "12345678901"
+        val npid = Npid("41414141414")
+        val client = mockPdl("""
+            {
+                "data": { 
+                    "hentIdenter": {
+                        "identer": [
+                          {
+                            "ident": "${npid}",
+                            "historisk": false,
+                            "gruppe": "${IdentGruppe.NPID}"
+                          },
+                          {
+                            "ident": "55555555",
+                            "historisk": false,
+                            "gruppe": "${IdentGruppe.AKTORID}"
+                          }
+                        ]
+                    }
+                },
+                "errors": null
+            }
+        """.trimIndent())
+        val pdlClient = PdlClient(pdlTestUrl,client)
+
+        val fnrResult = pdlClient.hentFnrFraAktorId(aktorId)
+
+        fnrResult.shouldBeInstanceOf<FnrFunnet>()
+        fnrResult.ident.shouldBeInstanceOf<Npid>()
+        fnrResult.ident shouldBe npid
     }
 
     @Test

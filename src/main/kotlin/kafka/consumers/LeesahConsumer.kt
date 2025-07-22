@@ -37,7 +37,7 @@ class LeesahConsumer(
                 .let { hendelse ->
                     val fnrResult = runBlocking { finnFnr(hendelse) }
                     when (fnrResult) {
-                        is FnrFunnet -> fnrResult.fnr to hendelse
+                        is FnrFunnet -> fnrResult.ident to hendelse
                         is FnrIkkeFunnet ->
                                 return Retry("Kunne ikke håndtere leesah melding: Fnr ikke funnet for bruker: ${fnrResult.message}")
                         is FnrOppslagFeil ->

@@ -55,9 +55,9 @@ object OppfolgingsperiodeService {
         return try {
             when (fnr) {
                 is FnrFunnet -> transaction {
-                    val entity = OppfolgingsperiodeEntity.findById(fnr.fnr.value)
+                    val entity = OppfolgingsperiodeEntity.findById(fnr.ident.value)
                     when (entity != null) {
-                        true -> AktivOppfolgingsperiode(fnr.fnr, OppfolgingsperiodeId(entity.oppfolgingsperiodeId))
+                        true -> AktivOppfolgingsperiode(fnr.ident, OppfolgingsperiodeId(entity.oppfolgingsperiodeId))
                         else -> NotUnderOppfolging
                     }
                 }

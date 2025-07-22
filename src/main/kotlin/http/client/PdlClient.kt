@@ -33,7 +33,7 @@ data class AlderFunnet(val alder: Int) : AlderResult()
 data class AlderIkkeFunnet(val message: String) : AlderResult()
 
 sealed class FnrResult
-data class FnrFunnet(val fnr: Ident) : FnrResult()
+data class FnrFunnet(val ident: Ident) : FnrResult()
 data class FnrIkkeFunnet(val message: String) : FnrResult()
 data class FnrOppslagFeil(val message: String) : FnrResult()
 

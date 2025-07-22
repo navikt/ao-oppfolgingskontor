@@ -499,7 +499,7 @@ fun gitt(bruker: Bruker): AutomatiskKontorRutingService {
 
 fun defaultOppfolgingsperiodeOppslagResult(fnr: FnrResult): OppfolgingsperiodeOppslagResult {
     return when (fnr) {
-        is FnrFunnet -> return AktivOppfolgingsperiode(fnr.fnr, OppfolgingsperiodeId(UUID.randomUUID()))
+        is FnrFunnet -> return AktivOppfolgingsperiode(fnr.ident, OppfolgingsperiodeId(UUID.randomUUID()))
         is FnrIkkeFunnet -> OppfolgingperiodeOppslagFeil(fnr.message)
         is FnrOppslagFeil -> OppfolgingperiodeOppslagFeil(fnr.message)
     }
@@ -516,7 +516,7 @@ data class Bruker(
 ) {
     fun fnr(): Ident {
         if (fnr is FnrFunnet) {
-            return fnr.fnr
+            return fnr.ident
         }
         throw IllegalStateException("Fnr is ${this.fnr}")
     }

@@ -13,6 +13,11 @@ sealed class Ident {
             Npid(value)
         }
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is Ident) return false
+        return other.value == value
+    }
 }
 
 /*

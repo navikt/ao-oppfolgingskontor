@@ -39,7 +39,7 @@ class OppfolgingsPeriodeConsumer(
         try {
             return runBlocking {
                 val ident: Ident = when (val result = fnrProvider(aktorId)) {
-                    is FnrFunnet -> result.fnr
+                    is FnrFunnet -> result.ident
                     is FnrIkkeFunnet -> return@runBlocking Retry("Kunne ikke behandle oppfolgingsperiode melding: ${result.message}")
                     is FnrOppslagFeil -> return@runBlocking Retry("Kunne ikke behandle oppfolgingsperiode melding: ${result.message}")
                 }
