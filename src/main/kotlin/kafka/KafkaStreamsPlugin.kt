@@ -88,25 +88,31 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
 
     val skjermingConsumer = SkjermingConsumer(automatiskKontorRutingService)
 
+    val aoKontorEndretSink = StringStringSinkConfig(
+        arbeidsoppfolgingkontorSinkName,
+        topics.ut.endringPaArbeidsoppfolgingskontor
+    )
     val topology = configureTopology(listOf(
-        StringTopicConsumer(
-            topics.inn.endringPaOppfolgingsbruker
-        ) { record -> endringPaOppfolgingsBrukerConsumer.consume(record) },
-        StringTopicConsumer(
-            topics.inn.oppfolgingsperiodeV1
-        ) { record -> oppfolgingsPeriodeConsumer.consume(record) },
-        AvroTopicConsumer(
-            topics.inn.pdlLeesah, leesahConsumer::consume, spesificAvroValueSerde, specificAvroKeySerde
-        ),
-        StringTopicConsumer(
-            topics.inn.skjerming
-        ) { record -> skjermingConsumer.consume(record) }),
-        listOf(
-            StringStringSinkConfig(
-                arbeidsoppfolgingkontorSinkName,
-                topics.ut.endringPaArbeidsoppfolgingskontor,
-                topics.inn.processorNames()
+            StringTopicConsumer(
+                topics.inn.endringPaOppfolgingsbruker,
+                endringPaOppfolgingsBrukerConsumer::consume,
+                aoKontorEndretSink
             ),
+            StringTopicConsumer(
+                topics.inn.oppfolgingsperiodeV1,
+                oppfolgingsPeriodeConsumer::consume,
+                aoKontorEndretSink
+            ),
+            AvroTopicConsumer(
+                topics.inn.pdlLeesah,
+                leesahConsumer::consume, spesificAvroValueSerde, specificAvroKeySerde,
+                aoKontorEndretSink
+            ),
+            StringTopicConsumer(
+                topics.inn.skjerming,
+                skjermingConsumer::consume,
+                aoKontorEndretSink
+            )
         ),
         ExposedLockProvider(database),
     )

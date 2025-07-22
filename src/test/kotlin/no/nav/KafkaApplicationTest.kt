@@ -215,7 +215,7 @@ class KafkaApplicationTest {
     }
 
     private fun configureTopology(topicAndConsumers: List<StringTopicConsumer>): Topology {
-        return configureTopology(topicAndConsumers, emptyList(), TestLockProvider)
+        return configureTopology(topicAndConsumers, TestLockProvider)
     }
 }
 
