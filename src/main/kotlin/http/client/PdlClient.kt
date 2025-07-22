@@ -89,7 +89,7 @@ class PdlClient(
         } else {
             val alder = result.data?.hentPerson?.foedselsdato?.firstOrNull()?.foedselsdato
                 ?.let { LocalDate.parse(it, DateTimeFormatter.ISO_LOCAL_DATE) }
-                ?.let { Period.between(ZonedDateTime.now().toLocalDate(), it).years } // TODO: Verify this is actually correct
+                ?.let { Period.between(it, ZonedDateTime.now().toLocalDate()).years } // TODO: Verify this is actually correct
             return if (alder == null) {
                 AlderIkkeFunnet("Alder kunne ikke beregnes fra fødselsdato")
             } else {
