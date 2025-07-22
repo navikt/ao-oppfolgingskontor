@@ -51,7 +51,7 @@ class RetryableProcessorTest {
  private val punctuationCallback = slot<Punctuator>()
 
  private val config =
-  RetryConfig(retryInterval = Duration.ofMinutes(1), maxRetries = MaxRetries.Finite(2), stateStoreName = "test-store")
+  RetryConfig(retryInterval = Duration.ofMinutes(1), maxRetries = MaxRetries.Finite(2))
  private val inputTopicName = "input-topic"
 
  @BeforeEach

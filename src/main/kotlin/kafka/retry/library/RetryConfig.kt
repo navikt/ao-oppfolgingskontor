@@ -13,8 +13,6 @@ sealed class MaxRetries {
 }
 
 data class RetryConfig(
-    /* Each topic should have their own state-store */
-    val stateStoreName: String,
     val maxRetries: MaxRetries = MaxRetries.Infinite,
     val retryInterval: Duration = Duration.ofMinutes(1),
     val retryBatchSize: Int = 100
