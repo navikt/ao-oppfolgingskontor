@@ -70,4 +70,4 @@ topics:
     pdlLeesah: "pdl.leesah-v1"
     skjerming: "nom.skjermede-personer-status-v1"
   ut:
-    endringPaArbeidsoppfolgingskontor: "endring-pa-arbeidsoppfolgingskontor-v1.0"
+    arbeidsoppfolgingskontortilordninger: "arbeidsoppfolgingskontortilordninger-v1"
