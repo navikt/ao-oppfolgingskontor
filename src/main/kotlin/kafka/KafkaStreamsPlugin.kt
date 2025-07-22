@@ -90,7 +90,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
 
     val aoKontorEndretSink = StringStringSinkConfig(
         arbeidsoppfolgingkontorSinkName,
-        topics.ut.endringPaArbeidsoppfolgingskontor
+        topics.ut.arbeidsoppfolgingskontortilordninger
     )
     val topology = configureTopology(listOf(
             StringTopicConsumer(

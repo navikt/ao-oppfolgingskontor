@@ -1,5 +1,4 @@
 import io.ktor.server.application.ApplicationEnvironment
-import no.nav.kafka.config.processorName
 
 class Topics(
     val inn: Inn,
@@ -10,18 +9,9 @@ class Topics(
         val oppfolgingsperiodeV1: String,
         val pdlLeesah: String,
         val skjerming: String,
-    ) {
-        fun processorNames(): List<String> {
-            return listOf(
-                processorName(endringPaOppfolgingsbruker),
-                processorName(oppfolgingsperiodeV1),
-                processorName(pdlLeesah),
-                processorName(skjerming),
-            )
-        }
-    }
+    )
     class Ut(
-        val endringPaArbeidsoppfolgingskontor: String,
+        val arbeidsoppfolgingskontortilordninger: String,
     )
 }
 
@@ -34,7 +24,7 @@ fun ApplicationEnvironment.topics(): Topics {
         this.config.property("topics.inn.skjerming").getString(),
             ),
         Topics.Ut(
-            this.config.property("topics.inn.endringPaArbeidsoppfolgingskontor").getString()
+            this.config.property("topics.ut.arbeidsoppfolgingskontortilordninger").getString()
         )
     )
 }
