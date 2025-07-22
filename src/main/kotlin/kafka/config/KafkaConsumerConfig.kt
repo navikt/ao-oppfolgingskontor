@@ -23,7 +23,7 @@ sealed class TopicConsumer(
 )
 class StringTopicConsumer(
     topic: String,
-    val processRecord: ProcessRecord<String, String, Unit, Unit>,
+    val processRecord: ProcessRecord<String, String, String, String>,
 ): TopicConsumer(topic)
 class AvroTopicConsumer(
     topic: String,
@@ -32,9 +32,33 @@ class AvroTopicConsumer(
     val keySerde: Serde<String>
 ): TopicConsumer(topic)
 
+open class SinkConfig<K, V>(
+    val sinkName: String,
+    val outputTopicName: String,
+    val keySerde: Serde<K>,
+    val valueSerde: Serde<V>,
+    val parentNames: List<String>,
+)
+class StringStringSinkConfig(
+    sinkName: String,
+    outputTopicName: String,
+    parentNames: List<String>,
+): SinkConfig<String, String>(
+    sinkName,
+    outputTopicName,
+    Serdes.String(),
+    Serdes.String(),
+    parentNames
+)
+
+fun processorName(topic: String): String {
+    return "${topic}-processor"
+}
+
 fun configureTopology(
     topicAndConsumers: List<TopicConsumer>,
-    lockProvider: LockProvider
+    sinkConfigs: List<SinkConfig<* ,*>>,
+    lockProvider: LockProvider,
 ): Topology {
     val builder = StreamsBuilder()
 
@@ -65,7 +89,18 @@ fun configureTopology(
         }
     }
 
-    return builder.build()
+    val topology = builder.build()
+
+    sinkConfigs.forEach { sinkConfig ->
+        topology.addSink(
+            sinkConfig.sinkName,
+            sinkConfig.outputTopicName,
+            sinkConfig.keySerde.serializer(),
+            sinkConfig.valueSerde.serializer(),
+            *sinkConfig.parentNames.toTypedArray())
+    }
+
+    return topology
 }
 
 fun kafkaStreamsProps(config: ApplicationConfig): Properties {

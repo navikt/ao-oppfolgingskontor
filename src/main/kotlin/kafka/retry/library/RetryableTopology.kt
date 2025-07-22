@@ -1,15 +1,20 @@
 package no.nav.kafka.retry.library
 import net.javacrumbs.shedlock.core.LockProvider
+import no.nav.kafka.config.processorName
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.retry.library.internal.FailedMessageRepository
 import no.nav.kafka.retry.library.internal.PostgresRetryStoreBuilder
 import no.nav.kafka.retry.library.internal.RetryableProcessor
 import org.apache.kafka.common.serialization.Serde
+import org.apache.kafka.streams.KeyValue
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.kstream.Consumed
 import org.apache.kafka.streams.kstream.KStream
+import org.apache.kafka.streams.kstream.Named
 import org.apache.kafka.streams.processor.api.ProcessorSupplier
 import org.apache.kafka.streams.processor.api.Record
+import org.slf4j.LoggerFactory
+import java.time.ZonedDateTime
 import javax.sql.DataSource
 
 /**
@@ -44,6 +49,7 @@ outputStream.to("output-topic")
  */
 object RetryableTopology {
 
+    val log = LoggerFactory.getLogger(RetryableTopology::class.java)
 
     /**
      * Versjon for "terminal node"-bruk.
@@ -88,7 +94,7 @@ object RetryableTopology {
         val storeBuilder = PostgresRetryStoreBuilder(config.stateStoreName, repository)
         builder.addStateStore(storeBuilder)
 
-        val processorSupplier = ProcessorSupplier<KIn, VIn, KOut, VOut> {
+        val processorSupplier = ProcessorSupplier {
             RetryableProcessor(
                 config = config,
                 keyInSerializer = keyInSerde.serializer(),
@@ -103,9 +109,17 @@ object RetryableTopology {
         }
 
         val inputStream = builder.stream(inputTopic, Consumed.with(keyInSerde, valueInSerde))
-        val processedStream =  inputStream.process(processorSupplier, config.stateStoreName)
+        return inputStream
+            .process(processorSupplier, Named.`as`(processorName(inputTopic)), config.stateStoreName)
+            .map { key, value ->
+                log.info("LOG - Processing key $key")
+                print("DEBUG -Processing key $key\n")
+                KeyValue(key, value)
+            }
+            .filterNot {
+                    _, value -> value == null
+            } as KStream<KOut, VOut>
         // Vi må filtrere ut null-verdiene som terminal-versjonen introduserer.
-        @Suppress("UNCHECKED_CAST")
-        return processedStream.filterNot { _, value -> value == null } as KStream<KOut, VOut>
+//        return processedStream
     }
 }

@@ -28,7 +28,7 @@ class EndringPaOppfolgingsBrukerConsumer() {
 
     val json = Json { ignoreUnknownKeys = true }
 
-    fun consume(record: Record<String, String>): RecordProcessingResult<Unit, Unit> {
+    fun consume(record: Record<String, String>): RecordProcessingResult<String, String> {
         log.info("Consumed record")
         val fnrString = record.key()
         val endringPaOppfolgingsBruker = json.decodeFromString<EndringPaOppfolgingsBruker>(record.value())

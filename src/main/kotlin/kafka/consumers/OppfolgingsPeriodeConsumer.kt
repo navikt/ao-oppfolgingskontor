@@ -34,7 +34,7 @@ class OppfolgingsPeriodeConsumer(
     val log = LoggerFactory.getLogger(this::class.java)
     fun consume(
             record: Record<String, String>
-    ): RecordProcessingResult<Unit, Unit> {
+    ): RecordProcessingResult<String, String> {
         val aktorId = record.key()
         try {
             return runBlocking {

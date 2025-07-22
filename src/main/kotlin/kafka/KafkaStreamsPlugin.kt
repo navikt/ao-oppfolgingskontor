@@ -16,6 +16,7 @@ import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
 import no.nav.http.client.FnrResult
 import no.nav.http.client.PdlClient
 import no.nav.kafka.config.AvroTopicConsumer
+import no.nav.kafka.config.StringStringSinkConfig
 import no.nav.kafka.config.StringTopicConsumer
 import no.nav.kafka.config.kafkaStreamsProps
 import no.nav.kafka.config.configureTopology
@@ -100,9 +101,15 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         StringTopicConsumer(
             topics.inn.skjerming
         ) { record -> skjermingConsumer.consume(record) }),
-        ExposedLockProvider(database)
+        listOf(
+            StringStringSinkConfig(
+                arbeidsoppfolgingkontorSinkName,
+                topics.ut.endringPaArbeidsoppfolgingskontor,
+                topics.inn.processorNames()
+            ),
+        ),
+        ExposedLockProvider(database),
     )
-    topology.addSink(arbeidsoppfolgingkontorSinkName, topics.ut.endringPaArbeidsoppfolgingskontor)
     val kafkaStream = KafkaStreams(topology, kafkaStreamsProps(environment.config))
 
     kafkaStream.setUncaughtExceptionHandler {

@@ -17,12 +17,12 @@ class SkjermingConsumer(
 ) {
     val log = LoggerFactory.getLogger(SkjermingConsumer::class.java)
 
-    fun consume(record: Record<String, String>): RecordProcessingResult<Unit, Unit> {
+    fun consume(record: Record<String, String>): RecordProcessingResult<String, String> {
         println("Processing Skjerming record: ${record.value()}")
         return handterEndringISKjermetStatus(record.key(), record.value().toBoolean())
     }
 
-    fun handterEndringISKjermetStatus(fnr: String, skjermingStatus: Boolean): RecordProcessingResult<Unit, Unit> {
+    fun handterEndringISKjermetStatus(fnr: String, skjermingStatus: Boolean): RecordProcessingResult<String, String> {
         return runBlocking {
             val result = automatiskKontorRutingService.handterEndringISkjermingStatus(
                 SkjermetStatusEndret(Fnr(fnr), HarSkjerming(skjermingStatus))
