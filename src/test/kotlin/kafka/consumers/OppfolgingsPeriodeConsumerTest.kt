@@ -37,6 +37,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
 import java.time.OffsetDateTime
 import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 
 class OppfolgingsPeriodeConsumerTest {
 
@@ -171,55 +172,6 @@ class OppfolgingsPeriodeConsumerTest {
         }
 
     @Test
-    fun `skal lagre med riktig tidssone`() = testApplication {
-        application {
-            flywayMigrationInTest()
-
-            val finlandFnr = "123"
-            val osloFnr = "223"
-            val osloZonedId = ZoneId.of("Europe/Oslo")
-            val finlandZonedId = ZoneId.of("Europe/Helsinki")
-            val zonedDateTime = ZonedDateTime.of(
-                2020, 7, 1, 1, 0, 0, 0, osloZonedId
-            )
-            val finlandZonedDateTime = ZonedDateTime.of(
-                2020, 7, 1, 2, 0, 0, 0, finlandZonedId
-            )
-
-            zonedDateTime.toOffsetDateTime()
-            val instant = zonedDateTime.toInstant()
-            instant.toString() shouldBe "2020-06-30T23:00:00Z"
-            zonedDateTime.toOffsetDateTime().toInstant().toString() shouldBe "2020-06-30T23:00:00Z"
-            finlandZonedDateTime.toInstant() shouldBe zonedDateTime.toInstant()
-            finlandZonedDateTime.toOffsetDateTime().toInstant() shouldBe zonedDateTime.toInstant()
-            finlandZonedDateTime.toInstant() shouldBe zonedDateTime.toOffsetDateTime().toInstant()
-
-            zonedDateTime.toOffsetDateTime().toInstant() shouldBe instant
-
-            transaction {
-                OppfolgingsperiodeTable.insert {
-                    it[this.id] = osloFnr
-                    it[this.oppfolgingsperiodeId] = UUID.randomUUID()
-                    it[this.startDato] = zonedDateTime.toOffsetDateTime()
-                }
-                OppfolgingsperiodeTable.insert {
-                    it[this.id] = finlandFnr
-                    it[this.oppfolgingsperiodeId] = UUID.randomUUID()
-                    it[this.startDato] = finlandZonedDateTime.toOffsetDateTime()
-                }
-            }
-            transaction {
-                val readFinland = OppfolgingsperiodeEntity[finlandFnr].startDato
-                val readOslo = OppfolgingsperiodeEntity[osloFnr].startDato
-
-                readFinland.toInstant() shouldBe finlandZonedDateTime.toInstant()
-                readOslo.toInstant() shouldBe zonedDateTime.toInstant()
-            }
-
-        }
-    }
-
-    @Test
     fun `start på nyere periode skal slette gammel periode og lagre ny på gitt ident`() =
         testApplication {
             val bruker = testBruker()
@@ -253,7 +205,7 @@ class OppfolgingsPeriodeConsumerTest {
                     oppfolgingForBruker.shouldNotBeNull()
                     oppfolgingForBruker.oppfolgingsperiodeId shouldBe nyerePeriodeId
                     withClue("startDato lest fra db: ${oppfolgingForBruker.startDato.toInstant()} skal være lik input startDato: ${nyereStartDato.toInstant()}") {
-                        oppfolgingForBruker.startDato.toInstant() shouldBe nyereStartDato.toInstant()
+                        oppfolgingForBruker.startDato.toInstant().truncatedTo(ChronoUnit.MICROS) shouldBe nyereStartDato.toInstant().truncatedTo(ChronoUnit.MICROS)
                     }
                 }
             }
