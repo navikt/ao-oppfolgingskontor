@@ -1,13 +1,17 @@
 package no.nav.domain.externalEvents
 
 import no.nav.db.Ident
+import no.nav.domain.OppfolgingsperiodeId
 import java.time.ZonedDateTime
-import java.util.UUID
 
-sealed class OppfolgingsperiodeEndret(val fnr: Ident)
+sealed class OppfolgingsperiodeEndret(val fnr: Ident, val oppfolgingsperiodeId: OppfolgingsperiodeId) {}
 class OppfolgingsperiodeStartet(
     fnr: Ident,
     val startDato: ZonedDateTime,
-    val oppfolgingsperiodeId: UUID,
-): OppfolgingsperiodeEndret(fnr)
-class OppfolgingsperiodeAvsluttet(fnr: Ident): OppfolgingsperiodeEndret(fnr)
+    periodeId: OppfolgingsperiodeId,
+): OppfolgingsperiodeEndret(fnr, periodeId)
+class OppfolgingsperiodeAvsluttet(
+    fnr: Ident,
+    val startDato: ZonedDateTime,
+    periodeId: OppfolgingsperiodeId,
+): OppfolgingsperiodeEndret(fnr, periodeId)

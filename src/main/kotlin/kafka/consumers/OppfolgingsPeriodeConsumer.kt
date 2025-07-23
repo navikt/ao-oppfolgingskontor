@@ -5,6 +5,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import no.nav.db.Ident
+import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeEndret
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
@@ -17,7 +18,10 @@ import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
+import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
+import no.nav.services.NotUnderOppfolging
+import no.nav.services.OppfolgingperiodeOppslagFeil
 import no.nav.services.OppfolgingsperiodeService
 import no.nav.services.TilordningFeil
 import no.nav.services.TilordningSuccess
@@ -49,11 +53,28 @@ class OppfolgingsPeriodeConsumer(
                     .toOppfolgingsperiodeEndret(ident)
 
                 when (oppfolgingsperiode) {
-                    is OppfolgingsperiodeAvsluttet -> oppfolgingsperiodeService.deleteOppfolgingsperiode(ident)
-                    is OppfolgingsperiodeStartet -> oppfolgingsperiodeService.saveOppfolgingsperiode(
-                        ident,
-                        oppfolgingsperiode.startDato,
-                        oppfolgingsperiode.oppfolgingsperiodeId)
+                    is OppfolgingsperiodeAvsluttet -> {
+                        val currentOppfolgingsperiode = getCurrentPeriode(ident)
+                        when (currentOppfolgingsperiode != null) {
+                            true -> {
+                                if (currentOppfolgingsperiode.startDato.isBefore(oppfolgingsperiode.startDato.toOffsetDateTime())) {
+                                    oppfolgingsperiodeService.deleteOppfolgingsperiode(currentOppfolgingsperiode.periodeId)
+                                }
+                            }
+                            false -> {}
+                        }
+                    }
+                    is OppfolgingsperiodeStartet -> {
+                        if (oppfolgingsperiodeService.harNyerePeriodePåIdent(oppfolgingsperiode)) {
+                            log.warn("Hadde nyere periode på ident, hopper over melding")
+                            return@runBlocking Skip()
+                        } else {
+                            oppfolgingsperiodeService.saveOppfolgingsperiode(
+                                ident,
+                                oppfolgingsperiode.startDato,
+                                oppfolgingsperiode.oppfolgingsperiodeId)
+                        }
+                    }
                 }
 
                 return@runBlocking automatiskKontorRutingService
@@ -74,6 +95,14 @@ class OppfolgingsPeriodeConsumer(
         }
     }
 
+    private fun getCurrentPeriode(ident: Ident): AktivOppfolgingsperiode? {
+        val currentOppfolgingsperiodeResult = oppfolgingsperiodeService.getCurrentOppfolgingsperiode(ident)
+        return when (currentOppfolgingsperiodeResult) {
+            is AktivOppfolgingsperiode -> currentOppfolgingsperiodeResult
+            else -> null
+        }
+    }
+
     enum class StartetBegrunnelse {
         ARBEIDSSOKER,
         SYKEMELDT_MER_OPPFOLGING,
@@ -91,10 +120,7 @@ data class OppfolgingsperiodeDTO(
 )
 
 fun OppfolgingsperiodeDTO.toOppfolgingsperiodeEndret(fnr: Ident): OppfolgingsperiodeEndret {
-    if (this.sluttDato == null) return OppfolgingsperiodeStartet(
-        fnr,
-        this.startDato,
-        UUID.fromString(this.uuid)
-    )
-    return OppfolgingsperiodeAvsluttet(fnr)
+    val id = OppfolgingsperiodeId(UUID.fromString(this.uuid))
+    if (this.sluttDato == null) return OppfolgingsperiodeStartet(fnr, this.startDato, id)
+    return OppfolgingsperiodeAvsluttet(fnr, this.startDato, id)
 }

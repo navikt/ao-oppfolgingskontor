@@ -31,6 +31,7 @@ import no.nav.utils.flywayMigrationInTest
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
+import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 import java.util.UUID
 
@@ -142,7 +143,7 @@ class LeesahConsumerTest {
             profileringProvider = { throw Throwable("Denne skal ikke brukes") },
             erSkjermetProvider = { SkjermingFunnet(HarSkjerming(false)) },
             harStrengtFortroligAdresseProvider = { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
-            isUnderOppfolgingProvider = { AktivOppfolgingsperiode(Fnr("66666666666"), OppfolgingsperiodeId(UUID.randomUUID())) }
+            isUnderOppfolgingProvider = { AktivOppfolgingsperiode(Fnr("66666666666"), OppfolgingsperiodeId(UUID.randomUUID()), OffsetDateTime.now()) }
         )
     }
 

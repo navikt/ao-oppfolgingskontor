@@ -1,63 +1,88 @@
 package no.nav.services
 
 import java.time.ZonedDateTime
-import java.util.UUID
 import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.db.entity.OppfolgingsperiodeEntity
 import no.nav.db.table.OppfolgingsperiodeTable
+import no.nav.db.table.OppfolgingsperiodeTable.oppfolgingsperiodeId
 import no.nav.domain.OppfolgingsperiodeId
+import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.http.client.FnrFunnet
 import no.nav.http.client.FnrIkkeFunnet
 import no.nav.http.client.FnrOppslagFeil
 import no.nav.http.client.FnrResult
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.upsert
 import org.slf4j.LoggerFactory
+import java.time.Instant
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 
 sealed class OppfolgingsperiodeOppslagResult()
-data class AktivOppfolgingsperiode(val fnr: Ident, val periodeId: OppfolgingsperiodeId) : OppfolgingsperiodeOppslagResult()
+data class AktivOppfolgingsperiode(val fnr: Ident, val periodeId: OppfolgingsperiodeId, val startDato: OffsetDateTime) : OppfolgingsperiodeOppslagResult()
 object NotUnderOppfolging : OppfolgingsperiodeOppslagResult()
 data class OppfolgingperiodeOppslagFeil(val message: String) : OppfolgingsperiodeOppslagResult()
 
 object OppfolgingsperiodeService {
     private val log = LoggerFactory.getLogger(this::class.java)
 
-    suspend fun saveOppfolgingsperiode(fnr: Ident, startDato: ZonedDateTime, oppfolgingsperiodeId: UUID) {
+    fun saveOppfolgingsperiode(fnr: Ident, startDato: ZonedDateTime, oppfolgingsperiodeId: OppfolgingsperiodeId) {
         transaction {
-            OppfolgingsperiodeTable.insert {
+            OppfolgingsperiodeTable.upsert {
                 it[id] = fnr.value
                 it[this.startDato] = startDato.toOffsetDateTime()
-                it[this.oppfolgingsperiodeId] = oppfolgingsperiodeId
+                it[this.oppfolgingsperiodeId] = oppfolgingsperiodeId.value
+                it[this.updatedAt] = OffsetDateTime.now(ZoneOffset.systemDefault())
             }
         }
     }
 
-    suspend fun deleteOppfolgingsperiode(fnr: Ident) {
-        transaction {
-            val deletedRows = OppfolgingsperiodeTable.deleteWhere { OppfolgingsperiodeTable.id eq fnr.value }
+    fun deleteOppfolgingsperiode(oppfolgingsperiodeId: OppfolgingsperiodeId): Int {
+        return transaction {
+            val deletedRows = OppfolgingsperiodeTable.deleteWhere { OppfolgingsperiodeTable.oppfolgingsperiodeId eq oppfolgingsperiodeId.value }
             if (deletedRows > 0) {
                 log.info("Deleted oppfolgingsperiode")
             } else {
                 log.warn("Attempted to delete oppfolgingsperiode but no record was found")
             }
+            return@transaction deletedRows
         }
     }
 
-    suspend fun hasActiveOppfolgingsperiode(fnr: Fnr): Boolean {
+    fun harNyerePeriodePåIdent(oppfolgingsperiode: OppfolgingsperiodeStartet): Boolean {
+        return transaction {
+            val eksisterendeStartDato = OppfolgingsperiodeTable.select(OppfolgingsperiodeTable.startDato)
+                .where { (OppfolgingsperiodeTable.id eq oppfolgingsperiode.fnr.value) and (oppfolgingsperiodeId neq oppfolgingsperiode.oppfolgingsperiodeId.value) }
+                .map { row -> row[OppfolgingsperiodeTable.startDato] }
+                .firstOrNull()
+            if (eksisterendeStartDato != null) {
+                return@transaction eksisterendeStartDato.isAfter(oppfolgingsperiode.startDato.toOffsetDateTime())
+            }
+            return@transaction false
+        }
+    }
+
+    fun hasActiveOppfolgingsperiode(fnr: Fnr): Boolean {
         return transaction { OppfolgingsperiodeEntity.findById(fnr.value) != null }
     }
 
-    fun getCurrentOppfolgingsperiode(fnr: Fnr) = getCurrentOppfolgingsperiode(FnrFunnet(fnr))
+    fun getCurrentOppfolgingsperiode(fnr: Ident) = getCurrentOppfolgingsperiode(FnrFunnet(fnr))
     fun getCurrentOppfolgingsperiode(fnr: FnrResult): OppfolgingsperiodeOppslagResult {
         return try {
             when (fnr) {
                 is FnrFunnet -> transaction {
                     val entity = OppfolgingsperiodeEntity.findById(fnr.ident.value)
                     when (entity != null) {
-                        true -> AktivOppfolgingsperiode(fnr.ident, OppfolgingsperiodeId(entity.oppfolgingsperiodeId))
+                        true -> AktivOppfolgingsperiode(
+                            fnr.ident,
+                            OppfolgingsperiodeId(entity.oppfolgingsperiodeId),
+                            entity.startDato
+                        )
                         else -> NotUnderOppfolging
                     }
                 }

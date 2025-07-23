@@ -40,6 +40,7 @@ import org.apache.kafka.streams.Topology
 import org.apache.kafka.streams.TopologyTestDriver
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
+import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 import java.util.Properties
 import java.util.UUID
@@ -94,7 +95,7 @@ class KafkaApplicationTest {
                 { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
                 { SkjermingFunnet(HarSkjerming(false)) },
                 { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
-                { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId) }),
+                { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, OffsetDateTime.now()) }),
                 OppfolgingsperiodeService,
                 { FnrFunnet(fnr) }
             )
@@ -155,7 +156,7 @@ class KafkaApplicationTest {
             { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
             { SkjermingFunnet(HarSkjerming(false)) },
             { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
-            { AktivOppfolgingsperiode(fnr, OppfolgingsperiodeId(UUID.randomUUID())) }
+            { AktivOppfolgingsperiode(fnr, OppfolgingsperiodeId(UUID.randomUUID()), OffsetDateTime.now()) }
         )
         val skjermingConsumer = SkjermingConsumer(automatiskKontorRutingService)
 

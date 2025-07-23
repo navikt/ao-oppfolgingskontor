@@ -61,6 +61,7 @@ import no.nav.services.OppfolgingsperiodeOppslagResult
 import no.nav.services.TilordningFeil
 import no.nav.services.TilordningSuccessIngenEndring
 import no.nav.services.TilordningSuccessKontorEndret
+import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 import java.util.UUID
 
@@ -176,7 +177,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
 
         it("avsluttet oppfolgingsperiode skal ikke sette ao kontor") {
             gitt(ungBrukerMedGodeMuligheter).tilordneKontorAutomatisk(
-                OppfolgingsperiodeAvsluttet(ungBrukerMedGodeMuligheter.fnr())
+                OppfolgingsperiodeAvsluttet(ungBrukerMedGodeMuligheter.fnr(), ZonedDateTime.now(), OppfolgingsperiodeId(UUID.randomUUID()))
             ) shouldBe TilordningSuccessIngenEndring
         }
     }
@@ -475,7 +476,7 @@ fun oppfolgingsperiodeStartet(fnr: Ident): OppfolgingsperiodeStartet {
     return OppfolgingsperiodeStartet(
         fnr,
         ZonedDateTime.now(),
-        UUID.randomUUID()
+        OppfolgingsperiodeId(UUID.randomUUID())
     )
 }
 
@@ -499,7 +500,7 @@ fun gitt(bruker: Bruker): AutomatiskKontorRutingService {
 
 fun defaultOppfolgingsperiodeOppslagResult(fnr: FnrResult): OppfolgingsperiodeOppslagResult {
     return when (fnr) {
-        is FnrFunnet -> return AktivOppfolgingsperiode(fnr.ident, OppfolgingsperiodeId(UUID.randomUUID()))
+        is FnrFunnet -> return AktivOppfolgingsperiode(fnr.ident, OppfolgingsperiodeId(UUID.randomUUID()), OffsetDateTime.now())
         is FnrIkkeFunnet -> OppfolgingperiodeOppslagFeil(fnr.message)
         is FnrOppslagFeil -> OppfolgingperiodeOppslagFeil(fnr.message)
     }

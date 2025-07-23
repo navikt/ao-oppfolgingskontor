@@ -62,7 +62,6 @@ class EndringPaOppfolgingsBrukerConsumer() {
             }
         }
 
-
         KontorTilordningService.tilordneKontor(
             EndringPaaOppfolgingsBrukerFraArena(
                 tilordning = KontorTilordning(
