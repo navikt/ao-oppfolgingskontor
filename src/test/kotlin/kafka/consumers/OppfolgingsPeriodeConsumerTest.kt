@@ -33,6 +33,7 @@ import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
 import java.time.OffsetDateTime
+import java.time.ZoneId
 
 class OppfolgingsPeriodeConsumerTest {
 
@@ -60,7 +61,7 @@ class OppfolgingsPeriodeConsumerTest {
     fun testBruker() = Bruker(
         fnr = randomFnr(),
         aktorId = "1234567890123",
-        periodeStart = ZonedDateTime.now().minusDays(2),
+        periodeStart = ZonedDateTime.now(ZoneId.of("Europe/Oslo")).minusDays(2),
         oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
     )
 
