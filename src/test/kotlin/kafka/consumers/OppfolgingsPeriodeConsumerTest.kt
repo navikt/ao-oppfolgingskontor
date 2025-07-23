@@ -205,7 +205,10 @@ class OppfolgingsPeriodeConsumerTest {
                     oppfolgingForBruker.shouldNotBeNull()
                     oppfolgingForBruker.oppfolgingsperiodeId shouldBe nyerePeriodeId
                     withClue("startDato lest fra db: ${oppfolgingForBruker.startDato.toInstant()} skal være lik input startDato: ${nyereStartDato.toInstant()}") {
-                        oppfolgingForBruker.startDato.toInstant().truncatedTo(ChronoUnit.MICROS) shouldBe nyereStartDato.toInstant().truncatedTo(ChronoUnit.MICROS)
+                        // Truncated always rounds down, therefore we add 500 nanos to make it behave like actual rounding like done when
+                        // too highe precision is inserted into the db
+                        oppfolgingForBruker.startDato.toInstant() shouldBe nyereStartDato
+                            .toInstant().plusNanos(500).truncatedTo(ChronoUnit.MICROS)
                     }
                 }
             }
