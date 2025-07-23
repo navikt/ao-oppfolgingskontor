@@ -4,6 +4,9 @@ run-name:  Deploy feature branch ${{ github.ref_name }} to dev by @${{ github.ac
 on:
   workflow_dispatch:
 
+env:
+  TZ: Europe/Oslo
+
 concurrency:
   group: deploy-feature
   cancel-in-progress: true
