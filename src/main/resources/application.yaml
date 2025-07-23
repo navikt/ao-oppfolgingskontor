@@ -1,5 +1,7 @@
 appName: "$NAIS_APP_NAME"
 
+cluster: "$NAIS_CLUSTER_NAME: local"
+
 ktor:
     application:
         modules:
@@ -66,7 +68,7 @@ kafka:
 topics:
   inn:
     endringPaOppfolgingsbruker: "pto.endring-paa-oppfolgingsbruker-v2"
-    oppfolgingsperiodeV1: "pto.oppfolgingsperiode-v1"
+    sisteOppfolgingsperiodeV1: "pto.siste-oppfolgingsperiode-v1"
     pdlLeesah: "pdl.leesah-v1"
     skjerming: "nom.skjermede-personer-status-v1"
   ut:

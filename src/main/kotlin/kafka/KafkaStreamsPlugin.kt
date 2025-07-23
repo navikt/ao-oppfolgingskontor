@@ -18,6 +18,7 @@ import no.nav.http.client.PdlClient
 import no.nav.kafka.config.AvroTopicConsumer
 import no.nav.kafka.config.StringStringSinkConfig
 import no.nav.kafka.config.StringTopicConsumer
+import no.nav.kafka.config.TopicConsumer
 import no.nav.kafka.config.kafkaStreamsProps
 import no.nav.kafka.config.configureTopology
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerConsumer
@@ -83,8 +84,8 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     ) { aktorId -> pdlClient.hentFnrFraAktorId(aktorId) }
 
     val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, fnrProvider)
-    val spesificAvroValueSerde = LeesahAvroSerdes(environment.config).valueAvroSerde
-    val specificAvroKeySerde = LeesahAvroSerdes(environment.config).keyAvroSerde
+    val avroValueSpecificSerde = LeesahAvroSerdes(environment.config).valueAvroSerde
+    val avroKeySerde = LeesahAvroSerdes(environment.config).keyAvroSerde
 
     val skjermingConsumer = SkjermingConsumer(automatiskKontorRutingService)
 
@@ -92,20 +93,34 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         arbeidsoppfolgingkontorSinkName,
         topics.ut.arbeidsoppfolgingskontortilordninger
     )
-    val topology = configureTopology(listOf(
+    var topicConsumerList : List<TopicConsumer>
+
+    val isProduction = environment.config.propertyOrNull("cluster")?.getString()?.contentEquals("prod-gcp") ?: false
+    if (isProduction) logger.info("Kjører i produksjonsmodus. Konsumerer kun siste-oppfølgingsperiode.")
+
+    if (isProduction) {
+        topicConsumerList = listOf(
+            StringTopicConsumer(
+                topics.inn.sisteOppfolgingsperiodeV1,
+                oppfolgingsPeriodeConsumer::consume,
+                aoKontorEndretSink
+            )
+        )
+    } else {
+        topicConsumerList = listOf(
+            StringTopicConsumer(
+                topics.inn.sisteOppfolgingsperiodeV1,
+                oppfolgingsPeriodeConsumer::consume,
+                aoKontorEndretSink
+            ),
             StringTopicConsumer(
                 topics.inn.endringPaOppfolgingsbruker,
                 endringPaOppfolgingsBrukerConsumer::consume,
                 aoKontorEndretSink
             ),
-            StringTopicConsumer(
-                topics.inn.oppfolgingsperiodeV1,
-                oppfolgingsPeriodeConsumer::consume,
-                aoKontorEndretSink
-            ),
             AvroTopicConsumer(
                 topics.inn.pdlLeesah,
-                leesahConsumer::consume, spesificAvroValueSerde, specificAvroKeySerde,
+                leesahConsumer::consume, avroValueSpecificSerde, avroKeySerde,
                 aoKontorEndretSink
             ),
             StringTopicConsumer(
@@ -113,9 +128,9 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
                 skjermingConsumer::consume,
                 aoKontorEndretSink
             )
-        ),
-        ExposedLockProvider(database),
-    )
+        )
+    }
+    val topology = configureTopology(topicConsumerList, ExposedLockProvider(database))
     val kafkaStream = KafkaStreams(topology, kafkaStreamsProps(environment.config))
 
     kafkaStream.setUncaughtExceptionHandler {
