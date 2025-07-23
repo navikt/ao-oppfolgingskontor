@@ -36,7 +36,7 @@ jobs:
         run: ./gradlew graphqlGenerateSDL
 
       - name: Test and build
-        run: ./gradlew build
+        run: ./gradlew build --scan
 
       - name: Push docker image to GAR
         uses: nais/docker-build-push@v0

@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.plugin.serialization)
     alias(libs.plugins.expedia.graphql)
     alias(libs.plugins.sonar)
+    id("project-report")
     id("io.github.androa.gradle.plugin.avro") version "0.0.11"
     jacoco
 }
