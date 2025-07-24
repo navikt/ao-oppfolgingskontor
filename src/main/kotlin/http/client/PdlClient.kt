@@ -102,7 +102,6 @@ class PdlClient(
         val query = HentFnrQuery(HentFnrQuery.Variables(ident = aktorId, historikk = false))
         val result = client.execute(query)
         if (result.errors != null && result.errors!!.isNotEmpty()) {
-            log.error("Feil ved henting av fnr for aktorId $aktorId: \n\t${result.errors!!.joinToString { it.message }}")
             return FnrOppslagFeil(result.errors!!.joinToString { "${it.message}: ${it.extensions?.get("code")}"  })
         }
         return result.data?.hentIdenter?.identer
@@ -117,7 +116,6 @@ class PdlClient(
                     }
                     ?.let { FnrFunnet(it) }
                     ?: run {
-                        log.debug("Fant ${identer.size} på identer")
                         FnrIkkeFunnet("Fant ingen gyldig fnr for bruker, antall identer: ${identer.size}, indent-typer: ${identer.joinToString { it.gruppe.name }}")
                     }
             } ?: FnrIkkeFunnet("Ingen ident funnet, feltet `identer` i hentIdenter response var null")

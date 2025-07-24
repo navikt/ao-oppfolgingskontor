@@ -46,6 +46,7 @@ class OppfolgingsPeriodeConsumer(
                     is FnrOppslagFeil -> {
                         if (skipPersonIkkeFunnet) {
                             if (result.message == "Fant ikke person: not_found") {
+                                log.info("Fant ikke person i dev - hopper over melding")
                                 return@runBlocking Skip()
                             } else {
                                 return@runBlocking Retry("Kunne ikke behandle oppfolgingsperiode melding: ${result.message}")
