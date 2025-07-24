@@ -2,6 +2,9 @@ package no.nav.kafka.config
 
 import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde
 import io.ktor.server.config.*
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import net.javacrumbs.shedlock.core.LockProvider
 import no.nav.kafka.retry.library.RetryConfig
 import no.nav.kafka.retry.library.RetryableTopology
@@ -16,6 +19,7 @@ import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
 import org.apache.kafka.streams.Topology
 import org.apache.kafka.streams.errors.LogAndFailProcessingExceptionHandler
+import sun.rmi.server.Dispatcher
 import java.util.Properties
 
 sealed class TopicConsumer(val topic: String)
@@ -66,6 +70,7 @@ fun processorName(topic: String): String {
 fun configureTopology(
     topicAndConsumers: List<TopicConsumer>,
     lockProvider: LockProvider,
+    punctuationCoroutineScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
 ): Topology {
     val builder = StreamsBuilder()
 
@@ -79,7 +84,8 @@ fun configureTopology(
                     valueInSerde = Serdes.String(),
                     businessLogic = { topicAndConsumer.processRecord(it) },
                     config = RetryConfig(),
-                    lockProvider = lockProvider
+                    lockProvider = lockProvider,
+                    punctuationCoroutineScope = punctuationCoroutineScope,
                 )
             }
             is AvroTopicConsumer -> {
@@ -90,7 +96,8 @@ fun configureTopology(
                     valueInSerde = topicAndConsumer.valueSerde,
                     businessLogic = { topicAndConsumer.processRecord(it) },
                     config = RetryConfig(),
-                    lockProvider = lockProvider
+                    lockProvider = lockProvider,
+                    punctuationCoroutineScope = punctuationCoroutineScope,
                 )
             }
         }

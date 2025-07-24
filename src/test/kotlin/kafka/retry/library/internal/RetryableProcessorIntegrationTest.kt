@@ -3,6 +3,11 @@ package kafka.retry.library.internal
 import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
 import kafka.retry.TestLockProvider
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
 import no.nav.db.flywayMigrate
 import no.nav.db.table.FailedMessagesTable
 import no.nav.db.table.FailedMessagesTable.messageKeyText
@@ -45,8 +50,9 @@ class RetryableProcessorIntegrationTest {
         flywayMigrate(TestDb.postgres)
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun `should retry message when processing fails`() {
+    fun `should retry message when processing fails`() = runTest {
         val topic = "test-topic"
         val failedMessageRepository = FailedMessageRepository(topic)
 
@@ -78,6 +84,7 @@ class RetryableProcessorIntegrationTest {
         }
 
         testDriver.advanceWallClockTime(Duration.of(1, ChronoUnit.MINUTES))
+        runCurrent()
 
         withClue("Should not have any failed message in failed message repository after it has been successfully processed") {
             failedMessageRepository.hasFailedMessages("key1") shouldBe false
@@ -85,7 +92,7 @@ class RetryableProcessorIntegrationTest {
     }
 
     @Test
-    fun `should enqueue message when processing failed for previous message on same key`() {
+    fun `should enqueue message when processing failed for previous message on same key`() = runTest {
         val topic = "test-topic"
         val failedMessageRepository = FailedMessageRepository(topic)
 
@@ -108,7 +115,7 @@ class RetryableProcessorIntegrationTest {
     }
 
     @Test
-    fun `should still have message in queue if reprocessing throws`() {
+    fun `should still have message in queue if reprocessing throws`() = runTest {
         val topic = "test-topic"
         val failedMessageRepository = FailedMessageRepository(topic)
 
@@ -174,14 +181,24 @@ class RetryableProcessorIntegrationTest {
         testOutputtopic.queueSize shouldBe 1
     }
 
+    fun TestScope.setupKafkaTestDriver(
+        topic: String,
+        processRecord: ProcessRecord<String, String, String, String>,
+        sinkConfigs: StringStringSinkConfig? = null,
+    ) = setupKafkaTestDriver(
+        topic, processRecord, sinkConfigs, this.backgroundScope
+    )
+
     fun setupKafkaTestDriver(
         topic: String,
         processRecord: ProcessRecord<String, String, String, String>,
         sinkConfigs: StringStringSinkConfig? = null,
+        punctuationCoroutineScope: CoroutineScope,
     ): Triple<TopologyTestDriver, List<TestInputTopic<String, String>>, TestOutputTopic<String, String>?> {
         val topology = configureTopology(
             listOf(StringTopicConsumer(topic, processRecord, sinkConfigs)),
             TestLockProvider,
+            punctuationCoroutineScope
         )
         return setupKafkaMock(topology, listOf(topic), sinkConfigs?.outputTopicName)
     }

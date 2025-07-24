@@ -1,4 +1,6 @@
 package no.nav.kafka.retry.library
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import net.javacrumbs.shedlock.core.LockProvider
 import no.nav.kafka.config.processorName
 import no.nav.kafka.processor.RecordProcessingResult
@@ -57,6 +59,7 @@ object RetryableTopology {
         config: RetryConfig,
         noinline businessLogic: (record: Record<K, V>) -> RecordProcessingResult<Unit, Unit>,
         lockProvider: LockProvider,
+        punctuationCoroutineScope: CoroutineScope,
     ) {
         addRetryableProcessor<K, V, Unit, Unit>(
             builder, inputTopic,
@@ -64,7 +67,8 @@ object RetryableTopology {
             valueInSerde = valueInSerde,
             config = config,
             businessLogic = businessLogic,
-            lockProvider = lockProvider
+            lockProvider = lockProvider,
+            punctuationCoroutineScope = punctuationCoroutineScope,
         )
     }
 
@@ -81,6 +85,7 @@ object RetryableTopology {
         config: RetryConfig = RetryConfig(),
         noinline businessLogic: (record: Record<KIn, VIn>) -> RecordProcessingResult<KOut, VOut>,
         lockProvider: LockProvider,
+        punctuationCoroutineScope: CoroutineScope,
     ): KStream<KOut, VOut> {
 
         val repository = FailedMessageRepository(inputTopic)
@@ -95,7 +100,8 @@ object RetryableTopology {
                 topic = inputTopic,
                 repository = repository,
                 businessLogic = businessLogic,
-                lockProvider = lockProvider
+                lockProvider = lockProvider,
+                punctuationCoroutineScope = punctuationCoroutineScope,
             )
         }
         return builder.stream(inputTopic, Consumed.with(keyInSerde, valueInSerde))
