@@ -77,9 +77,9 @@ class OppfolgingsPeriodeConsumerTest {
                 flywayMigrationInTest()
                 val consumer = OppfolgingsPeriodeConsumer(
                     createAutomatiskKontorRutingService(bruker.fnr, bruker.oppfolgingsperiodeId),
-                    OppfolgingsperiodeService,
-                    { FnrFunnet(bruker.fnr) }
-                )
+                    OppfolgingsperiodeService
+                ) { FnrFunnet(bruker.fnr) }
+
 
                 val record = oppfolgingsperiodeMessage(bruker, sluttDato = null)
                 consumer.consume(record)
@@ -100,9 +100,9 @@ class OppfolgingsPeriodeConsumerTest {
                         bruker.fnr,
                     bruker.oppfolgingsperiodeId
                     ),
-                    OppfolgingsperiodeService,
-                    { FnrFunnet(bruker.fnr) }
-                )
+                    OppfolgingsperiodeService
+                ) { FnrFunnet(bruker.fnr) }
+
 
                 val record = oppfolgingsperiodeMessage(bruker, sluttDato = periodeSlutt)
 
@@ -125,8 +125,8 @@ class OppfolgingsPeriodeConsumerTest {
                     bruker.oppfolgingsperiodeId
                     ),
                     OppfolgingsperiodeService,
-                    { FnrFunnet(bruker.fnr) }
-                )
+                ) { FnrFunnet(bruker.fnr) }
+
 
                 val startPeriodeRecord = oppfolgingsperiodeMessage(bruker, sluttDato = null)
                 val avsluttetNyerePeriodeRecord = oppfolgingsperiodeMessage(
@@ -152,8 +152,8 @@ class OppfolgingsPeriodeConsumerTest {
                     bruker.oppfolgingsperiodeId
                 ),
                     OppfolgingsperiodeService,
-                    { FnrFunnet(bruker.fnr) }
-                )
+                ) { FnrFunnet(bruker.fnr) }
+
 
                 val startPeriodeRecord = oppfolgingsperiodeMessage(bruker, sluttDato = null)
                 val startGammelPeriodeRecord = oppfolgingsperiodeMessage(
@@ -185,8 +185,8 @@ class OppfolgingsPeriodeConsumerTest {
                     bruker.oppfolgingsperiodeId
                 ),
                     OppfolgingsperiodeService,
-                    { FnrFunnet(bruker.fnr) }
-                )
+                ) { FnrFunnet(bruker.fnr) }
+
 
                 val startPeriodeRecord = oppfolgingsperiodeMessage(bruker, sluttDato = null)
                 val startNyerePeriodeRecord = oppfolgingsperiodeMessage(
@@ -228,8 +228,8 @@ class OppfolgingsPeriodeConsumerTest {
                     bruker.oppfolgingsperiodeId
                 ),
                     OppfolgingsperiodeService,
-                    { FnrFunnet(bruker.fnr) }
-                )
+                ) { FnrFunnet(bruker.fnr) }
+
 
                 val startPeriodeRecord = oppfolgingsperiodeMessage(bruker, sluttDato = null)
                 val sluttNyerePeriodeRecord = oppfolgingsperiodeMessage(

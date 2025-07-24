@@ -97,8 +97,8 @@ class KafkaApplicationTest {
                 { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
                 { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, OffsetDateTime.now()) }),
                 OppfolgingsperiodeService,
-                { FnrFunnet(fnr) }
-            )
+            ) { FnrFunnet(fnr) }
+
             val topology = configureTopology(listOf(StringTopicConsumer(topic,consumer::consume)))
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(

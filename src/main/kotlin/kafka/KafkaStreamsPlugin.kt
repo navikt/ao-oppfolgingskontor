@@ -75,12 +75,16 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val meterRegistry = requireNotNull(this.pluginConfig.meterRegistry) {
         "MeterRegistry must be configured for KafkaStreamPlugin"
     }
+    val isProduction = environment.config.propertyOrNull("cluster")?.getString()?.contentEquals("prod-gcp") ?: false
+    if (isProduction) logger.info("Kjører i produksjonsmodus. Konsumerer kun siste-oppfølgingsperiode.")
 
     val endringPaOppfolgingsBrukerConsumer = EndringPaOppfolgingsBrukerConsumer()
 
     val oppfolgingsPeriodeConsumer = OppfolgingsPeriodeConsumer(
         automatiskKontorRutingService,
-        oppfolgingsperiodeService
+        oppfolgingsperiodeService,
+        // Hopp over personer som ikke finnes i dev
+        skipPersonIkkeFunnet = !isProduction
     ) { aktorId -> pdlClient.hentFnrFraAktorId(aktorId) }
 
     val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, fnrProvider)
@@ -95,8 +99,6 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     )
     var topicConsumerList : List<TopicConsumer>
 
-    val isProduction = environment.config.propertyOrNull("cluster")?.getString()?.contentEquals("prod-gcp") ?: false
-    if (isProduction) logger.info("Kjører i produksjonsmodus. Konsumerer kun siste-oppfølgingsperiode.")
 
     if (isProduction) {
         topicConsumerList = listOf(

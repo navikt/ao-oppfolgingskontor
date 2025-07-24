@@ -33,7 +33,8 @@ import java.util.UUID
 class OppfolgingsPeriodeConsumer(
         private val automatiskKontorRutingService: AutomatiskKontorRutingService,
         private val oppfolgingsperiodeService: OppfolgingsperiodeService,
-        private val fnrProvider: suspend (aktorId: String) -> FnrResult
+        private val skipPersonIkkeFunnet: Boolean = false,
+        private val fnrProvider: suspend (aktorId: String) -> FnrResult,
 ) {
     val log = LoggerFactory.getLogger(this::class.java)
     fun consume(
@@ -45,8 +46,20 @@ class OppfolgingsPeriodeConsumer(
                 val ident: Ident = when (val result = fnrProvider(aktorId)) {
                     is FnrFunnet -> result.ident
                     is FnrIkkeFunnet -> return@runBlocking Retry("Kunne ikke behandle oppfolgingsperiode melding: ${result.message}")
-                    is FnrOppslagFeil -> return@runBlocking Retry("Kunne ikke behandle oppfolgingsperiode melding: ${result.message}")
+                    is FnrOppslagFeil -> {
+                        if (skipPersonIkkeFunnet) {
+                            if (result.message == "Fant ikke person: not_found") {
+                                return@runBlocking Skip()
+                            } else {
+                                return@runBlocking Retry("Kunne ikke behandle oppfolgingsperiode melding: ${result.message}")
+                            }
+                        } else {
+                            return@runBlocking Retry("Kunne ikke behandle oppfolgingsperiode melding: ${result.message}")
+                        }
+                    }
                 }
+
+
 
                 val oppfolgingsperiode = Json
                     .decodeFromString<OppfolgingsperiodeDTO>(record.value())

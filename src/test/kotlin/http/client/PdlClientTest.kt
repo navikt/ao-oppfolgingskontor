@@ -10,6 +10,7 @@ import no.nav.db.Fnr
 import no.nav.db.Npid
 import no.nav.http.client.AlderFunnet
 import no.nav.http.client.FnrFunnet
+import no.nav.http.client.FnrOppslagFeil
 import no.nav.http.client.GeografiskTilknytningLand
 import no.nav.http.client.GeografiskTilknytningNr
 import no.nav.http.client.GtForBrukerIkkeFunnet
@@ -34,7 +35,7 @@ import java.time.ZonedDateTime
 class PdlClientTest {
 
     @Test
-    fun `skal plukke ut riktig gt fra PDL response`() = testApplication {
+    fun `hentGt skal plukke ut riktig gt fra PDL response`() = testApplication {
         val fnr = Fnr("12345678901")
         val bydelGtNr = "4141"
         val client = mockPdl("""
@@ -57,7 +58,7 @@ class PdlClientTest {
     }
 
     @Test
-    fun `skal håndtere feil i graphql reponse på spørring på GT`() = testApplication {
+    fun `hentGt skal håndtere feil i graphql reponse på spørring på GT`() = testApplication {
         val fnr = Fnr("12345678901")
         val pdlTestUrl = "http://pdl.test.local"
         val errorMessage = "Ingen GT funnet for bruker"
@@ -81,7 +82,7 @@ class PdlClientTest {
     }
 
     @Test
-    fun `skal håndtere http-feil ved graphql spørring på GT`() = testApplication {
+    fun `hentGt skal håndtere http-feil ved graphql spørring på GT`() = testApplication {
         val fnr = Fnr("12345678901")
         val client = mockPdl(HttpStatusCode.InternalServerError)
         val pdlClient = PdlClient(pdlTestUrl,client)
@@ -94,7 +95,7 @@ class PdlClientTest {
     }
 
     @Test
-    fun `skal returnere alder som et positivt heltall`() = testApplication {
+    fun `hentAlder skal returnere alder som et positivt heltall`() = testApplication {
         val fnr = Fnr("12345678901")
         val localDate = LocalDate.of(1990, 1, 31)
         val diff = Period.between(localDate, ZonedDateTime.now().toLocalDate()).years
@@ -115,7 +116,7 @@ class PdlClientTest {
     }
 
     @Test
-    fun `skal returnere strengt fortrolig adresse true når adressebeskyttelse er STRENGT_FORTROLIG_UTLAND`() = testApplication {
+    fun `harStrengtFortroligAdresse skal returnere strengt fortrolig adresse true når adressebeskyttelse er STRENGT_FORTROLIG_UTLAND`() = testApplication {
         val fnr = Fnr("12345678901")
         val client = mockPdl(hentPersonQuery("""
             {
@@ -133,7 +134,7 @@ class PdlClientTest {
     }
 
     @Test
-    fun `skal returnere strengt fortrolig adresse true når adressebeskyttelse er STRENGT_FORTROLIG`() = testApplication {
+    fun `harStrengtFortroligAdresse skal returnere strengt fortrolig adresse true når adressebeskyttelse er STRENGT_FORTROLIG`() = testApplication {
         val fnr = Fnr("12345678901")
         val client = mockPdl(hentPersonQuery("""
             { "adressebeskyttelse": [{"gradering": "STRENGT_FORTROLIG" }] }
@@ -147,7 +148,7 @@ class PdlClientTest {
     }
 
     @Test
-    fun `skal returnere at bruker ikke har adressebeskyttelse når gradering feltet er null`() = testApplication {
+    fun `harStrengtFortroligAdresse skal returnere at bruker ikke har adressebeskyttelse når gradering feltet er null`() = testApplication {
         val fnr = Fnr("12345678901")
         val client = mockPdl(hentPersonQuery("""
             { "adressebeskyttelse": [{ "gradering": null }] }
@@ -161,7 +162,7 @@ class PdlClientTest {
     }
 
     @Test
-    fun `skal returnere at bruker ikke har adressebeskyttelse når adressebeskyttelse er en tom liste`() = testApplication {
+    fun `harStrengtFortroligAdresse skal returnere at bruker ikke har adressebeskyttelse når adressebeskyttelse er en tom liste`() = testApplication {
         val fnr = Fnr("12345678901")
         val client = mockPdl(hentPersonQuery("""
             { "adressebeskyttelse": []}
@@ -175,7 +176,7 @@ class PdlClientTest {
     }
 
     @Test
-    fun `skal returnere feil oppslag ved ukjent felter`() = testApplication {
+    fun `harStrengtFortroligAdresse skal returnere feil oppslag ved ukjent felter`() = testApplication {
         val fnr = Fnr("12345678901")
         val client = mockPdl(hentPersonQuery("""
             { "ukjent_felt": [{"gradering": "STRENGT_FORTROLIG"}]}
@@ -260,7 +261,35 @@ class PdlClientTest {
     }
 
     @Test
-    fun `skal plukke riktig gt`() {
+    fun `hentFnrFraAktorId skal extension sin code i feilmelding`() = testApplication {
+        val aktorId = "12345678901"
+        val client = mockPdl("""
+            {
+                "data": null,
+                "errors": [
+                    {
+                        "message": "Fant ikke person",
+                        "locations": [],
+                        "path": [],
+                        "extensions": {
+                          "code": "not_found",
+                          "details": null,
+                          "classification": "ExecutionAborted"
+                        }
+                  }
+                ]
+            }
+        """.trimIndent())
+        val pdlClient = PdlClient(pdlTestUrl,client)
+
+        val fnrResult = pdlClient.hentFnrFraAktorId(aktorId)
+
+        fnrResult.shouldBeInstanceOf<FnrOppslagFeil>()
+        fnrResult.message shouldBe "Fant ikke person: not_found"
+    }
+
+    @Test
+    fun `toGeografiskTilknytning skal plukke riktig gt`() {
         val bydelResponse = response(GtType.BYDEL, gtBydel = "3333")
         bydelResponse.toGeografiskTilknytning() shouldBe GtNummerForBrukerFunnet(GeografiskTilknytningNr("3333"))
 
