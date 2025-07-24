@@ -272,8 +272,7 @@ class OppfolgingsPeriodeConsumerTest {
             "uuid": "${bruker.oppfolgingsperiodeId.value}",
             "startDato": "${bruker.periodeStart}",
             "sluttDato": ${sluttDato?.let { "\"$it\"" } ?: "null"},
-            "aktorId": "${bruker.aktorId}",
-            "startetBegrunnelse": "ARBEIDSSOKER"
+            "aktorId": "${bruker.aktorId}"
         }""", System.currentTimeMillis())
     }
 }

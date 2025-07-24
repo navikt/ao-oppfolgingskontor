@@ -212,7 +212,7 @@ class KafkaApplicationTest {
         sluttDato: ZonedDateTime?,
         aktorId: String
     ): String {
-        return """{"uuid":"${oppfolgingsperiodeId.value}", "startDato":"$startDato", "sluttDato":${sluttDato?.let { "\"$it\"" } ?: "null"}, "startetBegrunnelse": "SYKEMELDT_MER_OPPFOLGING" "aktorId":"$aktorId"}"""
+        return """{"uuid":"${oppfolgingsperiodeId.value}", "startDato":"$startDato", "sluttDato":${sluttDato?.let { "\"$it\"" } ?: "null"}, "aktorId":"$aktorId"}"""
     }
 
     private fun configureTopology(topicAndConsumers: List<StringTopicConsumer>): Topology {
