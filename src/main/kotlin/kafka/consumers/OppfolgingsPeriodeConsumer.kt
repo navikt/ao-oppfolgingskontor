@@ -116,11 +116,6 @@ class OppfolgingsPeriodeConsumer(
         }
     }
 
-    enum class StartetBegrunnelse {
-        ARBEIDSSOKER,
-        SYKEMELDT_MER_OPPFOLGING,
-        MANUELL_REGISTRERING_VEILEDER // Ikke brukt enda
-    }
 }
 
 @Serializable
@@ -129,8 +124,14 @@ data class OppfolgingsperiodeDTO(
         @Serializable(with = ZonedDateTimeSerializer::class) val startDato: ZonedDateTime,
         @Serializable(with = ZonedDateTimeSerializer::class) val sluttDato: ZonedDateTime?,
         val aktorId: String,
-        val startetBegrunnelse: StartetBegrunnelse
+//        val startetBegrunnelse: StartetBegrunnelse
 )
+
+//enum class StartetBegrunnelse {
+//    ARBEIDSSOKER,
+//    SYKEMELDT_MER_OPPFOLGING,
+//    MANUELL_REGISTRERING_VEILEDER // Ikke brukt enda
+//}
 
 fun OppfolgingsperiodeDTO.toOppfolgingsperiodeEndret(fnr: Ident): OppfolgingsperiodeEndret {
     val id = OppfolgingsperiodeId(UUID.fromString(this.uuid))
