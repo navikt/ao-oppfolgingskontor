@@ -13,15 +13,12 @@ import no.nav.http.client.FnrFunnet
 import no.nav.http.client.FnrIkkeFunnet
 import no.nav.http.client.FnrOppslagFeil
 import no.nav.http.client.FnrResult
-import no.nav.kafka.consumers.OppfolgingsPeriodeConsumer.StartetBegrunnelse
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
-import no.nav.services.NotUnderOppfolging
-import no.nav.services.OppfolgingperiodeOppslagFeil
 import no.nav.services.OppfolgingsperiodeService
 import no.nav.services.TilordningFeil
 import no.nav.services.TilordningSuccess
