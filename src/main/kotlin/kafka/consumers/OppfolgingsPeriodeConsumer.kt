@@ -33,7 +33,7 @@ class OppfolgingsPeriodeConsumer(
         private val skipPersonIkkeFunnet: Boolean = false,
         private val fnrProvider: suspend (aktorId: String) -> FnrResult,
 ) {
-    val log = LoggerFactory.getLogger(this::class.java)
+    private val log = LoggerFactory.getLogger(this::class.java)
     fun consume(
             record: Record<String, String>
     ): RecordProcessingResult<String, String> {
@@ -56,8 +56,6 @@ class OppfolgingsPeriodeConsumer(
                         }
                     }
                 }
-
-
 
                 val oppfolgingsperiode = Json
                     .decodeFromString<OppfolgingsperiodeDTO>(record.value())
@@ -93,8 +91,14 @@ class OppfolgingsPeriodeConsumer(
                     .let { tilordningResultat ->
                         when (tilordningResultat) {
                             is TilordningFeil -> {
-                                log.error(tilordningResultat.message)
-                                Retry("Kunne ikke tilordne kontor ved start på oppfølgingspeiode: ${tilordningResultat.message}")
+                                if (skipPersonIkkeFunnet && tilordningResultat.message.contains("Ingen foedselsdato i felt 'foedselsdato' fra pdl-spørring, dårlig data i dev?")) {
+                                    log.info("Fant ikke alder på person i dev - hopper over melding")
+                                    Skip()
+                                } else {
+                                    val melding = "Kunne ikke tilordne kontor ved start på oppfølgingspeiode: ${tilordningResultat.message}"
+                                    log.error(melding)
+                                    Retry(melding)
+                                }
                             }
                             is TilordningSuccess -> Commit()
                         }
@@ -102,7 +106,7 @@ class OppfolgingsPeriodeConsumer(
             }
         } catch (e: Exception) {
             log.error("Klarte ikke behandle oppfolgingsperiode melding", e)
-            return Skip()
+            return Retry("Klarte ikke behandle oppfolgingsperiode melding: ${e.message}")
         }
     }
 
