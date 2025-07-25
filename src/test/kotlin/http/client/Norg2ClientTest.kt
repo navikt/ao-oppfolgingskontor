@@ -9,6 +9,7 @@ import io.ktor.server.testing.testApplication
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
+import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.GeografiskTilknytningNr
 import no.nav.http.client.Norg2Client
 import no.nav.http.client.NorgKontor
@@ -22,8 +23,8 @@ class Norg2ClientTest {
     val skjermetKontor = "9999"
     val adressebeskyttetKontor = "8888"
     val vanligKontor = "7777"
-    val gt = GeografiskTilknytningNr("434576")
-    val errorGt = GeografiskTilknytningNr("634576")
+    val gt = GeografiskTilknytningBydelNr("434576")
+    val errorGt = GeografiskTilknytningBydelNr("634576")
 
     fun ApplicationTestBuilder.mockNorg2Ruting(): Norg2Client {
         return mockNorg2Host {
@@ -102,7 +103,7 @@ class Norg2ClientTest {
             HarSkjerming(false)
         )
 
-        response shouldBe KontorForGtNrFeil("Kunne ikke hente kontor for GT i norg, http-status: 500 Internal Server Error, gt: 634576")
+        response shouldBe KontorForGtNrFeil("Kunne ikke hente kontor for GT i norg, http-status: 500 Internal Server Error, gt: 634576 bydel")
     }
 
 

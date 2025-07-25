@@ -164,8 +164,8 @@ class PdlClient(
 fun GraphQLClientResponse<HentGtQuery.Result>.toGeografiskTilknytning(): GtForBrukerResult {
     return this.data?.hentGeografiskTilknytning?.let {
             when (it.gtType) {
-                GtType.BYDEL -> it.gtBydel?.let { bydel -> GeografiskTilknytningNr(bydel) }
-                GtType.KOMMUNE -> it.gtKommune?.let { kommune -> GeografiskTilknytningNr(kommune) }
+                GtType.BYDEL -> it.gtBydel?.let { bydel -> GeografiskTilknytningBydelNr(bydel) }
+                GtType.KOMMUNE -> it.gtKommune?.let { kommune -> GeografiskTilknytningKommuneNr(kommune) }
                 GtType.UTLAND -> it.gtLand?.let { land -> return GtLandForBrukerFunnet(GeografiskTilknytningLand(land)) }
                 else -> null
             }?.let { gt -> GtNummerForBrukerFunnet(gt) }

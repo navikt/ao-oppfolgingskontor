@@ -6,6 +6,7 @@ import no.nav.db.Fnr
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
+import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.GeografiskTilknytningLand
 import no.nav.http.client.GeografiskTilknytningNr
 import no.nav.http.client.GtForBrukerIkkeFunnet
@@ -64,7 +65,7 @@ class GTNorgServiceTest {
 
     @Test
     fun `skal håndtere gt er nr`() = runTest {
-        val gtNr = GeografiskTilknytningNr("131")
+        val gtNr = GeografiskTilknytningBydelNr("131")
         val kontor = KontorId("1234")
         val gtService = GTNorgService(
             { GtNummerForBrukerFunnet(gtNr) },

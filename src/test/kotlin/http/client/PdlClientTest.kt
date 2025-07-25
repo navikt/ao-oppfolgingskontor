@@ -11,6 +11,8 @@ import no.nav.db.Npid
 import no.nav.http.client.AlderFunnet
 import no.nav.http.client.FnrFunnet
 import no.nav.http.client.FnrOppslagFeil
+import no.nav.http.client.GeografiskTilknytningBydelNr
+import no.nav.http.client.GeografiskTilknytningKommuneNr
 import no.nav.http.client.GeografiskTilknytningLand
 import no.nav.http.client.GeografiskTilknytningNr
 import no.nav.http.client.GtForBrukerIkkeFunnet
@@ -291,10 +293,10 @@ class PdlClientTest {
     @Test
     fun `toGeografiskTilknytning skal plukke riktig gt`() {
         val bydelResponse = response(GtType.BYDEL, gtBydel = "3333")
-        bydelResponse.toGeografiskTilknytning() shouldBe GtNummerForBrukerFunnet(GeografiskTilknytningNr("3333"))
+        bydelResponse.toGeografiskTilknytning() shouldBe GtNummerForBrukerFunnet(GeografiskTilknytningBydelNr("3333"))
 
         val kommuneResponse = response(GtType.KOMMUNE, gtKommune = "4444")
-        kommuneResponse.toGeografiskTilknytning() shouldBe GtNummerForBrukerFunnet(GeografiskTilknytningNr("4444"))
+        kommuneResponse.toGeografiskTilknytning() shouldBe GtNummerForBrukerFunnet(GeografiskTilknytningKommuneNr("4444"))
 
         val landResponse = response(GtType.UTLAND, gtLand = "SVERIGE")
         landResponse.toGeografiskTilknytning() shouldBe GtLandForBrukerFunnet(GeografiskTilknytningLand("SVERIGE"))

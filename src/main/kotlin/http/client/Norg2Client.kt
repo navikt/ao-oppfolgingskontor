@@ -65,7 +65,7 @@ class Norg2Client(
                 }
             }
             if (response.status != HttpStatusCode.OK)
-                throw RuntimeException("Kunne ikke hente kontor for GT i norg, http-status: ${response.status}, gt: ${gt.value}")
+                throw RuntimeException("Kunne ikke hente kontor for GT i norg, http-status: ${response.status}, gt: ${gt.value} ${gt.type}")
             return response.body<NorgKontor>().toMinimaltKontor()
                 .let {
                     KontorId(it.kontorId).toGtKontorFunnet(brukerHarStrengtFortroligAdresse, brukerErSkjermet)
@@ -96,10 +96,10 @@ data class MinimaltNorgKontor(
     val navn: String
 )
 
-@JvmInline
-value class GeografiskTilknytningNr(val value: String)
-@JvmInline
-value class GeografiskTilknytningLand(val value: String)
+sealed class GeografiskTilknytningNr(open val value: String, val type: String)
+data class GeografiskTilknytningBydelNr(override val value: String): GeografiskTilknytningNr(value, "bydel")
+data class GeografiskTilknytningKommuneNr(override val value: String): GeografiskTilknytningNr(value, "kommune")
+data class GeografiskTilknytningLand(val value: String)
 
 fun NorgKontor.toMinimaltKontor() = MinimaltNorgKontor(
     kontorId = this.enhetNr,
