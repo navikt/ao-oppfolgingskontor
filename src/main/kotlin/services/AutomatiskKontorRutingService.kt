@@ -107,7 +107,6 @@ class AutomatiskKontorRutingService(
             tilordneKontor(kontorTilordning)
             return TilordningSuccessKontorEndret(kontorTilordning)
         } catch (e: Exception) {
-            log.error("Feil ved tilordning kontor: ${e.message}", e)
             return TilordningFeil("Feil ved tilordning av kontor: ${e.message ?: e.toString()}")
         }
     }
