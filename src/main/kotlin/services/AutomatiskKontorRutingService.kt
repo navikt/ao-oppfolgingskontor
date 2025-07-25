@@ -1,6 +1,5 @@
 package no.nav.services
 
-import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
@@ -8,6 +7,7 @@ import no.nav.domain.INGEN_GT_KONTOR_FALLBACK
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
+import no.nav.domain.Sensitivitet
 import no.nav.domain.events.AOKontorEndret
 import no.nav.domain.events.AOKontorEndretPgaAdressebeskyttelseEndret
 import no.nav.domain.events.AOKontorEndretPgaSkjermingEndret
@@ -28,6 +28,7 @@ import no.nav.http.client.AlderIkkeFunnet
 import no.nav.http.client.AlderResult
 import no.nav.http.client.FnrFunnet
 import no.nav.http.client.FnrResult
+import no.nav.http.client.GtForBrukerFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseIkkeFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseOppslagFeil
@@ -101,6 +102,7 @@ class AutomatiskKontorRutingService(
             val gtKontorResultat = gtKontorProvider(fnr, harStrengtFortroligAdresse, erSkjermet)
 
             val kontorTilordning = when (gtKontorResultat) {
+                is KontorForGtFinnesIkke -> hentTilordningUtenGT(fnr, alder, profileringProvider(fnr), oppfolgingsperiodeId, gtKontorResultat)
                 is KontorForGtFantLandEllerKontor -> hentTilordning(fnr, gtKontorResultat, alder, profileringProvider(fnr), oppfolgingsperiodeId)
                 is KontorForGtNrFeil -> return TilordningFeil("Feil ved henting av gt-kontor: ${gtKontorResultat.melding}")
             }
@@ -111,6 +113,48 @@ class AutomatiskKontorRutingService(
         }
     }
 
+    private fun skalTilNasjonalOppfølgingsEnhet(
+        sensitivitet: Sensitivitet,
+        profilering: HentProfileringsResultat,
+        alder: Int
+    ): Boolean {
+        return !sensitivitet.erSensitiv() &&
+                profilering is ProfileringFunnet &&
+                profilering.profilering == ProfileringsResultat.ANTATT_GODE_MULIGHETER &&
+                alder in 31..59
+    }
+
+    private fun hentTilordningUtenGT(
+        fnr: Ident,
+        alder: Int,
+        profilering: HentProfileringsResultat,
+        oppfolgingsperiodeId: OppfolgingsperiodeId,
+        gtResultat: KontorForGtFinnesIkke
+    ): AOKontorEndret {
+        return when {
+            skalTilNasjonalOppfølgingsEnhet(gtResultat.sensitivitet(), profilering, alder) -> OppfolgingsperiodeStartetNoeTilordning(fnr, oppfolgingsperiodeId)
+            gtResultat.sensitivitet().erSensitiv() -> {
+                if (gtResultat.erStrengtFortrolig()) {
+                    OppfolgingsPeriodeStartetSensitivKontorTilordning(
+                        KontorTilordning(fnr, VIKAFOSSEN, oppfolgingsperiodeId),
+                        gtResultat.sensitivitet(),
+                        null
+                    )
+                }
+                else throw IllegalStateException(
+                    "Vi håndterer ikke skjermede brukere uten geografisk tilknytning"
+                )
+            }
+            else -> {
+                OppfolgingsPeriodeStartetFallbackKontorTilordning(
+                    fnr,
+                    oppfolgingsperiodeId,
+                    gtResultat.sensitivitet()
+                )
+            }
+        }
+    }
+
     private fun hentTilordning(
         fnr: Ident,
         gtKontor: KontorForGtFantLandEllerKontor,
@@ -118,27 +162,22 @@ class AutomatiskKontorRutingService(
         profilering: HentProfileringsResultat,
         oppfolgingsperiodeId: OppfolgingsperiodeId,
     ): AOKontorEndret {
-        log.info("Profilering: $profilering, alder: $alder")
-
+        val skalTilNOE = skalTilNasjonalOppfølgingsEnhet(gtKontor.sensitivitet(), profilering, alder)
         return when {
-            !gtKontor.sensitivitet().erSensitiv() &&
-                    profilering is ProfileringFunnet &&
-                    profilering.profilering == ProfileringsResultat.ANTATT_GODE_MULIGHETER &&
-                    alder in 31..59 -> OppfolgingsperiodeStartetNoeTilordning(fnr, oppfolgingsperiodeId)
-
+            skalTilNOE ->
+                OppfolgingsperiodeStartetNoeTilordning(fnr, oppfolgingsperiodeId)
             gtKontor.sensitivitet().erSensitiv() -> {
                 when (gtKontor) {
                     is KontorForGtNrFantKontor ->
                         OppfolgingsPeriodeStartetSensitivKontorTilordning(
                             KontorTilordning(fnr, gtKontor.kontorId, oppfolgingsperiodeId),
-                            gtKontor.sensitivitet()
+                            gtKontor
                         )
-
-                    is KontorForGtNrFantLand, is KontorForGtFinnesIkke ->
-                        if (gtKontor.sensitivitet().strengtFortroligAdresse.value) {
+                    is KontorForGtNrFantLand ->
+                        if (gtKontor.erStrengtFortrolig()) {
                             OppfolgingsPeriodeStartetSensitivKontorTilordning(
                                 KontorTilordning(fnr, VIKAFOSSEN, oppfolgingsperiodeId),
-                                gtKontor.sensitivitet()
+                                gtKontor
                             )
                         } else {
                             throw IllegalStateException(
@@ -147,7 +186,6 @@ class AutomatiskKontorRutingService(
                         }
                 }
             }
-
             else -> {
                 when (gtKontor) {
                     is KontorForGtNrFantKontor ->
@@ -155,15 +193,6 @@ class AutomatiskKontorRutingService(
                             KontorTilordning(fnr, gtKontor.kontorId, oppfolgingsperiodeId),
                             gtKontor.sensitivitet()
                         )
-
-                    is KontorForGtFinnesIkke -> {
-                        OppfolgingsPeriodeStartetFallbackKontorTilordning(
-                            fnr,
-                            oppfolgingsperiodeId,
-                            gtKontor.sensitivitet()
-                        )
-                    }
-
                     is KontorForGtNrFantLand ->
                         OppfolgingsPeriodeStartetFallbackKontorTilordning(
                             fnr,
@@ -211,18 +240,18 @@ class AutomatiskKontorRutingService(
             val gtKontorResultat = gtKontorProvider(hendelse.ident, harStrengtFortroligAdresse, erSkjermet)
             return when (gtKontorResultat) {
                 is KontorForGtNrFantLand -> {
-                    val gtKontorEndring =
-                        GTKontorEndret.endretPgaBostedsadresseEndret(
-                            KontorTilordning(hendelse.ident, INGEN_GT_KONTOR_FALLBACK, oppfolgingsperiodeId)
-                        )
+                    val gtKontorEndring = GTKontorEndret.endretPgaBostedsadresseEndret(
+                        KontorTilordning(hendelse.ident, INGEN_GT_KONTOR_FALLBACK, oppfolgingsperiodeId),
+                        gtKontorResultat.gt()
+                    )
                     tilordneKontor(gtKontorEndring)
                     HåndterPersondataEndretSuccess(listOf(gtKontorEndring))
                 }
                 is KontorForGtNrFantKontor -> {
-                    val kontorTilordning =
-                        GTKontorEndret.endretPgaBostedsadresseEndret(
-                            KontorTilordning(hendelse.ident, gtKontorResultat.kontorId, oppfolgingsperiodeId)
-                        )
+                    val kontorTilordning = GTKontorEndret.endretPgaBostedsadresseEndret(
+                        KontorTilordning(hendelse.ident, gtKontorResultat.kontorId, oppfolgingsperiodeId)
+                            ,gtKontorResultat.gt()
+                    )
                     tilordneKontor(kontorTilordning)
                     HåndterPersondataEndretSuccess(listOf(kontorTilordning))
                 }
@@ -270,12 +299,14 @@ class AutomatiskKontorRutingService(
             val gtKontorResultat =
                 gtKontorProvider(hendelse.ident, hendelse.erStrengtFortrolig(), erSkjermet)
             return when (gtKontorResultat) {
+                is KontorForGtFinnesIkke -> TODO()
                 is KontorForGtFantLandEllerKontor -> {
                     val gtKontor = getGTKontorOrFallback(gtKontorResultat)
                     val gtKontorEndring =
                         GTKontorEndret.endretPgaAdressebeskyttelseEndret(
                             KontorTilordning(hendelse.ident, gtKontor, oppfolgingsperiodeId),
-                            hendelse.erStrengtFortrolig()
+                            hendelse.erStrengtFortrolig(),
+                            gtKontorResultat.gt()
                         )
                     tilordneKontor(gtKontorEndring)
                     if (hendelse.erStrengtFortrolig().value) {
@@ -288,11 +319,11 @@ class AutomatiskKontorRutingService(
                         HåndterPersondataEndretSuccess(listOf(gtKontorEndring))
                     }
                 }
-
                 is KontorForGtNrFeil -> {
                     val feilmelding = "Kunne ikke håndtere endring i adressebeskyttelse pga feil ved henting av gt-kontor: ${gtKontorResultat.melding}"
                     HåndterPersondataEndretFail(feilmelding)
                 }
+
             }
         } catch (error: Throwable) {
             return HåndterPersondataEndretFail(
@@ -316,46 +347,42 @@ class AutomatiskKontorRutingService(
             }
 
             val harStrengtFortroligAdresse =
-                when (val result =
-                    harStrengtFortroligAdresseProvider(endringISkjermingStatus.fnr)
-                ) {
+                when (val result = harStrengtFortroligAdresseProvider(endringISkjermingStatus.fnr)) {
                     is HarStrengtFortroligAdresseIkkeFunnet ->
                         return Result.failure(
                             Exception(
                                 "Kunne ikke hente adressebeskyttelse ved endring i skjermingstatus: ${result.message}"
                             )
                         )
-
                     is HarStrengtFortroligAdresseOppslagFeil ->
                         return Result.failure(
                             Exception(
                                 "Kunne ikke hente adressebeskyttelse ved endring i skjermingstatus: ${result.message}"
                             )
                         )
-
                     is HarStrengtFortroligAdresseFunnet -> result.harStrengtFortroligAdresse
                 }
 
-            val gtKontorResultat =
-                gtKontorProvider(
-                    endringISkjermingStatus.fnr,
-                    harStrengtFortroligAdresse,
-                    endringISkjermingStatus.erSkjermet
-                )
+            val gtKontorResultat = gtKontorProvider(
+                endringISkjermingStatus.fnr,
+                harStrengtFortroligAdresse,
+                endringISkjermingStatus.erSkjermet
+            )
             return when (gtKontorResultat) {
+                is KontorForGtFinnesIkke -> TODO()
                 is KontorForGtFantLandEllerKontor -> {
                     val gtKontor = getGTKontorOrFallback(gtKontorResultat)
-                    val gtKontorEndring =
-                        GTKontorEndret.endretPgaSkjermingEndret(
-                            KontorTilordning(endringISkjermingStatus.fnr, gtKontor, oppfolgingsperiodeId),
-                            endringISkjermingStatus.erSkjermet
-                        )
+                    val gtKontorEndring = endretPgaSkjermingEndret(
+                        endringISkjermingStatus,
+                        gtKontor,
+                        oppfolgingsperiodeId,
+                        gtKontorResultat.gt()
+                    )
                     tilordneKontor(gtKontorEndring)
                     if (endringISkjermingStatus.erSkjermet.value) {
-                        val aoKontorEndring =
-                            AOKontorEndretPgaSkjermingEndret(
-                                KontorTilordning(endringISkjermingStatus.fnr, gtKontor, oppfolgingsperiodeId)
-                            )
+                        val aoKontorEndring = AOKontorEndretPgaSkjermingEndret(
+                            KontorTilordning(endringISkjermingStatus.fnr, gtKontor, oppfolgingsperiodeId)
+                        )
                         tilordneKontor(aoKontorEndring)
                         Result.success(
                             EndringISkjermingResult(listOf(gtKontorEndring, aoKontorEndring))
@@ -377,7 +404,7 @@ class AutomatiskKontorRutingService(
     fun getGTKontorOrFallback(gtKontorResultat: KontorForGtFantLandEllerKontor): KontorId {
         return when (gtKontorResultat) {
             is KontorForGtNrFantKontor -> gtKontorResultat.kontorId
-            is KontorForGtNrFantLand, is KontorForGtFinnesIkke -> {
+            is KontorForGtNrFantLand -> {
                 if (gtKontorResultat.sensitivitet().strengtFortroligAdresse.value) {
                     VIKAFOSSEN
                 } else if (gtKontorResultat.sensitivitet().skjermet.value) {
@@ -388,4 +415,23 @@ class AutomatiskKontorRutingService(
             }
         }
     }
+
+    fun endretPgaSkjermingEndret(
+        endringISkjermingStatus: SkjermetStatusEndret,
+        gtKontor: KontorId,
+        oppfolgingsperiodeId: OppfolgingsperiodeId,
+        gtForBruker: GtForBrukerFunnet
+    ): GTKontorEndret = GTKontorEndret.endretPgaSkjermingEndret(
+        KontorTilordning(endringISkjermingStatus.fnr, gtKontor, oppfolgingsperiodeId),
+        endringISkjermingStatus.erSkjermet,
+        gtForBruker
+    )
 }
+
+data class Bruker(
+    val fnr: Ident,
+    val gtKontorResultat: KontorForGtNrResultat,
+    val alder: Int,
+    val profileringProvider: HentProfileringsResultat,
+    val oppfolgingsperiodeId: OppfolgingsperiodeId
+)

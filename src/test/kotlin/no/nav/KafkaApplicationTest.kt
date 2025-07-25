@@ -16,6 +16,7 @@ import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.http.client.AlderFunnet
 import no.nav.http.client.FnrFunnet
+import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringFunnet
@@ -28,6 +29,7 @@ import no.nav.kafka.consumers.OppfolgingsPeriodeConsumer
 import no.nav.kafka.consumers.SkjermingConsumer
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
+import no.nav.services.KontorForGtNrFantDefaultKontor
 import no.nav.services.KontorForGtNrFantKontor
 import no.nav.services.KontorTilordningService
 import no.nav.services.OppfolgingsperiodeService
@@ -89,7 +91,7 @@ class KafkaApplicationTest {
             val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
             val consumer = OppfolgingsPeriodeConsumer(AutomatiskKontorRutingService(
                 KontorTilordningService::tilordneKontor,
-                { _, a, b-> KontorForGtNrFantKontor(kontor, b, a) },
+                { _, a, b-> KontorForGtNrFantDefaultKontor(kontor, b, a, GeografiskTilknytningBydelNr("3131")) },
                 { AlderFunnet(40) },
                 { FnrFunnet(fnr) },
                 { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
@@ -145,12 +147,11 @@ class KafkaApplicationTest {
     @Test
     fun `skal behandle endring i skjerming sett kontor fra GT`() = testApplication {
         val fnr = Fnr("55345678901")
-        val ikkeSkjermetKontor = "1234"
         val skjermetKontor = "4555"
 
         val automatiskKontorRutingService = AutomatiskKontorRutingService(
             KontorTilordningService::tilordneKontor,
-            { _, b, a-> KontorForGtNrFantKontor(KontorId(skjermetKontor), a, b) },
+            { _, b, a-> KontorForGtNrFantDefaultKontor(KontorId(skjermetKontor), a, b, GeografiskTilknytningBydelNr("3131")) },
             { AlderFunnet(40) },
             { FnrFunnet(fnr) },
             { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
