@@ -11,15 +11,19 @@ import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.Sensitivitet
 import no.nav.domain.System
 import no.nav.http.logger
+import no.nav.services.KontorForGtFantLandEllerKontor
+import no.nav.services.KontorForGtNrFantKontor
 
 enum class RutingResultat {
     RutetTilNOE,
     FallbackIngenGTFunnet,
+    RutetTilLokalkontorFallback,
     RutetTilLokalkontor;
     fun toKontorEndringsType(): KontorEndringsType {
         return when (this) {
             RutetTilNOE -> KontorEndringsType.AutomatiskRutetTilNOE
             RutetTilLokalkontor -> KontorEndringsType.AutomatiskRutetTilLokalkontor
+            RutetTilLokalkontorFallback -> KontorEndringsType.AutomatiskRutetTilLokalkontorFallback
             FallbackIngenGTFunnet -> KontorEndringsType.AutomatiskRutetTilNavItManglerGt
         }
     }
@@ -90,8 +94,23 @@ data class OppfolgingsPeriodeStartetFallbackKontorTilordning(val ident: Ident, v
 
 }
 
-data class OppfolgingsPeriodeStartetSensitivKontorTilordning(val kontorTilordning: KontorTilordning, val sensitivitet: Sensitivitet): AOKontorEndret(kontorTilordning, System()) {
+data class OppfolgingsPeriodeStartetSensitivKontorTilordning(
+    val kontorTilordning: KontorTilordning,
+    val sensitivitet: Sensitivitet,
+    /* Sier om kontoret brukte fallback til arbeidsfordelings-api-et til norg */
+    val gtKontorResultat: KontorForGtFantLandEllerKontor?): AOKontorEndret(kontorTilordning, System()) {
+
     val rutingResultat: RutingResultat = RutingResultat.RutetTilLokalkontor
+
+    constructor(
+        kontorTilordning: KontorTilordning,
+        gtKontorResultat: KontorForGtFantLandEllerKontor
+    ): this(
+        kontorTilordning,
+        gtKontorResultat.sensitivitet(),
+        gtKontorResultat
+    )
+
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(
             kontorId = tilordning.kontorId,
@@ -99,7 +118,7 @@ data class OppfolgingsPeriodeStartetSensitivKontorTilordning(val kontorTilordnin
             registrant = registrant,
             kontorendringstype = rutingResultat.toKontorEndringsType(),
             kontorType = KontorType.ARBEIDSOPPFOLGING,
-            oppfolgingId = tilordning.oppfolgingsperiodeId
+            oppfolgingId = tilordning.oppfolgingsperiodeId,
         )
     }
 

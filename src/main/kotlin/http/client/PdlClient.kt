@@ -38,8 +38,9 @@ data class FnrIkkeFunnet(val message: String) : FnrResult()
 data class FnrOppslagFeil(val message: String) : FnrResult()
 
 sealed class GtForBrukerResult
-data class GtNummerForBrukerFunnet(val gt: GeografiskTilknytningNr) : GtForBrukerResult()
-data class GtLandForBrukerFunnet(val land: GeografiskTilknytningLand) : GtForBrukerResult()
+sealed class GtForBrukerFunnet: GtForBrukerResult()
+data class GtNummerForBrukerFunnet(val gt: GeografiskTilknytningNr) : GtForBrukerFunnet()
+data class GtLandForBrukerFunnet(val land: GeografiskTilknytningLand) : GtForBrukerFunnet()
 data class GtForBrukerIkkeFunnet(val message: String) : GtForBrukerResult()
 data class GtForBrukerOppslagFeil(val message: String) : GtForBrukerResult()
 

@@ -16,6 +16,7 @@ import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.AdressebeskyttelseEndret
 import no.nav.domain.externalEvents.BostedsadresseEndret
 import no.nav.http.client.FnrFunnet
+import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.SkjermingFunnet
 import no.nav.kafka.consumers.LeesahConsumer
@@ -23,9 +24,9 @@ import no.nav.kafka.processor.Retry
 import no.nav.person.pdl.leesah.adressebeskyttelse.Gradering
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
+import no.nav.services.KontorForGtNrFantDefaultKontor
 import no.nav.services.KontorForGtNrFeil
 import no.nav.services.KontorForGtNrResultat
-import no.nav.services.KontorForGtNrFantKontor
 import no.nav.services.KontorTilordningService
 import no.nav.utils.flywayMigrationInTest
 import org.jetbrains.exposed.sql.insert
@@ -149,7 +150,7 @@ class LeesahConsumerTest {
 
     private fun gittRutingServiceMedGtKontor(kontorId: KontorId): AutomatiskKontorRutingService {
         return defaultAutomatiskKontorRutingService(
-            { a, b, c -> KontorForGtNrFantKontor(kontorId, c, b) }
+            { a, b, c -> KontorForGtNrFantDefaultKontor(kontorId, c, b, GeografiskTilknytningBydelNr("3131")) }
         )
     }
 
