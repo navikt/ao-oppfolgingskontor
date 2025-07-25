@@ -79,7 +79,6 @@ class PdlClientTest {
         val pdlClient = PdlClient(pdlTestUrl,client)
         val gt = pdlClient.hentGt(fnr)
         gt.shouldBeInstanceOf<GtForBrukerOppslagFeil>()
-        // Also picks some more details from the response but didnt bother mocking that
         gt.message shouldBe "${errorMessage}: null"
     }
 
@@ -90,7 +89,6 @@ class PdlClientTest {
         val pdlClient = PdlClient(pdlTestUrl,client)
         val gt = pdlClient.hentGt(fnr)
         gt.shouldBeInstanceOf<GtForBrukerOppslagFeil>()
-        // Also picks some more details from the response but didnt bother mocking that
         gt.message shouldBe """
             Henting av GT for bruker feilet: Server error(POST http://pdl.test.local/graphql: 500 Internal Server Error. Text: ""
         """.trimIndent()
@@ -112,7 +110,27 @@ class PdlClientTest {
         val pdlClient = PdlClient(pdlTestUrl,client)
         val alder = pdlClient.hentAlder(fnr)
         alder.shouldBeInstanceOf<AlderFunnet>()
-        // Also picks some more details from the response but didnt bother mocking that
+        alder.alder.shouldBePositive()
+        alder.alder shouldBe diff
+    }
+
+    @Test
+    fun `hentAlder skal bruker foedselsaar til å beregne alder om foedselsdato ikke finnes`() = testApplication {
+        val fnr = Fnr("12345678901")
+        val localDate = LocalDate.of(1990, 1, 1)
+        val now = LocalDate.of(2025, 12, 31)
+        val diff = Period.between(localDate, now).years
+        val client = mockPdl(hentPersonQuery("""
+            {
+                "foedselsdato": [{
+                    "foedselsdato": null,
+                    "foedselsaar": ${localDate.year}
+                }]
+            }
+        """.trimIndent()))
+        val pdlClient = PdlClient(pdlTestUrl,client)
+        val alder = pdlClient.hentAlder(fnr)
+        alder.shouldBeInstanceOf<AlderFunnet>()
         alder.alder.shouldBePositive()
         alder.alder shouldBe diff
     }

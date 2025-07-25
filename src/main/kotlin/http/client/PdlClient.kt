@@ -87,11 +87,15 @@ class PdlClient(
         if (result.errors != null && result.errors!!.isNotEmpty()) {
             return AlderIkkeFunnet(result.errors!!.joinToString { it.message })
         } else {
-            val foedselsdato = result.data?.hentPerson?.foedselsdato?.firstOrNull()
+            val foedselsdatoObject = result.data?.hentPerson?.foedselsdato?.firstOrNull()
                 ?: return AlderIkkeFunnet("Ingen foedselsdato i felt 'foedselsdato' fra pdl-spørring, dårlig data i dev?")
-            val alder = foedselsdato.foedselsdato
+            val foedselsdato = foedselsdatoObject.foedselsdato
                 ?.let { LocalDate.parse(it, DateTimeFormatter.ISO_LOCAL_DATE) }
-                ?.let { Period.between(it, ZonedDateTime.now().toLocalDate()).years } // TODO: Verify this is actually correct
+            val now = ZonedDateTime.now().toLocalDate()
+            val alder = foedselsdato
+                ?.let { Period.between(it, now).years }
+                // Fallback to foedselsaar if foedselsdato does not exist
+                ?: foedselsdatoObject.foedselsaar?.let { now.year - it }
             return if (alder == null) {
                 AlderIkkeFunnet("Alder kunne ikke beregnes fra fødselsdato")
             } else {
