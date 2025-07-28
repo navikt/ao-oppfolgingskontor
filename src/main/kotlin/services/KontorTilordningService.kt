@@ -44,7 +44,6 @@ object KontorTilordningService {
                         it[fnr] = kontorTilhorighet.fnr.value
                         it[gt] = kontorEndring.gt()
                         it[gtType] = kontorEndring.gtType()
-                        it[fnr] = kontorTilhorighet.fnr.value
                         it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
                     }
                 }

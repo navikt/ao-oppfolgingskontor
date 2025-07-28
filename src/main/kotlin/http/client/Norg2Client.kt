@@ -20,8 +20,8 @@ import no.nav.services.KontorForBrukerMedMangelfullGtFunnet
 import no.nav.services.KontorForBrukerMedMangelfullGtIkkeFunnet
 import no.nav.services.KontorForBrukerMedMangelfullGtResultat
 import no.nav.services.KontorForGtNrFantDefaultKontor
-import no.nav.services.KontorForGtNrFeil
-import no.nav.services.KontorForGtNrResultat
+import no.nav.services.KontorForGtFeil
+import no.nav.services.KontorForGtResultat
 import org.slf4j.LoggerFactory
 
 class Norg2Client(
@@ -58,7 +58,7 @@ class Norg2Client(
         return response.body<NorgKontor>().toMinimaltKontor()
     }
 
-    suspend fun hentKontorForGt(gt: GeografiskTilknytningNr, brukerHarStrengtFortroligAdresse: HarStrengtFortroligAdresse, brukerErSkjermet: HarSkjerming): KontorForGtNrResultat {
+    suspend fun hentKontorForGt(gt: GeografiskTilknytningNr, brukerHarStrengtFortroligAdresse: HarStrengtFortroligAdresse, brukerErSkjermet: HarSkjerming): KontorForGtResultat {
         try {
             val response = httpClient.get((hentKontorForGtPath(gt))) {
                 accept(ContentType.Application.Json)
@@ -79,7 +79,7 @@ class Norg2Client(
                         gt)
                 }
         } catch (e: Throwable) {
-            return KontorForGtNrFeil(e.message ?: "Ukjent feil")
+            return KontorForGtFeil(e.message ?: "Ukjent feil")
         }
     }
 
@@ -92,32 +92,48 @@ class Norg2Client(
         val behandlingstype: String = "ae0253", // "Oppfølgingskontor"
     )
 
-    suspend fun hentKontorForBrukerMedMangelfullGT(gtForBruker: GtNummerForBrukerFunnet?, brukerHarStrengtFortroligAdresse: HarStrengtFortroligAdresse, brukerErSkjermet: HarSkjerming): KontorForBrukerMedMangelfullGtResultat {
+    suspend fun hentKontorForBrukerMedMangelfullGT(gtForBruker: GtForBrukerResult, brukerHarStrengtFortroligAdresse: HarStrengtFortroligAdresse, brukerErSkjermet: HarSkjerming): KontorForBrukerMedMangelfullGtResultat {
+        return when (gtForBruker) {
+            is GtForBrukerOppslagFeil -> return KontorForBrukerMedMangelfullGtFeil(gtForBruker.message)
+            is GtForBrukerSuccess -> _hentKontorForBrukerMedMangelfullGT(
+                gtForBruker,
+                brukerHarStrengtFortroligAdresse,
+                brukerErSkjermet,
+            )
+        }
+    }
+
+    private suspend fun _hentKontorForBrukerMedMangelfullGT(gtForBruker: GtForBrukerSuccess, brukerHarStrengtFortroligAdresse: HarStrengtFortroligAdresse, brukerErSkjermet: HarSkjerming): KontorForBrukerMedMangelfullGtResultat {
         try {
+            val geografiskOmraade = when (gtForBruker) {
+                is GtLandForBrukerFunnet -> gtForBruker.land.value
+                is GtNummerForBrukerFunnet -> gtForBruker.gtNr.value
+                is GtForBrukerIkkeFunnet -> null
+            }
             val response = httpClient.post(arbeidsfordelingPath) {
                 accept(ContentType.Application.Json)
                 contentType(ContentType.Application.Json)
                 setBody(
                     ArbeidsfordelingPayload(
-                        geografiskOmraade = gtForBruker?.gt?.value,
+                        geografiskOmraade = geografiskOmraade,
                         skjermet = brukerErSkjermet.value,
                         diskresjonskode = if (brukerHarStrengtFortroligAdresse.value) "SPSF" else null,
                     )
                 )
             }
             if (response.status != HttpStatusCode.OK)
-                throw RuntimeException("Kunne ikke hente kontor for GT i norg med arbeidsfordeling, http-status: ${response.status}, gt: ${gtForBruker?.gt?.value} ${gtForBruker?.gt?.type}")
+                throw RuntimeException("Kunne ikke hente kontor for GT i norg med arbeidsfordeling, http-status: ${response.status}, gt: $gtForBruker")
 
             return response.body<List<NorgKontor>>()
                 .firstOrNull()
-                ?.let { KontorForBrukerMedMangelfullGtFunnet(KontorId(it.toMinimaltKontor().kontorId)) }
+                ?.let { KontorForBrukerMedMangelfullGtFunnet(KontorId(it.toMinimaltKontor().kontorId), gtForBruker) }
                 ?: KontorForBrukerMedMangelfullGtIkkeFunnet(gtForBruker)
         } catch (e: Throwable) {
             return KontorForBrukerMedMangelfullGtFeil("Kunne ikke hente kontor for GT i norg med arbeidsfordeling ${e.message}")
         }
     }
 
-    companion object {
+        companion object {
         const val hentEnheterPath = "/norg2/api/v1/enhet"
         const val hentEnhetPathWithParam = "/norg2/api/v1/enhet/{enhetId}"
         fun hentEnhetPath(kontorId: KontorId): (String) = "/norg2/api/v1/enhet/${kontorId.id}"

@@ -18,9 +18,8 @@ import no.nav.services.KontorForBrukerMedMangelfullGtFunnet
 import no.nav.services.KontorForBrukerMedMangelfullGtIkkeFunnet
 import no.nav.services.KontorForGtFinnesIkke
 import no.nav.services.KontorForGtNrFantDefaultKontor
-import no.nav.services.KontorForGtNrFantFallbackKontor
-import no.nav.services.KontorForGtNrFantLand
-import no.nav.services.KontorForGtNrFeil
+import no.nav.services.KontorForGtFeil
+import no.nav.services.KontorForGtNrFantFallbackKontorForManglendeGt
 import org.junit.jupiter.api.Test
 
 class GTNorgServiceTest {
@@ -28,8 +27,9 @@ class GTNorgServiceTest {
 
     @Test
     fun `skal svare KontorForGtFinnesIkke for bruker uten GT og uten fallback kontor`() = runTest {
+        val gtForBruker = GtForBrukerIkkeFunnet("Ingen geografisk tilknytning funnet for bruker")
         val gtService = GTNorgService(
-            { GtForBrukerIkkeFunnet("Ingen geografisk tilknytning funnet for bruker") },
+            { gtForBruker },
             { a, b, c -> throw IllegalStateException("Ikke implementert") },
             { a, b, c -> KontorForBrukerMedMangelfullGtIkkeFunnet(a) }
         )
@@ -42,87 +42,16 @@ class GTNorgServiceTest {
 
         kontorForGtResult shouldBe KontorForGtFinnesIkke(
             HarSkjerming(false),
-            HarStrengtFortroligAdresse(false)
+            HarStrengtFortroligAdresse(false),
+            gtForBruker
         )
     }
 
     @Test
     fun `skal feile (ikke bruke fallback) når GtForBruker er teknisk feil`() = runTest {
-        val fallbackKontor = KontorId("4444")
+        val gtForBruker = GtForBrukerOppslagFeil("http 404 fra NORG fant ingen kontor for gt")
         val gtService = GTNorgService(
-            { GtForBrukerOppslagFeil("Teknisk feil i gt oppslag") },
-            { a, b, c -> throw IllegalStateException("Ikke implementert") },
-            { a, b, c -> KontorForBrukerMedMangelfullGtFunnet(fallbackKontor) }
-        )
-
-        val kontorForGtResult = gtService.hentGtKontorForBruker(
-            fnr,
-            HarStrengtFortroligAdresse(false),
-            HarSkjerming(false)
-        )
-
-        kontorForGtResult shouldBe KontorForGtNrFeil("Teknisk feil i gt oppslag")
-    }
-
-    @Test
-    fun `skal svare fallback når gt for bruker når gt ikke finnes men det finnes fallback`() = runTest {
-        val fallbackKontor = KontorId("4444")
-        val skjerming = HarSkjerming(false)
-        val adresse = HarStrengtFortroligAdresse(false)
-        val gtService = GTNorgService(
-            { GtForBrukerIkkeFunnet("Fant ikke") },
-            { a, b, c -> KontorForGtFinnesIkke(skjerming, adresse) },
-            { a, b, c -> KontorForBrukerMedMangelfullGtFunnet(fallbackKontor) }
-        )
-
-        val kontorForGtResult = gtService.hentGtKontorForBruker(fnr, adresse, skjerming)
-
-        kontorForGtResult shouldBe KontorForGtNrFantFallbackKontor(fallbackKontor, skjerming, adresse, null)
-    }
-
-    @Test
-    fun `skal svare med feil når fallback feiler`() = runTest {
-        val skjerming = HarSkjerming(false)
-        val adresse = HarStrengtFortroligAdresse(false)
-        val gtService = GTNorgService(
-            { GtForBrukerIkkeFunnet("Fant ikke") },
-            { a, b, c -> KontorForGtFinnesIkke(skjerming, adresse) },
-            { a, b, c -> KontorForBrukerMedMangelfullGtFeil("Feil i fallback gt oppslag") }
-        )
-
-        val kontorForGtResult = gtService.hentGtKontorForBruker(fnr, adresse, skjerming)
-
-        kontorForGtResult shouldBe KontorForGtNrFeil("Feil i fallback gt oppslag")
-    }
-
-    @Test
-    fun `skal svare med fallback-kontor for bruker uten GT og med fallback kontor`() = runTest {
-        val fallbackKontor = KontorId("4444")
-        val gtService = GTNorgService(
-            { GtForBrukerIkkeFunnet("Ingen geografisk tilknytning funnet for bruker") },
-            { a, b, c -> throw IllegalStateException("Ikke implementert") },
-            { a, b, c -> KontorForBrukerMedMangelfullGtFunnet(fallbackKontor) }
-        )
-
-        val kontorForGtResult = gtService.hentGtKontorForBruker(
-            fnr,
-            HarStrengtFortroligAdresse(false),
-            HarSkjerming(false)
-        )
-
-        kontorForGtResult shouldBe KontorForGtNrFantFallbackKontor(
-            fallbackKontor,
-            HarSkjerming(false),
-            HarStrengtFortroligAdresse(false),
-            null
-        )
-    }
-
-    @Test
-    fun `skal svare KontorForGtNrFantLand når gt er et land`() = runTest {
-        val gtLand = GeografiskTilknytningLand("DNK")
-        val gtService = GTNorgService(
-            { GtLandForBrukerFunnet(gtLand) },
+            { gtForBruker },
             { a, b, c -> throw IllegalStateException("Ikke implementert") },
             { a, b, c -> throw IllegalStateException("Ikke implementert") }
         )
@@ -133,10 +62,88 @@ class GTNorgServiceTest {
             HarSkjerming(false)
         )
 
-        kontorForGtResult shouldBe KontorForGtNrFantLand(
-            gtLand,
+        kontorForGtResult shouldBe KontorForGtFeil(gtForBruker.message)
+    }
+
+    @Test
+    fun `skal svare fallback når gt for bruker når gt ikke finnes men det finnes fallback`() = runTest {
+        val fallbackKontor = KontorId("4444")
+        val skjerming = HarSkjerming(false)
+        val adresse = HarStrengtFortroligAdresse(false)
+        val gtForBruker = GtForBrukerIkkeFunnet("Fant ikke")
+        val gtService = GTNorgService(
+            { gtForBruker },
+            { a, b, c -> KontorForGtFinnesIkke(skjerming, adresse, gtForBruker) },
+            { a, b, c -> KontorForBrukerMedMangelfullGtFunnet(fallbackKontor, gtForBruker) }
+        )
+
+        val kontorForGtResult = gtService.hentGtKontorForBruker(fnr, adresse, skjerming)
+
+        kontorForGtResult shouldBe KontorForGtNrFantFallbackKontorForManglendeGt(fallbackKontor, skjerming, adresse, gtForBruker)
+    }
+
+    @Test
+    fun `skal svare med feil når fallback feiler`() = runTest {
+        val skjerming = HarSkjerming(false)
+        val adresse = HarStrengtFortroligAdresse(false)
+        val gtForBruker = GtForBrukerIkkeFunnet("Fant ikke")
+        val gtService = GTNorgService(
+            { gtForBruker },
+            { a, b, c -> KontorForGtFinnesIkke(skjerming, adresse, gtForBruker) },
+            { a, b, c -> KontorForBrukerMedMangelfullGtFeil("Feil i fallback gt oppslag") }
+        )
+
+        val kontorForGtResult = gtService.hentGtKontorForBruker(fnr, adresse, skjerming)
+
+        kontorForGtResult shouldBe KontorForGtFeil("Feil i fallback gt oppslag")
+    }
+
+    @Test
+    fun `skal svare med fallback-kontor for bruker uten GT og med fallback kontor`() = runTest {
+        val fallbackKontor = KontorId("4444")
+        val gtForBruker = GtForBrukerIkkeFunnet("Ingen geografisk tilknytning funnet for bruker")
+        val gtService = GTNorgService(
+            { gtForBruker },
+            { a, b, c -> throw IllegalStateException("Ikke implementert") },
+            { a, b, c -> KontorForBrukerMedMangelfullGtFunnet(fallbackKontor, gtForBruker) }
+        )
+
+        val kontorForGtResult = gtService.hentGtKontorForBruker(
+            fnr,
+            HarStrengtFortroligAdresse(false),
+            HarSkjerming(false)
+        )
+
+        kontorForGtResult shouldBe KontorForGtNrFantFallbackKontorForManglendeGt(
+            fallbackKontor,
             HarSkjerming(false),
-            HarStrengtFortroligAdresse(false)
+            HarStrengtFortroligAdresse(false),
+            GtForBrukerIkkeFunnet("Ingen geografisk tilknytning funnet for bruker")
+        )
+    }
+
+    @Test
+    fun `skal svare KontorForGtNrFantLand når gt er et land`() = runTest {
+        val gtLand = GeografiskTilknytningLand("DNK")
+        val navUtlandKontor = KontorId("4444")
+        val gtForBruker = GtLandForBrukerFunnet(gtLand)
+        val gtService = GTNorgService(
+            { gtForBruker },
+            { a, b, c -> throw IllegalStateException("Ikke implementert") },
+            { a, b, c -> KontorForBrukerMedMangelfullGtFunnet(navUtlandKontor,gtForBruker) }
+        )
+
+        val kontorForGtResult = gtService.hentGtKontorForBruker(
+            fnr,
+            HarStrengtFortroligAdresse(false),
+            HarSkjerming(false)
+        )
+
+        kontorForGtResult shouldBe KontorForGtNrFantFallbackKontorForManglendeGt(
+            navUtlandKontor,
+            HarSkjerming(false),
+            HarStrengtFortroligAdresse(false),
+            gtForBruker
         )
     }
 
@@ -178,7 +185,7 @@ class GTNorgServiceTest {
             HarSkjerming(false)
         )
 
-        kontorForGtResult shouldBe KontorForGtNrFeil("Feil")
+        kontorForGtResult shouldBe KontorForGtFeil("Feil")
     }
 
     @Test
@@ -195,7 +202,7 @@ class GTNorgServiceTest {
             HarSkjerming(false)
         )
 
-        kontorForGtResult shouldBe KontorForGtNrFeil("Klarte ikke hente GT kontor for bruker: Feil som ble kastet")
+        kontorForGtResult shouldBe KontorForGtFeil("Klarte ikke hente GT kontor for bruker: Feil som ble kastet")
     }
 
 }

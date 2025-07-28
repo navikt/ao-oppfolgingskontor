@@ -11,6 +11,7 @@ import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
 import no.nav.http.client.GeografiskTilknytningBydelNr
+import no.nav.http.client.GtForBrukerIkkeFunnet
 import no.nav.http.client.Norg2Client
 import no.nav.http.client.Norg2Client.Companion.arbeidsfordelingPath
 import no.nav.http.client.NorgKontor
@@ -19,7 +20,7 @@ import no.nav.services.KontorForBrukerMedMangelfullGtFeil
 import no.nav.services.KontorForBrukerMedMangelfullGtFunnet
 import no.nav.services.KontorForBrukerMedMangelfullGtIkkeFunnet
 import no.nav.services.KontorForGtNrFantDefaultKontor
-import no.nav.services.KontorForGtNrFeil
+import no.nav.services.KontorForGtFeil
 import org.junit.jupiter.api.Test
 
 class Norg2ClientTest {
@@ -115,7 +116,7 @@ class Norg2ClientTest {
             HarSkjerming(false)
         )
 
-        response shouldBe KontorForGtNrFeil("Kunne ikke hente kontor for GT i norg, http-status: 500 Internal Server Error, gt: 634576 Bydel")
+        response shouldBe KontorForGtFeil("Kunne ikke hente kontor for GT i norg, http-status: 500 Internal Server Error, gt: 634576 Bydel")
     }
 
     @Test
@@ -124,12 +125,12 @@ class Norg2ClientTest {
         val client = mockNorg2Ruting(fallbackKontor = fallbackKontor)
 
         val response = client.hentKontorForBrukerMedMangelfullGT(
-            null,
+            GtForBrukerIkkeFunnet("Gt mangler"),
             HarStrengtFortroligAdresse(false),
             HarSkjerming(false)
         )
 
-        response shouldBe KontorForBrukerMedMangelfullGtFunnet(fallbackKontor)
+        response shouldBe KontorForBrukerMedMangelfullGtFunnet(fallbackKontor, GtForBrukerIkkeFunnet("Gt mangler"))
     }
 
     @Test
@@ -137,12 +138,12 @@ class Norg2ClientTest {
         val client = mockNorg2Ruting() // Ingen mocking av fallback-kontor
 
         val response = client.hentKontorForBrukerMedMangelfullGT(
-            null,
+            GtForBrukerIkkeFunnet("Ikke funnet"),
             HarStrengtFortroligAdresse(false),
             HarSkjerming(false)
         )
 
-        response shouldBe KontorForBrukerMedMangelfullGtIkkeFunnet(null)
+        response shouldBe KontorForBrukerMedMangelfullGtIkkeFunnet(GtForBrukerIkkeFunnet("Ikke funnet"))
     }
 
     @Test
@@ -153,15 +154,13 @@ class Norg2ClientTest {
             }
         }
         val response = client.hentKontorForBrukerMedMangelfullGT(
-            null,
+            GtForBrukerIkkeFunnet("Ikke funnet"),
             HarStrengtFortroligAdresse(false),
             HarSkjerming(false)
         )
 
-        response shouldBe KontorForBrukerMedMangelfullGtFeil("Kunne ikke hente kontor for GT i norg med arbeidsfordeling Kunne ikke hente kontor for GT i norg med arbeidsfordeling, http-status: 500 Internal Server Error, gt: null null")
+        response shouldBe KontorForBrukerMedMangelfullGtFeil("Kunne ikke hente kontor for GT i norg med arbeidsfordeling Kunne ikke hente kontor for GT i norg med arbeidsfordeling, http-status: 500 Internal Server Error, gt: GtForBrukerIkkeFunnet(message=Ikke funnet)")
     }
-
-
 
     private fun defaultNorgKontor(): NorgKontor {
         return NorgKontor(

@@ -13,6 +13,7 @@ import no.nav.domain.System
 import no.nav.http.logger
 import no.nav.services.KontorForGtFantLandEllerKontor
 import no.nav.services.KontorForGtNrFantKontor
+import no.nav.services.KontorForGtSuccess
 
 enum class RutingResultat {
     RutetTilNOE,
@@ -97,8 +98,7 @@ data class OppfolgingsPeriodeStartetFallbackKontorTilordning(val ident: Ident, v
 data class OppfolgingsPeriodeStartetSensitivKontorTilordning(
     val kontorTilordning: KontorTilordning,
     val sensitivitet: Sensitivitet,
-    /* Sier om kontoret brukte fallback til arbeidsfordelings-api-et til norg */
-    val gtKontorResultat: KontorForGtFantLandEllerKontor?): AOKontorEndret(kontorTilordning, System()) {
+    val gtKontorResultat: KontorForGtSuccess): AOKontorEndret(kontorTilordning, System()) {
 
     val rutingResultat: RutingResultat = RutingResultat.RutetTilLokalkontor
 

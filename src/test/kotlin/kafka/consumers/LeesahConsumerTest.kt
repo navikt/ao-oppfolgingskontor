@@ -25,8 +25,8 @@ import no.nav.person.pdl.leesah.adressebeskyttelse.Gradering
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.KontorForGtNrFantDefaultKontor
-import no.nav.services.KontorForGtNrFeil
-import no.nav.services.KontorForGtNrResultat
+import no.nav.services.KontorForGtFeil
+import no.nav.services.KontorForGtResultat
 import no.nav.services.KontorTilordningService
 import no.nav.utils.flywayMigrationInTest
 import org.jetbrains.exposed.sql.insert
@@ -109,7 +109,7 @@ class LeesahConsumerTest {
     fun `skal håndtere at gt-provider returnerer GTKontorFeil`() = testApplication {
         val fnr = Fnr("40445678901")
         val automatiskKontorRutingService = defaultAutomatiskKontorRutingService(
-            { a, b, c -> KontorForGtNrFeil("Noe gikk galt") }
+            { a, b, c -> KontorForGtFeil("Noe gikk galt") }
         )
         val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) })
 
@@ -134,7 +134,7 @@ class LeesahConsumerTest {
     }
 
     private fun defaultAutomatiskKontorRutingService(
-        gtProvider: suspend (ident: Ident, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming) -> KontorForGtNrResultat
+        gtProvider: suspend (ident: Ident, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming) -> KontorForGtResultat
     ): AutomatiskKontorRutingService {
         return AutomatiskKontorRutingService(
             KontorTilordningService::tilordneKontor,
