@@ -255,7 +255,6 @@ class OppfolgingsPeriodeConsumerTest {
             KontorTilordningService::tilordneKontor,
             { _, a, b -> KontorForGtNrFantDefaultKontor(kontor, b, a, GeografiskTilknytningBydelNr("3131")) },
             { AlderFunnet(40) },
-            { FnrFunnet(fnr) },
             { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
             { SkjermingFunnet(HarSkjerming(false)) },
             { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },

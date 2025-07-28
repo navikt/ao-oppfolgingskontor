@@ -138,7 +138,6 @@ class LeesahConsumerTest {
     ): AutomatiskKontorRutingService {
         return AutomatiskKontorRutingService(
             KontorTilordningService::tilordneKontor,
-            fnrProvider = { throw Throwable("Denne skal ikke brukes") },
             gtKontorProvider = gtProvider,
             aldersProvider = { throw Throwable("Denne skal ikke brukes") },
             profileringProvider = { throw Throwable("Denne skal ikke brukes") },

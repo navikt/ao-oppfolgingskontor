@@ -13,7 +13,6 @@ import no.nav.http.client.GtForBrukerIkkeFunnet
 import no.nav.http.client.GtForBrukerOppslagFeil
 import no.nav.http.client.GtLandForBrukerFunnet
 import no.nav.http.client.GtNummerForBrukerFunnet
-import no.nav.http.client.GtType
 import org.slf4j.LoggerFactory
 
 class GTNorgService(
@@ -35,11 +34,7 @@ class GTNorgService(
                     }
                 }
                 is GtForBrukerOppslagFeil -> KontorForGtNrFeil(gtForBruker.message)
-                is GtLandForBrukerFunnet -> KontorForGtNrFantLand(
-                    gtForBruker.land,
-                    skjermet,
-                    strengtFortroligAdresse
-                )
+                is GtLandForBrukerFunnet -> KontorForGtNrFantLand(gtForBruker.land, skjermet, strengtFortroligAdresse)
                 is GtNummerForBrukerFunnet -> kontorForGtProvider(gtForBruker.gt, strengtFortroligAdresse, skjermet)
             }
         } catch (e: Exception) {

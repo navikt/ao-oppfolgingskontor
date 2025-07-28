@@ -536,7 +536,6 @@ fun gitt(bruker: Bruker): AutomatiskKontorRutingService {
             }
         },
         { bruker.alder },
-        { bruker.fnr },
         { bruker.profilering },
         { bruker.skjerming },
         { bruker.strengtFortroligAdresse },

@@ -60,7 +60,6 @@ class AutomatiskKontorRutingService(
         skjermet: HarSkjerming
     ) -> KontorForGtNrResultat,
     private val aldersProvider: suspend (fnr: Ident) -> AlderResult,
-    private val fnrProvider: suspend (aktorId: String) -> FnrResult,
     private val profileringProvider: suspend (fnr: Ident) -> HentProfileringsResultat,
     private val erSkjermetProvider: suspend (fnr: Ident) -> SkjermingResult,
     private val harStrengtFortroligAdresseProvider:
@@ -428,10 +427,3 @@ class AutomatiskKontorRutingService(
     )
 }
 
-data class Bruker(
-    val fnr: Ident,
-    val gtKontorResultat: KontorForGtNrResultat,
-    val alder: Int,
-    val profileringProvider: HentProfileringsResultat,
-    val oppfolgingsperiodeId: OppfolgingsperiodeId
-)
