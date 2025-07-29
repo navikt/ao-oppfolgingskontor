@@ -1,5 +1,6 @@
 package no.nav.kafka.retry.library.internal
 
+import kafka.retry.library.internal.TopicLevelLock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
@@ -94,7 +95,7 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
         }
     }
 
-    private fun runWithLock(block: Runnable) {
+    private fun runWithInterPodLevelLock(block: Runnable) {
         lockingTaskExecutor.executeWithLock(
             block,
             LockConfiguration(Instant.now(), "${topic}-lock", lockAtMostFor, lockAtLeastFor)
@@ -102,7 +103,7 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
     }
 
     private fun runReprocessingWithLock(timestamp: Long) {
-        runWithLock {
+        runWithInterPodLevelLock {
             punctuationCoroutineScope.launch {
                 try {
                     withTimeout(10_000) {
@@ -189,9 +190,20 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
 
     private fun runReprocessingOnOneBatch(timestamp: Long) {
         metrics.updateCurrentFailedMessagesGauge()
-        store.getBatchToRetry(config.retryBatchSize)
-            .proccessInOrderOnKey { reprocessSingleMessage(it) }
-            .map { handleReprocessingResult(it) }
+        // Prøv å skaffe låsen for MITT topic. Dette sikrer at kun én tråd om gangen kan prosessere meldinger for dette topicet.
+        if (!TopicLevelLock.tryAcquire(this.topic)) {
+            // En annen tråd jobber allerede med dette topicet. Avslutt.
+            return
+        }
+        try {
+            store.getBatchToRetry(config.retryBatchSize)
+                .proccessInOrderOnKey { reprocessSingleMessage(it) }
+                .map { handleReprocessingResult(it) }
+
+        } finally {
+            // Frigi låsen for MITT topic, slik at en annen tråd kan ta over neste gang.
+            TopicLevelLock.release(this.topic)
+        }
     }
 
     private fun enqueue(record: Record<KIn, VIn>, reason: String) {

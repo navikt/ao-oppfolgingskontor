@@ -42,6 +42,8 @@ object KontorTilordningService {
                     GeografiskTilknytningKontorTable.upsert {
                         it[kontorId] = kontorTilhorighet.kontorId.id
                         it[fnr] = kontorTilhorighet.fnr.value
+                        it[gt] = kontorEndring.gt()
+                        it[gtType] = kontorEndring.gtType()
                         it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
                     }
                 }

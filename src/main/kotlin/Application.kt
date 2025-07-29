@@ -53,7 +53,8 @@ fun Application.module() {
 
     val gtNorgService = GTNorgService(
         { pdlClient.hentGt(it) },
-        { gt, strengtFortroligAdresse, skjermet -> norg2Client.hentKontorForGt(gt, strengtFortroligAdresse, skjermet) }
+        { gt, strengtFortroligAdresse, skjermet -> norg2Client.hentKontorForGt(gt, strengtFortroligAdresse, skjermet) },
+        { gt, strengtFortroligAdresse, skjermet -> norg2Client.hentKontorForBrukerMedMangelfullGT(gt, strengtFortroligAdresse, skjermet) },
     )
     val kontorNavnService = KontorNavnService(norg2Client)
     val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangHttpClient)
@@ -61,7 +62,6 @@ fun Application.module() {
         KontorTilordningService::tilordneKontor,
         { fnr, strengtFortroligAdresse, skjermet -> gtNorgService.hentGtKontorForBruker(fnr, strengtFortroligAdresse, skjermet) },
         { pdlClient.hentAlder(it) },
-        { pdlClient.hentFnrFraAktorId(it) },
         { arbeidssokerregisterClient.hentProfilering(it) },
         { skjermingsClient.hentSkjerming(it) },
         { pdlClient.harStrengtFortroligAdresse(it) },
@@ -89,4 +89,8 @@ fun ApplicationEnvironment.getIssuer(): String {
     return firstIssuerConfig.property("issuer_name").getString()
 }
 
-
+fun ApplicationEnvironment.isProduction(): Boolean {
+    return config.propertyOrNull("cluster")
+        ?.getString()
+        ?.contentEquals("prod-gcp") ?: false
+}

@@ -43,6 +43,9 @@ Oppfølgingskontor for Arbeidsrettet Oppfølging
 | `topic for kontorendringer`  | Alle endringer? Bare "overstyringer"? Bare Arena + arbeidsoppfølging?                                                       |
 
 
+### Fallback ruting om bruker mangler geografisk tilknytning (GT)
+Når bruker mangler GT brukes endepunktet `/api/v1/arbeidsfordeling/enheter/bestmatch` istedetfor `/api/v1/enhet/navkontor/{geografiskOmraade}` siden det ikke finnes noe geografiskOmraade (gt) i ha i URL. Nå er det implementert med Behanlingstema "Oppfølging" (ae0253) siden det var nesten slik Arena gjorde det
+
 ## Built with
 - Kotlin
 - [Ktor (v3)](https://ktor.io/docs/welcome.html)

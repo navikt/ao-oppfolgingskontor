@@ -38,9 +38,15 @@ data class FnrIkkeFunnet(val message: String) : FnrResult()
 data class FnrOppslagFeil(val message: String) : FnrResult()
 
 sealed class GtForBrukerResult
-data class GtNummerForBrukerFunnet(val gt: GeografiskTilknytningNr) : GtForBrukerResult()
-data class GtLandForBrukerFunnet(val land: GeografiskTilknytningLand) : GtForBrukerResult()
-data class GtForBrukerIkkeFunnet(val message: String) : GtForBrukerResult()
+sealed class GtForBrukerSuccess: GtForBrukerResult()
+sealed class GtForBrukerFunnet: GtForBrukerSuccess()
+data class GtNummerForBrukerFunnet(val gtNr: GeografiskTilknytningNr) : GtForBrukerFunnet() {
+    override fun toString() = "${gtNr.value} type: ${gtNr.type.name}"
+}
+data class GtLandForBrukerFunnet(val land: GeografiskTilknytningLand) : GtForBrukerFunnet() {
+    override fun toString() = "${land.value} type: Land"
+}
+data class GtForBrukerIkkeFunnet(val message: String) : GtForBrukerSuccess()
 data class GtForBrukerOppslagFeil(val message: String) : GtForBrukerResult()
 
 sealed class HarStrengtFortroligAdresseResult

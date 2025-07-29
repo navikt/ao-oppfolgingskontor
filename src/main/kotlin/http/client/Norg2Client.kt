@@ -9,14 +9,19 @@ import io.ktor.client.plugins.logging.*
 import io.ktor.client.request.*
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
-import no.nav.services.KontorForGtNrFeil
-import no.nav.services.KontorForGtNrFantKontor
-import no.nav.services.KontorForGtNrResultat
+import no.nav.services.KontorForBrukerMedMangelfullGtFeil
+import no.nav.services.KontorForBrukerMedMangelfullGtFunnet
+import no.nav.services.KontorForBrukerMedMangelfullGtIkkeFunnet
+import no.nav.services.KontorForBrukerMedMangelfullGtResultat
+import no.nav.services.KontorForGtNrFantDefaultKontor
+import no.nav.services.KontorForGtFeil
+import no.nav.services.KontorForGtResultat
 import org.slf4j.LoggerFactory
 
 class Norg2Client(
@@ -53,7 +58,7 @@ class Norg2Client(
         return response.body<NorgKontor>().toMinimaltKontor()
     }
 
-    suspend fun hentKontorForGt(gt: GeografiskTilknytningNr, brukerHarStrengtFortroligAdresse: HarStrengtFortroligAdresse, brukerErSkjermet: HarSkjerming): KontorForGtNrResultat {
+    suspend fun hentKontorForGt(gt: GeografiskTilknytningNr, brukerHarStrengtFortroligAdresse: HarStrengtFortroligAdresse, brukerErSkjermet: HarSkjerming): KontorForGtResultat {
         try {
             val response = httpClient.get((hentKontorForGtPath(gt))) {
                 accept(ContentType.Application.Json)
@@ -68,26 +73,85 @@ class Norg2Client(
                 throw RuntimeException("Kunne ikke hente kontor for GT i norg, http-status: ${response.status}, gt: ${gt.value} ${gt.type}")
             return response.body<NorgKontor>().toMinimaltKontor()
                 .let {
-                    KontorId(it.kontorId).toGtKontorFunnet(brukerHarStrengtFortroligAdresse, brukerErSkjermet)
+                    KontorId(it.kontorId).toDefaultGtKontorFunnet(
+                        brukerHarStrengtFortroligAdresse,
+                        brukerErSkjermet,
+                        gt)
                 }
-        } catch (e: Exception) {
-            return KontorForGtNrFeil(e.message ?: "Ukjent feil")
+        } catch (e: Throwable) {
+            return KontorForGtFeil(e.message ?: "Ukjent feil")
         }
     }
 
-    companion object {
+    @Serializable
+    data class ArbeidsfordelingPayload(
+        val diskresjonskode: String?,
+        val geografiskOmraade: String?,
+        val skjermet: Boolean,
+        val tema: String = "OPP",
+        val behandlingstype: String = "ae0253", // "Oppfølgingskontor"
+    )
+
+    suspend fun hentKontorForBrukerMedMangelfullGT(gtForBruker: GtForBrukerResult, brukerHarStrengtFortroligAdresse: HarStrengtFortroligAdresse, brukerErSkjermet: HarSkjerming): KontorForBrukerMedMangelfullGtResultat {
+        return when (gtForBruker) {
+            is GtForBrukerOppslagFeil -> return KontorForBrukerMedMangelfullGtFeil(gtForBruker.message)
+            is GtForBrukerSuccess -> _hentKontorForBrukerMedMangelfullGT(
+                gtForBruker,
+                brukerHarStrengtFortroligAdresse,
+                brukerErSkjermet,
+            )
+        }
+    }
+
+    private suspend fun _hentKontorForBrukerMedMangelfullGT(gtForBruker: GtForBrukerSuccess, brukerHarStrengtFortroligAdresse: HarStrengtFortroligAdresse, brukerErSkjermet: HarSkjerming): KontorForBrukerMedMangelfullGtResultat {
+        try {
+            val geografiskOmraade = when (gtForBruker) {
+                is GtLandForBrukerFunnet -> gtForBruker.land.value
+                is GtNummerForBrukerFunnet -> gtForBruker.gtNr.value
+                is GtForBrukerIkkeFunnet -> null
+            }
+            val response = httpClient.post(arbeidsfordelingPath) {
+                accept(ContentType.Application.Json)
+                contentType(ContentType.Application.Json)
+                setBody(
+                    ArbeidsfordelingPayload(
+                        geografiskOmraade = geografiskOmraade,
+                        skjermet = brukerErSkjermet.value,
+                        diskresjonskode = if (brukerHarStrengtFortroligAdresse.value) "SPSF" else null,
+                    )
+                )
+            }
+            if (response.status != HttpStatusCode.OK)
+                throw RuntimeException("HTTP POST mot arbeidsfordeling feilet med http-status: ${response.status}, gt: $gtForBruker")
+
+            return response.body<List<NorgKontor>>()
+                .firstOrNull()
+                ?.let { KontorForBrukerMedMangelfullGtFunnet(KontorId(it.toMinimaltKontor().kontorId), gtForBruker) }
+                ?: KontorForBrukerMedMangelfullGtIkkeFunnet(gtForBruker)
+        } catch (e: Throwable) {
+            return KontorForBrukerMedMangelfullGtFeil("Kunne ikke hente kontor for GT i norg med arbeidsfordeling: ${e.message}")
+        }
+    }
+
+        companion object {
         const val hentEnheterPath = "/norg2/api/v1/enhet"
         const val hentEnhetPathWithParam = "/norg2/api/v1/enhet/{enhetId}"
         fun hentEnhetPath(kontorId: KontorId): (String) = "/norg2/api/v1/enhet/${kontorId.id}"
         fun hentKontorForGtPath(gt: GeografiskTilknytningNr): (String) = "/norg2/api/v1/enhet/navkontor/${gt.value}"
+        const val arbeidsfordelingPath = "/norg2/api/v1/arbeidsfordeling/enheter/bestmatch"
     }
 }
 
-fun KontorId.toGtKontorFunnet(brukerHarStrengtFortroligAdresse: HarStrengtFortroligAdresse, brukerErSkjermet: HarSkjerming): KontorForGtNrFantKontor {
-    return KontorForGtNrFantKontor(
+fun KontorId.toDefaultGtKontorFunnet(
+    brukerHarStrengtFortroligAdresse: HarStrengtFortroligAdresse,
+    brukerErSkjermet: HarSkjerming,
+    geografiskTilknytningNr: GeografiskTilknytningNr,
+    ): KontorForGtNrFantDefaultKontor {
+    return KontorForGtNrFantDefaultKontor(
         this,
         brukerErSkjermet,
-        brukerHarStrengtFortroligAdresse
+        brukerHarStrengtFortroligAdresse,
+        geografiskTilknytningNr = geografiskTilknytningNr
     )
 }
 
@@ -96,9 +160,14 @@ data class MinimaltNorgKontor(
     val navn: String
 )
 
-sealed class GeografiskTilknytningNr(open val value: String, val type: String)
-data class GeografiskTilknytningBydelNr(override val value: String): GeografiskTilknytningNr(value, "bydel")
-data class GeografiskTilknytningKommuneNr(override val value: String): GeografiskTilknytningNr(value, "kommune")
+enum class GtType {
+    Bydel,
+    Kommune
+}
+
+sealed class GeografiskTilknytningNr(open val value: String, val type: GtType)
+data class GeografiskTilknytningBydelNr(override val value: String): GeografiskTilknytningNr(value, GtType.Bydel)
+data class GeografiskTilknytningKommuneNr(override val value: String): GeografiskTilknytningNr(value, GtType.Kommune)
 data class GeografiskTilknytningLand(val value: String)
 
 fun NorgKontor.toMinimaltKontor() = MinimaltNorgKontor(
