@@ -8,6 +8,10 @@ import no.nav.domain.KontorTilordning
 import no.nav.domain.KontorType
 import no.nav.domain.Registrant
 import no.nav.domain.System
+import no.nav.http.client.GtForBrukerIkkeFunnet
+import no.nav.http.client.GtForBrukerSuccess
+import no.nav.http.client.GtLandForBrukerFunnet
+import no.nav.http.client.GtNummerForBrukerFunnet
 import org.slf4j.LoggerFactory
 import java.time.OffsetDateTime
 
@@ -22,8 +26,20 @@ sealed class KontorEndretEvent(
     }
 }
 
-data class GTKontorEndret(val kontorTilordning: KontorTilordning, val kontorEndringsType: KontorEndringsType) : KontorEndretEvent(kontorTilordning) {
+data class GTKontorEndret(val kontorTilordning: KontorTilordning, val kontorEndringsType: KontorEndringsType, val gt: GtForBrukerSuccess) : KontorEndretEvent(kontorTilordning) {
     val log = LoggerFactory.getLogger(this::class.java)
+
+    fun gt(): String? = when (gt) {
+        is GtLandForBrukerFunnet -> gt.land.value
+        is GtNummerForBrukerFunnet -> gt.gtNr.value
+        is GtForBrukerIkkeFunnet -> null
+    }
+
+    fun gtType(): String? = when (gt) {
+        is GtLandForBrukerFunnet -> "Land"
+        is GtNummerForBrukerFunnet -> gt.gtNr.type.name
+        is GtForBrukerIkkeFunnet -> null
+    }
 
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(
@@ -43,11 +59,26 @@ data class GTKontorEndret(val kontorTilordning: KontorTilordning, val kontorEndr
     companion object {
         fun endretPgaAdressebeskyttelseEndret(
             tilordning: KontorTilordning,
-            erStrengtFortrolig: HarStrengtFortroligAdresse
-        ) = GTKontorEndret(tilordning, if (erStrengtFortrolig.value) KontorEndringsType.FikkAddressebeskyttelse else KontorEndringsType.AddressebeskyttelseMistet)
-        fun endretPgaSkjermingEndret(tilordning: KontorTilordning, erSkjermet: HarSkjerming) =
-            GTKontorEndret(tilordning, if (erSkjermet.value) KontorEndringsType.FikkSkjerming else KontorEndringsType.MistetSkjerming)
-        fun endretPgaBostedsadresseEndret(tilordning: KontorTilordning) = GTKontorEndret(tilordning, KontorEndringsType.EndretBostedsadresse)
+            erStrengtFortrolig: HarStrengtFortroligAdresse,
+            gt: GtForBrukerSuccess
+        ) = GTKontorEndret(
+                tilordning,
+                if (erStrengtFortrolig.value) KontorEndringsType.FikkAddressebeskyttelse else KontorEndringsType.AddressebeskyttelseMistet,
+                gt)
+
+        fun endretPgaSkjermingEndret(
+            tilordning: KontorTilordning,
+            erSkjermet: HarSkjerming,
+            gt: GtForBrukerSuccess) =
+            GTKontorEndret(
+                tilordning,
+                if (erSkjermet.value) KontorEndringsType.FikkSkjerming else KontorEndringsType.MistetSkjerming,
+                gt)
+
+        fun endretPgaBostedsadresseEndret(tilordning: KontorTilordning, gt: GtForBrukerSuccess) = GTKontorEndret(
+            tilordning,
+                KontorEndringsType.EndretBostedsadresse,
+                gt)
     }
 }
 sealed class AOKontorEndret(tilordning: KontorTilordning, val registrant: Registrant) : KontorEndretEvent(tilordning)

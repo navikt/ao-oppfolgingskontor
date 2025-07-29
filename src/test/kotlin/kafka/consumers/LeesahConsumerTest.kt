@@ -16,6 +16,7 @@ import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.AdressebeskyttelseEndret
 import no.nav.domain.externalEvents.BostedsadresseEndret
 import no.nav.http.client.FnrFunnet
+import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.SkjermingFunnet
 import no.nav.kafka.consumers.LeesahConsumer
@@ -23,9 +24,9 @@ import no.nav.kafka.processor.Retry
 import no.nav.person.pdl.leesah.adressebeskyttelse.Gradering
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
-import no.nav.services.KontorForGtNrFeil
-import no.nav.services.KontorForGtNrResultat
-import no.nav.services.KontorForGtNrFantKontor
+import no.nav.services.KontorForGtNrFantDefaultKontor
+import no.nav.services.KontorForGtFeil
+import no.nav.services.KontorForGtResultat
 import no.nav.services.KontorTilordningService
 import no.nav.utils.flywayMigrationInTest
 import org.jetbrains.exposed.sql.insert
@@ -46,7 +47,7 @@ class LeesahConsumerTest {
             flywayMigrationInTest()
             gittNåværendeGtKontor(fnr, KontorId(gammeltKontorId))
             val automatiskKontorRutingService = gittRutingServiceMedGtKontor(KontorId(nyKontorId))
-            val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) })
+            val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) }, false)
 
             leesahConsumer.handterLeesahHendelse(BostedsadresseEndret(fnr))
 
@@ -66,7 +67,7 @@ class LeesahConsumerTest {
             flywayMigrationInTest()
             gittNåværendeGtKontor(fnr, KontorId(gammeltKontorId))
             val automatiskKontorRutingService = gittRutingServiceMedGtKontor(KontorId(nyKontorId))
-            val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) })
+            val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) }, false)
 
             leesahConsumer.handterLeesahHendelse(AdressebeskyttelseEndret(fnr, Gradering.STRENGT_FORTROLIG))
 
@@ -90,7 +91,7 @@ class LeesahConsumerTest {
             gittNåværendeAOKontor(fnr, KontorId(gammelKontorId))
             gittNåværendeGtKontor(fnr, KontorId(gammelKontorId))
             val automatiskKontorRutingService = gittRutingServiceMedGtKontor(KontorId(nyKontorId))
-            val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) })
+            val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) }, false)
 
             leesahConsumer.handterLeesahHendelse(AdressebeskyttelseEndret(fnr, Gradering.UGRADERT))
 
@@ -108,9 +109,9 @@ class LeesahConsumerTest {
     fun `skal håndtere at gt-provider returnerer GTKontorFeil`() = testApplication {
         val fnr = Fnr("40445678901")
         val automatiskKontorRutingService = defaultAutomatiskKontorRutingService(
-            { a, b, c -> KontorForGtNrFeil("Noe gikk galt") }
+            { a, b, c -> KontorForGtFeil("Noe gikk galt") }
         )
-        val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) })
+        val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) }, false)
 
         val resultat = leesahConsumer.handterLeesahHendelse(BostedsadresseEndret(fnr))
 
@@ -124,7 +125,7 @@ class LeesahConsumerTest {
         val automatiskKontorRutingService = defaultAutomatiskKontorRutingService(
             { a, b, c -> throw Throwable("Noe gikk galt") }
         )
-        val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) })
+        val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) }, false)
 
         val resultat = leesahConsumer.handterLeesahHendelse(BostedsadresseEndret(fnr))
 
@@ -133,11 +134,10 @@ class LeesahConsumerTest {
     }
 
     private fun defaultAutomatiskKontorRutingService(
-        gtProvider: suspend (ident: Ident, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming) -> KontorForGtNrResultat
+        gtProvider: suspend (ident: Ident, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming) -> KontorForGtResultat
     ): AutomatiskKontorRutingService {
         return AutomatiskKontorRutingService(
             KontorTilordningService::tilordneKontor,
-            fnrProvider = { throw Throwable("Denne skal ikke brukes") },
             gtKontorProvider = gtProvider,
             aldersProvider = { throw Throwable("Denne skal ikke brukes") },
             profileringProvider = { throw Throwable("Denne skal ikke brukes") },
@@ -149,7 +149,7 @@ class LeesahConsumerTest {
 
     private fun gittRutingServiceMedGtKontor(kontorId: KontorId): AutomatiskKontorRutingService {
         return defaultAutomatiskKontorRutingService(
-            { a, b, c -> KontorForGtNrFantKontor(kontorId, c, b) }
+            { a, b, c -> KontorForGtNrFantDefaultKontor(kontorId, c, b, GeografiskTilknytningBydelNr("3131")) }
         )
     }
 

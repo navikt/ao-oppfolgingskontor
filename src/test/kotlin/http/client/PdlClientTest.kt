@@ -14,7 +14,6 @@ import no.nav.http.client.FnrOppslagFeil
 import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.GeografiskTilknytningKommuneNr
 import no.nav.http.client.GeografiskTilknytningLand
-import no.nav.http.client.GeografiskTilknytningNr
 import no.nav.http.client.GtForBrukerIkkeFunnet
 import no.nav.http.client.GtForBrukerOppslagFeil
 import no.nav.http.client.GtLandForBrukerFunnet
@@ -56,7 +55,7 @@ class PdlClientTest {
         val pdlClient = PdlClient(pdlTestUrl,client)
         val gt = pdlClient.hentGt(fnr)
         gt.shouldBeInstanceOf<GtNummerForBrukerFunnet>()
-        gt.gt.value shouldBe bydelGtNr
+        gt.gtNr.value shouldBe bydelGtNr
     }
 
     @Test

@@ -10,13 +10,13 @@ import java.time.ZonedDateTime
 import java.util.UUID
 import no.nav.db.Fnr
 import no.nav.db.entity.OppfolgingsperiodeEntity
-import no.nav.db.table.OppfolgingsperiodeTable
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.http.client.AlderFunnet
 import no.nav.http.client.FnrFunnet
+import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringFunnet
@@ -26,13 +26,12 @@ import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Skip
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
-import no.nav.services.KontorForGtNrFantKontor
+import no.nav.services.KontorForGtNrFantDefaultKontor
 import no.nav.services.KontorTilordningService
 import no.nav.services.OppfolgingsperiodeService
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.randomFnr
 import org.apache.kafka.streams.processor.api.Record
-import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
 import java.time.OffsetDateTime
@@ -254,9 +253,8 @@ class OppfolgingsPeriodeConsumerTest {
         val kontor = KontorId("2228")
         return AutomatiskKontorRutingService(
             KontorTilordningService::tilordneKontor,
-            { _, a, b -> KontorForGtNrFantKontor(kontor, b, a) },
+            { _, a, b -> KontorForGtNrFantDefaultKontor(kontor, b, a, GeografiskTilknytningBydelNr("3131")) },
             { AlderFunnet(40) },
-            { FnrFunnet(fnr) },
             { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
             { SkjermingFunnet(HarSkjerming(false)) },
             { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
