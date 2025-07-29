@@ -1,7 +1,6 @@
 package no.nav.services
 
 import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import no.nav.db.Ident
 import no.nav.domain.HarSkjerming
@@ -84,7 +83,7 @@ class AutomatiskKontorRutingService(
             val (fnr, oppfolgingsperiodeId) = when (underOppfolgingResult) {
                 is AktivOppfolgingsperiode -> underOppfolgingResult
                 NotUnderOppfolging -> return TilordningSuccessIngenEndring
-                is OppfolgingperiodeOppslagFeil -> return TilordningFeil("Feil ved oppslag på fnr: ${underOppfolgingResult.message}")
+                is OppfolgingperiodeOppslagFeil -> return TilordningFeil("Feil ved oppslag på oppfolgingsperiode: ${underOppfolgingResult.message}")
             }
             val (skjermetResult, adressebeskyttelseResult, aldersResult) = coroutineScope {
                 val skjermetDeferred = async { erSkjermetProvider(fnr) }

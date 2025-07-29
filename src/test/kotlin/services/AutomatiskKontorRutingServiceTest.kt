@@ -559,7 +559,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
             feilendeBrukere.map { bruker ->
                 gitt(bruker).tilordneKontorAutomatisk(oppfolgingsperiodeStartet(fnr))
             } shouldBe listOf(
-                TilordningFeil("Feil ved oppslag på fnr: feil i fnr"),
+                TilordningFeil("Feil ved oppslag på oppfolgingsperiode: feil i fnr"),
                 TilordningFeil("Kunne ikke hente alder: feil i alder"),
                 TilordningSuccessKontorEndret(
                     OppfolgingsPeriodeStartetLokalKontorTilordning(
@@ -574,6 +574,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 TilordningFeil("Kunne ikke hente skjerming ved kontortilordning: feil i skjerming"),
                 TilordningFeil("Kunne ikke hente adressebeskyttelse ved kontortilordning: feil i adressebeskyttelse"),
                 TilordningFeil("Feil ved henting av gt-kontor: Feil i gt-kontor oppslag"),
+                TilordningFeil("Feil ved oppslag på oppfolgingsperiode: Incorrect resultsize exception"),
             )
         }
 
@@ -850,13 +851,24 @@ val brukerMedFeilendeKontorForGt = Bruker(
     SkjermingFunnet(HarSkjerming(false)),
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
 )
+val brukerMedFeilendeOppfolgingperiodeOppslagFeil = Bruker(
+    FnrFunnet(Fnr("11111111111")),
+    AlderFunnet(20),
+    ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
+    KontorForGtFeil("Feil i gt-kontor oppslag"),
+    GtForBrukerOppslagFeil("Testbruker som har feilende gt"),
+    SkjermingFunnet(HarSkjerming(false)),
+    HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)),
+    OppfolgingperiodeOppslagFeil("Incorrect resultsize exception")
+)
 val feilendeBrukere = listOf(
     brukerMedFeilendeFnr,
     brukerMedFeilendeAlder,
     brukerMedFeilendeProfilering,
     brukerMedFeilendeSkjerming,
     brukerMedFeilendeAdressebeskyttelse,
-    brukerMedFeilendeKontorForGt
+    brukerMedFeilendeKontorForGt,
+    brukerMedFeilendeOppfolgingperiodeOppslagFeil
 )
 
 val ingenSensitivitet = Sensitivitet(
