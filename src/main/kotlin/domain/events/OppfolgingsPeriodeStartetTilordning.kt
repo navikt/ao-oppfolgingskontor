@@ -12,7 +12,6 @@ import no.nav.domain.Sensitivitet
 import no.nav.domain.System
 import no.nav.http.logger
 import no.nav.services.KontorForGtFantLandEllerKontor
-import no.nav.services.KontorForGtNrFantKontor
 import no.nav.services.KontorForGtSuccess
 
 enum class RutingResultat {

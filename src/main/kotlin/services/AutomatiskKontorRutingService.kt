@@ -28,11 +28,7 @@ import no.nav.http.client.AlderIkkeFunnet
 import no.nav.http.client.AlderResult
 import no.nav.http.client.FnrFunnet
 import no.nav.http.client.FnrResult
-import no.nav.http.client.GtForBrukerFunnet
-import no.nav.http.client.GtForBrukerIkkeFunnet
 import no.nav.http.client.GtForBrukerSuccess
-import no.nav.http.client.GtLandForBrukerFunnet
-import no.nav.http.client.GtNummerForBrukerFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseIkkeFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseOppslagFeil
