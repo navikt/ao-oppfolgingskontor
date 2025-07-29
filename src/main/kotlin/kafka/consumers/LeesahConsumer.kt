@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory
 class LeesahConsumer(
         private val automatiskKontorRutingService: AutomatiskKontorRutingService,
         private val fnrProvider: suspend (aktorId: String) -> FnrResult,
+        private val isProduction: Boolean,
 ) {
     val log = LoggerFactory.getLogger(this::class.java)
 
@@ -63,7 +64,16 @@ class LeesahConsumer(
             is HåndterPersondataEndretSuccess -> {
                 val aoKontorEndring = result.endringer.firstOrNull { it is AOKontorEndret } as AOKontorEndret?
                 return when {
-                    aoKontorEndring != null -> Forward(aoKontorEndring.toRecord(), arbeidsoppfolgingkontorSinkName)
+
+                    aoKontorEndring != null -> {
+                        if(isProduction) {
+                            log.info("Hopper over forwarding av kontorendring for PROD")
+                            Commit() // In production we do not forward kontorendringer, but we still commit the record
+                        }
+                        else {
+                            Forward(aoKontorEndring.toRecord(), arbeidsoppfolgingkontorSinkName)
+                        }
+                    }
                     else -> Commit()
                 }
             }

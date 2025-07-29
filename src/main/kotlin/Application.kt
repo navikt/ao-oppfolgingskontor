@@ -89,4 +89,8 @@ fun ApplicationEnvironment.getIssuer(): String {
     return firstIssuerConfig.property("issuer_name").getString()
 }
 
-
+fun ApplicationEnvironment.isProduction(): Boolean {
+    return config.propertyOrNull("cluster")
+        ?.getString()
+        ?.contentEquals("prod-gcp") ?: false
+}

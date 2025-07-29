@@ -15,6 +15,7 @@ import java.time.Duration
 import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
 import no.nav.http.client.FnrResult
 import no.nav.http.client.PdlClient
+import no.nav.isProduction
 import no.nav.kafka.config.AvroTopicConsumer
 import no.nav.kafka.config.StringStringSinkConfig
 import no.nav.kafka.config.StringTopicConsumer
@@ -75,7 +76,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val meterRegistry = requireNotNull(this.pluginConfig.meterRegistry) {
         "MeterRegistry must be configured for KafkaStreamPlugin"
     }
-    val isProduction = environment.config.propertyOrNull("cluster")?.getString()?.contentEquals("prod-gcp") ?: false
+    val isProduction = environment.isProduction()
     if (isProduction) logger.info("Kjører i produksjonsmodus. Konsumerer kun siste-oppfølgingsperiode.")
 
     val endringPaOppfolgingsBrukerConsumer = EndringPaOppfolgingsBrukerConsumer()
@@ -87,7 +88,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         skipPersonIkkeFunnet = !isProduction
     ) { aktorId -> pdlClient.hentFnrFraAktorId(aktorId) }
 
-    val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, fnrProvider)
+    val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, fnrProvider, isProduction)
     val avroValueSpecificSerde = LeesahAvroSerdes(environment.config).valueAvroSerde
     val avroKeySerde = LeesahAvroSerdes(environment.config).keyAvroSerde
 
