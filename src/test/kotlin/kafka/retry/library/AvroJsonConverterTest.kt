@@ -29,7 +29,7 @@ fun `should convert Avro to Json()`() {
 
  val actual = AvroJsonConverter.convertAvroToJson(personhendelse)
 
- actual shouldBe """
+ val expected = """
             {
               "hendelseId" : "41350fcd-ac60-4c86-8ff6-e585fb6edc36",
               "personidenter" : [ "1234567890" ],
@@ -56,7 +56,11 @@ fun `should convert Avro to Json()`() {
               "bostedsadresse" : null
             }
         """.trimIndent()
- }
+
+    actual?.replace("\r\n", "\n") shouldBe
+        expected.replace("\r\n", "\n")
+
+}
 
 @Test
     fun `should return null when Avro is null`() {
