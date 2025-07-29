@@ -20,9 +20,17 @@ permissions:
   id-token: write
 
 jobs:
-  dev:
-    name: Deploy to dev (og etterhvert prod)
+  deploy-dev:
+    name: Deploy to dev
     uses: ./.github/workflows/deploy.yml
     secrets: inherit
     with:
       env: dev
+
+  deploy-prod:
+    name: Deploy to prod
+    needs: [deploy-dev]
+    uses: ./.github/workflows/deploy.yml
+    secrets: inherit
+    with:
+      env: prod
