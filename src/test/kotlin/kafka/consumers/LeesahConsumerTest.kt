@@ -47,7 +47,7 @@ class LeesahConsumerTest {
             flywayMigrationInTest()
             gittNåværendeGtKontor(fnr, KontorId(gammeltKontorId))
             val automatiskKontorRutingService = gittRutingServiceMedGtKontor(KontorId(nyKontorId))
-            val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) })
+            val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) }, false)
 
             leesahConsumer.handterLeesahHendelse(BostedsadresseEndret(fnr))
 
@@ -67,7 +67,7 @@ class LeesahConsumerTest {
             flywayMigrationInTest()
             gittNåværendeGtKontor(fnr, KontorId(gammeltKontorId))
             val automatiskKontorRutingService = gittRutingServiceMedGtKontor(KontorId(nyKontorId))
-            val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) })
+            val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) }, false)
 
             leesahConsumer.handterLeesahHendelse(AdressebeskyttelseEndret(fnr, Gradering.STRENGT_FORTROLIG))
 
@@ -91,7 +91,7 @@ class LeesahConsumerTest {
             gittNåværendeAOKontor(fnr, KontorId(gammelKontorId))
             gittNåværendeGtKontor(fnr, KontorId(gammelKontorId))
             val automatiskKontorRutingService = gittRutingServiceMedGtKontor(KontorId(nyKontorId))
-            val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) })
+            val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) }, false)
 
             leesahConsumer.handterLeesahHendelse(AdressebeskyttelseEndret(fnr, Gradering.UGRADERT))
 
@@ -111,7 +111,7 @@ class LeesahConsumerTest {
         val automatiskKontorRutingService = defaultAutomatiskKontorRutingService(
             { a, b, c -> KontorForGtFeil("Noe gikk galt") }
         )
-        val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) })
+        val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) }, false)
 
         val resultat = leesahConsumer.handterLeesahHendelse(BostedsadresseEndret(fnr))
 
@@ -125,7 +125,7 @@ class LeesahConsumerTest {
         val automatiskKontorRutingService = defaultAutomatiskKontorRutingService(
             { a, b, c -> throw Throwable("Noe gikk galt") }
         )
-        val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) })
+        val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) }, false)
 
         val resultat = leesahConsumer.handterLeesahHendelse(BostedsadresseEndret(fnr))
 
