@@ -122,14 +122,14 @@ class Norg2Client(
                 )
             }
             if (response.status != HttpStatusCode.OK)
-                throw RuntimeException("Kunne ikke hente kontor for GT i norg med arbeidsfordeling, http-status: ${response.status}, gt: $gtForBruker")
+                throw RuntimeException("HTTP POST mot arbeidsfordeling feilet med http-status: ${response.status}, gt: $gtForBruker")
 
             return response.body<List<NorgKontor>>()
                 .firstOrNull()
                 ?.let { KontorForBrukerMedMangelfullGtFunnet(KontorId(it.toMinimaltKontor().kontorId), gtForBruker) }
                 ?: KontorForBrukerMedMangelfullGtIkkeFunnet(gtForBruker)
         } catch (e: Throwable) {
-            return KontorForBrukerMedMangelfullGtFeil("Kunne ikke hente kontor for GT i norg med arbeidsfordeling ${e.message}")
+            return KontorForBrukerMedMangelfullGtFeil("Kunne ikke hente kontor for GT i norg med arbeidsfordeling: ${e.message}")
         }
     }
 

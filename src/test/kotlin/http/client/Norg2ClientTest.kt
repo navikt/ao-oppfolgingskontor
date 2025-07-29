@@ -159,7 +159,7 @@ class Norg2ClientTest {
             HarSkjerming(false)
         )
 
-        response shouldBe KontorForBrukerMedMangelfullGtFeil("Kunne ikke hente kontor for GT i norg med arbeidsfordeling Kunne ikke hente kontor for GT i norg med arbeidsfordeling, http-status: 500 Internal Server Error, gt: GtForBrukerIkkeFunnet(message=Ikke funnet)")
+        response shouldBe KontorForBrukerMedMangelfullGtFeil("Kunne ikke hente kontor for GT i norg med arbeidsfordeling: HTTP POST mot arbeidsfordeling feilet med http-status: 500 Internal Server Error, gt: GtForBrukerIkkeFunnet(message=Ikke funnet)")
     }
 
     private fun defaultNorgKontor(): NorgKontor {
