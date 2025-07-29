@@ -40,9 +40,6 @@ class GTNorgService(
                     }
                 }
                 is GtForBrukerOppslagFeil -> KontorForGtFeil(gtForBruker.message)
-                is GtLandForBrukerFunnet -> {
-                    KontorForGtFantLand(gtForBruker.land, skjermet, strengtFortroligAdresse)
-                }
                 is GtNummerForBrukerFunnet -> kontorForGtProvider(gtForBruker.gtNr, strengtFortroligAdresse, skjermet)
             }
         } catch (e: Exception) {
@@ -63,6 +60,15 @@ sealed class KontorForGtSuccess(
     fun sensitivitet() = Sensitivitet(this.skjerming, this.strengtFortroligAdresse)
     abstract fun gt(): GtForBrukerSuccess
 }
+
+data class KontorForGtFinnesIkke(
+    override val skjerming: HarSkjerming,
+    override val strengtFortroligAdresse: HarStrengtFortroligAdresse,
+    val gtForBruker: GtForBrukerSuccess
+): KontorForGtSuccess(skjerming, strengtFortroligAdresse) {
+    override fun gt(): GtForBrukerSuccess = gtForBruker
+}
+
 sealed class KontorForGtFantLandEllerKontor(
     override val skjerming: HarSkjerming,
     override val strengtFortroligAdresse: HarStrengtFortroligAdresse
@@ -70,6 +76,14 @@ sealed class KontorForGtFantLandEllerKontor(
     skjerming,
     strengtFortroligAdresse
 )
+
+data class KontorForGtFantLand(
+    val landkode: GeografiskTilknytningLand,
+    override val skjerming: HarSkjerming,
+    override val strengtFortroligAdresse: HarStrengtFortroligAdresse
+) : KontorForGtFantLandEllerKontor(skjerming, strengtFortroligAdresse) {
+    override fun gt(): GtForBrukerFunnet = GtLandForBrukerFunnet(landkode)
+}
 
 sealed class KontorForGtNrFantKontor(
     open val kontorId: KontorId,
@@ -83,7 +97,6 @@ data class KontorForGtNrFantDefaultKontor(
     override val strengtFortroligAdresse: HarStrengtFortroligAdresse,
     val geografiskTilknytningNr: GeografiskTilknytningNr
 ) : KontorForGtNrFantKontor(kontorId, skjerming, strengtFortroligAdresse) {
-    fun gtNr(): GtForBrukerFunnet = GtNummerForBrukerFunnet(geografiskTilknytningNr)
     override fun gt(): GtForBrukerFunnet = GtNummerForBrukerFunnet(geografiskTilknytningNr)
 }
 
@@ -94,22 +107,6 @@ data class KontorForGtNrFantFallbackKontorForManglendeGt(
     val gtForBruker: GtForBrukerSuccess
 ): KontorForGtNrFantKontor(kontorId, skjerming, strengtFortroligAdresse) {
     override fun gt() = gtForBruker
-}
-
-data class KontorForGtFantLand(
-    val landkode: GeografiskTilknytningLand,
-    override val skjerming: HarSkjerming,
-    override val strengtFortroligAdresse: HarStrengtFortroligAdresse
-) : KontorForGtFantLandEllerKontor(skjerming, strengtFortroligAdresse) {
-    override fun gt(): GtForBrukerFunnet = GtLandForBrukerFunnet(landkode)
-}
-
-data class KontorForGtFinnesIkke(
-    override val skjerming: HarSkjerming,
-    override val strengtFortroligAdresse: HarStrengtFortroligAdresse,
-    val gtForBruker: GtForBrukerSuccess
-): KontorForGtSuccess(skjerming, strengtFortroligAdresse) {
-    override fun gt(): GtForBrukerSuccess = gtForBruker
 }
 
 data class KontorForGtFeil(val melding: String) : KontorForGtResultat()

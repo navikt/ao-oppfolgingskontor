@@ -1,5 +1,8 @@
 package no.nav.services
 
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import no.nav.db.Ident
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
@@ -78,29 +81,31 @@ class AutomatiskKontorRutingService(
         if (oppfolgingsperiodeEndret is OppfolgingsperiodeAvsluttet) return TilordningSuccessIngenEndring
         try {
             val underOppfolgingResult = isUnderOppfolgingProvider(FnrFunnet(oppfolgingsperiodeEndret.fnr))
-            val oppfolgingsperiode = when (underOppfolgingResult) {
+            val (fnr, oppfolgingsperiodeId) = when (underOppfolgingResult) {
                 is AktivOppfolgingsperiode -> underOppfolgingResult
                 NotUnderOppfolging -> return TilordningSuccessIngenEndring
                 is OppfolgingperiodeOppslagFeil -> return TilordningFeil("Feil ved oppslag på fnr: ${underOppfolgingResult.message}")
             }
-            val oppfolgingsperiodeId = oppfolgingsperiode.periodeId
-            val fnr = oppfolgingsperiode.fnr
-            val erSkjermet = when (val skjermetResult = erSkjermetProvider(fnr)) {
+            val (skjermetResult, adressebeskyttelseResult, aldersResult) = coroutineScope {
+                val skjermetDeferred = async { erSkjermetProvider(fnr) }
+                val adressebeskyttelseDeferred = async { harStrengtFortroligAdresseProvider(fnr) }
+                val alderDeferred = async { aldersProvider(fnr) }
+                Triple(skjermetDeferred, adressebeskyttelseDeferred, alderDeferred)
+            }
+            val erSkjermet = when (val skjermetResult = skjermetResult.await()) {
                 is SkjermingFunnet -> skjermetResult.skjermet
                 is SkjermingIkkeFunnet -> return TilordningFeil("Kunne ikke hente skjerming ved kontortilordning: ${skjermetResult.melding}")
             }
-            val harStrengtFortroligAdresse = when (val result = harStrengtFortroligAdresseProvider(fnr)) {
+            val harStrengtFortroligAdresse = when (val result = adressebeskyttelseResult.await()) {
                 is HarStrengtFortroligAdresseIkkeFunnet -> return TilordningFeil("Kunne ikke hente adressebeskyttelse ved kontortilordning: ${result.message}")
                 is HarStrengtFortroligAdresseOppslagFeil -> return TilordningFeil("Kunne ikke hente adressebeskyttelse ved kontortilordning: ${result.message}")
                 is HarStrengtFortroligAdresseFunnet -> result.harStrengtFortroligAdresse
             }
-            val alder = when (val result = aldersProvider(fnr)) {
+            val alder = when (val result = aldersResult.await()) {
                 is AlderFunnet -> result.alder
                 is AlderIkkeFunnet -> return TilordningFeil("Kunne ikke hente alder: ${result.message}")
             }
-            val gtKontorResultat = gtKontorProvider(fnr, harStrengtFortroligAdresse, erSkjermet)
-
-            val kontorTilordning = when (gtKontorResultat) {
+            val kontorTilordning = when (val gtKontorResultat = gtKontorProvider(fnr, harStrengtFortroligAdresse, erSkjermet)) {
                 is KontorForGtFinnesIkke -> hentTilordningUtenGT(fnr, alder, profileringProvider(fnr), oppfolgingsperiodeId, gtKontorResultat)
                 is KontorForGtFantLandEllerKontor -> hentTilordning(fnr, gtKontorResultat, alder, profileringProvider(fnr), oppfolgingsperiodeId)
                 is KontorForGtFeil -> return TilordningFeil("Feil ved henting av gt-kontor: ${gtKontorResultat.melding}")

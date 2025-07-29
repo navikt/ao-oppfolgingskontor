@@ -49,7 +49,6 @@ import no.nav.http.client.arbeidssogerregisteret.HentProfileringsResultat
 import no.nav.http.client.arbeidssogerregisteret.ProfileringFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringIkkeFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
-import no.nav.http.client.toDefaultGtKontorFunnet
 import no.nav.kafka.consumers.EndringISkjermingResult
 import no.nav.kafka.consumers.HåndterPersondataEndretFail
 import no.nav.kafka.consumers.HåndterPersondataEndretSuccess
@@ -62,6 +61,7 @@ import no.nav.services.KontorForGtNrFantDefaultKontor
 import no.nav.services.KontorForGtNrFantKontor
 import no.nav.services.KontorForGtFantLand
 import no.nav.services.KontorForGtFeil
+import no.nav.services.KontorForGtNrFantFallbackKontorForManglendeGt
 import no.nav.services.KontorForGtResultat
 import no.nav.services.KontorForGtSuccess
 import no.nav.services.NotUnderOppfolging
@@ -155,13 +155,27 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 )
             }
 
-            it("skal bruke fallbackkontor hvis bruker har landskode som gt") {
-                gitt(brukerMedLandskode).tilordneKontorAutomatisk(
-                    oppfolgingsperiodeStartet(brukerMedLandskode)
+            it("skal bruke arbeidsfordeling-fallback hvis bruker har landskode som gt") {
+                gitt(brukerMedLandskodeOgFallback).tilordneKontorAutomatisk(
+                    oppfolgingsperiodeStartet(brukerMedLandskodeOgFallback)
+                ) shouldBe TilordningSuccessKontorEndret(
+                    OppfolgingsPeriodeStartetLokalKontorTilordning(
+                        KontorTilordning(
+                            brukerMedLandskodeOgFallback.fnr(),
+                            brukerMedLandskodeOgFallback.gtKontor(),
+                            brukerMedLandskodeOgFallback.oppfolgingsperiodeId()),
+                        Sensitivitet(HarSkjerming(false), HarStrengtFortroligAdresse(false))
+                    )
+                )
+            }
+
+            it("skal bruke hardkodet-fallback hvis bruker har landskode som gt men ikke fikk treff på arbeidsfordeling") {
+                gitt(brukerMedLandskodeUtenFallback).tilordneKontorAutomatisk(
+                    oppfolgingsperiodeStartet(brukerMedLandskodeUtenFallback)
                 ) shouldBe TilordningSuccessKontorEndret(
                     OppfolgingsPeriodeStartetFallbackKontorTilordning(
-                        brukerMedLandskode.fnr(),
-                        brukerMedLandskode.oppfolgingsperiodeId(),
+                            brukerMedLandskodeUtenFallback.fnr(),
+                        brukerMedLandskodeUtenFallback.oppfolgingsperiodeId(),
                         Sensitivitet(HarSkjerming(false), HarStrengtFortroligAdresse(false))
                     )
                 )
@@ -335,27 +349,55 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
         }
 
         it("skal sette AO og GT kontor til skjermet kontor når bruker blir skjermet også når bruker har landskode") {
-            gitt(brukerMedLandskode).handterEndringISkjermingStatus(
+            gitt(brukerMedLandskodeOgFallback).handterEndringISkjermingStatus(
                 SkjermetStatusEndret(
-                    brukerMedLandskode.fnr(),
+                    brukerMedLandskodeOgFallback.fnr(),
                     HarSkjerming(true)
                 )
             ) shouldBe  Result.success(EndringISkjermingResult(
                 listOf(
                     GTKontorEndret.endretPgaSkjermingEndret(
                         KontorTilordning(
-                            brukerMedLandskode.fnr(),
-                            INGEN_GT_KONTOR_FALLBACK,
-                            brukerMedLandskode.oppfolgingsperiodeId()
+                            brukerMedLandskodeOgFallback.fnr(),
+                            brukerMedLandskodeOgFallback.gtKontor(),
+                            brukerMedLandskodeOgFallback.oppfolgingsperiodeId()
                         ),
                         HarSkjerming(true),
-                        brukerMedLandskode.gtForBruker as GtLandForBrukerFunnet
+                        brukerMedLandskodeOgFallback.gtForBruker as GtLandForBrukerFunnet
                     ),
                     AOKontorEndretPgaSkjermingEndret(
                         KontorTilordning(
-                            brukerMedLandskode.fnr(),
+                            brukerMedLandskodeOgFallback.fnr(),
+                            brukerMedLandskodeOgFallback.gtKontor(),
+                            brukerMedLandskodeOgFallback.oppfolgingsperiodeId()
+                        )
+                    ),
+                )
+            ))
+        }
+
+        it("skal sette AO og GT kontor til skjermet kontor når bruker blir skjermet også når bruker har landskode men ikke arbeidsfordeling fallback") {
+            gitt(brukerMedLandskodeUtenFallback).handterEndringISkjermingStatus(
+                SkjermetStatusEndret(
+                    brukerMedLandskodeUtenFallback.fnr(),
+                    HarSkjerming(true)
+                )
+            ) shouldBe  Result.success(EndringISkjermingResult(
+                listOf(
+                    GTKontorEndret.endretPgaSkjermingEndret(
+                        KontorTilordning(
+                            brukerMedLandskodeUtenFallback.fnr(),
                             INGEN_GT_KONTOR_FALLBACK,
-                            brukerMedLandskode.oppfolgingsperiodeId()
+                            brukerMedLandskodeUtenFallback.oppfolgingsperiodeId()
+                        ),
+                        HarSkjerming(true),
+                        brukerMedLandskodeUtenFallback.gtForBruker as GtLandForBrukerFunnet
+                    ),
+                    AOKontorEndretPgaSkjermingEndret(
+                        KontorTilordning(
+                            brukerMedLandskodeUtenFallback.fnr(),
+                            INGEN_GT_KONTOR_FALLBACK,
+                            brukerMedLandskodeUtenFallback.oppfolgingsperiodeId()
                         )
                     ),
                 )
@@ -459,17 +501,32 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
             ))
         }
 
-        it("skal synce gt kontor med norg for brukere med gt-landskode også") {
-            gitt(brukerMedLandskode).handterEndringForBostedsadresse(
-                BostedsadresseEndret(brukerMedLandskode.fnr())
+        it("skal synce gt kontor med norg for brukere med gt-landskode (med arbeidsfordeling fallback)") {
+            gitt(brukerMedLandskodeOgFallback).handterEndringForBostedsadresse(
+                BostedsadresseEndret(brukerMedLandskodeOgFallback.fnr())
             ) shouldBe HåndterPersondataEndretSuccess(listOf(
                 GTKontorEndret.endretPgaBostedsadresseEndret(
                     KontorTilordning(
-                        brukerMedLandskode.fnr(),
-                        INGEN_GT_KONTOR_FALLBACK,
-                        brukerMedLandskode.oppfolgingsperiodeId()
+                        brukerMedLandskodeOgFallback.fnr(),
+                        brukerMedLandskodeOgFallback.gtKontor(),
+                        brukerMedLandskodeOgFallback.oppfolgingsperiodeId()
                     ),
-                    brukerMedLandskode.gtForBruker as GtForBrukerFunnet
+                    brukerMedLandskodeOgFallback.gtForBruker as GtForBrukerFunnet
+                )
+            ))
+        }
+
+        it("skal synce gt kontor med norg for brukere med gt-landskode uten arbeidsfordeling fallback") {
+            gitt(brukerMedLandskodeUtenFallback).handterEndringForBostedsadresse(
+                BostedsadresseEndret(brukerMedLandskodeUtenFallback.fnr())
+            ) shouldBe HåndterPersondataEndretSuccess(listOf(
+                GTKontorEndret.endretPgaBostedsadresseEndret(
+                    KontorTilordning(
+                        brukerMedLandskodeUtenFallback.fnr(),
+                        INGEN_GT_KONTOR_FALLBACK,
+                        brukerMedLandskodeUtenFallback.oppfolgingsperiodeId()
+                    ),
+                    brukerMedLandskodeUtenFallback.gtForBruker as GtForBrukerFunnet
                 )
             ))
         }
@@ -579,23 +636,7 @@ fun oppfolgingsperiodeStartet(fnr: Ident): OppfolgingsperiodeStartet {
 fun gitt(bruker: Bruker): AutomatiskKontorRutingService {
     return AutomatiskKontorRutingService(
         {},
-        { _, strengtFortroligAdresse, skjerming ->
-            when (bruker.gtKontor) {
-                is KontorForGtNrFantKontor -> {
-                    val gtNr = when (val gtResult = bruker.gtForBruker) {
-                            is GtNummerForBrukerFunnet -> gtResult.gtNr
-                            is GtLandForBrukerFunnet -> return@AutomatiskKontorRutingService KontorForGtFantLand(gtResult.land, skjerming, strengtFortroligAdresse)
-                            is GtForBrukerIkkeFunnet -> return@AutomatiskKontorRutingService KontorForGtFinnesIkke(skjerming, strengtFortroligAdresse, bruker.gtForBruker)
-                            is GtForBrukerOppslagFeil -> return@AutomatiskKontorRutingService KontorForGtFeil("asdsa")
-                    }
-                    bruker.gtKontor.kontorId.toDefaultGtKontorFunnet(
-                        strengtFortroligAdresse,
-                        skjerming,
-                        gtNr)
-                }
-                else -> bruker.gtKontor
-            }
-        },
+        { _, strengtFortroligAdresse, skjerming -> bruker.gtKontor },
         { bruker.alder },
         { bruker.profilering },
         { bruker.skjerming },
@@ -632,7 +673,7 @@ data class Bruker(
         if (gtKontor is KontorForGtNrFantKontor) {
             return gtKontor.kontorId
         }
-        throw IllegalStateException("gtKontor is ${this.gtKontor}")
+        throw IllegalStateException("Prøvde hente gtKontor fra testbruker men bruker var ikke konfigurert med et gt-kontor, men hadde istedet: ${this.gtKontor}")
     }
     fun oppfolgingsperiodeId(): OppfolgingsperiodeId {
         if (oppfolgingsPeriodeResult is AktivOppfolgingsperiode) {
@@ -707,8 +748,17 @@ val skjermetBrukerMedLandskode = Bruker(
     GtNummerForBrukerFunnet(GeografiskTilknytningBydelNr("1111")),
     SkjermingFunnet(HarSkjerming(true)),
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)))
-val brukerMedLandskode = Bruker(
+val brukerMedLandskodeOgFallback = Bruker(
     FnrFunnet(Fnr("82345678901")),
+    AlderFunnet(20),
+    ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
+    KontorForGtNrFantFallbackKontorForManglendeGt(KontorId("3443"), HarSkjerming(false), HarStrengtFortroligAdresse(false), GtLandForBrukerFunnet(GeografiskTilknytningLand("JPN"))),
+    GtLandForBrukerFunnet(GeografiskTilknytningLand("JPN")),
+    SkjermingFunnet(HarSkjerming(false)),
+    HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
+)
+val brukerMedLandskodeUtenFallback = Bruker(
+    FnrFunnet(Fnr("82345678991")),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
     KontorForGtFantLand(GeografiskTilknytningLand("JPN"), HarSkjerming(false), HarStrengtFortroligAdresse(false)),

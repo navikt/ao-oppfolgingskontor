@@ -74,7 +74,7 @@ data class OppfolgingsPeriodeStartetLokalKontorTilordning(
 }
 
 data class OppfolgingsPeriodeStartetFallbackKontorTilordning(val ident: Ident, val oppfolgingsperiodeId: OppfolgingsperiodeId, val sensitivitet: Sensitivitet) : AOKontorEndret(KontorTilordning(ident, INGEN_GT_KONTOR_FALLBACK, oppfolgingsperiodeId), System()) {
-    val rutingResultat: RutingResultat = RutingResultat.RutetTilLokalkontor
+    val rutingResultat: RutingResultat = RutingResultat.RutetTilLokalkontorFallback
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(
             kontorId = tilordning.kontorId,
@@ -99,7 +99,7 @@ data class OppfolgingsPeriodeStartetSensitivKontorTilordning(
     val sensitivitet: Sensitivitet,
     val gtKontorResultat: KontorForGtSuccess): AOKontorEndret(kontorTilordning, System()) {
 
-    val rutingResultat: RutingResultat = RutingResultat.RutetTilLokalkontor
+    val rutingResultat: RutingResultat = RutingResultat .RutetTilLokalkontor
 
     constructor(
         kontorTilordning: KontorTilordning,
