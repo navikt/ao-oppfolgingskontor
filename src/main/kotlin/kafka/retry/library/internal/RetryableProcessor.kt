@@ -103,17 +103,17 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
 
     private fun runReprocessingWithLock(timestamp: Long) {
         runWithLock {
-            punctuationCoroutineScope.launch {
-                try {
-                    withTimeout(10_000) {
-                        runReprocessingOnOneBatch(timestamp)
-                    }
-                } catch (e: TimeoutCancellationException) {
-                    logger.warn("Reprocessing failed messages timed out after 10 seconds")
-                } catch (e: Throwable) {
-                    logger.error("Unexpected error when processing failed messages: ${e.message}", e)
-                }
-            }
+            runReprocessingOnOneBatch(timestamp)
+//            punctuationCoroutineScope.launch {
+//                try {
+//                    withTimeout(10_000) {
+//                    }
+//                } catch (e: TimeoutCancellationException) {
+//                    logger.warn("Reprocessing failed messages timed out after 10 seconds")
+//                } catch (e: Throwable) {
+//                    logger.error("Unexpected error when processing failed messages: ${e.message}", e)
+//                }
+//            }
         }
     }
 
