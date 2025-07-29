@@ -20,12 +20,17 @@ permissions:
   id-token: write
 
 jobs:
+  build:
+    name: Build and upload to GAR
+    uses: ./.github/workflows/build.yml
+
   deploy-dev:
     name: Deploy to dev
     uses: ./.github/workflows/deploy.yml
     secrets: inherit
     with:
       env: dev
+      image: ${{ needs.build.outputs.image }}
 
   deploy-prod:
     name: Deploy to prod
@@ -34,3 +39,4 @@ jobs:
     secrets: inherit
     with:
       env: prod
+      image: ${{ needs.build.outputs.image }}
