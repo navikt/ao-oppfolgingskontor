@@ -167,7 +167,7 @@ enum class GtType {
 
 sealed class GeografiskTilknytningNr(open val value: String, val type: GtType)
 data class GeografiskTilknytningBydelNr(override val value: String): GeografiskTilknytningNr(value, GtType.Bydel)
-data class GeografiskTilknytningKommuneNr(override val value: String): GeografiskTilknytningNr(value, GtType.Bydel)
+data class GeografiskTilknytningKommuneNr(override val value: String): GeografiskTilknytningNr(value, GtType.Kommune)
 data class GeografiskTilknytningLand(val value: String)
 
 fun NorgKontor.toMinimaltKontor() = MinimaltNorgKontor(
