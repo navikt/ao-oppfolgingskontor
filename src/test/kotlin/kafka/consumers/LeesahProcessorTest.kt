@@ -19,7 +19,7 @@ import no.nav.http.client.FnrFunnet
 import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.SkjermingFunnet
-import no.nav.kafka.consumers.LeesahConsumer
+import no.nav.kafka.consumers.LeesahProcessor
 import no.nav.kafka.processor.Retry
 import no.nav.person.pdl.leesah.adressebeskyttelse.Gradering
 import no.nav.services.AktivOppfolgingsperiode
@@ -36,7 +36,7 @@ import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 import java.util.UUID
 
-class LeesahConsumerTest {
+class LeesahProcessorTest {
 
     @Test
     fun `skal sjekke gt kontor på nytt ved bostedsadresse endret`() = testApplication {
@@ -47,9 +47,9 @@ class LeesahConsumerTest {
             flywayMigrationInTest()
             gittNåværendeGtKontor(fnr, KontorId(gammeltKontorId))
             val automatiskKontorRutingService = gittRutingServiceMedGtKontor(KontorId(nyKontorId))
-            val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) }, false)
+            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, { FnrFunnet(fnr) }, false)
 
-            leesahConsumer.handterLeesahHendelse(BostedsadresseEndret(fnr))
+            leesahProcessor.handterLeesahHendelse(BostedsadresseEndret(fnr))
 
             transaction {
                 val kontorEtterEndirng = GeografiskTilknyttetKontorEntity[fnr.value]
@@ -67,9 +67,9 @@ class LeesahConsumerTest {
             flywayMigrationInTest()
             gittNåværendeGtKontor(fnr, KontorId(gammeltKontorId))
             val automatiskKontorRutingService = gittRutingServiceMedGtKontor(KontorId(nyKontorId))
-            val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) }, false)
+            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, { FnrFunnet(fnr) }, false)
 
-            leesahConsumer.handterLeesahHendelse(AdressebeskyttelseEndret(fnr, Gradering.STRENGT_FORTROLIG))
+            leesahProcessor.handterLeesahHendelse(AdressebeskyttelseEndret(fnr, Gradering.STRENGT_FORTROLIG))
 
             transaction {
                 val gtKontorEtterEndring = GeografiskTilknyttetKontorEntity[fnr.value]
@@ -91,9 +91,9 @@ class LeesahConsumerTest {
             gittNåværendeAOKontor(fnr, KontorId(gammelKontorId))
             gittNåværendeGtKontor(fnr, KontorId(gammelKontorId))
             val automatiskKontorRutingService = gittRutingServiceMedGtKontor(KontorId(nyKontorId))
-            val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) }, false)
+            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, { FnrFunnet(fnr) }, false)
 
-            leesahConsumer.handterLeesahHendelse(AdressebeskyttelseEndret(fnr, Gradering.UGRADERT))
+            leesahProcessor.handterLeesahHendelse(AdressebeskyttelseEndret(fnr, Gradering.UGRADERT))
 
             transaction {
                 val gtKontorEtterEndring = GeografiskTilknyttetKontorEntity[fnr.value]
@@ -111,9 +111,9 @@ class LeesahConsumerTest {
         val automatiskKontorRutingService = defaultAutomatiskKontorRutingService(
             { a, b, c -> KontorForGtFeil("Noe gikk galt") }
         )
-        val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) }, false)
+        val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, { FnrFunnet(fnr) }, false)
 
-        val resultat = leesahConsumer.handterLeesahHendelse(BostedsadresseEndret(fnr))
+        val resultat = leesahProcessor.handterLeesahHendelse(BostedsadresseEndret(fnr))
 
         resultat.shouldBeTypeOf<Retry<String, String>>()
         resultat.reason shouldBe "Kunne ikke håndtere endring i bostedsadresse pga feil ved henting av gt-kontor: Noe gikk galt"
@@ -125,9 +125,9 @@ class LeesahConsumerTest {
         val automatiskKontorRutingService = defaultAutomatiskKontorRutingService(
             { a, b, c -> throw Throwable("Noe gikk galt") }
         )
-        val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, { FnrFunnet(fnr) }, false)
+        val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, { FnrFunnet(fnr) }, false)
 
-        val resultat = leesahConsumer.handterLeesahHendelse(BostedsadresseEndret(fnr))
+        val resultat = leesahProcessor.handterLeesahHendelse(BostedsadresseEndret(fnr))
 
         resultat.shouldBeTypeOf<Retry<String, String>>()
         resultat.reason shouldBe "Uventet feil ved håndtering av endring i bostedsadresse: Noe gikk galt"

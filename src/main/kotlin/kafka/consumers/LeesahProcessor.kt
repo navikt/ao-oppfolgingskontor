@@ -23,14 +23,14 @@ import no.nav.services.AutomatiskKontorRutingService
 import org.apache.kafka.streams.processor.api.Record
 import org.slf4j.LoggerFactory
 
-class LeesahConsumer(
+class LeesahProcessor(
         private val automatiskKontorRutingService: AutomatiskKontorRutingService,
         private val fnrProvider: suspend (aktorId: String) -> FnrResult,
         private val isProduction: Boolean,
 ) {
     val log = LoggerFactory.getLogger(this::class.java)
 
-    fun consume(
+    fun process(
             record: Record<String, Personhendelse>
     ): RecordProcessingResult<String, String> {
         log.info("Consumer Personhendelse record ${record.value().opplysningstype} ${record.value().endringstype}")

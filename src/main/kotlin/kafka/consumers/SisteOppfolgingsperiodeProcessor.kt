@@ -128,21 +128,4 @@ fun OppfolgingsperiodeDTO.toOppfolgingsperiodeEndret(fnr: Ident): Oppfolgingsper
     return OppfolgingsperiodeAvsluttet(fnr, this.startDato, id)
 }
 
-object OppfolgingsPeriodeStartetSerde: Serde<OppfolgingsperiodeStartet> {
-    override fun serializer(): Serializer<OppfolgingsperiodeStartet> = OppfolgingsperiodeStartetSerializer
-    override fun deserializer(): Deserializer<OppfolgingsperiodeStartet> = OppfolgingsperiodeStartetDeserializer
-}
-
-object OppfolgingsperiodeStartetSerializer: Serializer<OppfolgingsperiodeStartet> {
-    override fun serialize(
-        topic: String?,
-        data: OppfolgingsperiodeStartet
-    ) =  Json.encodeToString(data).toByteArray()
-}
-
-object OppfolgingsperiodeStartetDeserializer: Deserializer<OppfolgingsperiodeStartet> {
-    override fun deserialize(
-        topic: String?,
-        data: ByteArray
-    ): OppfolgingsperiodeStartet = Json.decodeFromString(data.toString())
-}
+val OppfolgingsPeriodeStartetSerde = jsonSerde<OppfolgingsperiodeStartet>()

@@ -19,6 +19,7 @@ import no.nav.kafka.retry.library.MaxRetries
 import no.nav.kafka.retry.library.RetryConfig
 import org.apache.avro.specific.SpecificRecord
 import org.apache.kafka.common.serialization.Deserializer
+import org.apache.kafka.common.serialization.Serde
 import org.apache.kafka.common.serialization.Serializer
 import org.apache.kafka.streams.processor.PunctuationType
 import org.apache.kafka.streams.processor.api.Processor
@@ -44,10 +45,8 @@ val lockAtLeastFor = Duration.ZERO
 @PublishedApi
 internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
     private val config: RetryConfig,
-    private val keyInSerializer: Serializer<KIn>,
-    private val valueInSerializer: Serializer<VIn>,
-    private val keyInDeserializer: Deserializer<KIn>,
-    private val valueInDeserializer: Deserializer<VIn>,
+    private val keyInSerde: Serde<KIn>,
+    private val valueInSerde: Serde<VIn>,
     private val topic: String, // Nødvendig for SerDes
     private val repository: FailedMessageRepository, // Nødvendig for metrikk-initialiserin
     /* businessLogig er selve forretningslogikken fra brukeren. Kan returnere Record<KOut,VOut> eller Unit.     */
@@ -55,6 +54,12 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
     private val lockProvider: LockProvider,
     private val punctuationCoroutineScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
 ) : Processor<KIn, VIn, KOut, VOut> {
+
+
+    private val keyInSerializer = keyInSerde.serializer()
+    private val valueInSerializer = valueInSerde.serializer()
+    private val keyInDeserializer = keyInSerde.deserializer()
+    private val valueInDeserializer = valueInSerde.deserializer()
 
     private lateinit var context: ProcessorContext<KOut, VOut>
     private lateinit var store: PostgresRetryStore

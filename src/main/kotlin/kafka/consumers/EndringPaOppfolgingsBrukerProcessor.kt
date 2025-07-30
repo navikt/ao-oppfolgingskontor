@@ -23,12 +23,12 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.time.OffsetDateTime
 
-class EndringPaOppfolgingsBrukerConsumer() {
-    val log = LoggerFactory.getLogger(EndringPaOppfolgingsBrukerConsumer::class.java)
+class EndringPaOppfolgingsBrukerProcessor() {
+    val log = LoggerFactory.getLogger(EndringPaOppfolgingsBrukerProcessor::class.java)
 
     val json = Json { ignoreUnknownKeys = true }
 
-    fun consume(record: Record<String, String>): RecordProcessingResult<String, String> {
+    fun process(record: Record<String, String>): RecordProcessingResult<String, String> {
         log.info("Consumed record")
         val fnrString = record.key()
         val endringPaOppfolgingsBruker = json.decodeFromString<EndringPaOppfolgingsBruker>(record.value())

@@ -1,9 +1,9 @@
 package no.nav.kafka.consumers
 
+import kafka.consumers.jsonSerde
 import kotlinx.coroutines.runBlocking
 import no.nav.db.Ident
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
-import no.nav.http.client.FnrResult
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
@@ -11,19 +11,30 @@ import no.nav.kafka.processor.Skip
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.TilordningFeil
 import no.nav.services.TilordningSuccess
+import org.apache.kafka.common.serialization.Deserializer
+import org.apache.kafka.common.serialization.Serde
+import org.apache.kafka.common.serialization.Serializer
 import org.apache.kafka.streams.processor.api.Record
 import org.slf4j.LoggerFactory
 
-class KontorTilordningsProcessor(
+class KontortilordningsProcessor(
         private val automatiskKontorRutingService: AutomatiskKontorRutingService,
         private val skipPersonIkkeFunnet: Boolean = false,
 ) {
     companion object {
-        const val processorName = "OppfolgingsPeriodeProcessor"
+        const val processorName = "KontortilordningsProcessor"
+
+        val identSerde: Serde<Ident> = object : Serde<Ident> {
+            override fun serializer(): Serializer<Ident> =
+                Serializer<Ident> { topic, data -> data.toString().toByteArray() }
+            override fun deserializer(): Deserializer<Ident> =
+                Deserializer<Ident> { topic, data -> Ident.of(data.decodeToString()) }
+        }
+        val oppfolgingsperiodeStartetSerde = jsonSerde<OppfolgingsperiodeStartet>()
     }
 
     private val log = LoggerFactory.getLogger(this::class.java)
-    fun consume(
+    fun process(
             record: Record<Ident, OppfolgingsperiodeStartet>
     ): RecordProcessingResult<String, String> {
         try {

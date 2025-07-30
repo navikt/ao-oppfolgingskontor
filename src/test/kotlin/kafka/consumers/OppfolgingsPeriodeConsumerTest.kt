@@ -21,7 +21,7 @@ import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
-import no.nav.kafka.consumers.KontorTilordningsProcessor
+import no.nav.kafka.consumers.KontortilordningsProcessor
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Skip
 import no.nav.services.AktivOppfolgingsperiode
@@ -74,14 +74,12 @@ class OppfolgingsPeriodeConsumerTest {
             val bruker = testBruker()
             application {
                 flywayMigrationInTest()
-                val consumer = KontorTilordningsProcessor(
-                    createAutomatiskKontorRutingService(bruker.fnr, bruker.oppfolgingsperiodeId),
+                val consumer = SisteOppfolgingsperiodeProcessor(
                     OppfolgingsperiodeService
                 ) { FnrFunnet(bruker.fnr) }
 
-
                 val record = oppfolgingsperiodeMessage(bruker, sluttDato = null)
-                consumer.consume(record)
+                consumer.process(record)
 
                 bruker.skalVæreUnderOppfølging()
             }
@@ -95,17 +93,14 @@ class OppfolgingsPeriodeConsumerTest {
 
             application {
                 flywayMigrationInTest()
-                val consumer = KontorTilordningsProcessor(createAutomatiskKontorRutingService(
-                        bruker.fnr,
-                    bruker.oppfolgingsperiodeId
-                    ),
+                val consumer = SisteOppfolgingsperiodeProcessor(
                     OppfolgingsperiodeService
                 ) { FnrFunnet(bruker.fnr) }
 
 
                 val record = oppfolgingsperiodeMessage(bruker, sluttDato = periodeSlutt)
 
-                consumer.consume(record)
+                consumer.process(record)
 
                 bruker.skalIkkeVæreUnderOppfølging()
             }
@@ -119,20 +114,16 @@ class OppfolgingsPeriodeConsumerTest {
 
             application {
                 flywayMigrationInTest()
-                val consumer = KontorTilordningsProcessor(createAutomatiskKontorRutingService(
-                    bruker.fnr,
-                    bruker.oppfolgingsperiodeId
-                    ),
+                val consumer = SisteOppfolgingsperiodeProcessor(
                     OppfolgingsperiodeService,
                 ) { FnrFunnet(bruker.fnr) }
-
 
                 val startPeriodeRecord = oppfolgingsperiodeMessage(bruker, sluttDato = null)
                 val avsluttetNyerePeriodeRecord = oppfolgingsperiodeMessage(
                     bruker.copy(periodeStart = bruker.periodeStart.plusSeconds(1)), sluttDato = periodeSlutt)
 
-                consumer.consume(startPeriodeRecord)
-                val result = consumer.consume(avsluttetNyerePeriodeRecord)
+                consumer.process(startPeriodeRecord)
+                val result = consumer.process(avsluttetNyerePeriodeRecord)
 
                 result.shouldBeInstanceOf<Commit<*, *>>()
                 bruker.skalIkkeVæreUnderOppfølging()
@@ -146,10 +137,7 @@ class OppfolgingsPeriodeConsumerTest {
 
             application {
                 flywayMigrationInTest()
-                val consumer = KontorTilordningsProcessor(createAutomatiskKontorRutingService(
-                    bruker.fnr,
-                    bruker.oppfolgingsperiodeId
-                ),
+                val consumer = SisteOppfolgingsperiodeProcessor(
                     OppfolgingsperiodeService,
                 ) { FnrFunnet(bruker.fnr) }
 
@@ -162,8 +150,8 @@ class OppfolgingsPeriodeConsumerTest {
                     ),
                     sluttDato = null)
 
-                consumer.consume(startPeriodeRecord)
-                val processingResult = consumer.consume(startGammelPeriodeRecord)
+                consumer.process(startPeriodeRecord)
+                val processingResult = consumer.process(startGammelPeriodeRecord)
 
                 processingResult.shouldBeInstanceOf<Skip<*, *>>()
                 bruker.skalVæreUnderOppfølging()
@@ -179,10 +167,7 @@ class OppfolgingsPeriodeConsumerTest {
 
             application {
                 flywayMigrationInTest()
-                val consumer = KontorTilordningsProcessor(createAutomatiskKontorRutingService(
-                    bruker.fnr,
-                    bruker.oppfolgingsperiodeId
-                ),
+                val consumer = SisteOppfolgingsperiodeProcessor(
                     OppfolgingsperiodeService,
                 ) { FnrFunnet(bruker.fnr) }
 
@@ -195,8 +180,8 @@ class OppfolgingsPeriodeConsumerTest {
                     ),
                     sluttDato = null)
 
-                consumer.consume(startPeriodeRecord)
-                val processingResult = consumer.consume(startNyerePeriodeRecord)
+                consumer.process(startPeriodeRecord)
+                val processingResult = consumer.process(startNyerePeriodeRecord)
 
                 processingResult.shouldBeInstanceOf<Commit<*, *>>()
                 transaction {
@@ -222,10 +207,7 @@ class OppfolgingsPeriodeConsumerTest {
 
             application {
                 flywayMigrationInTest()
-                val consumer = KontorTilordningsProcessor(createAutomatiskKontorRutingService(
-                    bruker.fnr,
-                    bruker.oppfolgingsperiodeId
-                ),
+                val consumer = SisteOppfolgingsperiodeProcessor(
                     OppfolgingsperiodeService,
                 ) { FnrFunnet(bruker.fnr) }
 
@@ -238,8 +220,8 @@ class OppfolgingsPeriodeConsumerTest {
                     ),
                     sluttDato = periodeSlutt)
 
-                consumer.consume(startPeriodeRecord)
-                val processingResult = consumer.consume(sluttNyerePeriodeRecord)
+                consumer.process(startPeriodeRecord)
+                val processingResult = consumer.process(sluttNyerePeriodeRecord)
 
                 processingResult.shouldBeInstanceOf<Commit<*, *>>()
                 bruker.skalIkkeVæreUnderOppfølging()

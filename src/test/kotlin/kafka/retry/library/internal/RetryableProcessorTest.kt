@@ -71,10 +71,8 @@ class RetryableProcessorTest {
         val mockedStore: FailedMessageRepository = mockk(relaxed = true)
         val processor = RetryableProcessor<String, String, Unit, Unit>(
             config = config,
-            keyInSerializer = Serdes.String().serializer(),
-            valueInSerializer = Serdes.String().serializer(),
-            keyInDeserializer = Serdes.String().deserializer(),
-            valueInDeserializer = Serdes.String().deserializer(),
+            keyInSerde = Serdes.String(),
+            valueInSerde = Serdes.String(),
             topic = inputTopicName,
             repository = mockedStore, // Dummy mock, ikke brukt direkte av prosessoren
             // Definer en kontrollerbar forretningslogikk for testen
@@ -239,10 +237,8 @@ class RetryableProcessorTest {
 
         avroProcessor = RetryableProcessor<String, Personhendelse, Unit, Unit>(
             config = config,
-            keyInSerializer = Serdes.String().serializer(),
-            valueInSerializer = valueAvroSerde.serializer(),
-            keyInDeserializer = Serdes.String().deserializer(),
-            valueInDeserializer = valueAvroSerde.deserializer(),
+            keyInSerde = Serdes.String(),
+            valueInSerde = valueAvroSerde,
             topic = inputTopicName,
             repository = mockedStore, // Dummy mock, ikke brukt direkte av prosessoren
             // Definer en kontrollerbar forretningslogikk for testen

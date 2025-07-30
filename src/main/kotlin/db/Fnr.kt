@@ -1,22 +1,33 @@
 package no.nav.db
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 sealed class Ident {
     abstract val value: String
 
-    fun of(value: String): Ident {
-        require(value.isNotBlank())
-        require(value.all { it.isDigit() }) { "Ident must contain only digits" }
-        val digitNumber3and4 = value.substring(2,3).toInt()
-        return if (digitNumber3and4 in 21..32) {
-            Npid(value)
-        } else {
-            Npid(value)
+    companion object {
+        fun of(value: String): Ident {
+            require(value.isNotBlank())
+            require(value.all { it.isDigit() }) { "Ident must contain only digits" }
+            val digitNumber3and4 = value.substring(2,3).toInt()
+            return if (digitNumber3and4 in 21..32) {
+                Npid(value)
+            } else {
+                Npid(value)
+            }
         }
     }
 
     override fun equals(other: Any?): Boolean {
         if (other !is Ident) return false
         return other.value == value
+    }
+
+    override fun toString() = value
+
+    override fun hashCode(): Int {
+        return value.hashCode()
     }
 }
 
