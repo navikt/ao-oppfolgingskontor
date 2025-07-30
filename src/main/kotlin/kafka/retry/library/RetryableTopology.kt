@@ -104,6 +104,7 @@ object RetryableTopology {
                 punctuationCoroutineScope = punctuationCoroutineScope,
             )
         }
+
         return builder.stream(inputTopic, Consumed.with(keyInSerde, valueInSerde))
             .process(processorSupplier,  Named.`as`(processorName(inputTopic)),)
     }

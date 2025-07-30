@@ -11,6 +11,7 @@ import io.ktor.server.application.log
 import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.binder.kafka.KafkaStreamsMetrics
+import kafka.consumers.SisteOppfolgingsperiodeProcessor
 import java.time.Duration
 import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
 import no.nav.http.client.FnrResult
@@ -25,7 +26,7 @@ import no.nav.kafka.config.configureTopology
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerConsumer
 import no.nav.kafka.consumers.FnrEllerAktorIdEllerNpid
 import no.nav.kafka.consumers.LeesahConsumer
-import no.nav.kafka.consumers.OppfolgingsPeriodeConsumer
+import no.nav.kafka.consumers.KontorTilordningsProcessor
 import no.nav.kafka.consumers.SkjermingConsumer
 import no.nav.kafka.processor.LeesahAvroSerdes
 import no.nav.services.AutomatiskKontorRutingService
@@ -81,13 +82,17 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
 
     val endringPaOppfolgingsBrukerConsumer = EndringPaOppfolgingsBrukerConsumer()
 
-    val oppfolgingsPeriodeConsumer = OppfolgingsPeriodeConsumer(
-        automatiskKontorRutingService,
+    val sisteOppfolgingsperiodeProcessor = SisteOppfolgingsperiodeProcessor(
         oppfolgingsperiodeService,
+        skipPersonIkkeFunnet = !isProduction,
+        { aktorId -> pdlClient.hentFnrFraAktorId(aktorId) }
+    )
+
+    val kontorTilordningsProcessor = KontorTilordningsProcessor(
+        automatiskKontorRutingService,
         // Hopp over personer som ikke finnes i dev
         skipPersonIkkeFunnet = !isProduction
-    ) { aktorId -> pdlClient.hentFnrFraAktorId(aktorId) }
-
+    )
     val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, fnrProvider, isProduction)
     val avroValueSpecificSerde = LeesahAvroSerdes(environment.config).valueAvroSerde
     val avroKeySerde = LeesahAvroSerdes(environment.config).keyAvroSerde
@@ -105,7 +110,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         topicConsumerList = listOf(
             StringTopicConsumer(
                 topics.inn.sisteOppfolgingsperiodeV1,
-                oppfolgingsPeriodeConsumer::consume,
+                sisteOppfolgingsperiodeProcessor::process,
                 aoKontorEndretSink
             )
         )
@@ -113,7 +118,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         topicConsumerList = listOf(
             StringTopicConsumer(
                 topics.inn.sisteOppfolgingsperiodeV1,
-                oppfolgingsPeriodeConsumer::consume,
+                sisteOppfolgingsperiodeProcessor::process,
                 aoKontorEndretSink
             ),
             StringTopicConsumer(

@@ -2,13 +2,17 @@ package no.nav.kafka.config
 
 import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde
 import io.ktor.server.config.*
+import kafka.consumers.OppfolgingsPeriodeStartetSerde
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import net.javacrumbs.shedlock.core.LockProvider
+import no.nav.db.Ident
+import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.kafka.retry.library.RetryConfig
 import no.nav.kafka.retry.library.RetryableTopology
 import no.nav.kafka.processor.ProcessRecord
+import no.nav.kafka.retry.library.internal.RetryableProcessor
 import no.nav.person.pdl.leesah.Personhendelse
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.producer.ProducerConfig
@@ -19,16 +23,27 @@ import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
 import org.apache.kafka.streams.Topology
 import org.apache.kafka.streams.errors.LogAndFailProcessingExceptionHandler
+import org.apache.kafka.streams.kstream.KStream
+import org.apache.kafka.streams.processor.api.ProcessorSupplier
 import sun.rmi.server.Dispatcher
 import java.util.Properties
 
-sealed class TopicConsumer(val topic: String)
+sealed class Consumer()
+
+sealed class TopicConsumer(val topic: String): Consumer()
+sealed class StreamsConsumer(val streamName: String, val parentName: String): Consumer()
 
 class StringTopicConsumer(
     topic: String,
     val processRecord: ProcessRecord<String, String, String, String>,
     val sink: StringStringSinkConfig? = null
 ): TopicConsumer(topic)
+
+class OppfolgingsperiodeStartetStreamConsumer(
+    streamName: String,
+    parentName: String,
+    val processRecord: ProcessRecord<Ident, OppfolgingsperiodeStartet, String, String>,
+): StreamsConsumer(streamName, parentName)
 
 class AvroTopicConsumer(
     topic: String,
@@ -68,7 +83,7 @@ fun processorName(topic: String): String {
 }
 
 fun configureTopology(
-    topicAndConsumers: List<TopicConsumer>,
+    topicAndConsumers: List<Consumer>,
     lockProvider: LockProvider,
     punctuationCoroutineScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
 ): Topology {
@@ -100,14 +115,36 @@ fun configureTopology(
                     punctuationCoroutineScope = punctuationCoroutineScope,
                 )
             }
+            is OppfolgingsperiodeStartetStreamConsumer -> {}
         }
     }
 
     val topology = builder.build()
+
+    // Consigure internal processors
+    topicAndConsumers.filterIsInstance<StreamsConsumer>()
+        .forEach { consumer ->
+            val processorSupplier = ProcessorSupplier {
+                RetryableProcessor(
+                    config = config,
+                    keyInSerializer = OppfolgingsPeriodeStartetSerde,
+                    valueInSerializer = OppfolgingsPeriodeStartetSerde,
+                    topic = "adas",
+                    repository = repository,
+                    businessLogic = businessLogic,
+                    lockProvider = lockProvider,
+                    punctuationCoroutineScope = punctuationCoroutineScope,
+                )
+            }
+            topology.addProcessor(consumer.streamName, processorSupplier, consumer.parentName)
+        }
+
+    // Configure Sinks
     topicAndConsumers.mapNotNull { topicConfig ->
         when (topicConfig) {
             is StringTopicConsumer -> topicConfig.sink?.let { processorName(topicConfig.topic) to it }
             is AvroTopicConsumer -> topicConfig.sink?.let { processorName(topicConfig.topic) to it }
+            is OppfolgingsperiodeStartetStreamConsumer -> null
         }
     }
         .groupBy { it.second.sinkName }

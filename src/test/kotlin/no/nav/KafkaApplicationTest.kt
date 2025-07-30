@@ -25,12 +25,11 @@ import no.nav.kafka.config.StringTopicConsumer
 import no.nav.kafka.config.configureTopology
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerConsumer
 import no.nav.kafka.config.streamsErrorHandlerConfig
-import no.nav.kafka.consumers.OppfolgingsPeriodeConsumer
+import no.nav.kafka.consumers.KontorTilordningsProcessor
 import no.nav.kafka.consumers.SkjermingConsumer
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.KontorForGtNrFantDefaultKontor
-import no.nav.services.KontorForGtNrFantKontor
 import no.nav.services.KontorTilordningService
 import no.nav.services.OppfolgingsperiodeService
 import no.nav.utils.flywayMigrationInTest
@@ -89,7 +88,7 @@ class KafkaApplicationTest {
             val aktorId = "1234567890123"
             val periodeStart = ZonedDateTime.now().minusDays(2)
             val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
-            val consumer = OppfolgingsPeriodeConsumer(AutomatiskKontorRutingService(
+            val consumer = KontorTilordningsProcessor(AutomatiskKontorRutingService(
                 KontorTilordningService::tilordneKontor,
                 { _, a, b-> KontorForGtNrFantDefaultKontor(kontor, b, a, GeografiskTilknytningBydelNr("3131")) },
                 { AlderFunnet(40) },

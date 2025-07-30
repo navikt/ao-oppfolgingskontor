@@ -21,7 +21,7 @@ import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
-import no.nav.kafka.consumers.OppfolgingsPeriodeConsumer
+import no.nav.kafka.consumers.KontorTilordningsProcessor
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Skip
 import no.nav.services.AktivOppfolgingsperiode
@@ -74,7 +74,7 @@ class OppfolgingsPeriodeConsumerTest {
             val bruker = testBruker()
             application {
                 flywayMigrationInTest()
-                val consumer = OppfolgingsPeriodeConsumer(
+                val consumer = KontorTilordningsProcessor(
                     createAutomatiskKontorRutingService(bruker.fnr, bruker.oppfolgingsperiodeId),
                     OppfolgingsperiodeService
                 ) { FnrFunnet(bruker.fnr) }
@@ -95,7 +95,7 @@ class OppfolgingsPeriodeConsumerTest {
 
             application {
                 flywayMigrationInTest()
-                val consumer = OppfolgingsPeriodeConsumer(createAutomatiskKontorRutingService(
+                val consumer = KontorTilordningsProcessor(createAutomatiskKontorRutingService(
                         bruker.fnr,
                     bruker.oppfolgingsperiodeId
                     ),
@@ -119,7 +119,7 @@ class OppfolgingsPeriodeConsumerTest {
 
             application {
                 flywayMigrationInTest()
-                val consumer = OppfolgingsPeriodeConsumer(createAutomatiskKontorRutingService(
+                val consumer = KontorTilordningsProcessor(createAutomatiskKontorRutingService(
                     bruker.fnr,
                     bruker.oppfolgingsperiodeId
                     ),
@@ -146,7 +146,7 @@ class OppfolgingsPeriodeConsumerTest {
 
             application {
                 flywayMigrationInTest()
-                val consumer = OppfolgingsPeriodeConsumer(createAutomatiskKontorRutingService(
+                val consumer = KontorTilordningsProcessor(createAutomatiskKontorRutingService(
                     bruker.fnr,
                     bruker.oppfolgingsperiodeId
                 ),
@@ -179,7 +179,7 @@ class OppfolgingsPeriodeConsumerTest {
 
             application {
                 flywayMigrationInTest()
-                val consumer = OppfolgingsPeriodeConsumer(createAutomatiskKontorRutingService(
+                val consumer = KontorTilordningsProcessor(createAutomatiskKontorRutingService(
                     bruker.fnr,
                     bruker.oppfolgingsperiodeId
                 ),
@@ -222,7 +222,7 @@ class OppfolgingsPeriodeConsumerTest {
 
             application {
                 flywayMigrationInTest()
-                val consumer = OppfolgingsPeriodeConsumer(createAutomatiskKontorRutingService(
+                val consumer = KontorTilordningsProcessor(createAutomatiskKontorRutingService(
                     bruker.fnr,
                     bruker.oppfolgingsperiodeId
                 ),
