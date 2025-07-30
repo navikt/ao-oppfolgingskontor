@@ -31,6 +31,7 @@ import java.time.format.DateTimeFormatter
 sealed class AlderResult
 data class AlderFunnet(val alder: Int) : AlderResult()
 data class AlderIkkeFunnet(val message: String) : AlderResult()
+data class AlderOppslagFeil(val message: String) : AlderResult()
 
 sealed class FnrResult
 data class FnrFunnet(val ident: Ident) : FnrResult()
@@ -88,49 +89,59 @@ class PdlClient(
         httpClient = ktorHttpClient
     )
     suspend fun hentAlder(fnr: Ident): AlderResult {
-        val query = HentAlderQuery(HentAlderQuery.Variables(fnr.value))
-        val result = client.execute(query)
-        if (result.errors != null && result.errors!!.isNotEmpty()) {
-            return AlderIkkeFunnet(result.errors!!.joinToString { it.message })
-        } else {
-            val foedselsdatoObject = result.data?.hentPerson?.foedselsdato?.firstOrNull()
-                ?: return AlderIkkeFunnet("Ingen foedselsdato i felt 'foedselsdato' fra pdl-spørring, dårlig data i dev?")
-            val foedselsdato = foedselsdatoObject.foedselsdato
-                ?.let { LocalDate.parse(it, DateTimeFormatter.ISO_LOCAL_DATE) }
-            val now = ZonedDateTime.now().toLocalDate()
-            val alder = foedselsdato
-                ?.let { Period.between(it, now).years }
-                // Fallback to foedselsaar if foedselsdato does not exist
-                ?: foedselsdatoObject.foedselsaar?.let { now.year - it }
-            return if (alder == null) {
-                AlderIkkeFunnet("Alder kunne ikke beregnes fra fødselsdato")
+        try {
+            val query = HentAlderQuery(HentAlderQuery.Variables(fnr.value))
+            val result = client.execute(query)
+            if (result.errors != null && result.errors!!.isNotEmpty()) {
+                return AlderIkkeFunnet(result.errors!!.joinToString { it.message })
             } else {
-                AlderFunnet(alder)
+                val foedselsdatoObject = result.data?.hentPerson?.foedselsdato?.firstOrNull()
+                    ?: return AlderIkkeFunnet("Ingen foedselsdato i felt 'foedselsdato' fra pdl-spørring, dårlig data i dev?")
+                val foedselsdato = foedselsdatoObject.foedselsdato
+                    ?.let { LocalDate.parse(it, DateTimeFormatter.ISO_LOCAL_DATE) }
+                val now = ZonedDateTime.now().toLocalDate()
+                val alder = foedselsdato
+                    ?.let { Period.between(it, now).years }
+                // Fallback to foedselsaar if foedselsdato does not exist
+                    ?: foedselsdatoObject.foedselsaar?.let { now.year - it }
+                return if (alder == null) {
+                    AlderIkkeFunnet("Alder kunne ikke beregnes fra fødselsdato")
+                } else {
+                    AlderFunnet(alder)
+                }
             }
+        } catch (e: Throwable) {
+            AlderOppslagFeil("Henting av alder feilet: ${e.message}")
+                .also { log.error(it.message, e) }
         }
     }
 
     suspend fun hentFnrFraAktorId(aktorId: String): FnrResult {
-        val query = HentFnrQuery(HentFnrQuery.Variables(ident = aktorId, historikk = false))
-        val result = client.execute(query)
-        if (result.errors != null && result.errors!!.isNotEmpty()) {
-            return FnrOppslagFeil(result.errors!!.joinToString { "${it.message}: ${it.extensions?.get("code")}"  })
+        try {
+            val query = HentFnrQuery(HentFnrQuery.Variables(ident = aktorId, historikk = false))
+            val result = client.execute(query)
+            if (result.errors != null && result.errors!!.isNotEmpty()) {
+                return FnrOppslagFeil(result.errors!!.joinToString { "${it.message}: ${it.extensions?.get("code")}"  })
+            }
+            return result.data?.hentIdenter?.identer
+                ?.let { identer ->
+                    identer
+                        .let { ids ->
+                            /* Foretrekk fnr før npid */
+                            ids.firstOrNull { it.gruppe == IdentGruppe.FOLKEREGISTERIDENT && !it.historisk }
+                                ?.let { Fnr(it.ident) }
+                                ?: ids.firstOrNull { it.gruppe == IdentGruppe.NPID && !it.historisk }
+                                    ?.let { Npid(it.ident) }
+                        }
+                        ?.let { FnrFunnet(it) }
+                        ?: run {
+                            FnrIkkeFunnet("Fant ingen gyldig fnr for bruker, antall identer: ${identer.size}, indent-typer: ${identer.joinToString { it.gruppe.name }}")
+                        }
+                } ?: FnrIkkeFunnet("Ingen ident funnet, feltet `identer` i hentIdenter response var null")
+        } catch (e: Throwable) {
+            return FnrOppslagFeil("Henting av fnr fra aktorId feilet: ${e.message}")
+                .also { log.error(it.message, e) }
         }
-        return result.data?.hentIdenter?.identer
-            ?.let { identer ->
-                identer
-                    .let { ids ->
-                        /* Foretrekk fnr før npid */
-                        ids.firstOrNull { it.gruppe == IdentGruppe.FOLKEREGISTERIDENT && !it.historisk }
-                            ?.let { Fnr(it.ident) }
-                            ?: ids.firstOrNull { it.gruppe == IdentGruppe.NPID && !it.historisk }
-                                ?.let { Npid(it.ident) }
-                    }
-                    ?.let { FnrFunnet(it) }
-                    ?: run {
-                        FnrIkkeFunnet("Fant ingen gyldig fnr for bruker, antall identer: ${identer.size}, indent-typer: ${identer.joinToString { it.gruppe.name }}")
-                    }
-            } ?: FnrIkkeFunnet("Ingen ident funnet, feltet `identer` i hentIdenter response var null")
     }
 
     suspend fun hentGt(fnr: Ident): GtForBrukerResult {
@@ -167,6 +178,7 @@ class PdlClient(
         } catch (e: Throwable) {
             log.error("Henting av strengt fortrolig adresse for bruker feilet: ${e.message ?: e.toString()}", e)
             return HarStrengtFortroligAdresseOppslagFeil("Henting av strengt fortrolig adresse for bruker feilet: ${e.message ?: e.toString()}")
+                .also { log.error(it.message, e) }  
         }
     }
 }

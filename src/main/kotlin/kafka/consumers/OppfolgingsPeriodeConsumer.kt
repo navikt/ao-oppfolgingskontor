@@ -105,8 +105,9 @@ class OppfolgingsPeriodeConsumer(
                     }
             }
         } catch (e: Exception) {
-            log.error("Klarte ikke behandle oppfolgingsperiode melding", e)
-            return Retry("Klarte ikke behandle oppfolgingsperiode melding: ${e.message}")
+            val feilmelding = "Klarte ikke behandle oppfolgingsperiode melding: ${e.message}"
+            log.error(feilmelding, e)
+            return Retry(feilmelding)
         }
     }
 
