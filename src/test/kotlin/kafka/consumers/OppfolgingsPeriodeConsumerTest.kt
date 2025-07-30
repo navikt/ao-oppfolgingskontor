@@ -9,11 +9,13 @@ import io.ktor.server.testing.testApplication
 import java.time.ZonedDateTime
 import java.util.UUID
 import no.nav.db.Fnr
+import no.nav.db.Ident
 import no.nav.db.entity.OppfolgingsperiodeEntity
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
+import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.http.client.AlderFunnet
 import no.nav.http.client.FnrFunnet
 import no.nav.http.client.GeografiskTilknytningBydelNr
@@ -21,8 +23,8 @@ import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
-import no.nav.kafka.consumers.KontortilordningsProcessor
 import no.nav.kafka.processor.Commit
+import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.Skip
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
@@ -34,6 +36,7 @@ import no.nav.utils.randomFnr
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
+import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
@@ -170,8 +173,6 @@ class OppfolgingsPeriodeConsumerTest {
                 val consumer = SisteOppfolgingsperiodeProcessor(
                     OppfolgingsperiodeService,
                 ) { FnrFunnet(bruker.fnr) }
-
-
                 val startPeriodeRecord = oppfolgingsperiodeMessage(bruker, sluttDato = null)
                 val startNyerePeriodeRecord = oppfolgingsperiodeMessage(
                     bruker.copy(
@@ -183,7 +184,14 @@ class OppfolgingsPeriodeConsumerTest {
                 consumer.process(startPeriodeRecord)
                 val processingResult = consumer.process(startNyerePeriodeRecord)
 
-                processingResult.shouldBeInstanceOf<Commit<*, *>>()
+                processingResult.shouldBeInstanceOf<Forward<*,*>>()
+                processingResult.forwardedRecord.key() shouldBe bruker.fnr
+                processingResult.forwardedRecord.value() shouldBe OppfolgingsperiodeStartet(
+                    bruker.fnr,
+                    nyereStartDato,
+                    OppfolgingsperiodeId(nyerePeriodeId),
+                )
+                processingResult.topic shouldBe null
                 transaction {
                     val oppfolgingForBruker = OppfolgingsperiodeEntity.findById(bruker.fnr.value)
                     oppfolgingForBruker.shouldNotBeNull()
@@ -210,8 +218,6 @@ class OppfolgingsPeriodeConsumerTest {
                 val consumer = SisteOppfolgingsperiodeProcessor(
                     OppfolgingsperiodeService,
                 ) { FnrFunnet(bruker.fnr) }
-
-
                 val startPeriodeRecord = oppfolgingsperiodeMessage(bruker, sluttDato = null)
                 val sluttNyerePeriodeRecord = oppfolgingsperiodeMessage(
                     bruker.copy(

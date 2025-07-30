@@ -1,22 +1,47 @@
 package no.nav.domain.externalEvents
 
 import kotlinx.serialization.Contextual
+import kotlinx.serialization.Polymorphic
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import no.nav.db.Ident
 import no.nav.domain.OppfolgingsperiodeId
 import java.time.ZonedDateTime
 
 @Serializable
-sealed class OppfolgingsperiodeEndret(open val fnr: Ident, open val periodeId: OppfolgingsperiodeId) {}
+//@Polymorphic
+sealed class OppfolgingsperiodeEndret {
+    abstract val fnr: Ident
+    abstract val periodeId: OppfolgingsperiodeId
+}
+
 @Serializable
+//@SerialName("OppfolgingsperiodeStartet")
 class OppfolgingsperiodeStartet(
     override val fnr: Ident,
     @Contextual
     val startDato: ZonedDateTime,
     override val periodeId: OppfolgingsperiodeId,
-): OppfolgingsperiodeEndret(fnr, periodeId)
+): OppfolgingsperiodeEndret() {
+    override fun equals(other: Any?): Boolean {
+        if (other !is OppfolgingsperiodeStartet) return false
+        if (fnr != other.fnr) return false
+        if (startDato != other.startDato) return false
+        if (periodeId != other.periodeId) return false
+        return true
+    }
+}
+
 class OppfolgingsperiodeAvsluttet(
     override val fnr: Ident,
     val startDato: ZonedDateTime,
     override val periodeId: OppfolgingsperiodeId,
-): OppfolgingsperiodeEndret(fnr, periodeId)
+): OppfolgingsperiodeEndret() {
+    override fun equals(other: Any?): Boolean {
+        if (other !is OppfolgingsperiodeAvsluttet) return false
+        if (fnr != other.fnr) return false
+        if (startDato != other.startDato) return false
+        if (periodeId != other.periodeId) return false
+        return true
+    }
+}

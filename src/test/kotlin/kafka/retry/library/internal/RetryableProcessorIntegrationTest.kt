@@ -12,13 +12,9 @@ import no.nav.db.flywayMigrate
 import no.nav.db.table.FailedMessagesTable
 import no.nav.db.table.FailedMessagesTable.messageKeyText
 import no.nav.kafka.config.StringStringSinkConfig
-import no.nav.kafka.config.StringTopicConsumer
-import no.nav.kafka.config.configureTopology
 import no.nav.kafka.config.processorName
 import no.nav.kafka.config.streamsErrorHandlerConfig
-import no.nav.kafka.consumers.KontortilordningsProcessor.Companion.processorName
 import no.nav.kafka.processor.Commit
-import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.ProcessRecord
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.retry.library.RetryConfig
@@ -144,50 +140,31 @@ class RetryableProcessorIntegrationTest {
         }
     }
 
-//    @Test
-//    fun `Meldinger som er Forward(ed) skal sendes ut på topic og sende ut melding på sink`() {
-//        val inputTopic = "test-topic"
-//        val inputTopic2 = "test-topic-2"
-//        val outputTopic = "test-output-topic"
-//        val sinkName = "sinkName"
-//
-//        val sinkConfig = StringStringSinkConfig(
-//            sinkName,
-//            outputTopic,
-//        )
-//        val topology = configureTopology(
-//            listOf(
-//                StringTopicConsumer(
-//                    inputTopic,
-//                    { record ->
-//                        val record = Record("new key", "new value", ZonedDateTime.now().toEpochSecond())
-//                        Forward(record, sinkName)
-//                    },
-//                    sinkConfig
-//                ),
-//                StringTopicConsumer(
-//                    inputTopic2,
-//                    { record ->
-//                        val record = Record("new key", "new value", ZonedDateTime.now().toEpochSecond())
-//                        Forward(record, sinkName)
-//                    },
-//                    sinkConfig
-//                )
-//            ),
-//            TestLockProvider,
-//        )
-//
-//        val (_, testInputTopics, testOutputtopic) = setupKafkaMock(topology,listOf(inputTopic, inputTopic2), outputTopic)
-//
-//        testInputTopics.first().pipeInput("key3", "value2")
-//        testInputTopics.last().pipeInput("key3", "value2")
-//
-//        testOutputtopic!!.queueSize shouldBe 2
-//        val record = testOutputtopic.readRecord()
-//        record.key shouldBe "new key"
-//        record.value shouldBe "new value"
-//        testOutputtopic.queueSize shouldBe 1
-//    }
+    /*
+    @Test
+    fun `Meldinger som er Forward(ed) skal sendes ut på topic og sende ut melding på sink`() {
+        val inputTopic = "test-topic"
+        val inputTopic2 = "test-topic-2"
+        val outputTopic = "test-output-topic"
+        val sinkName = "sinkName"
+
+        val sinkConfig = StringStringSinkConfig(
+            sinkName,
+            outputTopic,
+        )
+        val topology = configureTopology()
+
+        val (_, testInputTopics, testOutputtopic) = setupKafkaMock(topology,listOf(inputTopic, inputTopic2), outputTopic)
+
+        testInputTopics.first().pipeInput("key3", "value2")
+        testInputTopics.last().pipeInput("key3", "value2")
+
+        testOutputtopic!!.queueSize shouldBe 2
+        val record = testOutputtopic.readRecord()
+        record.key shouldBe "new key"
+        record.value shouldBe "new value"
+        testOutputtopic.queueSize shouldBe 1
+    }*/
 
     fun TestScope.setupKafkaTestDriver(
         topic: String,
@@ -238,7 +215,7 @@ class RetryableProcessorIntegrationTest {
 
 }
 
-private fun setupKafkaMock(topology: Topology, inputTopics: List<String>, outputTopic: String? = null): Triple<TopologyTestDriver, List<TestInputTopic<String, String>>, TestOutputTopic<String, String>?> {
+fun setupKafkaMock(topology: Topology, inputTopics: List<String>, outputTopic: String? = null): Triple<TopologyTestDriver, List<TestInputTopic<String, String>>, TestOutputTopic<String, String>?> {
     val props = Properties()
     props.setProperty(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9091")
     props.streamsErrorHandlerConfig()

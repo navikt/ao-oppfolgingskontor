@@ -3,6 +3,8 @@ package no.nav.no.nav
 import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
 import io.ktor.server.testing.testApplication
+import kafka.consumers.OppfolgingsPeriodeStartetSerde
+import kafka.consumers.SisteOppfolgingsperiodeProcessor
 import kafka.retry.TestLockProvider
 import no.nav.db.Fnr
 import no.nav.db.Ident
@@ -23,7 +25,6 @@ import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
-import no.nav.kafka.config.StringTopicConsumer
 import no.nav.kafka.config.processorName
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
 import no.nav.kafka.config.streamsErrorHandlerConfig
@@ -40,6 +41,7 @@ import no.nav.services.KontorTilordningService
 import no.nav.services.OppfolgingsperiodeService
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.gittBrukerUnderOppfolging
+import org.apache.kafka.common.serialization.Serde
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
@@ -90,14 +92,18 @@ class KafkaApplicationTest {
     fun `skal tilordne kontor til brukere som har fått startet oppfølging`() = testApplication {
         val fnr = Fnr("22325678901")
         val kontor = KontorId("2228")
-//        val poaoTilgangClient = mockPoaoTilgangHost(kontor.id)
 
         application {
             flywayMigrationInTest()
             val aktorId = "1234567890123"
             val periodeStart = ZonedDateTime.now().minusDays(2)
             val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
-            val consumer = KontortilordningsProcessor(AutomatiskKontorRutingService(
+
+            val sistePeriodeProcessor = SisteOppfolgingsperiodeProcessor(
+                OppfolgingsperiodeService,
+                false
+            ) { FnrFunnet(fnr) }
+            val tilordningProcessor = KontortilordningsProcessor(AutomatiskKontorRutingService(
                 KontorTilordningService::tilordneKontor,
                 { _, a, b-> KontorForGtNrFantDefaultKontor(kontor, b, a, GeografiskTilknytningBydelNr("3131")) },
                 { AlderFunnet(40) },
@@ -105,11 +111,25 @@ class KafkaApplicationTest {
                 { SkjermingFunnet(HarSkjerming(false)) },
                 { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
                 { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, OffsetDateTime.now()) }),
-                )
+            )
 
-            val topology = configureTopology(consumer::process)
-
-
+            val builder = StreamsBuilder()
+            val sistePeriodeProcessorSupplier = wrapInRetryProcessor(
+                topic = topic,
+                keyInSerde = Serdes.String(),
+                valueInSerde = Serdes.String(),
+                processRecord = sistePeriodeProcessor::process,
+            )
+            val tilordningProcessorSupplier = wrapInRetryProcessor(
+                topic = topic,
+                keyInSerde = KontortilordningsProcessor.identSerde,
+                valueInSerde = KontortilordningsProcessor.oppfolgingsperiodeStartetSerde,
+                processRecord = tilordningProcessor::process,
+            )
+            builder.stream(topic, Consumed.with(Serdes.String(), Serdes.String()))
+                .process(sistePeriodeProcessorSupplier, Named.`as`(processorName(topic)))
+                .process(tilordningProcessorSupplier)
+            val topology = builder.build()
 
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(
@@ -225,45 +245,51 @@ class KafkaApplicationTest {
         return """{"uuid":"${oppfolgingsperiodeId.value}", "startDato":"$startDato", "sluttDato":${sluttDato?.let { "\"$it\"" } ?: "null"}, "aktorId":"$aktorId"}"""
     }
 
-    private fun configureDefaultTopology(processRecord: ProcessRecord<String, String, String, String>): Topology {
-        val builder = StreamsBuilder()
+    fun <KIn, VIn, KOut, VOut> wrapInRetryProcessor(
+        topic: String,
+        keyInSerde: Serde<KIn>,
+        valueInSerde: Serde<VIn>,
+        processRecord: ProcessRecord<KIn ,VIn, KOut, VOut>
+    ): ProcessorSupplier<KIn, VIn, KOut, VOut> {
         val testRepository = FailedMessageRepository(topic)
-        val testSupplier = ProcessorSupplier {
+        return ProcessorSupplier {
             RetryableProcessor(
                 config = RetryConfig(),
-                keyInSerde = Serdes.String(),
-                valueInSerde = Serdes.String(),
+                keyInSerde = keyInSerde,
+                valueInSerde = valueInSerde,
                 topic = topic,
                 repository = testRepository,
                 businessLogic = processRecord,
                 lockProvider = TestLockProvider
             )
         }
+    }
+
+    private fun configureDefaultTopology(processRecord: ProcessRecord<String, String, String, String>): Topology {
+        val builder = StreamsBuilder()
+        val testSupplier = wrapInRetryProcessor(
+            topic = topic,
+            keyInSerde = Serdes.String(),
+            valueInSerde = Serdes.String(),
+            processRecord = processRecord,
+        )
 
         builder.stream(topic, Consumed.with(Serdes.String(), Serdes.String()))
             .process(testSupplier, Named.`as`(processorName(topic)))
-
         return builder.build()
     }
 
     private fun configureTopology(processRecord: ProcessRecord<Ident, OppfolgingsperiodeStartet, String, String>): Topology {
         val builder = StreamsBuilder()
-        val testRepository = FailedMessageRepository(topic)
-        val testSupplier = ProcessorSupplier {
-            RetryableProcessor(
-                config = RetryConfig(),
-                keyInSerde = KontortilordningsProcessor.identSerde,
-                valueInSerde = KontortilordningsProcessor.oppfolgingsperiodeStartetSerde,
-                topic = topic,
-                repository = testRepository,
-                businessLogic = processRecord,
-                lockProvider = TestLockProvider
-            )
-        }
+        val testSupplier = wrapInRetryProcessor(
+            topic = topic,
+            keyInSerde = KontortilordningsProcessor.identSerde,
+            valueInSerde = OppfolgingsPeriodeStartetSerde,
+            processRecord = processRecord,
+        )
 
         builder.stream(topic, Consumed.with(KontortilordningsProcessor.identSerde, KontortilordningsProcessor.oppfolgingsperiodeStartetSerde))
             .process(testSupplier, Named.`as`(processorName(topic)))
-
         return builder.build()
     }
 }

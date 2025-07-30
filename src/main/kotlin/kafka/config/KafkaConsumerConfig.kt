@@ -1,28 +1,20 @@
 package no.nav.kafka.config
 
-import Topics
-import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde
+import Topic
 import io.ktor.server.application.ApplicationEnvironment
 import io.ktor.server.config.*
-import kafka.consumers.OppfolgingsPeriodeStartetSerde
 import kafka.consumers.SisteOppfolgingsperiodeProcessor
+import kafka.retry.library.RetryProcessorWrapper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import net.javacrumbs.shedlock.core.LockProvider
-import no.nav.db.Ident
-import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.isProduction
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
 import no.nav.kafka.consumers.KontortilordningsProcessor
 import no.nav.kafka.consumers.LeesahProcessor
 import no.nav.kafka.consumers.SkjermingProcessor
-import no.nav.kafka.processor.LeesahAvroSerdes
-import no.nav.kafka.processor.ProcessRecord
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.retry.library.RetryConfig
-import no.nav.kafka.retry.library.internal.FailedMessageRepository
-import no.nav.kafka.retry.library.internal.RetryableProcessor
-import no.nav.person.pdl.leesah.Personhendelse
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.config.SslConfigs
@@ -32,36 +24,11 @@ import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
 import org.apache.kafka.streams.Topology
 import org.apache.kafka.streams.errors.LogAndFailProcessingExceptionHandler
-import org.apache.kafka.streams.kstream.Consumed
 import org.apache.kafka.streams.kstream.Named
 import org.apache.kafka.streams.processor.api.ProcessorSupplier
 import org.apache.kafka.streams.processor.api.Record
+import topics
 import java.util.*
-
-sealed class Consumer()
-
-sealed class TopicConsumer(val topic: String) : Consumer()
-sealed class StreamsConsumer(val streamName: String, val parentName: String) : Consumer()
-
-class StringTopicConsumer(
-    topic: String,
-    val processRecord: ProcessRecord<String, String, String, String>,
-    val sink: StringStringSinkConfig? = null
-) : TopicConsumer(topic)
-
-class OppfolgingsperiodeStartetStreamConsumer(
-    streamName: String,
-    parentName: String,
-    val processRecord: ProcessRecord<Ident, OppfolgingsperiodeStartet, String, String>,
-) : StreamsConsumer(streamName, parentName)
-
-class AvroTopicConsumer(
-    topic: String,
-    val processRecord: ProcessRecord<String, Personhendelse, String, String>,
-    val valueSerde: SpecificAvroSerde<Personhendelse>,
-    val keySerde: Serde<String>,
-    val sink: StringStringSinkConfig?
-) : TopicConsumer(topic)
 
 open class SinkConfig<K, V>(
     val sinkName: String,
@@ -97,14 +64,13 @@ fun configureTopology(
     environment: ApplicationEnvironment,
     lockProvider: LockProvider,
     punctuationCoroutineScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
-    topics: Topics,
     sisteOppfolgingsperiodeProcessor: SisteOppfolgingsperiodeProcessor,
     kontortilordningsProcessor: KontortilordningsProcessor,
     leesahProcessor: LeesahProcessor,
     skjermingProcessor: SkjermingProcessor,
     endringPaOppfolgingsBrukerProcessor: EndringPaOppfolgingsBrukerProcessor,
 ): Topology {
-
+    val topics = environment.topics()
     val builder = StreamsBuilder()
 
     fun <KIn, VIn, KOut, VOut> wrapInRetryProcessor(
@@ -113,25 +79,21 @@ fun configureTopology(
         topic: String,
         businessLogic: (Record<KIn, VIn>) -> RecordProcessingResult<KOut, VOut>,
     ): ProcessorSupplier<KIn, VIn, KOut, VOut> {
-
-        val repository = FailedMessageRepository(topic)
-        return ProcessorSupplier {
-            RetryableProcessor(
-                config = RetryConfig(),
-                keyInSerde = keyInSerde,
-                valueInSerde = valueInSerde,
-                topic = topic,
-                repository = repository,
-                businessLogic = businessLogic,
-                lockProvider = lockProvider,
-                punctuationCoroutineScope = punctuationCoroutineScope,
-            )
-        }
+        return RetryProcessorWrapper.wrapInRetryProcessor(
+            config = RetryConfig(),
+            keyInSerde = keyInSerde,
+            valueInSerde = valueInSerde,
+            topic = topic,
+            businessLogic = businessLogic,
+            lockProvider = lockProvider,
+            punctuationCoroutineScope = punctuationCoroutineScope,
+        )
     }
 
+    fun <KIn, VIn, KOut, VOut> wrapInRetryProcessor(topic: Topic<KIn, VIn>, businessLogic: (Record<KIn, VIn>) -> RecordProcessingResult<KOut, VOut>)
+        = wrapInRetryProcessor(topic.keySerde, topic.valSerde, topic.name, businessLogic)
+
     val oppfolgingsperiodeProcessorSupplier = wrapInRetryProcessor(
-            keyInSerde = Serdes.String(),
-            valueInSerde = Serdes.String(),
             topic = topics.inn.sisteOppfolgingsperiodeV1,
             businessLogic = sisteOppfolgingsperiodeProcessor::process,
     )
@@ -143,49 +105,33 @@ fun configureTopology(
             businessLogic = kontortilordningsProcessor::process,
     )
 
-    builder.stream(topics.inn.sisteOppfolgingsperiodeV1, Consumed.with(Serdes.String(), Serdes.String())).process(
-            oppfolgingsperiodeProcessorSupplier, Named.`as`(processorName(topics.inn.sisteOppfolgingsperiodeV1))
-        ).process(
-            kontortilordningProcessorSupplier, Named.`as`(KontortilordningsProcessor.processorName)
-        )
-
+    val oppfolgingStartetStream = builder.stream(topics.inn.sisteOppfolgingsperiodeV1.name, topics.inn.sisteOppfolgingsperiodeV1.consumedWith())
+        .process(oppfolgingsperiodeProcessorSupplier, Named.`as`(processorName(topics.inn.sisteOppfolgingsperiodeV1.name)))
 
     if(!environment.isProduction()) {
+        oppfolgingStartetStream
+            .process(kontortilordningProcessorSupplier, Named.`as`(KontortilordningsProcessor.processorName))
+
         val leesahProcessorSupplier = wrapInRetryProcessor(
-            keyInSerde = LeesahAvroSerdes(environment.config).keyAvroSerde,
-            valueInSerde = LeesahAvroSerdes(environment.config).valueAvroSerde,
             topic = topics.inn.pdlLeesah,
             businessLogic = leesahProcessor::process
         )
-
-        builder.stream(
-            topics.inn.pdlLeesah,
-            Consumed.with(LeesahAvroSerdes(environment.config).keyAvroSerde, LeesahAvroSerdes(environment.config).valueAvroSerde)
-        ).process(leesahProcessorSupplier, Named.`as`(processorName(topics.inn.pdlLeesah)))
+        builder.stream(topics.inn.pdlLeesah.name, topics.inn.pdlLeesah.consumedWith())
+            .process(leesahProcessorSupplier, Named.`as`(processorName(topics.inn.pdlLeesah.name)))
 
         val skjermingProcessorSupplier = wrapInRetryProcessor(
-            keyInSerde = Serdes.String(),
-            valueInSerde = Serdes.String(),
             topic = topics.inn.skjerming,
             businessLogic = skjermingProcessor::process
         )
-
-        builder.stream(
-            topics.inn.skjerming,
-            Consumed.with(Serdes.String(), Serdes.String())
-        ).process(skjermingProcessorSupplier, Named.`as`(processorName(topics.inn.skjerming)))
+        builder.stream(topics.inn.skjerming.name, topics.inn.skjerming.consumedWith())
+            .process(skjermingProcessorSupplier, Named.`as`(processorName(topics.inn.skjerming.name)))
 
         val endringPaOppfolgingsBrukerProcessorSupplier = wrapInRetryProcessor(
-            keyInSerde = Serdes.String(),
-            valueInSerde = Serdes.String(),
             topic = topics.inn.endringPaOppfolgingsbruker,
             businessLogic = endringPaOppfolgingsBrukerProcessor::process
         )
-
-        builder.stream(
-            topics.inn.endringPaOppfolgingsbruker,
-            Consumed.with(Serdes.String(), Serdes.String())
-        ).process(endringPaOppfolgingsBrukerProcessorSupplier, Named.`as`(processorName(topics.inn.endringPaOppfolgingsbruker)))
+        builder.stream(topics.inn.endringPaOppfolgingsbruker.name, topics.inn.endringPaOppfolgingsbruker.consumedWith())
+            .process(endringPaOppfolgingsBrukerProcessorSupplier, Named.`as`(processorName(topics.inn.endringPaOppfolgingsbruker.name)))
     }
 
     val topology = builder.build()

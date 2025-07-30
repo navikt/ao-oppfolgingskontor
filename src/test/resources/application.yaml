@@ -1,0 +1,15 @@
+cluster: "local"
+
+kafka:
+  schema-registry: "mock//url.here"
+  schema-registry-user: "user"
+  schema-registry-password: "password"
+
+topics:
+  inn:
+    endringPaOppfolgingsbruker: "pto.endring-paa-oppfolgingsbruker-v2"
+    sisteOppfolgingsperiodeV1: "pto.siste-oppfolgingsperiode-v1"
+    pdlLeesah: "pdl.leesah-v1"
+    skjerming: "nom.skjermede-personer-status-v1"
+  ut:
+    arbeidsoppfolgingskontortilordninger: "arbeidsoppfolgingskontortilordninger-v1"

@@ -17,10 +17,7 @@ import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
 import no.nav.http.client.FnrResult
 import no.nav.http.client.PdlClient
 import no.nav.isProduction
-import no.nav.kafka.config.AvroTopicConsumer
 import no.nav.kafka.config.StringStringSinkConfig
-import no.nav.kafka.config.StringTopicConsumer
-import no.nav.kafka.config.TopicConsumer
 import no.nav.kafka.config.kafkaStreamsProps
 import no.nav.kafka.config.configureTopology
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
@@ -94,8 +91,6 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         skipPersonIkkeFunnet = !isProduction
     )
     val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, fnrProvider, isProduction)
-    val avroValueSpecificSerde = LeesahAvroSerdes(environment.config).valueAvroSerde
-    val avroKeySerde = LeesahAvroSerdes(environment.config).keyAvroSerde
 
     val skjermingProcessor = SkjermingProcessor(automatiskKontorRutingService)
 
@@ -107,7 +102,6 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val topology = configureTopology(
         environment,
         ExposedLockProvider(database),
-        topics = topics,
         sisteOppfolgingsperiodeProcessor = sisteOppfolgingsperiodeProcessor,
         kontortilordningsProcessor = kontorTilordningsProcessor,
         leesahProcessor = leesahProcessor,

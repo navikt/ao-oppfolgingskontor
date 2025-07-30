@@ -12,6 +12,7 @@ import no.nav.http.client.FnrFunnet
 import no.nav.http.client.FnrIkkeFunnet
 import no.nav.http.client.FnrOppslagFeil
 import no.nav.http.client.FnrResult
+import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
@@ -71,7 +72,7 @@ class SisteOppfolgingsperiodeProcessor(
                             }
                             false -> {}
                         }
-                        Skip()
+                        Commit()
                     }
                     is OppfolgingsperiodeStartet -> {
                         if (oppfolgingsperiodeService.harNyerePeriodePåIdent(oppfolgingsperiode)) {
@@ -81,12 +82,12 @@ class SisteOppfolgingsperiodeProcessor(
                         oppfolgingsperiodeService.saveOppfolgingsperiode(
                             ident,
                             oppfolgingsperiode.startDato,
-                            oppfolgingsperiode.oppfolgingsperiodeId)
+                            oppfolgingsperiode.periodeId)
                         Forward(Record(
                             ident,
                             oppfolgingsperiode,
                             Instant.now().toEpochMilli(),
-                        ), "asdas")
+                        ), null)
                     }
                 }
             }
