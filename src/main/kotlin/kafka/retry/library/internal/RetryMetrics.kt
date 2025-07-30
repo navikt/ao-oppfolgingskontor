@@ -31,12 +31,14 @@ import org.slf4j.LoggerFactory
  */
 internal class RetryMetrics(
     context: ProcessorContext<*, *>,
-    private val repository: FailedMessageRepository
+    private val repository: FailedMessageRepository,
+    private val topic: String,
 ) {
     private val metrics = context.metrics()
     private val groupName = "retry-processor-metrics"
     private val tags = mapOf(
-        "kafka-stream-task-id" to context.taskId().toString()
+        "kafka-stream-task-id" to context.taskId().toString(),
+        "topic" to topic,
     )
 
     // --- Sensorer opprettet med korrekt RecordingLevel ---

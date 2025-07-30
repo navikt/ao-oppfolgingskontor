@@ -65,7 +65,7 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
     override fun init(context: ProcessorContext<KOut, VOut>) {
         this.context = context
         this.store = PostgresRetryStoreImpl(topic, repository)
-        this.metrics = RetryMetrics(context, repository)
+        this.metrics = RetryMetrics(context, repository, topic)
         context.schedule(config.retryInterval, PunctuationType.WALL_CLOCK_TIME, this::runReprocessingWithLock)
     }
 
