@@ -111,7 +111,7 @@ class PdlClient(
                 }
             }
         } catch (e: Throwable) {
-            AlderOppslagFeil("Henting av alder feilet: ${e.message}")
+            return AlderOppslagFeil("Henting av alder feilet: ${e.message}")
                 .also { log.error(it.message, e) }
         }
     }
@@ -178,7 +178,7 @@ class PdlClient(
         } catch (e: Throwable) {
             log.error("Henting av strengt fortrolig adresse for bruker feilet: ${e.message ?: e.toString()}", e)
             return HarStrengtFortroligAdresseOppslagFeil("Henting av strengt fortrolig adresse for bruker feilet: ${e.message ?: e.toString()}")
-                .also { log.error(it.message, e) }  
+                .also { log.error(it.message, e) }
         }
     }
 }

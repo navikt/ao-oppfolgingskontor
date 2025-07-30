@@ -27,6 +27,7 @@ import no.nav.domain.externalEvents.SkjermetStatusEndret
 import no.nav.domain.externalEvents.erStrengtFortrolig
 import no.nav.http.client.AlderFunnet
 import no.nav.http.client.AlderIkkeFunnet
+import no.nav.http.client.AlderOppslagFeil
 import no.nav.http.client.AlderResult
 import no.nav.http.client.FnrFunnet
 import no.nav.http.client.FnrResult
@@ -103,6 +104,7 @@ class AutomatiskKontorRutingService(
             val alder = when (val result = aldersResult.await()) {
                 is AlderFunnet -> result.alder
                 is AlderIkkeFunnet -> return TilordningFeil("Kunne ikke hente alder: ${result.message}")
+                is AlderOppslagFeil -> return TilordningFeil("Henting av alder feilet: ${result.message}")
             }
             val kontorTilordning = when (val gtKontorResultat = gtKontorProvider(fnr, harStrengtFortroligAdresse, erSkjermet)) {
                 is KontorForGtFinnesIkke -> hentTilordningUtenGT(fnr, alder, profileringProvider(fnr), oppfolgingsperiodeId, gtKontorResultat)
