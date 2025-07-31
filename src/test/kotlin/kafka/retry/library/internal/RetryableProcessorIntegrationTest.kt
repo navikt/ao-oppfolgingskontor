@@ -1,8 +1,13 @@
 package kafka.retry.library.internal
 
+import com.google.common.base.Verify.verify
 import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.verify
 import kafka.retry.TestLockProvider
+import kafka.retry.library.RetryProcessorWrapper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
@@ -142,6 +147,83 @@ class RetryableProcessorIntegrationTest {
         withClue("Should still be 1 failed messages on key") {
             countFailedMessagesOnKey("key3") shouldBe 1
             failedMessageRepository.hasFailedMessages("key3") shouldBe true
+        }
+    }
+
+    @Test
+    fun `skal forwarde meldinger som er retry-ed til neste processor`() = runTest {
+        val topic = "test-topic"
+        val failedMessageRepository = FailedMessageRepository(topic)
+
+        var hasFailed = false
+        fun failFirstThenOk(): Res {
+            if (!hasFailed) {
+                hasFailed = true
+                return Res.Fail // Simulate failure on the first call
+            } else {
+                return Res.Succ
+            }
+        }
+
+        val firstStep = { record: Record<String, String> ->
+            val failed = failFirstThenOk()
+            if (failed == Res.Fail) {
+                Retry("Dette gikk galt")
+            } else {
+                Forward(
+                    Record("lol", "lol", Instant.now().toEpochMilli()),
+                    "second")
+            }
+        }
+        val retryConfig = RetryConfig(
+            retryInterval = Duration.of(6, ChronoUnit.SECONDS),
+        )
+
+        val builder = StreamsBuilder()
+        val firstStepSupplier = RetryProcessorWrapper.wrapInRetryProcessor(
+            config = retryConfig,
+            keyInSerde = Serdes.String(),
+            valueInSerde = Serdes.String(),
+            repository = failedMessageRepository,
+            topic = topic,
+            businessLogic = firstStep,
+            lockProvider = TestLockProvider,
+            punctuationCoroutineScope = this.backgroundScope,
+        )
+        val secondStepMock = mockk<ProcessRecord<String, String, String, String>>()
+        every { secondStepMock(any()) } returns Commit()
+        val secondStepSupplier = RetryProcessorWrapper.wrapInRetryProcessor(
+            config = retryConfig,
+            keyInSerde = Serdes.String(),
+            valueInSerde = Serdes.String(),
+            topic = topic,
+            businessLogic = secondStepMock,
+            lockProvider = TestLockProvider,
+            punctuationCoroutineScope = this.backgroundScope,
+        )
+
+        builder.stream(topic, Consumed.with(Serdes.String(), Serdes.String()))
+            .process(firstStepSupplier, Named.`as`("first"))
+            .process(secondStepSupplier, Named.`as`("second"))
+
+        val topology = builder.build()
+        val (testDriver, testInputTopics, _) = setupKafkaMock(topology, listOf(topic), null)
+
+        testInputTopics.first().pipeInput("key1", "value1")
+
+        withClue("Shoud have enqueued message in failed message repository after first failure") {
+            failedMessageRepository.hasFailedMessages("key1") shouldBe true
+            countFailedMessagesOnKey("key1") shouldBe 1
+        }
+
+        testDriver.advanceWallClockTime(Duration.of(7, ChronoUnit.SECONDS))
+
+        withClue("Should not have any failed message in failed message repository after it has been successfully processed") {
+            failedMessageRepository.hasFailedMessages("key1") shouldBe false
+        }
+
+        verify(exactly = 1) {
+            secondStepMock(any())
         }
     }
 

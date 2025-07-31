@@ -2,10 +2,6 @@ package no.nav.kafka.retry.library.internal
 
 import kafka.retry.library.internal.TopicLevelLock
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.TimeoutCancellationException
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeout
 import no.nav.kafka.retry.library.AvroJsonConverter
 import net.javacrumbs.shedlock.core.DefaultLockingTaskExecutor
 import net.javacrumbs.shedlock.core.LockConfiguration
@@ -18,9 +14,7 @@ import no.nav.kafka.processor.Skip
 import no.nav.kafka.retry.library.MaxRetries
 import no.nav.kafka.retry.library.RetryConfig
 import org.apache.avro.specific.SpecificRecord
-import org.apache.kafka.common.serialization.Deserializer
 import org.apache.kafka.common.serialization.Serde
-import org.apache.kafka.common.serialization.Serializer
 import org.apache.kafka.streams.processor.PunctuationType
 import org.apache.kafka.streams.processor.api.Processor
 import org.apache.kafka.streams.processor.api.ProcessorContext
@@ -55,8 +49,6 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
     private val lockProvider: LockProvider,
     private val punctuationCoroutineScope: CoroutineScope,
 ) : Processor<KIn, VIn, KOut, VOut> {
-
-
     private val keyInSerializer = keyInSerde.serializer()
     private val valueInSerializer = valueInSerde.serializer()
     private val keyInDeserializer = keyInSerde.deserializer()
@@ -204,6 +196,7 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
         // Prøv å skaffe låsen for MITT topic. Dette sikrer at kun én tråd om gangen kan prosessere meldinger for dette topicet.
         if (!TopicLevelLock.tryAcquire(this.topic)) {
             // En annen tråd jobber allerede med dette topicet. Avslutt.
+            logger.info("En annen tråd jobber allerede med dette topicet. Avslutter prosessering")
             return
         }
         try {
