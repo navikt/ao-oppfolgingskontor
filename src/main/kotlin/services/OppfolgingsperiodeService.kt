@@ -90,7 +90,7 @@ object OppfolgingsperiodeService {
                 is FnrOppslagFeil -> OppfolgingperiodeOppslagFeil("Kunne ikke finne oppfølgingsperiode: ${fnr.message}")
             }
         } catch (e: Exception) {
-            log.error("Error checking oppfolgingsperiode status for fnr: $fnr", e)
+            log.error("Error checking oppfolgingsperiode status", e)
             OppfolgingperiodeOppslagFeil("Database error: ${e.message}")
         }
     }
