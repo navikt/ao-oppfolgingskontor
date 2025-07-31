@@ -24,6 +24,8 @@ spec:
     sqlInstances:
       - type: POSTGRES_16
         tier: db-custom-1-3840
+        diskType: SSD
+        diskAutoresize: true
         databases:
           - name: ao-oppfolgingskontor
   prometheus:
@@ -38,7 +40,7 @@ spec:
       memory: 1024Mi
     requests:
       cpu: 768m
-      memory: 864i
+      memory: 864Mi
   kafka:
     pool: nav-prod
     streams: true
