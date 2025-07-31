@@ -37,8 +37,8 @@ spec:
     limits:
       memory: 1024Mi
     requests:
-      cpu: 200m
-      memory: 768Mi
+      cpu: 768m
+      memory: 864i
   kafka:
     pool: nav-prod
     streams: true

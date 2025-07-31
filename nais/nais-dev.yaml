@@ -35,10 +35,10 @@ spec:
     cpuThresholdPercentage: 50
   resources:
     limits:
-      memory: 1024Mi
+      memory: 672Mi
     requests:
-      cpu: 200m
-      memory: 768Mi
+      cpu: 851m
+      memory: 640Mi
   kafka:
     pool: nav-dev
     streams: true
