@@ -6,6 +6,8 @@ import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.api.createClientPlugin
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.logging.LogLevel
+import io.ktor.client.plugins.logging.Logging
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.ApplicationEnvironment
 import no.nav.db.Fnr
@@ -39,19 +41,23 @@ data class FnrIkkeFunnet(val message: String) : FnrResult()
 data class FnrOppslagFeil(val message: String) : FnrResult()
 
 sealed class GtForBrukerResult
-sealed class GtForBrukerSuccess: GtForBrukerResult()
-sealed class GtForBrukerFunnet: GtForBrukerSuccess()
+sealed class GtForBrukerSuccess : GtForBrukerResult()
+sealed class GtForBrukerFunnet : GtForBrukerSuccess()
 data class GtNummerForBrukerFunnet(val gtNr: GeografiskTilknytningNr) : GtForBrukerFunnet() {
     override fun toString() = "${gtNr.value} type: ${gtNr.type.name}"
 }
+
 data class GtLandForBrukerFunnet(val land: GeografiskTilknytningLand) : GtForBrukerFunnet() {
     override fun toString() = "${land.value} type: Land"
 }
+
 data class GtForBrukerIkkeFunnet(val message: String) : GtForBrukerSuccess()
 data class GtForBrukerOppslagFeil(val message: String) : GtForBrukerResult()
 
 sealed class HarStrengtFortroligAdresseResult
-class HarStrengtFortroligAdresseFunnet(val harStrengtFortroligAdresse: HarStrengtFortroligAdresse) : HarStrengtFortroligAdresseResult()
+class HarStrengtFortroligAdresseFunnet(val harStrengtFortroligAdresse: HarStrengtFortroligAdresse) :
+    HarStrengtFortroligAdresseResult()
+
 class HarStrengtFortroligAdresseIkkeFunnet(val message: String) : HarStrengtFortroligAdresseResult()
 class HarStrengtFortroligAdresseOppslagFeil(val message: String) : HarStrengtFortroligAdresseResult()
 
@@ -70,7 +76,7 @@ class PdlClient(
     ktorHttpClient: HttpClient
 ) {
 
-    constructor(pdlGraphqlUrl: String, azureTokenProvider: suspend () -> TexasTokenResponse): this(
+    constructor(pdlGraphqlUrl: String, azureTokenProvider: suspend () -> TexasTokenResponse) : this(
         pdlGraphqlUrl,
         HttpClient(CIO) {
             install(BehandlingsnummerHeaderPlugin)
@@ -79,6 +85,9 @@ class PdlClient(
             }
             install(ContentNegotiation) {
                 json()
+            }
+            install(Logging) {
+                level = LogLevel.INFO
             }
         }
     )
@@ -121,7 +130,7 @@ class PdlClient(
             val query = HentFnrQuery(HentFnrQuery.Variables(ident = aktorId, historikk = false))
             val result = client.execute(query)
             if (result.errors != null && result.errors!!.isNotEmpty()) {
-                return FnrOppslagFeil(result.errors!!.joinToString { "${it.message}: ${it.extensions?.get("code")}"  })
+                return FnrOppslagFeil(result.errors!!.joinToString { "${it.message}: ${it.extensions?.get("code")}" })
             }
             return result.data?.hentIdenter?.identer
                 ?.let { identer ->
@@ -150,7 +159,7 @@ class PdlClient(
             val result = client.execute(query)
             if (result.errors != null && result.errors!!.isNotEmpty()) {
                 log.error("Feil ved henting av gt for bruker: \n\t${result.errors!!.joinToString { it.message }}")
-                return GtForBrukerOppslagFeil(result.errors!!.joinToString { "${it.message}: ${it.extensions?.get("details")}"  })
+                return GtForBrukerOppslagFeil(result.errors!!.joinToString { "${it.message}: ${it.extensions?.get("details")}" })
             }
             return result.toGeografiskTilknytning()
         } catch (e: Throwable) {
@@ -165,9 +174,15 @@ class PdlClient(
             val result = client.execute(query)
             if (result.errors != null && result.errors!!.isNotEmpty()) {
                 log.error("Feil ved henting av strengt fortrolig adresse for bruker: \n\t${result.errors!!.joinToString { it.message }}")
-                return HarStrengtFortroligAdresseOppslagFeil(result.errors!!.joinToString { "${it.message}: ${it.extensions?.get("details")}"  })
+                return HarStrengtFortroligAdresseOppslagFeil(result.errors!!.joinToString {
+                    "${it.message}: ${
+                        it.extensions?.get(
+                            "details"
+                        )
+                    }"
+                })
             }
-            return result?.data?.hentPerson?.adressebeskyttelse
+            return result.data?.hentPerson?.adressebeskyttelse
                 ?.also {
                     if (it.isEmpty()) return HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
                 }
@@ -185,12 +200,12 @@ class PdlClient(
 
 fun GraphQLClientResponse<HentGtQuery.Result>.toGeografiskTilknytning(): GtForBrukerResult {
     return this.data?.hentGeografiskTilknytning?.let {
-            when (it.gtType) {
-                GtType.BYDEL -> it.gtBydel?.let { bydel -> GeografiskTilknytningBydelNr(bydel) }
-                GtType.KOMMUNE -> it.gtKommune?.let { kommune -> GeografiskTilknytningKommuneNr(kommune) }
-                GtType.UTLAND -> it.gtLand?.let { land -> return GtLandForBrukerFunnet(GeografiskTilknytningLand(land)) }
-                else -> null
-            }?.let { gt -> GtNummerForBrukerFunnet(gt) }
-                ?: GtForBrukerIkkeFunnet("Ingen gyldige verider i GT repons fra PDL funnet for type ${it.gtType} bydel: ${it.gtBydel}, kommune: ${it.gtKommune}, land: ${it.gtLand}")
-        } ?: GtForBrukerIkkeFunnet("Ingen geografisk tilknytning funnet for bruker $this")
+        when (it.gtType) {
+            GtType.BYDEL -> it.gtBydel?.let { bydel -> GeografiskTilknytningBydelNr(bydel) }
+            GtType.KOMMUNE -> it.gtKommune?.let { kommune -> GeografiskTilknytningKommuneNr(kommune) }
+            GtType.UTLAND -> it.gtLand?.let { land -> return GtLandForBrukerFunnet(GeografiskTilknytningLand(land)) }
+            else -> null
+        }?.let { gt -> GtNummerForBrukerFunnet(gt) }
+            ?: GtForBrukerIkkeFunnet("Ingen gyldige verider i GT repons fra PDL funnet for type ${it.gtType} bydel: ${it.gtBydel}, kommune: ${it.gtKommune}, land: ${it.gtLand}")
+    } ?: GtForBrukerIkkeFunnet("Ingen geografisk tilknytning funnet for bruker $this")
 }
