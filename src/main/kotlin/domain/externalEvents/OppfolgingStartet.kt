@@ -9,14 +9,12 @@ import no.nav.domain.OppfolgingsperiodeId
 import java.time.ZonedDateTime
 
 @Serializable
-//@Polymorphic
 sealed class OppfolgingsperiodeEndret {
     abstract val fnr: Ident
     abstract val periodeId: OppfolgingsperiodeId
 }
 
 @Serializable
-//@SerialName("OppfolgingsperiodeStartet")
 class OppfolgingsperiodeStartet(
     override val fnr: Ident,
     @Contextual

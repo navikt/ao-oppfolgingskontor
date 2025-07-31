@@ -14,7 +14,7 @@ sealed class Ident {
             return if (digitNumber3and4 in 21..32) {
                 Npid(value)
             } else {
-                Npid(value)
+                Fnr(value)
             }
         }
     }
