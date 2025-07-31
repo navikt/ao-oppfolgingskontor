@@ -83,11 +83,12 @@ class SisteOppfolgingsperiodeProcessor(
                             ident,
                             oppfolgingsperiode.startDato,
                             oppfolgingsperiode.periodeId)
-                        Forward(Record(
-                            ident,
-                            oppfolgingsperiode,
-                            Instant.now().toEpochMilli(),
-                        ), null)
+                        Commit()
+//                        Forward(Record(
+//                            ident,
+//                            oppfolgingsperiode,
+//                            Instant.now().toEpochMilli(),
+//                        ), null)
                     }
                 }
             }
