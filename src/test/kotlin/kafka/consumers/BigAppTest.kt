@@ -28,6 +28,7 @@ import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
 import no.nav.kafka.consumers.KontortilordningsProcessor
 import no.nav.kafka.consumers.LeesahProcessor
 import no.nav.kafka.consumers.SkjermingProcessor
+import no.nav.security.mock.oauth2.http.put
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.KontorForGtNrFantDefaultKontor
@@ -109,6 +110,75 @@ class BigAppTest {
             }
             aoKontor shouldNotBe null
             aoKontor?.kontorId shouldBe "4154"
+        }
+    }
+
+    @Test
+    fun `app should not forward messages to KontorTilordning in prod`() = testApplication {
+        val fnr = Fnr("22325678901")
+        val aktorId = "22325678902"
+        val kontor = KontorId("2232")
+        val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
+        environment {
+            config = ApplicationConfig("application.prod.yaml")
+        }
+        application {
+            flywayMigrationInTest()
+            val sistePeriodeProcessor = SisteOppfolgingsperiodeProcessor(
+                OppfolgingsperiodeService,
+                false
+            ) { FnrFunnet(fnr) }
+
+            val automatiskKontorRutingService =  AutomatiskKontorRutingService(
+                KontorTilordningService::tilordneKontor,
+                { _, a, b-> KontorForGtNrFantDefaultKontor(kontor, b, a, GeografiskTilknytningBydelNr("3131")) },
+                { AlderFunnet(40) },
+                { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
+                { SkjermingFunnet(HarSkjerming(false)) },
+                { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
+                { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, OffsetDateTime.now()) }
+            )
+
+            val tilordningProcessor = KontortilordningsProcessor(automatiskKontorRutingService)
+
+            val leesahProcessor = LeesahProcessor(
+                automatiskKontorRutingService,
+                { FnrFunnet(fnr) },
+                false,
+            )
+
+            val skjermingProcessor = SkjermingProcessor(
+                automatiskKontorRutingService
+            )
+
+            val endringPaaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor()
+
+            val topology = configureTopology(
+                this.environment,
+                TestLockProvider,
+                CoroutineScope(Dispatchers.IO),
+                sistePeriodeProcessor,
+                tilordningProcessor,
+                leesahProcessor,
+                skjermingProcessor,
+                endringPaaOppfolgingsBrukerProcessor
+            )
+
+            val (driver, inputTopics, _) = setupKafkaMock(topology,
+                listOf("pto.siste-oppfolgingsperiode-v1"), null
+            )
+
+            inputTopics.first().pipeInput(aktorId, oppfolgingsperiodeMessage(
+                aktorId = aktorId,
+                oppfolgingsperiodeId = oppfolgingsperiodeId,
+                startDato = ZonedDateTime.now(),
+                sluttDato = null
+            ))
+
+            val aoKontor = transaction {
+                ArbeidsOppfolgingKontorEntity.findById(fnr.value)
+            }
+            aoKontor shouldBe null
         }
     }
 

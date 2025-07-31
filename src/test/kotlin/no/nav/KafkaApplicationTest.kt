@@ -69,7 +69,7 @@ class KafkaApplicationTest {
         application {
             flywayMigrationInTest()
             gittBrukerUnderOppfolging(Fnr(fnr))
-            val topology = configureDefaultTopology(endringPaOppfolgingsBrukerProcessor::process)
+            val topology = configureStringStringInputTopology(endringPaOppfolgingsBrukerProcessor::process)
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(
                 fnr,
@@ -156,7 +156,7 @@ class KafkaApplicationTest {
         application {
             flywayMigrationInTest()
             gittBrukerUnderOppfolging(Fnr(fnr))
-            val topology = configureDefaultTopology(endringPaOppfolgingsBrukerProcessor::process)
+            val topology = configureStringStringInputTopology(endringPaOppfolgingsBrukerProcessor::process)
 
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(
@@ -192,7 +192,7 @@ class KafkaApplicationTest {
 
         application {
             flywayMigrationInTest()
-            val topology = configureDefaultTopology(skjermingProcessor::process)
+            val topology = configureStringStringInputTopology(skjermingProcessor::process)
             val kafkaMockTopic = setupKafkaMock(topology, topic)
 
             kafkaMockTopic.pipeInput(fnr.value, "true")
@@ -214,7 +214,7 @@ class KafkaApplicationTest {
         application {
             val dataSource = flywayMigrationInTest()
 
-            val topology = configureDefaultTopology(endringPaOppfolgingsBrukerProcessor::process)
+            val topology = configureStringStringInputTopology(endringPaOppfolgingsBrukerProcessor::process)
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(fnr, endringPaOppfolgingsBrukerMessage("1234", ZonedDateTime.now()))
         }
@@ -226,7 +226,7 @@ class KafkaApplicationTest {
         application {
             val dataSource = flywayMigrationInTest()
 
-            val topology = configureDefaultTopology(endringPaOppfolgingsBrukerProcessor::process)
+            val topology = configureStringStringInputTopology(endringPaOppfolgingsBrukerProcessor::process)
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(fnr, """{"oppfolgingsenhet":"ugyldigEnhet"}""")
         }
@@ -265,7 +265,7 @@ class KafkaApplicationTest {
         }
     }
 
-    private fun configureDefaultTopology(processRecord: ProcessRecord<String, String, String, String>): Topology {
+    private fun configureStringStringInputTopology(processRecord: ProcessRecord<String, String, String, String>): Topology {
         val builder = StreamsBuilder()
         val testSupplier = wrapInRetryProcessor(
             topic = topic,
@@ -275,20 +275,6 @@ class KafkaApplicationTest {
         )
 
         builder.stream(topic, Consumed.with(Serdes.String(), Serdes.String()))
-            .process(testSupplier, Named.`as`(processorName(topic)))
-        return builder.build()
-    }
-
-    private fun configureTopology(processRecord: ProcessRecord<Ident, OppfolgingsperiodeStartet, String, String>): Topology {
-        val builder = StreamsBuilder()
-        val testSupplier = wrapInRetryProcessor(
-            topic = topic,
-            keyInSerde = KontortilordningsProcessor.identSerde,
-            valueInSerde = OppfolgingsPeriodeStartetSerde,
-            processRecord = processRecord,
-        )
-
-        builder.stream(topic, Consumed.with(KontortilordningsProcessor.identSerde, KontortilordningsProcessor.oppfolgingsperiodeStartetSerde))
             .process(testSupplier, Named.`as`(processorName(topic)))
         return builder.build()
     }

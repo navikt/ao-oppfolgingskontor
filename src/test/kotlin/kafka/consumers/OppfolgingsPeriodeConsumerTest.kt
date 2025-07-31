@@ -29,7 +29,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
-class OppfolgingsPeriodeConsumerTest {
+class SisteOppfolgingsperiodeProcessorTest {
 
     data class Bruker(
         val fnr: Fnr,

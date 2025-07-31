@@ -27,10 +27,12 @@ import no.nav.services.KontorForGtNrFantDefaultKontor
 import org.apache.kafka.streams.processor.api.Record
 import org.junit.jupiter.api.Test
 import java.time.Instant
+import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.util.UUID
 
-class KontortilordningsProcessorTest {
+class KontortilordningsProcessorTest {  
 
     @Test
     fun `skal returnere Retry på uventete feil `() {
