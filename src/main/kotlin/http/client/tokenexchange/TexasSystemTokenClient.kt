@@ -22,7 +22,7 @@ fun ApplicationEnvironment.getNaisTokenEndpoint(): String {
 
 class ExpirableToken(
     val token: String,
-    val expiresAt: Long,
+    val expiresAtMs: Long,
     val tokenType: String
 )
 
@@ -33,7 +33,7 @@ val expiry: Expiry<String, ExpirableToken> = object : Expiry<String, ExpirableTo
         token: ExpirableToken,
         currentTime: Long // Nanoseconds since epoch
     ): Long {
-        return (token.expiresAt + leeway) - currentTime
+        return (token.expiresAtMs + leeway) * 1000L - currentTime // return expiration time in nanoseconds
     }
 
     override fun expireAfterUpdate(
@@ -42,7 +42,7 @@ val expiry: Expiry<String, ExpirableToken> = object : Expiry<String, ExpirableTo
         currentTime: Long,
         currentDuration: Long // Nanoseconds since epoch
     ): Long {
-        return (token.expiresAt + leeway) - currentTime
+        return (token.expiresAtMs + leeway) * 1000L - currentTime // return expiration time in nanoseconds
     }
 
     override fun expireAfterRead(
@@ -51,7 +51,7 @@ val expiry: Expiry<String, ExpirableToken> = object : Expiry<String, ExpirableTo
         currentTime: Long,
         currentDuration: Long // Nanoseconds since epoch
     ): Long {
-        return (token.expiresAt + leeway) - currentTime
+        return (token.expiresAtMs + leeway) * 1000L - currentTime // return expiration time in nanoseconds
     }
 }
 
@@ -59,7 +59,7 @@ val expiry: Expiry<String, ExpirableToken> = object : Expiry<String, ExpirableTo
 fun TexasTokenResponseDto.toExpirableToken(): ExpirableToken {
     return ExpirableToken(
         token = this.accessToken,
-        expiresAt = System.currentTimeMillis() + (expiresIn * 1000),
+        expiresAtMs = System.currentTimeMillis() + (expiresIn * 1000),
         tokenType = tokenType
     )
 }
@@ -75,7 +75,7 @@ fun TexasTokenResponseDto.toTexasTokenSuccessResult(): TexasTokenSuccessResult {
 fun ExpirableToken.toTexasTokenResponse(): TexasTokenSuccessResult {
     return TexasTokenSuccessResult(
         accessToken = this.token,
-        expiresIn = ((this.expiresAt - System.currentTimeMillis()) / 1000).toInt(),
+        expiresIn = ((this.expiresAtMs - System.currentTimeMillis()) / 1000).toInt(),
         tokenType = this.tokenType
     )
 }
