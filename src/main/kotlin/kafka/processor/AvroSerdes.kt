@@ -40,17 +40,11 @@ class LeesahAvroSerdes (
 
     private val keySerializer = TypedKafkaAvroSerializer<String>()
         .apply {
-            configure(
-                schemaRegistryConfig,
-                true
-            )
+            configure(schemaRegistryConfig, true)
         }
     private val keyDeserializer = TypedKafkaAvroDeserializer(String::class.java)
         .apply {
-            configure(
-                schemaRegistryConfig,
-                true
-            )
+            configure(schemaRegistryConfig, true)
         }
     val keyAvroSerde = Serdes.serdeFrom(keySerializer, keyDeserializer)
 }

@@ -11,22 +11,20 @@ import io.ktor.server.application.log
 import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.binder.kafka.KafkaStreamsMetrics
+import kafka.consumers.SisteOppfolgingsperiodeProcessor
 import java.time.Duration
 import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
 import no.nav.http.client.FnrResult
 import no.nav.http.client.PdlClient
 import no.nav.isProduction
-import no.nav.kafka.config.AvroTopicConsumer
 import no.nav.kafka.config.StringStringSinkConfig
-import no.nav.kafka.config.StringTopicConsumer
-import no.nav.kafka.config.TopicConsumer
 import no.nav.kafka.config.kafkaStreamsProps
 import no.nav.kafka.config.configureTopology
-import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerConsumer
+import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
 import no.nav.kafka.consumers.FnrEllerAktorIdEllerNpid
-import no.nav.kafka.consumers.LeesahConsumer
-import no.nav.kafka.consumers.OppfolgingsPeriodeConsumer
-import no.nav.kafka.consumers.SkjermingConsumer
+import no.nav.kafka.consumers.LeesahProcessor
+import no.nav.kafka.consumers.KontortilordningsProcessor
+import no.nav.kafka.consumers.SkjermingProcessor
 import no.nav.kafka.processor.LeesahAvroSerdes
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.OppfolgingsperiodeService
@@ -79,61 +77,37 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val isProduction = environment.isProduction()
     if (isProduction) logger.info("Kjører i produksjonsmodus. Konsumerer kun siste-oppfølgingsperiode.")
 
-    val endringPaOppfolgingsBrukerConsumer = EndringPaOppfolgingsBrukerConsumer()
+    val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor()
 
-    val oppfolgingsPeriodeConsumer = OppfolgingsPeriodeConsumer(
-        automatiskKontorRutingService,
+    val sisteOppfolgingsperiodeProcessor = SisteOppfolgingsperiodeProcessor(
         oppfolgingsperiodeService,
-        // Hopp over personer som ikke finnes i dev
+        skipPersonIkkeFunnet = !isProduction,
+        { aktorId -> pdlClient.hentFnrFraAktorId(aktorId) }
+    )
+
+    val kontorTilordningsProcessor = KontortilordningsProcessor(
+        automatiskKontorRutingService,
+        // Hopp over personer som ikke finnes alder på i nytt felt i dev
         skipPersonIkkeFunnet = !isProduction
-    ) { aktorId -> pdlClient.hentFnrFraAktorId(aktorId) }
+    )
+    val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, fnrProvider, isProduction)
 
-    val leesahConsumer = LeesahConsumer(automatiskKontorRutingService, fnrProvider, isProduction)
-    val avroValueSpecificSerde = LeesahAvroSerdes(environment.config).valueAvroSerde
-    val avroKeySerde = LeesahAvroSerdes(environment.config).keyAvroSerde
-
-    val skjermingConsumer = SkjermingConsumer(automatiskKontorRutingService)
+    val skjermingProcessor = SkjermingProcessor(automatiskKontorRutingService)
 
     val aoKontorEndretSink = StringStringSinkConfig(
         arbeidsoppfolgingkontorSinkName,
         topics.ut.arbeidsoppfolgingskontortilordninger
     )
-    var topicConsumerList : List<TopicConsumer>
 
-
-    if (isProduction) {
-        topicConsumerList = listOf(
-            StringTopicConsumer(
-                topics.inn.sisteOppfolgingsperiodeV1,
-                oppfolgingsPeriodeConsumer::consume,
-                aoKontorEndretSink
-            )
-        )
-    } else {
-        topicConsumerList = listOf(
-            StringTopicConsumer(
-                topics.inn.sisteOppfolgingsperiodeV1,
-                oppfolgingsPeriodeConsumer::consume,
-                aoKontorEndretSink
-            ),
-            StringTopicConsumer(
-                topics.inn.endringPaOppfolgingsbruker,
-                endringPaOppfolgingsBrukerConsumer::consume,
-                aoKontorEndretSink
-            ),
-            AvroTopicConsumer(
-                topics.inn.pdlLeesah,
-                leesahConsumer::consume, avroValueSpecificSerde, avroKeySerde,
-                aoKontorEndretSink
-            ),
-            StringTopicConsumer(
-                topics.inn.skjerming,
-                skjermingConsumer::consume,
-                aoKontorEndretSink
-            )
-        )
-    }
-    val topology = configureTopology(topicConsumerList, ExposedLockProvider(database))
+    val topology = configureTopology(
+        environment,
+        ExposedLockProvider(database),
+        sisteOppfolgingsperiodeProcessor = sisteOppfolgingsperiodeProcessor,
+        kontortilordningsProcessor = kontorTilordningsProcessor,
+        leesahProcessor = leesahProcessor,
+        skjermingProcessor = skjermingProcessor,
+        endringPaOppfolgingsBrukerProcessor = endringPaOppfolgingsBrukerProcessor,
+    )
     val kafkaStream = KafkaStreams(topology, kafkaStreamsProps(environment.config))
 
     kafkaStream.setUncaughtExceptionHandler {

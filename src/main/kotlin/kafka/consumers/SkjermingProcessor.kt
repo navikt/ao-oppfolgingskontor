@@ -12,12 +12,12 @@ import no.nav.services.AutomatiskKontorRutingService
 import org.apache.kafka.streams.processor.api.Record
 import org.slf4j.LoggerFactory
 
-class SkjermingConsumer(
+class SkjermingProcessor(
     val automatiskKontorRutingService: AutomatiskKontorRutingService
 ) {
-    val log = LoggerFactory.getLogger(SkjermingConsumer::class.java)
+    val log = LoggerFactory.getLogger(SkjermingProcessor::class.java)
 
-    fun consume(record: Record<String, String>): RecordProcessingResult<String, String> {
+    fun process(record: Record<String, String>): RecordProcessingResult<String, String> {
         println("Processing Skjerming record: ${record.value()}")
         return handterEndringISKjermetStatus(record.key(), record.value().toBoolean())
     }

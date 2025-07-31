@@ -3,8 +3,11 @@ package no.nav.no.nav
 import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
 import io.ktor.server.testing.testApplication
+import kafka.consumers.OppfolgingsPeriodeStartetSerde
+import kafka.consumers.SisteOppfolgingsperiodeProcessor
 import kafka.retry.TestLockProvider
 import no.nav.db.Fnr
+import no.nav.db.Ident
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.GeografiskTilknyttetKontorEntity
@@ -14,6 +17,7 @@ import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
+import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.http.client.AlderFunnet
 import no.nav.http.client.FnrFunnet
 import no.nav.http.client.GeografiskTilknytningBydelNr
@@ -21,25 +25,32 @@ import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
-import no.nav.kafka.config.StringTopicConsumer
-import no.nav.kafka.config.configureTopology
-import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerConsumer
+import no.nav.kafka.config.processorName
+import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
 import no.nav.kafka.config.streamsErrorHandlerConfig
-import no.nav.kafka.consumers.OppfolgingsPeriodeConsumer
-import no.nav.kafka.consumers.SkjermingConsumer
+import no.nav.kafka.consumers.KontortilordningsProcessor
+import no.nav.kafka.consumers.SkjermingProcessor
+import no.nav.kafka.processor.ProcessRecord
+import no.nav.kafka.retry.library.RetryConfig
+import no.nav.kafka.retry.library.internal.FailedMessageRepository
+import no.nav.kafka.retry.library.internal.RetryableProcessor
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.KontorForGtNrFantDefaultKontor
-import no.nav.services.KontorForGtNrFantKontor
 import no.nav.services.KontorTilordningService
 import no.nav.services.OppfolgingsperiodeService
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.gittBrukerUnderOppfolging
+import org.apache.kafka.common.serialization.Serde
 import org.apache.kafka.common.serialization.Serdes
+import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
 import org.apache.kafka.streams.TestInputTopic
 import org.apache.kafka.streams.Topology
 import org.apache.kafka.streams.TopologyTestDriver
+import org.apache.kafka.streams.kstream.Consumed
+import org.apache.kafka.streams.kstream.Named
+import org.apache.kafka.streams.processor.api.ProcessorSupplier
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
 import java.time.OffsetDateTime
@@ -49,7 +60,7 @@ import java.util.UUID
 
 class KafkaApplicationTest {
     val topic = "test-topic"
-    val endringPaOppfolgingsBrukerConsumer = EndringPaOppfolgingsBrukerConsumer()
+    val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor()
 
     @Test
     fun `skal lagre alle nye endringer på arena-kontor i historikk tabellen`() = testApplication {
@@ -58,8 +69,7 @@ class KafkaApplicationTest {
         application {
             flywayMigrationInTest()
             gittBrukerUnderOppfolging(Fnr(fnr))
-            val topology = configureTopology(listOf(
-                StringTopicConsumer(topic,endringPaOppfolgingsBrukerConsumer::consume)))
+            val topology = configureStringStringInputTopology(endringPaOppfolgingsBrukerProcessor::process)
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(
                 fnr,
@@ -82,14 +92,18 @@ class KafkaApplicationTest {
     fun `skal tilordne kontor til brukere som har fått startet oppfølging`() = testApplication {
         val fnr = Fnr("22325678901")
         val kontor = KontorId("2228")
-//        val poaoTilgangClient = mockPoaoTilgangHost(kontor.id)
 
         application {
             flywayMigrationInTest()
             val aktorId = "1234567890123"
             val periodeStart = ZonedDateTime.now().minusDays(2)
             val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
-            val consumer = OppfolgingsPeriodeConsumer(AutomatiskKontorRutingService(
+
+            val sistePeriodeProcessor = SisteOppfolgingsperiodeProcessor(
+                OppfolgingsperiodeService,
+                false
+            ) { FnrFunnet(fnr) }
+            val tilordningProcessor = KontortilordningsProcessor(AutomatiskKontorRutingService(
                 KontorTilordningService::tilordneKontor,
                 { _, a, b-> KontorForGtNrFantDefaultKontor(kontor, b, a, GeografiskTilknytningBydelNr("3131")) },
                 { AlderFunnet(40) },
@@ -97,10 +111,26 @@ class KafkaApplicationTest {
                 { SkjermingFunnet(HarSkjerming(false)) },
                 { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
                 { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, OffsetDateTime.now()) }),
-                OppfolgingsperiodeService,
-            ) { FnrFunnet(fnr) }
+            )
 
-            val topology = configureTopology(listOf(StringTopicConsumer(topic,consumer::consume)))
+            val builder = StreamsBuilder()
+            val sistePeriodeProcessorSupplier = wrapInRetryProcessor(
+                topic = topic,
+                keyInSerde = Serdes.String(),
+                valueInSerde = Serdes.String(),
+                processRecord = sistePeriodeProcessor::process,
+            )
+            val tilordningProcessorSupplier = wrapInRetryProcessor(
+                topic = topic,
+                keyInSerde = KontortilordningsProcessor.identSerde,
+                valueInSerde = KontortilordningsProcessor.oppfolgingsperiodeStartetSerde,
+                processRecord = tilordningProcessor::process,
+            )
+            builder.stream(topic, Consumed.with(Serdes.String(), Serdes.String()))
+                .process(sistePeriodeProcessorSupplier, Named.`as`(processorName(topic)))
+                .process(tilordningProcessorSupplier)
+            val topology = builder.build()
+
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(
                 fnr.value,
@@ -126,7 +156,8 @@ class KafkaApplicationTest {
         application {
             flywayMigrationInTest()
             gittBrukerUnderOppfolging(Fnr(fnr))
-            val topology = configureTopology(listOf(StringTopicConsumer(topic, endringPaOppfolgingsBrukerConsumer::consume)))
+            val topology = configureStringStringInputTopology(endringPaOppfolgingsBrukerProcessor::process)
+
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(
                 fnr, endringPaOppfolgingsBrukerMessage("1234", ZonedDateTime.parse("2025-04-10T13:01:14+02:00"))
@@ -157,11 +188,11 @@ class KafkaApplicationTest {
             { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
             { AktivOppfolgingsperiode(fnr, OppfolgingsperiodeId(UUID.randomUUID()), OffsetDateTime.now()) }
         )
-        val skjermingConsumer = SkjermingConsumer(automatiskKontorRutingService)
+        val skjermingProcessor = SkjermingProcessor(automatiskKontorRutingService)
 
         application {
             flywayMigrationInTest()
-            val topology = configureTopology(listOf(StringTopicConsumer(topic, skjermingConsumer::consume)))
+            val topology = configureStringStringInputTopology(skjermingProcessor::process)
             val kafkaMockTopic = setupKafkaMock(topology, topic)
 
             kafkaMockTopic.pipeInput(fnr.value, "true")
@@ -183,7 +214,7 @@ class KafkaApplicationTest {
         application {
             val dataSource = flywayMigrationInTest()
 
-            val topology = configureTopology(listOf(StringTopicConsumer(topic, endringPaOppfolgingsBrukerConsumer::consume)))
+            val topology = configureStringStringInputTopology(endringPaOppfolgingsBrukerProcessor::process)
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(fnr, endringPaOppfolgingsBrukerMessage("1234", ZonedDateTime.now()))
         }
@@ -195,7 +226,7 @@ class KafkaApplicationTest {
         application {
             val dataSource = flywayMigrationInTest()
 
-            val topology = configureTopology(listOf(StringTopicConsumer(topic, endringPaOppfolgingsBrukerConsumer::consume)))
+            val topology = configureStringStringInputTopology(endringPaOppfolgingsBrukerProcessor::process)
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(fnr, """{"oppfolgingsenhet":"ugyldigEnhet"}""")
         }
@@ -214,8 +245,38 @@ class KafkaApplicationTest {
         return """{"uuid":"${oppfolgingsperiodeId.value}", "startDato":"$startDato", "sluttDato":${sluttDato?.let { "\"$it\"" } ?: "null"}, "aktorId":"$aktorId"}"""
     }
 
-    private fun configureTopology(topicAndConsumers: List<StringTopicConsumer>): Topology {
-        return configureTopology(topicAndConsumers, TestLockProvider)
+    fun <KIn, VIn, KOut, VOut> wrapInRetryProcessor(
+        topic: String,
+        keyInSerde: Serde<KIn>,
+        valueInSerde: Serde<VIn>,
+        processRecord: ProcessRecord<KIn ,VIn, KOut, VOut>
+    ): ProcessorSupplier<KIn, VIn, KOut, VOut> {
+        val testRepository = FailedMessageRepository(topic)
+        return ProcessorSupplier {
+            RetryableProcessor(
+                config = RetryConfig(),
+                keyInSerde = keyInSerde,
+                valueInSerde = valueInSerde,
+                topic = topic,
+                repository = testRepository,
+                businessLogic = processRecord,
+                lockProvider = TestLockProvider
+            )
+        }
+    }
+
+    private fun configureStringStringInputTopology(processRecord: ProcessRecord<String, String, String, String>): Topology {
+        val builder = StreamsBuilder()
+        val testSupplier = wrapInRetryProcessor(
+            topic = topic,
+            keyInSerde = Serdes.String(),
+            valueInSerde = Serdes.String(),
+            processRecord = processRecord,
+        )
+
+        builder.stream(topic, Consumed.with(Serdes.String(), Serdes.String()))
+            .process(testSupplier, Named.`as`(processorName(topic)))
+        return builder.build()
     }
 }
 

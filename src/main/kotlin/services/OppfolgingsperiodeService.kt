@@ -57,7 +57,7 @@ object OppfolgingsperiodeService {
     fun harNyerePeriodePåIdent(oppfolgingsperiode: OppfolgingsperiodeStartet): Boolean {
         return transaction {
             val eksisterendeStartDato = OppfolgingsperiodeTable.select(OppfolgingsperiodeTable.startDato)
-                .where { (OppfolgingsperiodeTable.id eq oppfolgingsperiode.fnr.value) and (oppfolgingsperiodeId neq oppfolgingsperiode.oppfolgingsperiodeId.value) }
+                .where { (OppfolgingsperiodeTable.id eq oppfolgingsperiode.fnr.value) and (oppfolgingsperiodeId neq oppfolgingsperiode.periodeId.value) }
                 .map { row -> row[OppfolgingsperiodeTable.startDato] }
                 .firstOrNull()
             if (eksisterendeStartDato != null) {

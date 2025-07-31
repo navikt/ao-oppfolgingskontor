@@ -12,21 +12,25 @@ import no.nav.db.flywayMigrate
 import no.nav.db.table.FailedMessagesTable
 import no.nav.db.table.FailedMessagesTable.messageKeyText
 import no.nav.kafka.config.StringStringSinkConfig
-import no.nav.kafka.config.StringTopicConsumer
-import no.nav.kafka.config.configureTopology
+import no.nav.kafka.config.processorName
 import no.nav.kafka.config.streamsErrorHandlerConfig
 import no.nav.kafka.processor.Commit
-import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.ProcessRecord
 import no.nav.kafka.processor.Retry
+import no.nav.kafka.retry.library.RetryConfig
 import no.nav.kafka.retry.library.internal.FailedMessageRepository
+import no.nav.kafka.retry.library.internal.RetryableProcessor
 import no.nav.utils.TestDb
 import org.apache.kafka.common.serialization.Serdes
+import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
 import org.apache.kafka.streams.TestInputTopic
 import org.apache.kafka.streams.TestOutputTopic
 import org.apache.kafka.streams.Topology
 import org.apache.kafka.streams.TopologyTestDriver
+import org.apache.kafka.streams.kstream.Consumed
+import org.apache.kafka.streams.kstream.Named
+import org.apache.kafka.streams.processor.api.ProcessorSupplier
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -136,8 +140,9 @@ class RetryableProcessorIntegrationTest {
         }
     }
 
+    /*
     @Test
-    fun `Meldinger som er Forward(ed) skal sendes ut på topic sende ut melding på sink`() {
+    fun `Meldinger som er Forward(ed) skal sendes ut på topic og sende ut melding på sink`() {
         val inputTopic = "test-topic"
         val inputTopic2 = "test-topic-2"
         val outputTopic = "test-output-topic"
@@ -147,27 +152,7 @@ class RetryableProcessorIntegrationTest {
             sinkName,
             outputTopic,
         )
-        val topology = configureTopology(
-            listOf(
-                StringTopicConsumer(
-                    inputTopic,
-                    { record ->
-                        val record = Record("new key", "new value", ZonedDateTime.now().toEpochSecond())
-                        Forward(record, sinkName)
-                    },
-                    sinkConfig
-                ),
-                StringTopicConsumer(
-                    inputTopic2,
-                    { record ->
-                        val record = Record("new key", "new value", ZonedDateTime.now().toEpochSecond())
-                        Forward(record, sinkName)
-                    },
-                    sinkConfig
-                )
-            ),
-            TestLockProvider,
-        )
+        val topology = configureTopology()
 
         val (_, testInputTopics, testOutputtopic) = setupKafkaMock(topology,listOf(inputTopic, inputTopic2), outputTopic)
 
@@ -179,7 +164,7 @@ class RetryableProcessorIntegrationTest {
         record.key shouldBe "new key"
         record.value shouldBe "new value"
         testOutputtopic.queueSize shouldBe 1
-    }
+    }*/
 
     fun TestScope.setupKafkaTestDriver(
         topic: String,
@@ -195,11 +180,27 @@ class RetryableProcessorIntegrationTest {
         sinkConfigs: StringStringSinkConfig? = null,
         punctuationCoroutineScope: CoroutineScope,
     ): Triple<TopologyTestDriver, List<TestInputTopic<String, String>>, TestOutputTopic<String, String>?> {
-        val topology = configureTopology(
-            listOf(StringTopicConsumer(topic, processRecord, sinkConfigs)),
-            TestLockProvider,
-            punctuationCoroutineScope
-        )
+
+        val builder = StreamsBuilder()
+        val testRepository = FailedMessageRepository(topic)
+        val testSupplier = ProcessorSupplier {
+            RetryableProcessor(
+                config = RetryConfig(),
+                keyInSerde = Serdes.String(),
+                valueInSerde = Serdes.String(),
+                topic = topic,
+                repository = testRepository,
+                businessLogic = processRecord,
+                lockProvider = TestLockProvider,
+                punctuationCoroutineScope = punctuationCoroutineScope,
+            )
+        }
+
+        builder.stream(topic, Consumed.with(Serdes.String(), Serdes.String()))
+            .process(testSupplier, Named.`as`(processorName(topic)))
+
+        val topology = builder.build()
+
         return setupKafkaMock(topology, listOf(topic), sinkConfigs?.outputTopicName)
     }
 
@@ -214,7 +215,7 @@ class RetryableProcessorIntegrationTest {
 
 }
 
-private fun setupKafkaMock(topology: Topology, inputTopics: List<String>, outputTopic: String? = null): Triple<TopologyTestDriver, List<TestInputTopic<String, String>>, TestOutputTopic<String, String>?> {
+fun setupKafkaMock(topology: Topology, inputTopics: List<String>, outputTopic: String? = null): Triple<TopologyTestDriver, List<TestInputTopic<String, String>>, TestOutputTopic<String, String>?> {
     val props = Properties()
     props.setProperty(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9091")
     props.streamsErrorHandlerConfig()

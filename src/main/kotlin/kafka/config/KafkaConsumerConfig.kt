@@ -1,15 +1,20 @@
 package no.nav.kafka.config
 
-import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde
+import Topic
+import io.ktor.server.application.ApplicationEnvironment
 import io.ktor.server.config.*
-import kotlinx.coroutines.CoroutineDispatcher
+import kafka.consumers.SisteOppfolgingsperiodeProcessor
+import kafka.retry.library.RetryProcessorWrapper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import net.javacrumbs.shedlock.core.LockProvider
+import no.nav.isProduction
+import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
+import no.nav.kafka.consumers.KontortilordningsProcessor
+import no.nav.kafka.consumers.LeesahProcessor
+import no.nav.kafka.consumers.SkjermingProcessor
+import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.retry.library.RetryConfig
-import no.nav.kafka.retry.library.RetryableTopology
-import no.nav.kafka.processor.ProcessRecord
-import no.nav.person.pdl.leesah.Personhendelse
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.config.SslConfigs
@@ -19,24 +24,11 @@ import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
 import org.apache.kafka.streams.Topology
 import org.apache.kafka.streams.errors.LogAndFailProcessingExceptionHandler
-import sun.rmi.server.Dispatcher
-import java.util.Properties
-
-sealed class TopicConsumer(val topic: String)
-
-class StringTopicConsumer(
-    topic: String,
-    val processRecord: ProcessRecord<String, String, String, String>,
-    val sink: StringStringSinkConfig? = null
-): TopicConsumer(topic)
-
-class AvroTopicConsumer(
-    topic: String,
-    val processRecord: ProcessRecord<String, Personhendelse, String, String>,
-    val valueSerde: SpecificAvroSerde<Personhendelse>,
-    val keySerde: Serde<String>,
-    val sink: StringStringSinkConfig?
-): TopicConsumer(topic)
+import org.apache.kafka.streams.kstream.Named
+import org.apache.kafka.streams.processor.api.ProcessorSupplier
+import org.apache.kafka.streams.processor.api.Record
+import topics
+import java.util.*
 
 open class SinkConfig<K, V>(
     val sinkName: String,
@@ -53,10 +45,11 @@ open class SinkConfig<K, V>(
         return true
     }
 }
+
 class StringStringSinkConfig(
     sinkName: String,
     outputTopicName: String,
-): SinkConfig<String, String>(
+) : SinkConfig<String, String>(
     sinkName,
     outputTopicName,
     Serdes.String(),
@@ -68,72 +61,87 @@ fun processorName(topic: String): String {
 }
 
 fun configureTopology(
-    topicAndConsumers: List<TopicConsumer>,
+    environment: ApplicationEnvironment,
     lockProvider: LockProvider,
     punctuationCoroutineScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
+    sisteOppfolgingsperiodeProcessor: SisteOppfolgingsperiodeProcessor,
+    kontortilordningsProcessor: KontortilordningsProcessor,
+    leesahProcessor: LeesahProcessor,
+    skjermingProcessor: SkjermingProcessor,
+    endringPaOppfolgingsBrukerProcessor: EndringPaOppfolgingsBrukerProcessor,
 ): Topology {
+    val topics = environment.topics()
     val builder = StreamsBuilder()
 
-    topicAndConsumers.forEach { topicAndConsumer ->
-        when (topicAndConsumer) {
-            is StringTopicConsumer -> {
-                RetryableTopology.addRetryableProcessor(
-                    builder = builder,
-                    inputTopic = topicAndConsumer.topic,
-                    keyInSerde = Serdes.String(),
-                    valueInSerde = Serdes.String(),
-                    businessLogic = { topicAndConsumer.processRecord(it) },
-                    config = RetryConfig(),
-                    lockProvider = lockProvider,
-                    punctuationCoroutineScope = punctuationCoroutineScope,
-                )
-            }
-            is AvroTopicConsumer -> {
-                RetryableTopology.addRetryableProcessor(
-                    builder = builder,
-                    inputTopic = topicAndConsumer.topic,
-                    keyInSerde = topicAndConsumer.keySerde,
-                    valueInSerde = topicAndConsumer.valueSerde,
-                    businessLogic = { topicAndConsumer.processRecord(it) },
-                    config = RetryConfig(),
-                    lockProvider = lockProvider,
-                    punctuationCoroutineScope = punctuationCoroutineScope,
-                )
-            }
-        }
+    fun <KIn, VIn, KOut, VOut> wrapInRetryProcessor(
+        keyInSerde: Serde<KIn>,
+        valueInSerde: Serde<VIn>,
+        topic: String,
+        businessLogic: (Record<KIn, VIn>) -> RecordProcessingResult<KOut, VOut>,
+    ): ProcessorSupplier<KIn, VIn, KOut, VOut> {
+        return RetryProcessorWrapper.wrapInRetryProcessor(
+            config = RetryConfig(),
+            keyInSerde = keyInSerde,
+            valueInSerde = valueInSerde,
+            topic = topic,
+            businessLogic = businessLogic,
+            lockProvider = lockProvider,
+            punctuationCoroutineScope = punctuationCoroutineScope,
+        )
+    }
+
+    fun <KIn, VIn, KOut, VOut> wrapInRetryProcessor(topic: Topic<KIn, VIn>, businessLogic: (Record<KIn, VIn>) -> RecordProcessingResult<KOut, VOut>)
+        = wrapInRetryProcessor(topic.keySerde, topic.valSerde, topic.name, businessLogic)
+
+    val oppfolgingsperiodeProcessorSupplier = wrapInRetryProcessor(
+            topic = topics.inn.sisteOppfolgingsperiodeV1,
+            businessLogic = sisteOppfolgingsperiodeProcessor::process,
+    )
+
+    val kontortilordningProcessorSupplier = wrapInRetryProcessor(
+            keyInSerde = KontortilordningsProcessor.identSerde,
+            valueInSerde = KontortilordningsProcessor.oppfolgingsperiodeStartetSerde,
+            topic = KontortilordningsProcessor.processorName,
+            businessLogic = kontortilordningsProcessor::process,
+    )
+
+    val oppfolgingStartetStream = builder.stream(topics.inn.sisteOppfolgingsperiodeV1.name, topics.inn.sisteOppfolgingsperiodeV1.consumedWith())
+        .process(oppfolgingsperiodeProcessorSupplier, Named.`as`(processorName(topics.inn.sisteOppfolgingsperiodeV1.name)))
+
+    if(!environment.isProduction()) {
+        oppfolgingStartetStream
+            .process(kontortilordningProcessorSupplier, Named.`as`(KontortilordningsProcessor.processorName))
+
+        val leesahProcessorSupplier = wrapInRetryProcessor(
+            topic = topics.inn.pdlLeesah,
+            businessLogic = leesahProcessor::process
+        )
+        builder.stream(topics.inn.pdlLeesah.name, topics.inn.pdlLeesah.consumedWith())
+            .process(leesahProcessorSupplier, Named.`as`(processorName(topics.inn.pdlLeesah.name)))
+
+        val skjermingProcessorSupplier = wrapInRetryProcessor(
+            topic = topics.inn.skjerming,
+            businessLogic = skjermingProcessor::process
+        )
+        builder.stream(topics.inn.skjerming.name, topics.inn.skjerming.consumedWith())
+            .process(skjermingProcessorSupplier, Named.`as`(processorName(topics.inn.skjerming.name)))
+
+        val endringPaOppfolgingsBrukerProcessorSupplier = wrapInRetryProcessor(
+            topic = topics.inn.endringPaOppfolgingsbruker,
+            businessLogic = endringPaOppfolgingsBrukerProcessor::process
+        )
+        builder.stream(topics.inn.endringPaOppfolgingsbruker.name, topics.inn.endringPaOppfolgingsbruker.consumedWith())
+            .process(endringPaOppfolgingsBrukerProcessorSupplier, Named.`as`(processorName(topics.inn.endringPaOppfolgingsbruker.name)))
     }
 
     val topology = builder.build()
-    topicAndConsumers.mapNotNull { topicConfig ->
-        when (topicConfig) {
-            is StringTopicConsumer -> topicConfig.sink?.let { processorName(topicConfig.topic) to it }
-            is AvroTopicConsumer -> topicConfig.sink?.let { processorName(topicConfig.topic) to it }
-        }
-    }
-        .groupBy { it.second.sinkName }
-        .forEach { entry ->
-            val sinkName = entry.key
-            val parents = entry.value.map { it.first }
-            require(entry.value.map { it.second }.distinct().size == 1) { "Sink configs for same sink name must be equal, found different configs for sink: $sinkName" }
-            val sinkConfig = entry.value.first().second
-            topology.addSink(
-                sinkConfig.sinkName,
-                sinkConfig.outputTopicName,
-                sinkConfig.keySerde.serializer(),
-                sinkConfig.valueSerde.serializer(),
-                *parents.toTypedArray()
-            )
-        }
 
     return topology
 }
 
 fun kafkaStreamsProps(config: ApplicationConfig): Properties {
     val naisKafkaEnv = config.toKafkaEnv()
-    return Properties()
-        .streamsConfig(naisKafkaEnv, config)
-        .streamsErrorHandlerConfig()
-        .securityConfig(naisKafkaEnv)
+    return Properties().streamsConfig(naisKafkaEnv, config).streamsErrorHandlerConfig().securityConfig(naisKafkaEnv)
 }
 
 private fun Properties.streamsConfig(config: NaisKafkaEnv, appConfig: ApplicationConfig): Properties {
