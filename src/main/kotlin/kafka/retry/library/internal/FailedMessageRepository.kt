@@ -7,6 +7,7 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.OffsetDateTime
+import kotlin.and
 
 class FailedMessageRepository(val repositoryTopic: String) {
 
@@ -14,14 +15,11 @@ class FailedMessageRepository(val repositoryTopic: String) {
         if (key.isEmpty()) throw IllegalArgumentException("Key cannot be empty")
         if (key.isBlank()) throw IllegalArgumentException("Key cannot be blank")
         if (key.contains('\u0000')) throw IllegalArgumentException("Key: <${key}> contained contain null characters topic $repositoryTopic ")
-        val messageOnTopicWithKeySubquery = FailedMessagesTable
-            .select(FailedMessagesTable.id)
-            .where { FailedMessagesTable.topic eq repositoryTopic and (messageKeyText eq key) }
-        val existsOp = exists(messageOnTopicWithKeySubquery)
-        FailedMessagesTable
-            .select(existsOp)
-            .map { it[existsOp] }
-            .firstOrNull() ?: false
+        !FailedMessagesTable
+            .selectAll()
+            .where { (FailedMessagesTable.topic eq repositoryTopic) and (messageKeyText eq key) }
+            .limit(1)
+            .empty()
     }
 
     fun enqueue(keyString: String, keyBytes: ByteArray, value: ByteArray, reason: String): Unit = transaction {
