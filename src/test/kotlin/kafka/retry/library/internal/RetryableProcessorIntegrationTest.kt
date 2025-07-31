@@ -15,6 +15,7 @@ import no.nav.kafka.config.StringStringSinkConfig
 import no.nav.kafka.config.processorName
 import no.nav.kafka.config.streamsErrorHandlerConfig
 import no.nav.kafka.processor.Commit
+import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.ProcessRecord
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.retry.library.RetryConfig
@@ -22,6 +23,7 @@ import no.nav.kafka.retry.library.internal.FailedMessageRepository
 import no.nav.kafka.retry.library.internal.RetryableProcessor
 import no.nav.utils.TestDb
 import org.apache.kafka.common.serialization.Serdes
+import org.apache.kafka.streams.KeyValue
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
 import org.apache.kafka.streams.TestInputTopic
@@ -37,6 +39,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.time.Duration
+import java.time.Instant
 import java.time.ZonedDateTime
 import java.time.temporal.ChronoUnit
 import java.util.Properties
@@ -75,7 +78,9 @@ class RetryableProcessorIntegrationTest {
             if (failed == Res.Fail) {
                 Retry("Dette gikk galt")
             } else {
-                Commit()
+                Forward(
+                    Record("lol", "lol", Instant.now().toEpochMilli()),
+                    null)
             }
         })
 
@@ -198,6 +203,12 @@ class RetryableProcessorIntegrationTest {
 
         builder.stream(topic, Consumed.with(Serdes.String(), Serdes.String()))
             .process(testSupplier, Named.`as`(processorName(topic)))
+            .foreach { key, value ->
+                println(key)
+                println(value)
+            }
+//            .process(testSupplier, Named.`as`(processorName(topic)))
+//            .map({ key, value -> KeyValue(key, value) }, Named.`as`("lol"))
 
         val topology = builder.build()
 

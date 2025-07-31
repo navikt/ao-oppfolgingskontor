@@ -6,6 +6,10 @@ import io.ktor.server.testing.testApplication
 import kafka.consumers.OppfolgingsPeriodeStartetSerde
 import kafka.consumers.SisteOppfolgingsperiodeProcessor
 import kafka.retry.TestLockProvider
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.coroutineScope
 import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
@@ -260,7 +264,8 @@ class KafkaApplicationTest {
                 topic = topic,
                 repository = testRepository,
                 businessLogic = processRecord,
-                lockProvider = TestLockProvider
+                lockProvider = TestLockProvider,
+                punctuationCoroutineScope = CoroutineScope(Dispatchers.IO)
             )
         }
     }

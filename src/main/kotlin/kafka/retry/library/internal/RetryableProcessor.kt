@@ -53,7 +53,7 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
     /* businessLogig er selve forretningslogikken fra brukeren. Kan returnere Record<KOut,VOut> eller Unit.     */
     private val businessLogic: (Record<KIn, VIn>) -> RecordProcessingResult<KOut, VOut>,
     private val lockProvider: LockProvider,
-    private val punctuationCoroutineScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
+    private val punctuationCoroutineScope: CoroutineScope,
 ) : Processor<KIn, VIn, KOut, VOut> {
 
 
@@ -112,17 +112,17 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
 
     private fun runReprocessingWithLock(timestamp: Long) {
         runWithInterPodLevelLock {
-            punctuationCoroutineScope.launch {
+//            punctuationCoroutineScope.launch {
                 try {
-                    withTimeout(10_000) {
+//                    withTimeout(10_000) {
                         runReprocessingOnOneBatch(timestamp)
-                    }
-                } catch (e: TimeoutCancellationException) {
-                    logger.warn("Reprocessing failed messages timed out after 10 seconds")
+//                    }
+//                } catch (e: TimeoutCancellationException) {
+//                    logger.warn("Reprocessing failed messages timed out after 10 seconds")
                 } catch (e: Throwable) {
                     logger.error("Unexpected error when processing failed messages: ${e.message}", e)
                 }
-            }
+//            }
         }
     }
 
