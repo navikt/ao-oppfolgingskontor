@@ -58,7 +58,7 @@ class KontortilordningsProcessor(
                         }
                     }
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             val feilmelding = "Klarte ikke behandle oppfolgingsperiode melding: ${e.message}"
             log.error(feilmelding, e)
             return Retry(feilmelding)

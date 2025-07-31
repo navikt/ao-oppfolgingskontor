@@ -15,7 +15,6 @@ import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.ApplicationEnvironment
 import kotlinx.serialization.Serializable
-import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.domain.HarSkjerming
 import no.nav.http.client.tokenexchange.SystemTokenPlugin
