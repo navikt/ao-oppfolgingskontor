@@ -41,7 +41,7 @@ import java.util.UUID
 class BigAppTest {
 
     @Test
-    fun `app should work`() = testApplication {
+    fun `app should forward from SisteOppfolgingsperiodeProcessor to KontortilordningsProcessor if not prod`() = testApplication {
         val fnr = Fnr("22325678901")
         val aktorId = "22325678902"
         val kontor = KontorId("2232")

@@ -41,7 +41,9 @@ import no.nav.http.client.SkjermingIkkeFunnet
 import no.nav.http.client.SkjermingResult
 import no.nav.http.client.arbeidssogerregisteret.HentProfileringsResultat
 import no.nav.http.client.arbeidssogerregisteret.ProfileringFunnet
+import no.nav.http.client.arbeidssogerregisteret.ProfileringIkkeFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
+import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultatFeil
 import no.nav.kafka.consumers.EndringISkjermingResult
 import no.nav.kafka.consumers.HåndterPersondataEndretFail
 import no.nav.kafka.consumers.HåndterPersondataEndretResultat
@@ -106,6 +108,11 @@ class AutomatiskKontorRutingService(
                 is AlderIkkeFunnet -> return TilordningFeil("Kunne ikke hente alder: ${result.message}")
                 is AlderOppslagFeil -> return TilordningFeil("Henting av alder feilet: ${result.message}")
             }
+            val profilering = when (val profileringResultat = profileringProvider(fnr)) {
+                is ProfileringFunnet -> profileringResultat
+                is ProfileringIkkeFunnet -> return TilordningFeil("Kunne ikke hente profilering: ${profileringResultat.melding}") // TODO: Skal ikke retries
+                is ProfileringsResultatFeil -> return TilordningFeil("Kunne ikke hente profilering: ${profileringResultat.error.message}")
+            }
             val kontorTilordning = when (val gtKontorResultat = gtKontorProvider(fnr, harStrengtFortroligAdresse, erSkjermet)) {
                 is KontorForGtFinnesIkke -> hentTilordningUtenGT(fnr, alder, profileringProvider(fnr), oppfolgingsperiodeId, gtKontorResultat)
                 is KontorForGtFantLandEllerKontor -> hentTilordning(fnr, gtKontorResultat, alder, profileringProvider(fnr), oppfolgingsperiodeId)
@@ -113,7 +120,8 @@ class AutomatiskKontorRutingService(
             }
             tilordneKontor(kontorTilordning)
             return TilordningSuccessKontorEndret(kontorTilordning)
-        } catch (e: Exception) {
+
+            } catch (e: Exception) {
             return TilordningFeil("Feil ved tilordning av kontor: ${e.message ?: e.toString()}")
         }
     }

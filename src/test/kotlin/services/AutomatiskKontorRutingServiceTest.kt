@@ -561,16 +561,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
             } shouldBe listOf(
                 TilordningFeil("Feil ved oppslag på oppfolgingsperiode: feil i fnr"),
                 TilordningFeil("Kunne ikke hente alder: feil i alder"),
-                TilordningSuccessKontorEndret(
-                    OppfolgingsPeriodeStartetLokalKontorTilordning(
-                        KontorTilordning(
-                            brukerMedFeilendeProfilering.fnr(),
-                            brukerMedFeilendeProfilering.gtKontor(),
-                            brukerMedFeilendeProfilering.oppfolgingsperiodeId()
-                        ),
-                        ingenSensitivitet
-                    )
-                ),
+                TilordningFeil("Kunne ikke hente profilering: profilering ikke funnet"),
                 TilordningFeil("Kunne ikke hente skjerming ved kontortilordning: feil i skjerming"),
                 TilordningFeil("Kunne ikke hente adressebeskyttelse ved kontortilordning: feil i adressebeskyttelse"),
                 TilordningFeil("Feil ved henting av gt-kontor: Feil i gt-kontor oppslag"),
@@ -818,7 +809,7 @@ val brukerMedFeilendeAlder = Bruker(
 val brukerMedFeilendeProfilering = Bruker(
     FnrFunnet(Fnr("11111111111")),
     AlderFunnet(20),
-    ProfileringIkkeFunnet("feil i profilering"),
+    ProfileringIkkeFunnet("profilering ikke funnet"),
     KontorForGtNrFantDefaultKontor(KontorId("1234"), HarSkjerming(false), HarStrengtFortroligAdresse(false), GeografiskTilknytningBydelNr("1111")),
     GtNummerForBrukerFunnet(GeografiskTilknytningBydelNr("1111")),
     SkjermingFunnet(HarSkjerming(false)),
