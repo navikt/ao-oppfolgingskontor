@@ -25,6 +25,7 @@ import org.apache.kafka.streams.processor.PunctuationType
 import org.apache.kafka.streams.processor.api.Processor
 import org.apache.kafka.streams.processor.api.ProcessorContext
 import org.apache.kafka.streams.processor.api.Record
+import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.time.Instant
@@ -88,11 +89,13 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
         }
 
         try {
-            val result = businessLogic(record)
-            when (result) {
-                is Commit, is Skip -> {}
-                is Forward -> context.forward(result.forwardedRecord, result.topic)
-                is Retry -> enqueue(record, result.reason)
+            transaction {
+                val result = businessLogic(record)
+                when (result) {
+                    is Commit, is Skip -> {}
+                    is Forward -> context.forward(result.forwardedRecord, result.topic)
+                    is Retry -> enqueue(record, result.reason)
+                }
             }
         } catch (e: Throwable) {
             val reason = "Initial processing failed: ${e.javaClass.simpleName} - ${e.message}"
@@ -134,16 +137,19 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
         metrics.retryAttempted()
         if (hasReachedMaxRetries(message)) return MaxRetryReached(message)
         try {
-            val reconstructionResult = message.toRecordReconstructedRecord()
-            return when (reconstructionResult) {
-                is ReconstructedRecord -> {
-                    val processingResult = businessLogic(reconstructionResult.record)
-                    when (processingResult) {
-                        is Retry -> RetryableFail(message, Exception(processingResult.reason))
-                        else -> Success(message, processingResult)
+            return transaction {
+                val reconstructionResult = message.toRecordReconstructedRecord()
+                when (reconstructionResult) {
+                    is ReconstructedRecord -> {
+                        val processingResult = businessLogic(reconstructionResult.record)
+                        when (processingResult) {
+                            is Retry -> RetryableFail(message, Exception(processingResult.reason))
+                            else -> Success(message, processingResult)
+                        }
                     }
+
+                    is UnrecoverableDeserialization -> UnrecoverableFail(message, reconstructionResult.reason)
                 }
-                is UnrecoverableDeserialization -> UnrecoverableFail(message, reconstructionResult.reason)
             }
         } catch (e: Throwable) {
             return RetryableFail(message, e)
