@@ -9,34 +9,23 @@ import io.ktor.server.testing.testApplication
 import java.time.ZonedDateTime
 import java.util.UUID
 import no.nav.db.Fnr
-import no.nav.db.Ident
 import no.nav.db.entity.OppfolgingsperiodeEntity
-import no.nav.domain.HarSkjerming
-import no.nav.domain.HarStrengtFortroligAdresse
-import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
-import no.nav.http.client.AlderFunnet
 import no.nav.http.client.FnrFunnet
-import no.nav.http.client.GeografiskTilknytningBydelNr
-import no.nav.http.client.HarStrengtFortroligAdresseFunnet
-import no.nav.http.client.SkjermingFunnet
-import no.nav.http.client.arbeidssogerregisteret.ProfileringFunnet
-import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
+import no.nav.http.client.FnrIkkeFunnet
+import no.nav.http.client.FnrOppslagFeil
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Forward
+import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
-import no.nav.services.AktivOppfolgingsperiode
-import no.nav.services.AutomatiskKontorRutingService
-import no.nav.services.KontorForGtNrFantDefaultKontor
-import no.nav.services.KontorTilordningService
 import no.nav.services.OppfolgingsperiodeService
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.randomFnr
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
-import java.time.OffsetDateTime
+import java.time.Instant
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
@@ -142,8 +131,6 @@ class OppfolgingsPeriodeConsumerTest {
                 val consumer = SisteOppfolgingsperiodeProcessor(
                     OppfolgingsperiodeService,
                 ) { FnrFunnet(bruker.fnr) }
-
-
                 val startPeriodeRecord = oppfolgingsperiodeMessage(bruker, sluttDato = null)
                 val startGammelPeriodeRecord = oppfolgingsperiodeMessage(
                     bruker.copy(
@@ -197,7 +184,7 @@ class OppfolgingsPeriodeConsumerTest {
                     oppfolgingForBruker.oppfolgingsperiodeId shouldBe nyerePeriodeId
                     withClue("startDato lest fra db: ${oppfolgingForBruker.startDato.toInstant()} skal være lik input startDato: ${nyereStartDato.toInstant()}") {
                         // Truncated always rounds down, therefore we add 500 nanos to make it behave like actual rounding like done when
-                        // too highe precision is inserted into the db
+                        // too high precision is inserted into the db
                         oppfolgingForBruker.startDato.toInstant() shouldBe nyereStartDato
                             .toInstant().plusNanos(500).truncatedTo(ChronoUnit.MICROS)
                     }
@@ -233,20 +220,86 @@ class OppfolgingsPeriodeConsumerTest {
             }
         }
 
-    private fun createAutomatiskKontorRutingService(
-        fnr: Fnr,
-        oppfolgingsperiodeId: OppfolgingsperiodeId,
-    ): AutomatiskKontorRutingService {
-        val kontor = KontorId("2228")
-        return AutomatiskKontorRutingService(
-            KontorTilordningService::tilordneKontor,
-            { _, a, b -> KontorForGtNrFantDefaultKontor(kontor, b, a, GeografiskTilknytningBydelNr("3131")) },
-            { AlderFunnet(40) },
-            { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
-            { SkjermingFunnet(HarSkjerming(false)) },
-            { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
-            { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, OffsetDateTime.now()) }
-        )
+    @Test
+    fun `skal gi Retry ved feil på henting av fnr`() =
+        testApplication {
+            val bruker = testBruker()
+            val consumer = SisteOppfolgingsperiodeProcessor(
+                OppfolgingsperiodeService,
+            ) { FnrOppslagFeil("Feil ved henting av fnr") }
+
+            val result = consumer.process(oppfolgingsperiodeMessage(
+                bruker,
+                null
+            ))
+
+            result.shouldBeInstanceOf<Retry<*, *>>()
+            result.reason shouldBe "Kunne ikke behandle oppfolgingsperiode melding: Feil ved henting av fnr"
+        }
+
+    @Test
+    fun `skal gi Skip ved feil på henting av fnr men konfigurert til å hoppe over melding`() {
+        val bruker = testBruker()
+        val consumer = SisteOppfolgingsperiodeProcessor(
+            OppfolgingsperiodeService,
+            true
+        ) { FnrOppslagFeil("Fant ikke person: not_found") }
+
+        val result = consumer.process(oppfolgingsperiodeMessage(
+            bruker,
+            null
+        ))
+
+        result.shouldBeInstanceOf<Skip<*, *>>()
+    }
+
+    @Test
+    fun `skal gi Retry ved feil på henting av fnr som ikke er not_found fra pdl når konfigurert til å hoppe de typene melding`() {
+        val bruker = testBruker()
+        val consumer = SisteOppfolgingsperiodeProcessor(
+            OppfolgingsperiodeService,
+            true
+        ) { FnrOppslagFeil("Fant ikke person: not_not_found") }
+
+        val result = consumer.process(oppfolgingsperiodeMessage(
+            bruker,
+            null
+        ))
+
+        result.shouldBeInstanceOf<Retry<*, *>>()
+    }
+
+    @Test
+    fun `skal gi Retry når ingen fnr finnes`() {
+        val bruker = testBruker()
+        val consumer = SisteOppfolgingsperiodeProcessor(
+            OppfolgingsperiodeService,
+        ) { FnrIkkeFunnet("Finnes ingen fnr") }
+
+        val result = consumer.process(oppfolgingsperiodeMessage(
+            bruker,
+            null
+        ))
+
+        result.shouldBeInstanceOf<Retry<*, *>>()
+        result.reason shouldBe "Kunne ikke behandle oppfolgingsperiode melding: Finnes ingen fnr"
+    }
+
+    @Test
+    fun `skal håndtere deserialiseringsfeil`() {
+        val bruker = testBruker()
+        val consumer = SisteOppfolgingsperiodeProcessor(
+            OppfolgingsperiodeService,
+        ) { FnrFunnet(bruker.fnr) }
+
+        val result = consumer.process(Record(bruker.fnr.value, """{ "lol": "lal" }""", Instant.now().toEpochMilli()))
+
+        result.shouldBeInstanceOf<Retry<*, *>>()
+        result.reason shouldBe """
+            Klarte ikke behandle oppfolgingsperiode melding: Encountered an unknown key 'lol' at offset 3 at path: ${'$'}
+            Use 'ignoreUnknownKeys = true' in 'Json {}' builder or '@JsonIgnoreUnknownKeys' annotation to ignore unknown keys.
+            JSON input: { "lol": "lal" }
+        """.trimIndent()
     }
 
     private fun oppfolgingsperiodeMessage(
