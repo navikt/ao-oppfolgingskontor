@@ -109,7 +109,6 @@ fun configureTopology(
 
     val oppfolgingStartetStream = builder.stream(topics.inn.sisteOppfolgingsperiodeV1.name, topics.inn.sisteOppfolgingsperiodeV1.consumedWith())
         .process(oppfolgingsperiodeProcessorSupplier, Named.`as`(processorName(topics.inn.sisteOppfolgingsperiodeV1.name)))
-        .map { p0, p1 -> KeyValue(p0, p1) }
 
     if(!environment.isProduction()) {
         oppfolgingStartetStream

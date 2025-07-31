@@ -203,12 +203,6 @@ class RetryableProcessorIntegrationTest {
 
         builder.stream(topic, Consumed.with(Serdes.String(), Serdes.String()))
             .process(testSupplier, Named.`as`(processorName(topic)))
-            .foreach { key, value ->
-                println(key)
-                println(value)
-            }
-//            .process(testSupplier, Named.`as`(processorName(topic)))
-//            .map({ key, value -> KeyValue(key, value) }, Named.`as`("lol"))
 
         val topology = builder.build()
 
