@@ -72,6 +72,7 @@ class SisteOppfolgingsperiodeProcessor(
                             }
                             false -> {}
                         }
+                        log.info("melding på sisteoppfolgingsperiode (avsluttet) ferdig prosessert")
                         Commit()
                     }
                     is OppfolgingsperiodeStartet -> {
@@ -83,6 +84,7 @@ class SisteOppfolgingsperiodeProcessor(
                             ident,
                             oppfolgingsperiode.startDato,
                             oppfolgingsperiode.periodeId)
+                        log.info("melding på sisteoppfolgingsperiode (startet) ferdig prosessert")
                         Forward(Record(
                             ident,
                             oppfolgingsperiode,
