@@ -129,6 +129,7 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
     }
 
     private fun reprocessSingleMessage(message: FailedMessage): ReprocessingResult<KIn, VIn, KOut, VOut> {
+        logger.debug("Starting Reprocessing for message ${message.id} for topic: $topic")
         metrics.retryAttempted()
         if (hasReachedMaxRetries(message)) return MaxRetryReached(message)
         try {
@@ -173,6 +174,7 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
                 store.delete(result.msg.id)
                 metrics.retrySucceeded()
                 if (result.processingResult is Forward<KOut, VOut>) {
+                    logger.info("Forwarding record ${result.msg.id}.")
                     context.forward(result.processingResult.forwardedRecord, result.processingResult.topic)
                 }
                 logger.info("Successfully reprocessed message ${result.msg.id} for key '${result.msg.messageKeyText}'.")
