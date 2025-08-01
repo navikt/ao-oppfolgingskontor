@@ -34,7 +34,7 @@ import java.time.Instant
  * 4.  Håndterer logikk for maksimalt antall forsøk ("dead-lettering").
  * 5.  Oppdaterer alle relevante metrikker via RetryMetrics-klassen.
  */
-val lockAtMostFor = Duration.ofSeconds(30)
+val lockAtMostFor = Duration.ofMinutes(10L)
 val lockAtLeastFor = Duration.ofSeconds(5)
 
 @PublishedApi
@@ -129,7 +129,6 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
     }
 
     private fun reprocessSingleMessage(message: FailedMessage): ReprocessingResult<KIn, VIn, KOut, VOut> {
-        logger.debug("Starting Reprocessing for message ${message.id} for topic: $topic")
         metrics.retryAttempted()
         if (hasReachedMaxRetries(message)) return MaxRetryReached(message)
         try {
@@ -212,8 +211,10 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
             logger.debug("Henter batch med feilede meldinger for reprosessering")
             store.getBatchToRetry(config.retryBatchSize)
                 .also { logger.debug("hentet ${it.size} meldinger for topic: $topic") }
-                .proccessInOrderOnKey { reprocessSingleMessage(it) }
-                .map { handleReprocessingResult(it) }
+                .proccessInOrderOnKey {
+                   reprocessSingleMessage(it).also(::handleReprocessingResult)
+                }
+
 
         } finally {
             // Frigi låsen for MITT topic, slik at en annen tråd kan ta over neste gang.
