@@ -199,10 +199,11 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
         // Prøv å skaffe låsen for MITT topic. Dette sikrer at kun én tråd om gangen kan prosessere meldinger for dette topicet.
         if (!TopicLevelLock.tryAcquire(this.topic)) {
             // En annen tråd jobber allerede med dette topicet. Avslutt.
-            logger.info("En annen tråd jobber allerede med dette topicet. Avslutter prosessering")
+            logger.debug("En annen tråd jobber allerede med dette topicet. Avslutter prosessering")
             return
         }
         try {
+            logger.debug("Fikk lokal lås for topic: $topic. Starter reprosessering av feilede meldinger.")
             store.getBatchToRetry(config.retryBatchSize)
                 .proccessInOrderOnKey { reprocessSingleMessage(it) }
                 .map { handleReprocessingResult(it) }
