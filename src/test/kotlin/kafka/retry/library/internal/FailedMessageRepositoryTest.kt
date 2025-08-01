@@ -66,6 +66,22 @@ class FailedMessageRepositoryTest {
     }
 
     @Test
+    fun `should only fetch from single topic in one batch (getBatchToRetry)`() {
+        val key = "test-key"
+        val otherKey = "other-key"
+        val value = "test-value".toByteArray()
+        val otherRepository = FailedMessageRepository( "other-topic")
+        repository.hasFailedMessages(key) shouldBe false
+        repository.countTotalFailedMessages() shouldBe 0
+
+        repository.enqueue(key, value, otherKey.toByteArray(), "Initial failure")
+        otherRepository.enqueue(key, value, otherKey.toByteArray(), "Initial failure")
+
+        repository.getBatchToRetry(100).size shouldBe 1
+        repository.countTotalFailedMessages() shouldBe 2
+    }
+
+    @Test
     fun `should enqueue and correctly check for failed messages for messages with additional human readable value`() {
         val key = "test-key"
         val otherKey = "other-key"

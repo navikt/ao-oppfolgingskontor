@@ -2,12 +2,18 @@ package no.nav.kafka.retry.library.internal
 
 import no.nav.db.table.FailedMessagesEntity
 import no.nav.db.table.FailedMessagesTable
+import no.nav.db.table.FailedMessagesTable.failureReason
+import no.nav.db.table.FailedMessagesTable.lastAttemptTimestamp
+import no.nav.db.table.FailedMessagesTable.messageKeyBytes
 import no.nav.db.table.FailedMessagesTable.messageKeyText
+import no.nav.db.table.FailedMessagesTable.messageValue
+import no.nav.db.table.FailedMessagesTable.queueTimestamp
+import no.nav.db.table.FailedMessagesTable.retryCount
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.vendors.ForUpdateOption
 import java.time.OffsetDateTime
-import kotlin.and
 
 class FailedMessageRepository(val repositoryTopic: String) {
 
@@ -45,11 +51,24 @@ class FailedMessageRepository(val repositoryTopic: String) {
 
     // Henter en batch med meldinger klare for reprosessering
     fun getBatchToRetry(limit: Int): List<FailedMessage> = transaction {
-        FailedMessagesEntity
-            .find { FailedMessagesTable.topic eq repositoryTopic }
+        FailedMessagesTable
+            .selectAll()
+            .where { FailedMessagesTable.topic eq repositoryTopic }
+            .forUpdate(ForUpdateOption.ForUpdate)
             .orderBy(FailedMessagesTable.id to SortOrder.ASC)
             .limit(limit)
-            .map { it.toFailedMessage() }
+            .map { row ->
+                FailedMessage(
+                    id = row[FailedMessagesTable.id].value,
+                    messageKeyText = row[messageKeyText],
+                    messageKeyBytes = row[messageKeyBytes],
+                    messageValue = row[messageValue],
+                    queueTimestamp = row[queueTimestamp],
+                    lastAttemptTimestamp = row[lastAttemptTimestamp],
+                    retryCount = row[retryCount],
+                    failureReason = row[failureReason],
+                )
+            }
     }
 
     fun delete(messageId: Long): Unit = transaction {
