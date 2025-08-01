@@ -24,7 +24,11 @@ class ExpirableToken(
     val token: String,
     val expiresAtMs: Long,
     val tokenType: String
-)
+) {
+    fun isExpired(): Boolean {
+        return this.expiresAtMs < System.currentTimeMillis()
+    }
+}
 
 val expiry: Expiry<String, ExpirableToken> = object : Expiry<String, ExpirableToken> {
     val leeway = 1000L // 1 second leeway to avoid issues with clock skew
@@ -100,7 +104,7 @@ class TexasSystemTokenClient(
 
     suspend fun getToken(target: String): TexasTokenResponse {
         val cachedValue = cache.getIfPresent(target)
-        if (cachedValue != null) {
+        if (cachedValue != null && !cachedValue.isExpired()) {
             return cachedValue.toTexasTokenResponse()
         }
         logger.info("Cache miss for Texas token for app: $target")
