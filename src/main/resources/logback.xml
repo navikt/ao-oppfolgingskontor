@@ -9,4 +9,5 @@
     <logger name="org.apache.zookeeper" level="WARN"/>
     <logger name="org.eclipse.jetty" level="INFO"/>
     <logger name="net.javacrumbs.shedlock.core" level="DEBUG"/>
+    <logger name="no.nav" level="DEBUG"/>
 </configuration>
