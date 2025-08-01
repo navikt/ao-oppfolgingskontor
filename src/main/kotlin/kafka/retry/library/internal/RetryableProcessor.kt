@@ -195,8 +195,11 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
     }
 
     private fun runReprocessingOnOneBatch(timestamp: Long) {
+        logger.debug("runReprocessingOnOneBatch called for topic: $topic at timestamp: $timestamp")
+        logger.debug("Update current failed messages gauge for topic: $topic")
         metrics.updateCurrentFailedMessagesGauge()
         // Prøv å skaffe låsen for MITT topic. Dette sikrer at kun én tråd om gangen kan prosessere meldinger for dette topicet.
+        logger.debug("Prøver å skaffe lås for topic: $topic")
         if (!TopicLevelLock.tryAcquire(this.topic)) {
             // En annen tråd jobber allerede med dette topicet. Avslutt.
             logger.debug("En annen tråd jobber allerede med dette topicet. Avslutter prosessering")
@@ -204,7 +207,9 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
         }
         try {
             logger.debug("Fikk lokal lås for topic: $topic. Starter reprosessering av feilede meldinger.")
+            logger.debug("Henter batch med feilede meldinger for reprosessering")
             store.getBatchToRetry(config.retryBatchSize)
+                .also { logger.debug("hentet ${it.size} meldinger for topic: $topic") }
                 .proccessInOrderOnKey { reprocessSingleMessage(it) }
                 .map { handleReprocessingResult(it) }
 
