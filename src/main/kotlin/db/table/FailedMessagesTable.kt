@@ -8,7 +8,7 @@ import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.kotlin.datetime.timestampWithTimeZone
 
 object FailedMessagesTable: IdTable<Long>("failed_messages") {
-    override val id: Column<EntityID<Long>> = long("id").entityId()
+    override val id: Column<EntityID<Long>> = long("id").autoIncrement("failed_messages_id_seq").entityId()
     val messageKeyText = varchar("message_key_text", 256)
     val messageKeyBytes = binary("message_key_bytes")
     val messageValue = binary("message_value")

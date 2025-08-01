@@ -221,15 +221,19 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
         val valueBytes = valueInSerializer.serialize(topic, record.value())
 
         val recordValue = record.value()
-        if (recordValue is SpecificRecord) {
-            val humanReadableValue = AvroJsonConverter.convertAvroToJson(recordValue)
-            store.enqueue(keyString, keyBytes, valueBytes, reason, humanReadableValue)
-        } else {
-            store.enqueue(keyString, keyBytes, valueBytes, reason)
+        val pk = when (recordValue) {
+            is SpecificRecord -> {
+                val humanReadableValue = AvroJsonConverter.convertAvroToJson(recordValue)
+                store.enqueue(keyString, keyBytes, valueBytes, reason, humanReadableValue)
+            }
+
+            else -> {
+                store.enqueue(keyString, keyBytes, valueBytes, reason)
+            }
         }
 
         metrics.messageEnqueued()
-        logger.info("Message for key '$keyString' was enqueued for retry. Reason: $reason")
+        logger.info("Message messageId: '$pk' was enqueued for retry. Reason: $reason")
     }
 
     override fun close() {

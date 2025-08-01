@@ -28,25 +28,26 @@ class FailedMessageRepository(val repositoryTopic: String) {
             .empty()
     }
 
-    fun enqueue(keyString: String, keyBytes: ByteArray, value: ByteArray, reason: String): Unit = transaction {
-        FailedMessagesTable.insert {
+    fun enqueue(keyString: String, keyBytes: ByteArray, value: ByteArray, reason: String): Long = transaction {
+        val x = FailedMessagesTable.insertAndGetId {
             it[messageKeyText] = keyString
             it[messageKeyBytes] = keyBytes
             it[messageValue] = value
             it[failureReason] = reason
             it[topic] = repositoryTopic
         }
+        x.value
     }
 
-    fun enqueue(keyString: String, keyBytes: ByteArray, value: ByteArray, reason: String, humanReadableValue: String?): Unit = transaction {
-        FailedMessagesTable.insert {
+    fun enqueue(keyString: String, keyBytes: ByteArray, value: ByteArray, reason: String, humanReadableValue: String?): Long = transaction {
+        FailedMessagesTable.insertAndGetId {
             it[messageKeyText] = keyString
             it[messageKeyBytes] = keyBytes
             it[messageValue] = value
             it[failureReason] = reason
             it[topic] = repositoryTopic
             it[this.humanReadableValue] = humanReadableValue
-        }
+        }.value
     }
 
     // Henter en batch med meldinger klare for reprosessering

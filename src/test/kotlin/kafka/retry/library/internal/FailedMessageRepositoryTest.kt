@@ -1,6 +1,7 @@
 package kafka.retry.library.internal
 
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.longs.beGreaterThan
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import no.nav.kafka.retry.library.internal.FailedMessageRepository
@@ -102,10 +103,10 @@ class FailedMessageRepositoryTest {
 
     @Test
     fun `should retrieve batch to retry in FIFO order`() {
-        repository.enqueue("key1", "key1".toByteArray(), "val1".toByteArray(), "fail1")
+        val id1 = repository.enqueue("key1", "key1".toByteArray(), "val1".toByteArray(), "fail1")
         Thread.sleep(10) // Sørg for unik timestamp
-        repository.enqueue("key2", "key2".toByteArray(), "val2".toByteArray(), "fail2")
-
+        val id2 = repository.enqueue("key2", "key2".toByteArray(), "val2".toByteArray(), "fail2")
+        id2 shouldBe id1 + 1L
         val batch = repository.getBatchToRetry(5)
 
         batch.size shouldBe 2

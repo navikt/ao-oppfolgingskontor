@@ -2,11 +2,12 @@ package no.nav.kafka.retry.library.internal
 
 import org.apache.kafka.streams.processor.StateStore
 import org.apache.kafka.streams.processor.StateStoreContext
+import org.jetbrains.exposed.dao.id.EntityID
 
 interface PostgresRetryStore : StateStore {
     fun hasFailedMessages(key: String): Boolean
-    fun enqueue(keyString: String, keyBytes: ByteArray, value: ByteArray, reason: String)
-    fun enqueue(keyString: String, keyBytes: ByteArray, value: ByteArray, reason: String, humanReadableValue: String?)
+    fun enqueue(keyString: String, keyBytes: ByteArray, value: ByteArray, reason: String): Long
+    fun enqueue(keyString: String, keyBytes: ByteArray, value: ByteArray, reason: String, humanReadableValue: String?): Long
     fun getBatchToRetry(limit: Int): List<FailedMessage>
     fun delete(messageId: Long)
     fun updateAfterFailedAttempt(messageId: Long, newReason: String)
