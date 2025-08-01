@@ -34,8 +34,8 @@ import java.time.Instant
  * 4.  Håndterer logikk for maksimalt antall forsøk ("dead-lettering").
  * 5.  Oppdaterer alle relevante metrikker via RetryMetrics-klassen.
  */
-val lockAtMostFor = Duration.ofSeconds(60)
-val lockAtLeastFor = Duration.ZERO
+val lockAtMostFor = Duration.ofSeconds(30)
+val lockAtLeastFor = Duration.ofSeconds(5)
 
 @PublishedApi
 internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
