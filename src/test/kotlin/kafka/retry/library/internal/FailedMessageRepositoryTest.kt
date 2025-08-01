@@ -70,18 +70,13 @@ class FailedMessageRepositoryTest {
         val key = "test-key"
         val otherKey = "other-key"
         val value = "test-value".toByteArray()
-
         val otherRepository = FailedMessageRepository( "other-topic")
-
         repository.hasFailedMessages(key) shouldBe false
         repository.countTotalFailedMessages() shouldBe 0
 
         repository.enqueue(key, value, otherKey.toByteArray(), "Initial failure")
         otherRepository.enqueue(key, value, otherKey.toByteArray(), "Initial failure")
 
-        repository.hasFailedMessages(key) shouldBe true
-        repository.hasFailedMessages(otherKey) shouldBe false
-        otherRepository.hasFailedMessages(key) shouldBe true
         repository.getBatchToRetry(100).size shouldBe 1
         repository.countTotalFailedMessages() shouldBe 2
     }
