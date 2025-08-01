@@ -8,5 +8,5 @@
     <logger name="io.netty" level="INFO"/>
     <logger name="org.apache.zookeeper" level="WARN"/>
     <logger name="org.eclipse.jetty" level="INFO"/>
-    <logger name="net.javacrumbs.shedlock.corer" level="DEBUG"/>
+    <logger name="net.javacrumbs.shedlock.core" level="DEBUG"/>
 </configuration>
