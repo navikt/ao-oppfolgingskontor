@@ -53,6 +53,7 @@ class FailedMessageRepository(val repositoryTopic: String) {
     fun getBatchToRetry(limit: Int): List<FailedMessage> = transaction {
         FailedMessagesTable
             .selectAll()
+            .where { FailedMessagesTable.topic eq repositoryTopic }
             .forUpdate(ForUpdateOption.ForUpdate)
             .orderBy(FailedMessagesTable.id to SortOrder.ASC)
             .limit(limit)
