@@ -15,7 +15,6 @@ import kafka.consumers.SisteOppfolgingsperiodeProcessor
 import java.time.Duration
 import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
 import no.nav.http.client.FnrResult
-import no.nav.http.client.PdlClient
 import no.nav.isProduction
 import no.nav.kafka.config.StringStringSinkConfig
 import no.nav.kafka.config.kafkaStreamsProps
@@ -25,13 +24,13 @@ import no.nav.kafka.consumers.FnrEllerAktorIdEllerNpid
 import no.nav.kafka.consumers.LeesahProcessor
 import no.nav.kafka.consumers.KontortilordningsProcessor
 import no.nav.kafka.consumers.SkjermingProcessor
-import no.nav.kafka.processor.LeesahAvroSerdes
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.OppfolgingsperiodeService
 import org.apache.kafka.streams.KafkaStreams
 import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler
 import org.jetbrains.exposed.sql.Database
 import org.slf4j.LoggerFactory
+import services.IdentService
 import topics
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -49,7 +48,7 @@ class KafkaStreamsPluginConfig(
         var database: Database? = null,
         var meterRegistry: MeterRegistry? = null,
         var oppfolgingsperiodeService: OppfolgingsperiodeService? = null,
-        var pdlClient: PdlClient? = null
+        var identService: IdentService? = null
 )
 
 const val arbeidsoppfolgingkontorSinkName = "endring-pa-arbeidsoppfolgingskontor"
@@ -68,7 +67,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val oppfolgingsperiodeService = requireNotNull(this.pluginConfig.oppfolgingsperiodeService) {
         "OppfolgingsperiodeService must be configured for KafkaStreamPlugin"
     }
-    val pdlClient = requireNotNull(this.pluginConfig.pdlClient) {
+    val identService = requireNotNull(this.pluginConfig.identService) {
         "PdlClient must be configured for KafkaStreamPlugin"
     }
     val meterRegistry = requireNotNull(this.pluginConfig.meterRegistry) {
@@ -82,7 +81,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val sisteOppfolgingsperiodeProcessor = SisteOppfolgingsperiodeProcessor(
         oppfolgingsperiodeService,
         skipPersonIkkeFunnet = !isProduction,
-        { aktorId -> pdlClient.hentFnrFraAktorId(aktorId) }
+        { aktorId -> identService.hentFnrFraAktorId(aktorId) }
     )
 
     val kontorTilordningsProcessor = KontortilordningsProcessor(

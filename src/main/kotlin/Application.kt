@@ -24,6 +24,7 @@ import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
 import no.nav.services.KontorTilordningService
 import no.nav.services.OppfolgingsperiodeService
+import services.IdentService
 
 fun main(args: Array<String>) {
     EngineMain.main(args)
@@ -51,6 +52,7 @@ fun Application.module() {
         texasClient.tokenProvider(environment.getPoaoTilgangScope())
     )
 
+    val identService = IdentService({ pdlClient.hentFnrFraAktorId(it) })
     val gtNorgService = GTNorgService(
         { pdlClient.hentGt(it) },
         { gt, strengtFortroligAdresse, skjermet -> norg2Client.hentKontorForGt(gt, strengtFortroligAdresse, skjermet) },
@@ -74,7 +76,7 @@ fun Application.module() {
         this.database = database
         this.meterRegistry = meterRegistry
         this.oppfolgingsperiodeService = OppfolgingsperiodeService
-        this.pdlClient = pdlClient
+        this.identService = identService
     }
 
     val issuer = environment.getIssuer()
