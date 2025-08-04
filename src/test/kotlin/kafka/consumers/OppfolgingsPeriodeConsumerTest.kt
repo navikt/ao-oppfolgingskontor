@@ -77,6 +77,24 @@ class SisteOppfolgingsperiodeProcessorTest {
         }
 
     @Test
+    fun `skal slette periode når avslutningsmelding (sluttDato != null) kommer `() = testApplication {
+        val bruker = testBruker()
+        application {
+            flywayMigrationInTest()
+            val consumer = SisteOppfolgingsperiodeProcessor(
+                OppfolgingsperiodeService
+            ) { FnrFunnet(bruker.fnr) }
+
+            val startRecord = oppfolgingsperiodeMessage(bruker, sluttDato = null)
+            consumer.process(startRecord)
+            val sluttRecord = oppfolgingsperiodeMessage(bruker, sluttDato = ZonedDateTime.now())
+            consumer.process(sluttRecord)
+
+            bruker.skalIkkeVæreUnderOppfølging()
+        }
+    }
+
+    @Test
     fun `skal ikke lagre oppfolgingsperiode når sluttDato ikke er null (oppfolgingsperiode-avsluttet)`() =
         testApplication {
             val bruker = testBruker()

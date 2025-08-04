@@ -72,6 +72,7 @@ class SisteOppfolgingsperiodeProcessor(
                             }
                             false -> {}
                         }
+                        oppfolgingsperiodeService.deleteOppfolgingsperiode(oppfolgingsperiode.periodeId)
                         log.info("melding på sisteoppfolgingsperiode (avsluttet) ferdig prosessert")
                         Commit()
                     }
