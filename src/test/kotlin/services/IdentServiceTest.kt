@@ -7,7 +7,7 @@ import no.nav.db.Fnr
 import no.nav.db.Npid
 import no.nav.http.client.FnrFunnet
 import no.nav.utils.flywayMigrationInTest
-import org.junit.Test
+import org.junit.jupiter.api.Test
 
 class IdentServiceTest {
 
