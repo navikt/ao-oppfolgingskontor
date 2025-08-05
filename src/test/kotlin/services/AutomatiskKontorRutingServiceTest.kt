@@ -27,10 +27,10 @@ import no.nav.domain.externalEvents.SkjermetStatusEndret
 import no.nav.http.client.AlderFunnet
 import no.nav.http.client.AlderIkkeFunnet
 import no.nav.http.client.AlderResult
-import no.nav.http.client.FnrFunnet
-import no.nav.http.client.FnrIkkeFunnet
-import no.nav.http.client.FnrOppslagFeil
-import no.nav.http.client.FnrResult
+import no.nav.http.client.IdentFunnet
+import no.nav.http.client.IdentIkkeFunnet
+import no.nav.http.client.IdentOppslagFeil
+import no.nav.http.client.IdentResult
 import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.GeografiskTilknytningLand
 import no.nav.http.client.GtForBrukerFunnet
@@ -637,16 +637,16 @@ fun gitt(bruker: Bruker): AutomatiskKontorRutingService {
     )
 }
 
-fun defaultOppfolgingsperiodeOppslagResult(fnr: FnrResult): OppfolgingsperiodeOppslagResult {
+fun defaultOppfolgingsperiodeOppslagResult(fnr: IdentResult): OppfolgingsperiodeOppslagResult {
     return when (fnr) {
-        is FnrFunnet -> return AktivOppfolgingsperiode(fnr.ident, OppfolgingsperiodeId(UUID.randomUUID()), OffsetDateTime.now())
-        is FnrIkkeFunnet -> OppfolgingperiodeOppslagFeil(fnr.message)
-        is FnrOppslagFeil -> OppfolgingperiodeOppslagFeil(fnr.message)
+        is IdentFunnet -> return AktivOppfolgingsperiode(fnr.ident, OppfolgingsperiodeId(UUID.randomUUID()), OffsetDateTime.now())
+        is IdentIkkeFunnet -> OppfolgingperiodeOppslagFeil(fnr.message)
+        is IdentOppslagFeil -> OppfolgingperiodeOppslagFeil(fnr.message)
     }
 }
 
 data class Bruker(
-    val fnr: FnrResult,
+    val fnr: IdentResult,
     val alder: AlderResult,
     val profilering: HentProfileringsResultat,
     val gtKontor: KontorForGtResultat,
@@ -656,7 +656,7 @@ data class Bruker(
     val oppfolgingsPeriodeResult: OppfolgingsperiodeOppslagResult = defaultOppfolgingsperiodeOppslagResult(fnr)
 ) {
     fun fnr(): Ident {
-        if (fnr is FnrFunnet) {
+        if (fnr is IdentFunnet) {
             return fnr.ident
         }
         throw IllegalStateException("Fnr is ${this.fnr}")
@@ -676,7 +676,7 @@ data class Bruker(
 }
 
 val ungBrukerMedGodeMuligheter = Bruker(
-    FnrFunnet(Fnr("12345678901")),
+    IdentFunnet(Fnr("12345678901")),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
     KontorForGtNrFantDefaultKontor(KontorId("1234"), HarSkjerming(false), HarStrengtFortroligAdresse(false), GeografiskTilknytningBydelNr("1111")),
@@ -685,7 +685,7 @@ val ungBrukerMedGodeMuligheter = Bruker(
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
 )
 val eldreBrukerMedGodeMuligheter = Bruker(
-    FnrFunnet(Fnr("22345678901")),
+    IdentFunnet(Fnr("22345678901")),
     AlderFunnet(31),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
     KontorForGtNrFantDefaultKontor(KontorId("1234"), HarSkjerming(false), HarStrengtFortroligAdresse(false), GeografiskTilknytningBydelNr("1111")),
@@ -694,7 +694,7 @@ val eldreBrukerMedGodeMuligheter = Bruker(
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
 )
 val ungBrukerMedbehovForVeiledning = Bruker(
-    FnrFunnet(Fnr("32345678901")),
+    IdentFunnet(Fnr("32345678901")),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_BEHOV_FOR_VEILEDNING),
     KontorForGtNrFantDefaultKontor(KontorId("1234"), HarSkjerming(false), HarStrengtFortroligAdresse(false), GeografiskTilknytningBydelNr("1111")),
@@ -703,7 +703,7 @@ val ungBrukerMedbehovForVeiledning = Bruker(
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
 )
 val brukerSomManglerGt = Bruker(
-    FnrFunnet(Fnr("42345678901")),
+    IdentFunnet(Fnr("42345678901")),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
     KontorForGtFinnesIkke(HarSkjerming(false),
@@ -715,7 +715,7 @@ val brukerSomManglerGt = Bruker(
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
 )
 val skjermetBruker = Bruker(
-    FnrFunnet(Fnr("52345678901")),
+    IdentFunnet(Fnr("52345678901")),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
     KontorForGtNrFantDefaultKontor(KontorId("1234"), HarSkjerming(true), HarStrengtFortroligAdresse(false), GeografiskTilknytningBydelNr("1111")),
@@ -724,7 +724,7 @@ val skjermetBruker = Bruker(
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
 )
 val adressebeskyttetBruker = Bruker(
-    FnrFunnet(Fnr("62345678901")),
+    IdentFunnet(Fnr("62345678901")),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
     KontorForGtNrFantDefaultKontor(KontorId("1234"), HarSkjerming(false), HarStrengtFortroligAdresse(true), GeografiskTilknytningBydelNr("1111")),
@@ -733,7 +733,7 @@ val adressebeskyttetBruker = Bruker(
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(true))
 )
 val skjermetBrukerMedLandskode = Bruker(
-    FnrFunnet(Fnr("72345678901")),
+    IdentFunnet(Fnr("72345678901")),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
     KontorForGtFantLand(GeografiskTilknytningLand("JPN"), HarSkjerming(true), HarStrengtFortroligAdresse(false)),
@@ -741,7 +741,7 @@ val skjermetBrukerMedLandskode = Bruker(
     SkjermingFunnet(HarSkjerming(true)),
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)))
 val brukerMedLandskodeOgFallback = Bruker(
-    FnrFunnet(Fnr("82345678901")),
+    IdentFunnet(Fnr("82345678901")),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
     KontorForGtNrFantFallbackKontorForManglendeGt(KontorId("3443"), HarSkjerming(false), HarStrengtFortroligAdresse(false), GtLandForBrukerFunnet(GeografiskTilknytningLand("JPN"))),
@@ -750,7 +750,7 @@ val brukerMedLandskodeOgFallback = Bruker(
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
 )
 val brukerMedLandskodeUtenFallback = Bruker(
-    FnrFunnet(Fnr("82345678991")),
+    IdentFunnet(Fnr("82345678991")),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
     KontorForGtFantLand(GeografiskTilknytningLand("JPN"), HarSkjerming(false), HarStrengtFortroligAdresse(false)),
@@ -759,7 +759,7 @@ val brukerMedLandskodeUtenFallback = Bruker(
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
 )
 val brukerMedAdressebeskyttelseOgLandskode = Bruker(
-    FnrFunnet(Fnr("92345678901")),
+    IdentFunnet(Fnr("92345678901")),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
     KontorForGtFantLand(GeografiskTilknytningLand("JPN"), HarSkjerming(false), HarStrengtFortroligAdresse(true)),
@@ -768,7 +768,7 @@ val brukerMedAdressebeskyttelseOgLandskode = Bruker(
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(true))
 )
 val brukerMedAdressebeskyttelseSomManglerGt = Bruker(
-    FnrFunnet(Fnr("11345678901")),
+    IdentFunnet(Fnr("11345678901")),
     AlderFunnet(31), // Hadde blitt rutet til NOE hvis ikke bruker hadde adressebeskytelse
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
     KontorForGtFinnesIkke(HarSkjerming(false), HarStrengtFortroligAdresse(true), GtForBrukerIkkeFunnet("GT ikke funnet")),
@@ -777,7 +777,7 @@ val brukerMedAdressebeskyttelseSomManglerGt = Bruker(
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(true))
 )
 val brukerIkkeUnderOppfolging = Bruker(
-    FnrFunnet(Fnr("93345678901")),
+    IdentFunnet(Fnr("93345678901")),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
     KontorForGtNrFantDefaultKontor(KontorId("4141"), HarSkjerming(false), HarStrengtFortroligAdresse(false), GeografiskTilknytningBydelNr("1111")),
@@ -789,7 +789,7 @@ val brukerIkkeUnderOppfolging = Bruker(
 
 /* Brukere med feil */
 val brukerMedFeilendeFnr = Bruker(
-    FnrIkkeFunnet("feil i fnr"),
+    IdentIkkeFunnet("feil i fnr"),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
     KontorForGtNrFantDefaultKontor(KontorId("1234"), HarSkjerming(false), HarStrengtFortroligAdresse(false), GeografiskTilknytningBydelNr("1111")),
@@ -798,7 +798,7 @@ val brukerMedFeilendeFnr = Bruker(
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)),
 )
 val brukerMedFeilendeAlder = Bruker(
-    FnrFunnet(Fnr("11111111111")),
+    IdentFunnet(Fnr("11111111111")),
     AlderIkkeFunnet("feil i alder"),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
     KontorForGtNrFantDefaultKontor(KontorId("1234"), HarSkjerming(false), HarStrengtFortroligAdresse(false), GeografiskTilknytningBydelNr("1111")),
@@ -807,7 +807,7 @@ val brukerMedFeilendeAlder = Bruker(
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
 )
 val brukerMedFeilendeProfilering = Bruker(
-    FnrFunnet(Fnr("11111111111")),
+    IdentFunnet(Fnr("11111111111")),
     AlderFunnet(20),
     ProfileringIkkeFunnet("profilering ikke funnet"),
     KontorForGtNrFantDefaultKontor(KontorId("1234"), HarSkjerming(false), HarStrengtFortroligAdresse(false), GeografiskTilknytningBydelNr("1111")),
@@ -816,7 +816,7 @@ val brukerMedFeilendeProfilering = Bruker(
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
 )
 val brukerMedFeilendeSkjerming = Bruker(
-    FnrFunnet(Fnr("11111111111")),
+    IdentFunnet(Fnr("11111111111")),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
     KontorForGtNrFantDefaultKontor(KontorId("1234"), HarSkjerming(false), HarStrengtFortroligAdresse(false), GeografiskTilknytningBydelNr("1111")),
@@ -825,7 +825,7 @@ val brukerMedFeilendeSkjerming = Bruker(
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
 )
 val brukerMedFeilendeAdressebeskyttelse = Bruker(
-    FnrFunnet(Fnr("11111111111")),
+    IdentFunnet(Fnr("11111111111")),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
     KontorForGtNrFantDefaultKontor(KontorId("1234"), HarSkjerming(false), HarStrengtFortroligAdresse(false), GeografiskTilknytningBydelNr("1111")),
@@ -834,7 +834,7 @@ val brukerMedFeilendeAdressebeskyttelse = Bruker(
     HarStrengtFortroligAdresseIkkeFunnet("feil i adressebeskyttelse")
 )
 val brukerMedFeilendeKontorForGt = Bruker(
-    FnrFunnet(Fnr("11111111111")),
+    IdentFunnet(Fnr("11111111111")),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
     KontorForGtFeil("Feil i gt-kontor oppslag"),
@@ -843,7 +843,7 @@ val brukerMedFeilendeKontorForGt = Bruker(
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
 )
 val brukerMedFeilendeOppfolgingperiodeOppslagFeil = Bruker(
-    FnrFunnet(Fnr("11111111111")),
+    IdentFunnet(Fnr("11111111111")),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
     KontorForGtFeil("Feil i gt-kontor oppslag"),

@@ -9,8 +9,8 @@ import io.ktor.server.testing.testApplication
 import no.nav.db.Fnr
 import no.nav.db.Npid
 import no.nav.http.client.AlderFunnet
-import no.nav.http.client.FnrFunnet
-import no.nav.http.client.FnrOppslagFeil
+import no.nav.http.client.IdentFunnet
+import no.nav.http.client.IdentOppslagFeil
 import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.GeografiskTilknytningKommuneNr
 import no.nav.http.client.GeografiskTilknytningLand
@@ -241,7 +241,7 @@ class PdlClientTest {
 
         val fnrResult = pdlClient.hentFnrFraAktorId(aktorId)
 
-        fnrResult.shouldBeInstanceOf<FnrFunnet>()
+        fnrResult.shouldBeInstanceOf<IdentFunnet>()
         fnrResult.ident.value shouldBe fnr.value
     }
 
@@ -274,7 +274,7 @@ class PdlClientTest {
 
         val fnrResult = pdlClient.hentFnrFraAktorId(aktorId)
 
-        fnrResult.shouldBeInstanceOf<FnrFunnet>()
+        fnrResult.shouldBeInstanceOf<IdentFunnet>()
         fnrResult.ident.shouldBeInstanceOf<Npid>()
         fnrResult.ident shouldBe npid
     }
@@ -303,7 +303,7 @@ class PdlClientTest {
 
         val fnrResult = pdlClient.hentFnrFraAktorId(aktorId)
 
-        fnrResult.shouldBeInstanceOf<FnrOppslagFeil>()
+        fnrResult.shouldBeInstanceOf<IdentOppslagFeil>()
         fnrResult.message shouldBe "Fant ikke person: not_found"
     }
 

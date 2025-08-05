@@ -7,35 +7,39 @@ import db.table.IdentMappingTable.npid
 import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.db.Npid
-import no.nav.http.client.FnrFunnet
-import no.nav.http.client.FnrResult
+import no.nav.http.client.IdentFunnet
+import no.nav.http.client.IdentResult
+import no.nav.http.client.IdenterFunnet
+import no.nav.http.client.IdenterResult
+import no.nav.http.client.finnIdent
+import org.jetbrains.exposed.sql.batchUpsert
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 
 class IdentService(
-    val fnrForAktorIdProvider: suspend (aktorId: String) -> FnrResult,
+    val identForAktorIdProvider: suspend (aktorId: String) -> IdenterResult,
 ) {
     private val log = LoggerFactory.getLogger(IdentService::class.java)
 
-    suspend fun hentFnrFraAktorId(aktorId: String): FnrResult {
+    suspend fun hentIdentFraAktorId(aktorId: String): IdentResult {
         val lokaltLagretIdent = hentLokalIdent(aktorId)
         if (lokaltLagretIdent != null) return lokaltLagretIdent
-        return fnrForAktorIdProvider(aktorId)
+        return identForAktorIdProvider(aktorId)
             .also {
-                if (it is FnrFunnet) {
+                if (it is IdentFunnet) {
                     lagreIdentMapping(aktorId, it.ident)
                 }
-            }
+            }.finnIdent()
     }
 
-    private fun hentLokalIdent(aktorId: String): FnrFunnet? {
+    private fun hentLokalIdent(aktorId: String): IdentFunnet? {
         try {
             val identMappings = hentIdentMappinger(aktorId)
             when {
                 identMappings.isNotEmpty() -> {
                     val fnr = identMappings.firstOrNull { it is Fnr }
-                    return FnrFunnet(fnr ?: identMappings.first { it is Npid })
+                    return IdentFunnet(fnr ?: identMappings.first { it is Npid })
                 }
                 else -> return null
             }
@@ -45,12 +49,12 @@ class IdentService(
         }
     }
 
-    private fun lagreIdentMapping(aktorId: String, ident: Ident) {
+    private fun lagreIdentMapping(identer: IdenterFunnet, aktorId: String) {
         try {
             transaction {
-                IdentMappingTable.insert {
+                IdentMappingTable.batchUpsert(identer.identer) {
                     it[IdentMappingTable.aktorId] = aktorId
-                    if (ident is Npid) {
+                    if (identer is Npid) {
                         it[IdentMappingTable.npid] = ident.value
                     } else {
                         it[IdentMappingTable.fnr] = ident.value

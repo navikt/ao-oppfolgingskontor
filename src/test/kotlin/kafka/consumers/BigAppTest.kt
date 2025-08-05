@@ -15,7 +15,7 @@ import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.http.client.AlderFunnet
-import no.nav.http.client.FnrFunnet
+import no.nav.http.client.IdentFunnet
 import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.SkjermingFunnet
@@ -54,7 +54,7 @@ class BigAppTest {
             val sistePeriodeProcessor = SisteOppfolgingsperiodeProcessor(
                 OppfolgingsperiodeService,
                 false
-            ) { FnrFunnet(fnr) }
+            ) { IdentFunnet(fnr) }
 
             val automatiskKontorRutingService =  AutomatiskKontorRutingService(
             KontorTilordningService::tilordneKontor,
@@ -70,7 +70,7 @@ class BigAppTest {
 
             val leesahProcessor = LeesahProcessor(
                 automatiskKontorRutingService,
-                { FnrFunnet(fnr) },
+                { IdentFunnet(fnr) },
                 false,
             )
 
@@ -124,7 +124,7 @@ class BigAppTest {
             val sistePeriodeProcessor = SisteOppfolgingsperiodeProcessor(
                 OppfolgingsperiodeService,
                 false
-            ) { FnrFunnet(fnr) }
+            ) { IdentFunnet(fnr) }
 
             val automatiskKontorRutingService =  AutomatiskKontorRutingService(
                 KontorTilordningService::tilordneKontor,
@@ -140,7 +140,7 @@ class BigAppTest {
 
             val leesahProcessor = LeesahProcessor(
                 automatiskKontorRutingService,
-                { FnrFunnet(fnr) },
+                { IdentFunnet(fnr) },
                 false,
             )
 

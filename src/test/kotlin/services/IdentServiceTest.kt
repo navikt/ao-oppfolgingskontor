@@ -5,7 +5,7 @@ import io.ktor.server.testing.testApplication
 import kotlinx.coroutines.test.runTest
 import no.nav.db.Fnr
 import no.nav.db.Npid
-import no.nav.http.client.FnrFunnet
+import no.nav.http.client.IdentFunnet
 import no.nav.utils.flywayMigrationInTest
 import org.junit.jupiter.api.Test
 
@@ -23,13 +23,13 @@ class IdentServiceTest {
                 var invocations = 0
                 val fnrProvider = { aktorId: String ->
                     invocations++
-                    FnrFunnet(fnr)
+                    IdentFunnet(fnr)
                 }
                 val aktorId = "4141112121"
                 val identService = IdentService(fnrProvider)
 
-                identService.hentFnrFraAktorId(aktorId)
-                identService.hentFnrFraAktorId(aktorId)
+                identService.hentIdentFraAktorId(aktorId)
+                identService.hentIdentFraAktorId(aktorId)
 
                 invocations shouldBe 1
             }
@@ -45,13 +45,13 @@ class IdentServiceTest {
                 var invocations = 0
                 val fnrProvider = { aktorId: String ->
                     invocations++
-                    FnrFunnet(npid)
+                    IdentFunnet(npid)
                 }
                 val aktorId = "4141112122"
                 val identService = IdentService(fnrProvider)
 
-                identService.hentFnrFraAktorId(aktorId)
-                val npidUt = identService.hentFnrFraAktorId(aktorId)
+                identService.hentIdentFraAktorId(aktorId)
+                val npidUt = identService.hentIdentFraAktorId(aktorId)
 
                 npidUt shouldBe npidUt
             }
