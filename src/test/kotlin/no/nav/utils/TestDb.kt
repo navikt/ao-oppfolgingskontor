@@ -15,12 +15,8 @@ import java.util.UUID
 import javax.sql.DataSource
 
 object TestDb {
-    val postgres: DataSource by lazy {
-        EmbeddedPostgres.start().postgresDatabase
-            .also {
-                Database.connect(it)
-            }
-    }
+    val postgres = EmbeddedPostgres.start().postgresDatabase
+        .also { Database.connect(it) }
 }
 
 fun Application.flywayMigrationInTest(): DataSource {
