@@ -10,11 +10,14 @@ sealed class Ident {
         fun of(value: String): Ident {
             require(value.isNotBlank())
             require(value.all { it.isDigit() }) { "Ident must contain only digits" }
+
             val digitNumber3and4 = value.substring(2,3).toInt()
-            return if (digitNumber3and4 in 21..32) {
-                Npid(value)
-            } else {
-                Fnr(value)
+            val firstDigit = value[0].digitToInt()
+
+            return when {
+                firstDigit in gyldigeDnrStart -> Dnr(value)
+                digitNumber3and4 in 21..32 -> Npid(value)
+                else -> Fnr(value)
             }
         }
     }
@@ -39,6 +42,18 @@ class Fnr(override val value: String): Ident() {
         require(value.isNotBlank()) { "Fnr cannot be blank" }
         require(value.length == 11) { "Fnr $value must be 11 characters long but was ${value.length}" }
         require(value.all { it.isDigit() }) { "Fnr must contain only digits" }
+    }
+
+    override fun toString(): String = value
+}
+
+val gyldigeDnrStart = listOf(4,5,6,7)
+class Dnr(override val value: String): Ident() {
+    init {
+        require(value.isNotBlank()) { "Dnr cannot be blank" }
+        require(value.length == 11) { "Dnr $value must be 11 characters long but was ${value.length}" }
+        require(value.all { it.isDigit() }) { "Dnr must contain only digits" }
+        require(gyldigeDnrStart.contains(value[0].digitToInt()) ) { "Dnr must contain only digits" }
     }
 
     override fun toString(): String = value

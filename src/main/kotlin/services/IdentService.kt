@@ -63,6 +63,8 @@ class IdentService(
     }
 
     private fun hentIdentMappinger(aktorIdInput: String) = transaction {
+
+
         IdentMappingTable.select(npid, fnr)
             .where { aktorId eq aktorIdInput }.mapNotNull {
                 val fnr = it[fnr]
