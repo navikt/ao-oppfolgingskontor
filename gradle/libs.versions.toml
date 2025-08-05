@@ -22,6 +22,7 @@ caffeine-version = "3.2.1"
 kafka-avro = "8.0.0"
 shedlock-version = "6.9.0"
 micrometer-version = "1.15.1"
+bigquery-version = "2.44"
 
 
 [libraries]
@@ -78,6 +79,7 @@ token-validation-ktor-v3 = { module = "no.nav.security:token-validation-ktor-v3"
 mock-oauth2-server = { module = "no.nav.security:mock-oauth2-server", version.ref ="mock-oauth2-server-version" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk-version" }
 nav-poaotilgang-client-core = { module = "no.nav.poao-tilgang:client-core", version.ref = "poao-tilgang-version" }
+google-cloud-bigquery = { module = "com.google.cloud:google-cloud-bigquery", version.ref = "bigquery-version" }
 
 
 [plugins]

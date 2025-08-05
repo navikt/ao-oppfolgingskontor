@@ -73,3 +73,7 @@ topics:
     skjerming: "nom.skjermede-personer-status-v1"
   ut:
     arbeidsoppfolgingskontortilordninger: "arbeidsoppfolgingskontortilordninger-v1"
+
+app:
+  gcp:
+    projectId: ao-oppfolgingskontor

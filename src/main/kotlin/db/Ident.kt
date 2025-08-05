@@ -11,10 +11,12 @@ sealed class Ident {
             require(value.isNotBlank())
             require(value.all { it.isDigit() }) { "Ident must contain only digits" }
 
-            val digitNumber3and4 = value.substring(2,3).toInt()
-            val firstDigit = value[0].digitToInt()
+            val digitNumber3and4 by lazy { value.substring(2,3).toInt() }
+            val firstDigit by lazy { value[0].digitToInt() }
+            val lengthIs14 by lazy { value.length == 14 }
 
             return when {
+                lengthIs14 -> AktorId(value)
                 firstDigit in gyldigeDnrStart -> Dnr(value)
                 digitNumber3and4 in 21..32 -> Npid(value)
                 else -> Fnr(value)
@@ -62,9 +64,17 @@ class Dnr(override val value: String): Ident() {
 class Npid(override val value: String): Ident() {
     init {
         require(value.isNotBlank()) { "Npid cannot be blank" }
-        require(value.length == 11) { "Npi $value must be 11 characters long" }
+        require(value.length == 11) { "Npid must be 11 characters long but was ${value.length}" }
         require(value.all { it.isDigit() }) { "Npid must contain only digits" }
     }
 
     override fun toString(): String = value
+}
+
+class AktorId(override val value: String): Ident() {
+    init {
+        require(value.isNotBlank()) { "AktorId cannot be blank" }
+        require(value.length == 14) { "AktorId must be 14 characters long but was ${value.length}" }
+        require(value.all { it.isDigit() }) { "AktorId must contain only digits" }
+    }
 }

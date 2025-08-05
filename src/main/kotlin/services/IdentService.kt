@@ -4,18 +4,23 @@ import db.table.IdentMappingTable
 import db.table.IdentMappingTable.aktorId
 import db.table.IdentMappingTable.fnr
 import db.table.IdentMappingTable.npid
+import no.nav.db.AktorId
+import no.nav.db.Dnr
 import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.db.Npid
+import no.nav.db.table.KontorhistorikkTable.fnr
 import no.nav.http.client.IdentFunnet
 import no.nav.http.client.IdentResult
 import no.nav.http.client.IdenterFunnet
 import no.nav.http.client.IdenterResult
 import no.nav.http.client.finnIdent
+import no.nav.http.graphql.generated.client.hentfnrquery.IdentInformasjon
 import org.jetbrains.exposed.sql.batchUpsert
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
+import java.time.ZonedDateTime
 
 class IdentService(
     val identForAktorIdProvider: suspend (aktorId: String) -> IdenterResult,
@@ -28,7 +33,7 @@ class IdentService(
         return identForAktorIdProvider(aktorId)
             .also {
                 if (it is IdentFunnet) {
-                    lagreIdentMapping(aktorId, it.ident)
+                    lagreIdentMapping(it.ident, aktorId)
                 }
             }.finnIdent()
     }
@@ -53,16 +58,25 @@ class IdentService(
         try {
             transaction {
                 IdentMappingTable.batchUpsert(identer.identer) {
-                    it[IdentMappingTable.aktorId] = aktorId
-                    if (identer is Npid) {
-                        it[IdentMappingTable.npid] = ident.value
-                    } else {
-                        it[IdentMappingTable.fnr] = ident.value
-                    }
+                    this[IdentMappingTable.id] = it.ident
+                    this[IdentMappingTable.identType] = it.toIdentType()
+                    this[IdentMappingTable.historisk] = it.historisk
+                    this[IdentMappingTable.updatedAt] = ZonedDateTime.now().toOffsetDateTime()
+
                 }
             }
         } catch (e: Throwable) {
             log.error("Kunne ikke lagre ident-mapping ${e.message}", e)
+        }
+    }
+
+    private fun IdentInformasjon.toIdentType() : String {
+        val ident = Ident.of(this.ident)
+        return when (ident) {
+            is AktorId -> "AKTOR_ID"
+            is Dnr -> "DNR"
+            is Fnr -> "FNR"
+            is Npid -> "NPID"
         }
     }
 
