@@ -3,6 +3,7 @@ package kafka.consumers
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import no.nav.db.AktorId
 import no.nav.db.Ident
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
@@ -29,12 +30,12 @@ import java.util.UUID
 class SisteOppfolgingsperiodeProcessor(
     private val oppfolgingsperiodeService: OppfolgingsperiodeService,
     private val skipPersonIkkeFunnet: Boolean = false,
-    private val fnrProvider: suspend (aktorId: String) -> IdentResult,
+    private val fnrProvider: suspend (aktorId: AktorId) -> IdentResult,
 ) {
     private val log = LoggerFactory.getLogger(SisteOppfolgingsperiodeProcessor::class.java)
 
     fun process(record: Record<String, String>): RecordProcessingResult<Ident, OppfolgingsperiodeStartet> {
-        val aktorId = record.key()
+        val aktorId = AktorId(record.key())
         try {
              return runBlocking {
                 val ident: Ident = when (val result = fnrProvider(aktorId)) {

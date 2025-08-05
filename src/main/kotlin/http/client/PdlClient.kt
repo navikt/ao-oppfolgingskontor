@@ -218,7 +218,6 @@ fun IdenterResult.finnIdent(): IdentResult {
             }
             ?.let { IdentFunnet(it) }
             ?: IdentIkkeFunnet("Fant ingen gyldig fnr for bruker, antall identer: ${this.identer.size}, indent-typer: ${this.identer.joinToString { it.gruppe.name }}")
-
         is IdenterIkkeFunnet -> IdentIkkeFunnet(this.message)
         is IdenterOppslagFeil -> IdentOppslagFeil(this.message)
     }

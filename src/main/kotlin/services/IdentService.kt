@@ -1,7 +1,13 @@
 package services
 
 import db.table.IdentMappingTable
+import db.table.IdentMappingTable.historisk
 import db.table.IdentMappingTable.identType
+import db.table.IdentMappingTable.internIdent
+import db.table.IdentMappingTable.select
+import db.table.IdentMappingTable.updatedAt
+import db.table.InternIdentSequence
+import db.table.nextValueOf
 import no.nav.db.AktorId
 import no.nav.db.Dnr
 import no.nav.db.Fnr
@@ -19,6 +25,9 @@ import org.jetbrains.exposed.sql.alias
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.batchUpsert
+import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.nextIntVal
+import org.jetbrains.exposed.sql.nextLongVal
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.lang.IllegalArgumentException
@@ -29,10 +38,10 @@ class IdentService(
 ) {
     private val log = LoggerFactory.getLogger(IdentService::class.java)
 
-    suspend fun hentIdentFraAktorId(aktorId: String): IdentResult {
+    suspend fun hentIdentFraAktorId(aktorId: AktorId): IdentResult {
         val lokaltLagretIdent = hentLokalIdent(aktorId)
         if (lokaltLagretIdent != null) return lokaltLagretIdent
-        return identForAktorIdProvider(aktorId)
+        return identForAktorIdProvider(aktorId.value)
             .also {
                 if (it is IdenterFunnet) {
                     lagreNyIdentMapping(it)
@@ -40,7 +49,7 @@ class IdentService(
             }.finnIdent()
     }
 
-    private fun hentLokalIdent(aktorId: String): IdentFunnet? {
+    private fun hentLokalIdent(aktorId: AktorId): IdentFunnet? {
         try {
             val identMappings = hentIdentMappinger(aktorId)
             when {
@@ -59,12 +68,13 @@ class IdentService(
     private fun lagreNyIdentMapping(identer: IdenterFunnet) {
         try {
             transaction {
+                val internId = nextValueOf(InternIdentSequence)
                 IdentMappingTable.batchInsert(identer.identer) {
                     this[IdentMappingTable.id] = it.ident
-                    this[IdentMappingTable.identType] = it.toIdentType()
-                    this[IdentMappingTable.historisk] = it.historisk
-                    this[IdentMappingTable.updatedAt] = ZonedDateTime.now().toOffsetDateTime()
-
+                    this[identType] = it.toIdentType()
+                    this[internIdent] = internId
+                    this[historisk] = it.historisk
+                    this[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
                 }
             }
         } catch (e: Throwable) {
@@ -76,18 +86,17 @@ class IdentService(
         try {
             transaction {
                 val aktorId = identer.identer.first { it.gruppe == IdentGruppe.AKTORID }.ident
-                val internIdent = IdentMappingTable.select(IdentMappingTable.internIdent)
+                val internIdent = IdentMappingTable
+                    .select(IdentMappingTable.internIdent)
                     .where { IdentMappingTable.id eq aktorId }
-                    .map { row ->
-                        row[IdentMappingTable.internIdent]
-                    }.first()
+                    .map { row -> row[IdentMappingTable.internIdent] }
+                    .first()
                 IdentMappingTable.batchUpsert(identer.identer) {
                     this[IdentMappingTable.id] = it.ident
                     this[IdentMappingTable.internIdent] = internIdent
-                    this[IdentMappingTable.identType] = it.toIdentType()
-                    this[IdentMappingTable.historisk] = it.historisk
-                    this[IdentMappingTable.updatedAt] = ZonedDateTime.now().toOffsetDateTime()
-
+                    this[identType] = it.toIdentType()
+                    this[historisk] = it.historisk
+                    this[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
                 }
             }
         } catch (e: Throwable) {
@@ -105,29 +114,26 @@ class IdentService(
         }
     }
 
-    private fun hentIdentMappinger(aktorIdInput: String): List<Ident> = transaction {
-
+    private fun hentIdentMappinger(aktorIdInput: AktorId): List<Ident> = transaction {
         val identMappingAlias = IdentMappingTable.alias("ident_mapping_alias")
 
         IdentMappingTable.join(
             identMappingAlias,
             JoinType.INNER,
-            onColumn = IdentMappingTable.internIdent,
-            otherColumn = identMappingAlias[IdentMappingTable.internIdent]
+            onColumn = internIdent,
+            otherColumn = identMappingAlias[internIdent]
         )
-            .select(IdentMappingTable.id, identType, IdentMappingTable.historisk)
-            .where { (IdentMappingTable.id eq aktorIdInput) and (IdentMappingTable.historisk eq false) }
+            .select(identMappingAlias[IdentMappingTable.id], identMappingAlias[identType], identMappingAlias[historisk])
+            .where { (IdentMappingTable.id eq aktorIdInput.value) and (historisk eq false) }
             .map {
-                val id = it[IdentMappingTable.id]
-                val identType = it[identType]
-                when (identType) {
+                val id = it[identMappingAlias[IdentMappingTable.id]]
+                when (val identType = it[identMappingAlias[identType]]) {
                     "FNR" -> Fnr(id.value)
                     "NPID" -> Npid(id.value)
                     "DNR" -> Dnr(id.value)
                     "AKTOR_ID" -> AktorId(id.value)
-                    else -> throw IllegalArgumentException("Ukjent identType: $identType").also {
-                            log.error(it.message, it)
-                        }
+                    else -> throw IllegalArgumentException("Ukjent identType: $identType")
+                        .also { log.error(it.message, it) }
                 }
             }
     }
