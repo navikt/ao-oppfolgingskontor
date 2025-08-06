@@ -11,15 +11,21 @@ sealed class Ident {
             require(value.isNotBlank())
             require(value.all { it.isDigit() }) { "Ident must contain only digits" }
 
-            val digitNumber3and4 by lazy { value.substring(2,3).toInt() }
+            val digitNumber3and4 by lazy { value.substring(2,4).toInt() }
             val firstDigit by lazy { value[0].digitToInt() }
             val lengthIs14 by lazy { value.length == 13 }
+            val monthIsValidMonth by lazy { digitNumber3and4 in 1..12 }
+            val monthIsDollyMonth by lazy { digitNumber3and4 in 81..92 }
+            val lengthIs11 by lazy { value.length == 11 }
+            val isValidDate by lazy { value.substring(0, 2).toInt() in 1..31 }
 
             return when {
                 lengthIs14 -> AktorId(value)
-                firstDigit in gyldigeDnrStart -> Dnr(value)
-                digitNumber3and4 in 21..32 -> Npid(value)
-                else -> Fnr(value)
+                firstDigit in gyldigeDnrStart && monthIsValidMonth -> Dnr(value)
+                digitNumber3and4 in 21..32 -> Npid(value) // NPID er måned + 20
+                lengthIs11 && isValidDate && (monthIsDollyMonth || monthIsValidMonth) -> Fnr(value)
+                else -> { throw Exception("Ugyldig Ident: $value")
+                }
             }
         }
     }

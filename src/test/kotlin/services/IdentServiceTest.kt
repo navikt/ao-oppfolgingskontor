@@ -87,7 +87,7 @@ class IdentServiceTest {
         application {
             flywayMigrationInTest()
             runTest {
-                val npid = Npid("01020304055")
+                val npid = Npid("01220304055")
                 val fnr = Fnr("11111111111")
                 val aktorId = AktorId("2938764298763")
                 val npIdIdentInformasjon = IdentInformasjon(
