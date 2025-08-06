@@ -11,7 +11,6 @@ import no.nav.db.Fnr
 import no.nav.db.Npid
 import no.nav.http.client.AlderFunnet
 import no.nav.http.client.IdentFunnet
-import no.nav.http.client.IdentOppslagFeil
 import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.GeografiskTilknytningKommuneNr
 import no.nav.http.client.GeografiskTilknytningLand
@@ -24,7 +23,7 @@ import no.nav.http.client.HarStrengtFortroligAdresseOppslagFeil
 import no.nav.http.client.IdenterFunnet
 import no.nav.http.client.IdenterOppslagFeil
 import no.nav.http.client.PdlClient
-import no.nav.http.client.finnIdent
+import no.nav.http.client.finnForetrukketIdent
 import no.nav.http.client.mockPdl
 import no.nav.http.client.pdlTestUrl
 import no.nav.http.client.toGeografiskTilknytning
@@ -279,7 +278,7 @@ class PdlClientTest {
         val fnrResult = pdlClient.hentFnrFraAktorId(aktorId)
 
         fnrResult.shouldBeInstanceOf<IdenterFunnet>()
-        val ident = fnrResult.finnIdent()
+        val ident = fnrResult.finnForetrukketIdent()
         ident.shouldBeInstanceOf<IdentFunnet>()
         ident.ident.shouldBeInstanceOf<Npid>()
         ident.ident shouldBe npid

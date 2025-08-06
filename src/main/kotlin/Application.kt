@@ -72,7 +72,7 @@ fun Application.module() {
 
     install(KafkaStreamsPlugin) {
         this.automatiskKontorRutingService = automatiskKontorRutingService
-        this.fnrProvider = { aktorId ->  pdlClient.hentFnrFraAktorId(aktorId).finnIdent() }
+        this.fnrProvider = { aktorId ->  identService.hentForetrukketIdentFor(aktorId)}
         this.database = database
         this.meterRegistry = meterRegistry
         this.oppfolgingsperiodeService = OppfolgingsperiodeService

@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory
 
 class LeesahProcessor(
     private val automatiskKontorRutingService: AutomatiskKontorRutingService,
-    private val fnrProvider: suspend (aktorId: String) -> IdentResult,
+    private val fnrProvider: suspend (ident: Ident) -> IdentResult,
     private val isProduction: Boolean,
 ) {
     val log = LoggerFactory.getLogger(this::class.java)
@@ -36,7 +36,7 @@ class LeesahProcessor(
         log.info("Consumer Personhendelse record ${record.value().opplysningstype} ${record.value().endringstype}")
         return record.value()
                 .let { hendelse ->
-                    val fnrResult = runBlocking { finnFnr(hendelse) }
+                    val fnrResult = runBlocking { finnIdent(hendelse) }
                     when (fnrResult) {
                         is IdentFunnet -> fnrResult.ident to hendelse
                         is IdentIkkeFunnet ->
@@ -84,12 +84,13 @@ class LeesahProcessor(
         }
     }
 
-    suspend fun finnFnr(hendelse: Personhendelse): IdentResult {
+    suspend fun finnIdent(hendelse: Personhendelse): IdentResult {
         if (hendelse.personidenter.isEmpty()) {
             throw IllegalStateException("Personhendelse must have at least one personident")
         }
-        val fnrEllerAktorIdEllerNpid: FnrEllerAktorIdEllerNpid = hendelse.personidenter.first()
-        return fnrProvider(fnrEllerAktorIdEllerNpid)
+
+        val ident: Ident = Ident.of(hendelse.personidenter.first())
+        return fnrProvider(ident)
     }
 }
 

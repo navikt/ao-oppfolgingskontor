@@ -206,7 +206,7 @@ fun GraphQLClientResponse<HentGtQuery.Result>.toGeografiskTilknytning(): GtForBr
     } ?: GtForBrukerIkkeFunnet("Ingen geografisk tilknytning funnet for bruker $this")
 }
 
-fun IdenterResult.finnIdent(): IdentResult {
+fun IdenterResult.finnForetrukketIdent(): IdentResult {
     return when (this) {
         is IdenterFunnet -> this.identer
             .let { identInformasjoner ->

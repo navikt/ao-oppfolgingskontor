@@ -4,7 +4,6 @@ import db.table.IdentMappingTable
 import db.table.IdentMappingTable.historisk
 import db.table.IdentMappingTable.identType
 import db.table.IdentMappingTable.internIdent
-import db.table.IdentMappingTable.select
 import db.table.IdentMappingTable.updatedAt
 import db.table.InternIdentSequence
 import db.table.nextValueOf
@@ -17,7 +16,7 @@ import no.nav.http.client.IdentFunnet
 import no.nav.http.client.IdentResult
 import no.nav.http.client.IdenterFunnet
 import no.nav.http.client.IdenterResult
-import no.nav.http.client.finnIdent
+import no.nav.http.client.finnForetrukketIdent
 import no.nav.http.graphql.generated.client.enums.IdentGruppe
 import no.nav.http.graphql.generated.client.hentfnrquery.IdentInformasjon
 import org.jetbrains.exposed.sql.JoinType
@@ -25,9 +24,6 @@ import org.jetbrains.exposed.sql.alias
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.batchUpsert
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.nextIntVal
-import org.jetbrains.exposed.sql.nextLongVal
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.lang.IllegalArgumentException
@@ -38,20 +34,20 @@ class IdentService(
 ) {
     private val log = LoggerFactory.getLogger(IdentService::class.java)
 
-    suspend fun hentIdentFraAktorId(aktorId: AktorId): IdentResult {
-        val lokaltLagretIdent = hentLokalIdent(aktorId)
+    suspend fun hentForetrukketIdentFor(ident: Ident): IdentResult {
+        val lokaltLagretIdent = hentLokalIdent(ident)
         if (lokaltLagretIdent != null) return lokaltLagretIdent
-        return identForAktorIdProvider(aktorId.value)
+        return identForAktorIdProvider(ident.value)
             .also {
                 if (it is IdenterFunnet) {
                     lagreNyIdentMapping(it)
                 }
-            }.finnIdent()
+            }.finnForetrukketIdent()
     }
 
-    private fun hentLokalIdent(aktorId: AktorId): IdentFunnet? {
+    private fun hentLokalIdent(ident: Ident): IdentFunnet? {
         try {
-            val identMappings = hentIdentMappinger(aktorId)
+            val identMappings = hentIdentMappinger(ident)
             when {
                 identMappings.isNotEmpty() -> {
                     val fnr = identMappings.firstOrNull { it is Fnr }
@@ -114,7 +110,7 @@ class IdentService(
         }
     }
 
-    private fun hentIdentMappinger(aktorIdInput: AktorId): List<Ident> = transaction {
+    private fun hentIdentMappinger(identInput: Ident): List<Ident> = transaction {
         val identMappingAlias = IdentMappingTable.alias("ident_mapping_alias")
 
         IdentMappingTable.join(
@@ -124,7 +120,7 @@ class IdentService(
             otherColumn = identMappingAlias[internIdent]
         )
             .select(identMappingAlias[IdentMappingTable.id], identMappingAlias[identType], identMappingAlias[historisk])
-            .where { (IdentMappingTable.id eq aktorIdInput.value) and (historisk eq false) }
+            .where { (IdentMappingTable.id eq identInput.value) and (historisk eq false) }
             .map {
                 val id = it[identMappingAlias[IdentMappingTable.id]]
                 when (val identType = it[identMappingAlias[identType]]) {

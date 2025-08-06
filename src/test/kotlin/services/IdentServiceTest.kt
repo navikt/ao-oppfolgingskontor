@@ -43,8 +43,8 @@ class IdentServiceTest {
                 }
                 val identService = IdentService(identProvider)
 
-                identService.hentIdentFraAktorId(aktorId)
-                identService.hentIdentFraAktorId(aktorId)
+                identService.hentForetrukketIdentFor(aktorId)
+                identService.hentForetrukketIdentFor(aktorId)
 
                 invocations shouldBe 1
             }
@@ -60,7 +60,7 @@ class IdentServiceTest {
                 val aktorId = AktorId("41411121224411")
                 val npIdIdentInformasjon = IdentInformasjon(
                     historisk = false,
-                    gruppe = IdentGruppe.FOLKEREGISTERIDENT,
+                    gruppe = IdentGruppe.NPID,
                     ident = npid.value
                 )
                 val aktorIdIdentInformasjon = IdentInformasjon(
@@ -68,16 +68,53 @@ class IdentServiceTest {
                     gruppe = IdentGruppe.AKTORID,
                     ident = aktorId.value
                 )
-                val fnrProvider = { aktorId: String ->
-                    IdenterFunnet(listOf(npIdIdentInformasjon, aktorIdIdentInformasjon), inputIdent = aktorId)
+                val fnrProvider = { ident: String ->
+                    IdenterFunnet(listOf(npIdIdentInformasjon, aktorIdIdentInformasjon), inputIdent = aktorId.value)
                 }
                 val identService = IdentService(fnrProvider)
 
-                identService.hentIdentFraAktorId(aktorId)
-                val npidUt = identService.hentIdentFraAktorId(aktorId)
+                identService.hentForetrukketIdentFor(aktorId)
+                val npidUt = identService.hentForetrukketIdentFor(aktorId)
 
                 npidUt.shouldBeInstanceOf<IdentFunnet>()
                 npidUt.ident shouldBe npid
+            }
+        }
+    }
+
+    @Test
+    fun `skal gi fnr ved søk på npid`() = testApplication {
+        application {
+            flywayMigrationInTest()
+            runTest {
+                val npid = Npid("01020304055")
+                val fnr = Fnr("11111111111")
+                val aktorId = AktorId("29387642987634")
+                val npIdIdentInformasjon = IdentInformasjon(
+                    historisk = false,
+                    gruppe = IdentGruppe.NPID,
+                    ident = npid.value
+                )
+                val fnrIdentInformasjon = IdentInformasjon(
+                    historisk = false,
+                    gruppe = IdentGruppe.FOLKEREGISTERIDENT,
+                    ident = fnr.value
+                )
+                val aktorIdIdentInformasjon = IdentInformasjon(
+                    historisk = false,
+                    gruppe = IdentGruppe.AKTORID,
+                    ident = aktorId.value
+                )
+
+                val fnrProvider = { ident: String ->
+                    IdenterFunnet(listOf(npIdIdentInformasjon, aktorIdIdentInformasjon, fnrIdentInformasjon), inputIdent = npid.value)
+                }
+                val identService = IdentService(fnrProvider)
+                val foretrukketIdent = identService.hentForetrukketIdentFor(npid)
+
+                foretrukketIdent.shouldBeInstanceOf<IdentFunnet>()
+                foretrukketIdent.ident.shouldBeInstanceOf<Fnr>()
+                foretrukketIdent.ident shouldBe fnr
             }
         }
     }
