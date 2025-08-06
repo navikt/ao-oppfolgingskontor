@@ -1,6 +1,7 @@
 package services
 
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.server.testing.testApplication
 import kotlinx.coroutines.test.runTest
 import no.nav.db.AktorId
@@ -56,19 +57,27 @@ class IdentServiceTest {
             flywayMigrationInTest()
             runTest {
                 val npid = Npid("01020304050")
-                val identInformasjon = IdentInformasjon(
+                val aktorId = AktorId("41411121224411")
+                val npIdIdentInformasjon = IdentInformasjon(
                     historisk = false,
                     gruppe = IdentGruppe.FOLKEREGISTERIDENT,
                     ident = npid.value
                 )
-                val fnrProvider = { aktorId: String -> IdenterFunnet(listOf(identInformasjon), inputIdent = aktorId) }
-                val aktorId = AktorId("41411121224411")
+                val aktorIdIdentInformasjon = IdentInformasjon(
+                    historisk = false,
+                    gruppe = IdentGruppe.AKTORID,
+                    ident = aktorId.value
+                )
+                val fnrProvider = { aktorId: String ->
+                    IdenterFunnet(listOf(npIdIdentInformasjon, aktorIdIdentInformasjon), inputIdent = aktorId)
+                }
                 val identService = IdentService(fnrProvider)
 
                 identService.hentIdentFraAktorId(aktorId)
                 val npidUt = identService.hentIdentFraAktorId(aktorId)
 
-                npidUt shouldBe npidUt
+                npidUt.shouldBeInstanceOf<IdentFunnet>()
+                npidUt.ident shouldBe npid
             }
         }
     }
