@@ -54,7 +54,7 @@ class SisteOppfolgingsperiodeProcessorTest {
 
     fun testBruker() = Bruker(
         fnr = randomFnr(),
-        aktorId = "1234567890123",
+        aktorId = "12345678901234",
         periodeStart = ZonedDateTime.now(ZoneId.of("Europe/Oslo")).minusDays(2),
         oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
     )
@@ -310,7 +310,7 @@ class SisteOppfolgingsperiodeProcessorTest {
             OppfolgingsperiodeService,
         ) { IdentFunnet(bruker.fnr) }
 
-        val result = consumer.process(Record(bruker.fnr.value, """{ "lol": "lal" }""", Instant.now().toEpochMilli()))
+        val result = consumer.process(Record(bruker.aktorId, """{ "lol": "lal" }""", Instant.now().toEpochMilli()))
 
         result.shouldBeInstanceOf<Retry<*, *>>()
         result.reason shouldBe """

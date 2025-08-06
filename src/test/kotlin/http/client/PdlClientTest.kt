@@ -1,6 +1,7 @@
 package http.client
 
 import com.expediagroup.graphql.client.types.GraphQLClientResponse
+import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.ints.shouldBePositive
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -20,7 +21,10 @@ import no.nav.http.client.GtLandForBrukerFunnet
 import no.nav.http.client.GtNummerForBrukerFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseOppslagFeil
+import no.nav.http.client.IdenterFunnet
+import no.nav.http.client.IdenterOppslagFeil
 import no.nav.http.client.PdlClient
+import no.nav.http.client.finnIdent
 import no.nav.http.client.mockPdl
 import no.nav.http.client.pdlTestUrl
 import no.nav.http.client.toGeografiskTilknytning
@@ -241,8 +245,8 @@ class PdlClientTest {
 
         val fnrResult = pdlClient.hentFnrFraAktorId(aktorId)
 
-        fnrResult.shouldBeInstanceOf<IdentFunnet>()
-        fnrResult.ident.value shouldBe fnr.value
+        fnrResult.shouldBeInstanceOf<IdenterFunnet>()
+        fnrResult.identer shouldHaveSize 3
     }
 
     @Test
@@ -274,9 +278,11 @@ class PdlClientTest {
 
         val fnrResult = pdlClient.hentFnrFraAktorId(aktorId)
 
-        fnrResult.shouldBeInstanceOf<IdentFunnet>()
-        fnrResult.ident.shouldBeInstanceOf<Npid>()
-        fnrResult.ident shouldBe npid
+        fnrResult.shouldBeInstanceOf<IdenterFunnet>()
+        val ident = fnrResult.finnIdent()
+        ident.shouldBeInstanceOf<IdentFunnet>()
+        ident.ident.shouldBeInstanceOf<Npid>()
+        ident.ident shouldBe npid
     }
 
     @Test
@@ -303,7 +309,7 @@ class PdlClientTest {
 
         val fnrResult = pdlClient.hentFnrFraAktorId(aktorId)
 
-        fnrResult.shouldBeInstanceOf<IdentOppslagFeil>()
+        fnrResult.shouldBeInstanceOf<IdenterOppslagFeil>()
         fnrResult.message shouldBe "Fant ikke person: not_found"
     }
 
