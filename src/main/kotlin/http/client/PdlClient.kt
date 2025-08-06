@@ -4,15 +4,12 @@ import com.expediagroup.graphql.client.ktor.GraphQLKtorClient
 import com.expediagroup.graphql.client.types.GraphQLClientResponse
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
-import io.ktor.client.plugins.api.createClientPlugin
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.logging.LogLevel
-import io.ktor.client.plugins.logging.Logging
-import io.ktor.serialization.kotlinx.json.json
-import io.ktor.server.application.ApplicationEnvironment
-import no.nav.db.Fnr
-import no.nav.db.Ident
-import no.nav.db.Npid
+import io.ktor.client.plugins.api.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.plugins.logging.*
+import io.ktor.serialization.kotlinx.json.*
+import io.ktor.server.application.*
+import no.nav.db.*
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.http.client.tokenexchange.SystemTokenPlugin
 import no.nav.http.client.tokenexchange.TexasTokenResponse
@@ -22,7 +19,6 @@ import no.nav.http.graphql.generated.client.HentFnrQuery
 import no.nav.http.graphql.generated.client.HentGtQuery
 import no.nav.http.graphql.generated.client.enums.AdressebeskyttelseGradering
 import no.nav.http.graphql.generated.client.enums.GtType
-import no.nav.http.graphql.generated.client.enums.IdentGruppe
 import no.nav.http.graphql.generated.client.hentfnrquery.IdentInformasjon
 import org.slf4j.LoggerFactory
 import java.net.URI
@@ -210,14 +206,20 @@ fun IdenterResult.finnForetrukketIdent(): IdentResult {
     return when (this) {
         is IdenterFunnet -> this.identer
             .let { identInformasjoner ->
-                /* Foretrekk fnr før npid */
-                identInformasjoner.firstOrNull { it.gruppe == IdentGruppe.FOLKEREGISTERIDENT && !it.historisk }
-                    ?.let { Fnr(it.ident) }
-                    ?: identInformasjoner.firstOrNull { it.gruppe == IdentGruppe.NPID && !it.historisk }
-                        ?.let { Npid(it.ident) }
+                identInformasjoner.filter { !it.historisk }
+                    .map { Ident.of(it.ident) }
+                    .minByOrNull {
+                        when (it) {
+                            is Fnr -> 1
+                            is Dnr -> 2
+                            is Npid -> 3
+                            is AktorId -> 4
+                        }
+                    }
             }
             ?.let { IdentFunnet(it) }
             ?: IdentIkkeFunnet("Fant ingen gyldig fnr for bruker, antall identer: ${this.identer.size}, indent-typer: ${this.identer.joinToString { it.gruppe.name }}")
+
         is IdenterIkkeFunnet -> IdentIkkeFunnet(this.message)
         is IdenterOppslagFeil -> IdentOppslagFeil(this.message)
     }

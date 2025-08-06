@@ -5,31 +5,16 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.ints.shouldBePositive
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.testing.testApplication
+import io.ktor.http.*
+import io.ktor.server.testing.*
+import no.nav.db.Dnr
 import no.nav.db.Fnr
 import no.nav.db.Npid
-import no.nav.http.client.AlderFunnet
-import no.nav.http.client.IdentFunnet
-import no.nav.http.client.GeografiskTilknytningBydelNr
-import no.nav.http.client.GeografiskTilknytningKommuneNr
-import no.nav.http.client.GeografiskTilknytningLand
-import no.nav.http.client.GtForBrukerIkkeFunnet
-import no.nav.http.client.GtForBrukerOppslagFeil
-import no.nav.http.client.GtLandForBrukerFunnet
-import no.nav.http.client.GtNummerForBrukerFunnet
-import no.nav.http.client.HarStrengtFortroligAdresseFunnet
-import no.nav.http.client.HarStrengtFortroligAdresseOppslagFeil
-import no.nav.http.client.IdenterFunnet
-import no.nav.http.client.IdenterOppslagFeil
-import no.nav.http.client.PdlClient
-import no.nav.http.client.finnForetrukketIdent
-import no.nav.http.client.mockPdl
-import no.nav.http.client.pdlTestUrl
-import no.nav.http.client.toGeografiskTilknytning
+import no.nav.http.client.*
 import no.nav.http.graphql.generated.client.HentGtQuery
 import no.nav.http.graphql.generated.client.enums.GtType
 import no.nav.http.graphql.generated.client.enums.IdentGruppe
+import no.nav.http.graphql.generated.client.hentfnrquery.IdentInformasjon
 import no.nav.http.graphql.generated.client.hentgtquery.GeografiskTilknytning
 import org.junit.jupiter.api.Test
 import java.time.LocalDate
@@ -42,7 +27,8 @@ class PdlClientTest {
     fun `hentGt skal plukke ut riktig gt fra PDL response`() = testApplication {
         val fnr = Fnr("12345678901")
         val bydelGtNr = "4141"
-        val client = mockPdl("""
+        val client = mockPdl(
+            """
             {
                 "data": {
                     "hentGeografiskTilknytning": {
@@ -55,7 +41,7 @@ class PdlClientTest {
             }
             """.trimIndent()
         )
-        val pdlClient = PdlClient(pdlTestUrl,client)
+        val pdlClient = PdlClient(pdlTestUrl, client)
         val gt = pdlClient.hentGt(fnr)
         gt.shouldBeInstanceOf<GtNummerForBrukerFunnet>()
         gt.gtNr.value shouldBe bydelGtNr
@@ -67,7 +53,8 @@ class PdlClientTest {
         val pdlTestUrl = "http://pdl.test.local"
         val errorMessage = "Ingen GT funnet for bruker"
 
-        val client = mockPdl("""
+        val client = mockPdl(
+            """
             {
                 "data": null,
                 "errors": [{
@@ -77,8 +64,9 @@ class PdlClientTest {
                     }
                 }]
             }
-        """.trimIndent())
-        val pdlClient = PdlClient(pdlTestUrl,client)
+        """.trimIndent()
+        )
+        val pdlClient = PdlClient(pdlTestUrl, client)
         val gt = pdlClient.hentGt(fnr)
         gt.shouldBeInstanceOf<GtForBrukerOppslagFeil>()
         gt.message shouldBe "${errorMessage}: null"
@@ -88,7 +76,7 @@ class PdlClientTest {
     fun `hentGt skal håndtere http-feil ved graphql spørring på GT`() = testApplication {
         val fnr = Fnr("12345678901")
         val client = mockPdl(HttpStatusCode.InternalServerError)
-        val pdlClient = PdlClient(pdlTestUrl,client)
+        val pdlClient = PdlClient(pdlTestUrl, client)
         val gt = pdlClient.hentGt(fnr)
         gt.shouldBeInstanceOf<GtForBrukerOppslagFeil>()
         gt.message shouldBe """
@@ -101,15 +89,19 @@ class PdlClientTest {
         val fnr = Fnr("12345678901")
         val localDate = LocalDate.of(1990, 1, 31)
         val diff = Period.between(localDate, ZonedDateTime.now().toLocalDate()).years
-        val client = mockPdl(hentPersonQuery("""
+        val client = mockPdl(
+            hentPersonQuery(
+                """
             {
                 "foedselsdato": [{
                     "foedselsdato": "${localDate}"
                     "foedselsaar": ${localDate.year}
                 }]
             }
-        """.trimIndent()))
-        val pdlClient = PdlClient(pdlTestUrl,client)
+        """.trimIndent()
+            )
+        )
+        val pdlClient = PdlClient(pdlTestUrl, client)
         val alder = pdlClient.hentAlder(fnr)
         alder.shouldBeInstanceOf<AlderFunnet>()
         alder.alder.shouldBePositive()
@@ -122,15 +114,19 @@ class PdlClientTest {
         val localDate = LocalDate.of(1990, 1, 1)
         val now = LocalDate.of(2025, 12, 31)
         val diff = Period.between(localDate, now).years
-        val client = mockPdl(hentPersonQuery("""
+        val client = mockPdl(
+            hentPersonQuery(
+                """
             {
                 "foedselsdato": [{
                     "foedselsdato": null,
                     "foedselsaar": ${localDate.year}
                 }]
             }
-        """.trimIndent()))
-        val pdlClient = PdlClient(pdlTestUrl,client)
+        """.trimIndent()
+            )
+        )
+        val pdlClient = PdlClient(pdlTestUrl, client)
         val alder = pdlClient.hentAlder(fnr)
         alder.shouldBeInstanceOf<AlderFunnet>()
         alder.alder.shouldBePositive()
@@ -138,72 +134,96 @@ class PdlClientTest {
     }
 
     @Test
-    fun `harStrengtFortroligAdresse skal returnere strengt fortrolig adresse true når adressebeskyttelse er STRENGT_FORTROLIG_UTLAND`() = testApplication {
-        val fnr = Fnr("12345678901")
-        val client = mockPdl(hentPersonQuery("""
+    fun `harStrengtFortroligAdresse skal returnere strengt fortrolig adresse true når adressebeskyttelse er STRENGT_FORTROLIG_UTLAND`() =
+        testApplication {
+            val fnr = Fnr("12345678901")
+            val client = mockPdl(
+                hentPersonQuery(
+                    """
             {
                 "adressebeskyttelse": [{
                     "gradering": "STRENGT_FORTROLIG_UTLAND"
                 }]
             }
-        """.trimIndent()))
-        val pdlClient = PdlClient(pdlTestUrl,client)
+        """.trimIndent()
+                )
+            )
+            val pdlClient = PdlClient(pdlTestUrl, client)
 
-        val alder = pdlClient.harStrengtFortroligAdresse(fnr)
+            val alder = pdlClient.harStrengtFortroligAdresse(fnr)
 
-        alder.shouldBeInstanceOf<HarStrengtFortroligAdresseFunnet>()
-        alder.harStrengtFortroligAdresse.value shouldBe true
-    }
+            alder.shouldBeInstanceOf<HarStrengtFortroligAdresseFunnet>()
+            alder.harStrengtFortroligAdresse.value shouldBe true
+        }
 
     @Test
-    fun `harStrengtFortroligAdresse skal returnere strengt fortrolig adresse true når adressebeskyttelse er STRENGT_FORTROLIG`() = testApplication {
-        val fnr = Fnr("12345678901")
-        val client = mockPdl(hentPersonQuery("""
+    fun `harStrengtFortroligAdresse skal returnere strengt fortrolig adresse true når adressebeskyttelse er STRENGT_FORTROLIG`() =
+        testApplication {
+            val fnr = Fnr("12345678901")
+            val client = mockPdl(
+                hentPersonQuery(
+                    """
             { "adressebeskyttelse": [{"gradering": "STRENGT_FORTROLIG" }] }
-        """.trimIndent()))
-        val pdlClient = PdlClient(pdlTestUrl,client)
+        """.trimIndent()
+                )
+            )
+            val pdlClient = PdlClient(pdlTestUrl, client)
 
-        val adressebeskyttelse = pdlClient.harStrengtFortroligAdresse(fnr)
+            val adressebeskyttelse = pdlClient.harStrengtFortroligAdresse(fnr)
 
-        adressebeskyttelse.shouldBeInstanceOf<HarStrengtFortroligAdresseFunnet>()
-        adressebeskyttelse.harStrengtFortroligAdresse.value shouldBe true
-    }
+            adressebeskyttelse.shouldBeInstanceOf<HarStrengtFortroligAdresseFunnet>()
+            adressebeskyttelse.harStrengtFortroligAdresse.value shouldBe true
+        }
 
     @Test
-    fun `harStrengtFortroligAdresse skal returnere at bruker ikke har adressebeskyttelse når gradering feltet er null`() = testApplication {
-        val fnr = Fnr("12345678901")
-        val client = mockPdl(hentPersonQuery("""
+    fun `harStrengtFortroligAdresse skal returnere at bruker ikke har adressebeskyttelse når gradering feltet er null`() =
+        testApplication {
+            val fnr = Fnr("12345678901")
+            val client = mockPdl(
+                hentPersonQuery(
+                    """
             { "adressebeskyttelse": [{ "gradering": null }] }
-        """.trimIndent()))
-        val pdlClient = PdlClient(pdlTestUrl,client)
+        """.trimIndent()
+                )
+            )
+            val pdlClient = PdlClient(pdlTestUrl, client)
 
-        val adressebeskyttelse = pdlClient.harStrengtFortroligAdresse(fnr)
+            val adressebeskyttelse = pdlClient.harStrengtFortroligAdresse(fnr)
 
-        adressebeskyttelse.shouldBeInstanceOf<HarStrengtFortroligAdresseFunnet>()
-        adressebeskyttelse.harStrengtFortroligAdresse.value shouldBe false
-    }
+            adressebeskyttelse.shouldBeInstanceOf<HarStrengtFortroligAdresseFunnet>()
+            adressebeskyttelse.harStrengtFortroligAdresse.value shouldBe false
+        }
 
     @Test
-    fun `harStrengtFortroligAdresse skal returnere at bruker ikke har adressebeskyttelse når adressebeskyttelse er en tom liste`() = testApplication {
-        val fnr = Fnr("12345678901")
-        val client = mockPdl(hentPersonQuery("""
+    fun `harStrengtFortroligAdresse skal returnere at bruker ikke har adressebeskyttelse når adressebeskyttelse er en tom liste`() =
+        testApplication {
+            val fnr = Fnr("12345678901")
+            val client = mockPdl(
+                hentPersonQuery(
+                    """
             { "adressebeskyttelse": []}
-        """.trimIndent()))
-        val pdlClient = PdlClient(pdlTestUrl,client)
+        """.trimIndent()
+                )
+            )
+            val pdlClient = PdlClient(pdlTestUrl, client)
 
-        val adressebeskyttelse = pdlClient.harStrengtFortroligAdresse(fnr)
+            val adressebeskyttelse = pdlClient.harStrengtFortroligAdresse(fnr)
 
-        adressebeskyttelse.shouldBeInstanceOf<HarStrengtFortroligAdresseFunnet>()
-        adressebeskyttelse.harStrengtFortroligAdresse.value shouldBe false
-    }
+            adressebeskyttelse.shouldBeInstanceOf<HarStrengtFortroligAdresseFunnet>()
+            adressebeskyttelse.harStrengtFortroligAdresse.value shouldBe false
+        }
 
     @Test
     fun `harStrengtFortroligAdresse skal returnere feil oppslag ved ukjent felter`() = testApplication {
         val fnr = Fnr("12345678901")
-        val client = mockPdl(hentPersonQuery("""
+        val client = mockPdl(
+            hentPersonQuery(
+                """
             { "ukjent_felt": [{"gradering": "STRENGT_FORTROLIG"}]}
-        """.trimIndent()))
-        val pdlClient = PdlClient(pdlTestUrl,client)
+        """.trimIndent()
+            )
+        )
+        val pdlClient = PdlClient(pdlTestUrl, client)
 
         val adressebeskyttelse = pdlClient.harStrengtFortroligAdresse(fnr)
 
@@ -214,7 +234,8 @@ class PdlClientTest {
     fun `hentFnrFraAktorId skal returnere fnr for aktorId`() = testApplication {
         val aktorId = "12345678901"
         val fnr = Fnr("12345678901")
-        val client = mockPdl("""
+        val client = mockPdl(
+            """
             {
                 "data": { 
                     "hentIdenter": {
@@ -239,8 +260,9 @@ class PdlClientTest {
                 },
                 "errors": null
             }
-        """.trimIndent())
-        val pdlClient = PdlClient(pdlTestUrl,client)
+        """.trimIndent()
+        )
+        val pdlClient = PdlClient(pdlTestUrl, client)
 
         val fnrResult = pdlClient.hentFnrFraAktorId(aktorId)
 
@@ -252,7 +274,8 @@ class PdlClientTest {
     fun `hentFnrFraAktorId skal returnere npid for aktorId hvis ikke fnr finnes`() = testApplication {
         val aktorId = "12345678901"
         val npid = Npid("41414141414")
-        val client = mockPdl("""
+        val client = mockPdl(
+            """
             {
                 "data": { 
                     "hentIdenter": {
@@ -272,8 +295,9 @@ class PdlClientTest {
                 },
                 "errors": null
             }
-        """.trimIndent())
-        val pdlClient = PdlClient(pdlTestUrl,client)
+        """.trimIndent()
+        )
+        val pdlClient = PdlClient(pdlTestUrl, client)
 
         val fnrResult = pdlClient.hentFnrFraAktorId(aktorId)
 
@@ -287,7 +311,8 @@ class PdlClientTest {
     @Test
     fun `hentFnrFraAktorId skal extension sin code i feilmelding`() = testApplication {
         val aktorId = "12345678901"
-        val client = mockPdl("""
+        val client = mockPdl(
+            """
             {
                 "data": null,
                 "errors": [
@@ -303,8 +328,9 @@ class PdlClientTest {
                   }
                 ]
             }
-        """.trimIndent())
-        val pdlClient = PdlClient(pdlTestUrl,client)
+        """.trimIndent()
+        )
+        val pdlClient = PdlClient(pdlTestUrl, client)
 
         val fnrResult = pdlClient.hentFnrFraAktorId(aktorId)
 
@@ -327,6 +353,22 @@ class PdlClientTest {
         feilResponse.toGeografiskTilknytning() shouldBe GtForBrukerIkkeFunnet("Ingen gyldige verider i GT repons fra PDL funnet for type UTLAND bydel: null, kommune: null, land: null")
     }
 
+    @Test
+    fun `gjeldende fnr og dnr skal foretrekke fnr`() {
+        val fnr = Fnr("22222222222")
+        val dnr = Dnr("55555555555")
+
+        val foretrukketIdent = IdenterFunnet(
+            listOf(
+                IdentInformasjon(dnr.value, false, IdentGruppe.FOLKEREGISTERIDENT),
+                IdentInformasjon(fnr.value, false, IdentGruppe.FOLKEREGISTERIDENT)
+            ), fnr.value
+        ).finnForetrukketIdent()
+
+        foretrukketIdent.shouldBeInstanceOf<IdentFunnet>()
+        foretrukketIdent.ident shouldBe fnr
+    }
+
     fun hentPersonQuery(hentPersonPayload: String): String {
         return """
             {
@@ -339,18 +381,12 @@ class PdlClientTest {
     }
 
     fun response(
-        gtType: GtType,
-        gtKommune: String? = null,
-        gtBydel: String? = null,
-        gtLand: String? = null
+        gtType: GtType, gtKommune: String? = null, gtBydel: String? = null, gtLand: String? = null
     ): GraphQLClientResponse<HentGtQuery.Result> {
         return object : GraphQLClientResponse<HentGtQuery.Result> {
             override val data = HentGtQuery.Result(
                 GeografiskTilknytning(
-                    gtType = gtType,
-                    gtKommune = gtKommune,
-                    gtBydel = gtBydel,
-                    gtLand = gtLand
+                    gtType = gtType, gtKommune = gtKommune, gtBydel = gtBydel, gtLand = gtLand
                 )
             )
             override val errors = null
