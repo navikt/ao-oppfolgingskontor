@@ -24,7 +24,7 @@ class IdentServiceTest {
             /* Ikkje bra - tester burde ikke kjøre inni application {} men da
             * feiler connection til db */
             runTest {
-                val aktorId = AktorId("41411121213131")
+                val aktorId = AktorId("4141112121313")
                 val fnr = Fnr("01020304052")
                 val fnrIdentInformasjon = IdentInformasjon(
                     historisk = false,
@@ -57,7 +57,7 @@ class IdentServiceTest {
             flywayMigrationInTest()
             runTest {
                 val npid = Npid("01020304050")
-                val aktorId = AktorId("41411121224411")
+                val aktorId = AktorId("4141112122441")
                 val npIdIdentInformasjon = IdentInformasjon(
                     historisk = false,
                     gruppe = IdentGruppe.NPID,
@@ -89,7 +89,7 @@ class IdentServiceTest {
             runTest {
                 val npid = Npid("01020304055")
                 val fnr = Fnr("11111111111")
-                val aktorId = AktorId("29387642987634")
+                val aktorId = AktorId("2938764298763")
                 val npIdIdentInformasjon = IdentInformasjon(
                     historisk = false,
                     gruppe = IdentGruppe.NPID,

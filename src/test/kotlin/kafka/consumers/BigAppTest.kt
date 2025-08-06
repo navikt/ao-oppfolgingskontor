@@ -44,7 +44,7 @@ class BigAppTest {
     @Test
     fun `app should forward from SisteOppfolgingsperiodeProcessor to KontortilordningsProcessor if not prod`() = testApplication {
         val fnr = Fnr("22325678901")
-        val aktorId = AktorId("22325678902333")
+        val aktorId = AktorId("2232567890233")
         val kontor = KontorId("2232")
         val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
         environment {
@@ -114,7 +114,7 @@ class BigAppTest {
     @Test
     fun `app should not forward messages to KontorTilordning in prod`() = testApplication {
         val fnr = Fnr("67825678901")
-        val aktorId = AktorId("22325678902444")
+        val aktorId = AktorId("2232567890244")
         val kontor = KontorId("2232")
         val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
         environment {

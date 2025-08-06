@@ -54,7 +54,7 @@ class SisteOppfolgingsperiodeProcessorTest {
 
     fun testBruker() = Bruker(
         fnr = randomFnr(),
-        aktorId = "12345678901234",
+        aktorId = "1234567890123",
         periodeStart = ZonedDateTime.now(ZoneId.of("Europe/Oslo")).minusDays(2),
         oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
     )

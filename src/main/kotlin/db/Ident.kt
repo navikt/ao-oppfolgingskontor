@@ -13,7 +13,7 @@ sealed class Ident {
 
             val digitNumber3and4 by lazy { value.substring(2,3).toInt() }
             val firstDigit by lazy { value[0].digitToInt() }
-            val lengthIs14 by lazy { value.length == 14 }
+            val lengthIs14 by lazy { value.length == 13 }
 
             return when {
                 lengthIs14 -> AktorId(value)
@@ -74,7 +74,7 @@ class Npid(override val value: String): Ident() {
 class AktorId(override val value: String): Ident() {
     init {
         require(value.isNotBlank()) { "AktorId cannot be blank" }
-        require(value.length == 14) { "AktorId must be 14 characters long but was ${value.length}" }
+        require(value.length == 13) { "AktorId must be 13 characters long but was ${value.length}" }
         require(value.all { it.isDigit() }) { "AktorId must contain only digits" }
     }
 }

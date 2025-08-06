@@ -95,7 +95,7 @@ class KafkaApplicationTest {
 
         application {
             flywayMigrationInTest()
-            val aktorId = AktorId("12345678901231")
+            val aktorId = AktorId("1234567890123")
             val periodeStart = ZonedDateTime.now().minusDays(2)
             val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
 
