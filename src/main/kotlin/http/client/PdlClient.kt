@@ -23,6 +23,7 @@ import no.nav.http.graphql.generated.client.HentGtQuery
 import no.nav.http.graphql.generated.client.enums.AdressebeskyttelseGradering
 import no.nav.http.graphql.generated.client.enums.GtType
 import no.nav.http.graphql.generated.client.enums.IdentGruppe
+import no.nav.http.graphql.generated.client.hentfnrquery.IdentInformasjon
 import org.slf4j.LoggerFactory
 import java.net.URI
 import java.time.LocalDate
@@ -35,10 +36,15 @@ data class AlderFunnet(val alder: Int) : AlderResult()
 data class AlderIkkeFunnet(val message: String) : AlderResult()
 data class AlderOppslagFeil(val message: String) : AlderResult()
 
-sealed class FnrResult
-data class FnrFunnet(val ident: Ident) : FnrResult()
-data class FnrIkkeFunnet(val message: String) : FnrResult()
-data class FnrOppslagFeil(val message: String) : FnrResult()
+sealed class IdentResult
+data class IdentFunnet(val ident: Ident) : IdentResult()
+data class IdentIkkeFunnet(val message: String) : IdentResult()
+data class IdentOppslagFeil(val message: String) : IdentResult()
+
+sealed class IdenterResult
+data class IdenterFunnet(val identer: List<IdentInformasjon>, val inputIdent: String) : IdenterResult()
+data class IdenterIkkeFunnet(val message: String) : IdenterResult()
+data class IdenterOppslagFeil(val message: String) : IdenterResult()
 
 sealed class GtForBrukerResult
 sealed class GtForBrukerSuccess : GtForBrukerResult()
@@ -97,6 +103,7 @@ class PdlClient(
         url = URI.create("$pdlGraphqlUrl/graphql").toURL(),
         httpClient = ktorHttpClient
     )
+
     suspend fun hentAlder(fnr: Ident): AlderResult {
         try {
             val query = HentAlderQuery(HentAlderQuery.Variables(fnr.value))
@@ -125,30 +132,19 @@ class PdlClient(
         }
     }
 
-    suspend fun hentFnrFraAktorId(aktorId: String): FnrResult {
+    suspend fun hentFnrFraAktorId(aktorId: String): IdenterResult {
         try {
             val query = HentFnrQuery(HentFnrQuery.Variables(ident = aktorId, historikk = false))
             val result = client.execute(query)
             if (result.errors != null && result.errors!!.isNotEmpty()) {
-                return FnrOppslagFeil(result.errors!!.joinToString { "${it.message}: ${it.extensions?.get("code")}" })
+                return IdenterOppslagFeil(result.errors!!.joinToString { "${it.message}: ${it.extensions?.get("code")}" })
             }
-            return result.data?.hentIdenter?.identer
-                ?.let { identer ->
-                    identer
-                        .let { ids ->
-                            /* Foretrekk fnr før npid */
-                            ids.firstOrNull { it.gruppe == IdentGruppe.FOLKEREGISTERIDENT && !it.historisk }
-                                ?.let { Fnr(it.ident) }
-                                ?: ids.firstOrNull { it.gruppe == IdentGruppe.NPID && !it.historisk }
-                                    ?.let { Npid(it.ident) }
-                        }
-                        ?.let { FnrFunnet(it) }
-                        ?: run {
-                            FnrIkkeFunnet("Fant ingen gyldig fnr for bruker, antall identer: ${identer.size}, indent-typer: ${identer.joinToString { it.gruppe.name }}")
-                        }
-                } ?: FnrIkkeFunnet("Ingen ident funnet, feltet `identer` i hentIdenter response var null")
+            return result.data?.hentIdenter?.identer?.let {
+                IdenterFunnet(it, aktorId)
+            } ?: IdenterIkkeFunnet("Ingen identer funnet for aktorId")
+
         } catch (e: Throwable) {
-            return FnrOppslagFeil("Henting av fnr fra aktorId feilet: ${e.message}")
+            return IdenterOppslagFeil("Henting av fnr fra aktorId feilet: ${e.message}")
                 .also { log.error(it.message, e) }
         }
     }
@@ -208,4 +204,21 @@ fun GraphQLClientResponse<HentGtQuery.Result>.toGeografiskTilknytning(): GtForBr
         }?.let { gt -> GtNummerForBrukerFunnet(gt) }
             ?: GtForBrukerIkkeFunnet("Ingen gyldige verider i GT repons fra PDL funnet for type ${it.gtType} bydel: ${it.gtBydel}, kommune: ${it.gtKommune}, land: ${it.gtLand}")
     } ?: GtForBrukerIkkeFunnet("Ingen geografisk tilknytning funnet for bruker $this")
+}
+
+fun IdenterResult.finnForetrukketIdent(): IdentResult {
+    return when (this) {
+        is IdenterFunnet -> this.identer
+            .let { identInformasjoner ->
+                /* Foretrekk fnr før npid */
+                identInformasjoner.firstOrNull { it.gruppe == IdentGruppe.FOLKEREGISTERIDENT && !it.historisk }
+                    ?.let { Fnr(it.ident) }
+                    ?: identInformasjoner.firstOrNull { it.gruppe == IdentGruppe.NPID && !it.historisk }
+                        ?.let { Npid(it.ident) }
+            }
+            ?.let { IdentFunnet(it) }
+            ?: IdentIkkeFunnet("Fant ingen gyldig fnr for bruker, antall identer: ${this.identer.size}, indent-typer: ${this.identer.joinToString { it.gruppe.name }}")
+        is IdenterIkkeFunnet -> IdentIkkeFunnet(this.message)
+        is IdenterOppslagFeil -> IdentOppslagFeil(this.message)
+    }
 }

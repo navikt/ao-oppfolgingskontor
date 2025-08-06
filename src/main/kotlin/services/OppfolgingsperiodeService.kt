@@ -8,18 +8,16 @@ import no.nav.db.table.OppfolgingsperiodeTable
 import no.nav.db.table.OppfolgingsperiodeTable.oppfolgingsperiodeId
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
-import no.nav.http.client.FnrFunnet
-import no.nav.http.client.FnrIkkeFunnet
-import no.nav.http.client.FnrOppslagFeil
-import no.nav.http.client.FnrResult
+import no.nav.http.client.IdentFunnet
+import no.nav.http.client.IdentIkkeFunnet
+import no.nav.http.client.IdentOppslagFeil
+import no.nav.http.client.IdentResult
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.upsert
 import org.slf4j.LoggerFactory
-import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 
@@ -71,11 +69,11 @@ object OppfolgingsperiodeService {
         return transaction { OppfolgingsperiodeEntity.findById(fnr.value) != null }
     }
 
-    fun getCurrentOppfolgingsperiode(fnr: Ident) = getCurrentOppfolgingsperiode(FnrFunnet(fnr))
-    fun getCurrentOppfolgingsperiode(fnr: FnrResult): OppfolgingsperiodeOppslagResult {
+    fun getCurrentOppfolgingsperiode(fnr: Ident) = getCurrentOppfolgingsperiode(IdentFunnet(fnr))
+    fun getCurrentOppfolgingsperiode(fnr: IdentResult): OppfolgingsperiodeOppslagResult {
         return try {
             when (fnr) {
-                is FnrFunnet -> transaction {
+                is IdentFunnet -> transaction {
                     val entity = OppfolgingsperiodeEntity.findById(fnr.ident.value)
                     when (entity != null) {
                         true -> AktivOppfolgingsperiode(
@@ -86,8 +84,8 @@ object OppfolgingsperiodeService {
                         else -> NotUnderOppfolging
                     }
                 }
-                is FnrIkkeFunnet -> OppfolgingperiodeOppslagFeil("Kunne ikke finne oppfølgingsperiode: ${fnr.message}")
-                is FnrOppslagFeil -> OppfolgingperiodeOppslagFeil("Kunne ikke finne oppfølgingsperiode: ${fnr.message}")
+                is IdentIkkeFunnet -> OppfolgingperiodeOppslagFeil("Kunne ikke finne oppfølgingsperiode: ${fnr.message}")
+                is IdentOppslagFeil -> OppfolgingperiodeOppslagFeil("Kunne ikke finne oppfølgingsperiode: ${fnr.message}")
             }
         } catch (e: Exception) {
             log.error("Error checking oppfolgingsperiode status", e)

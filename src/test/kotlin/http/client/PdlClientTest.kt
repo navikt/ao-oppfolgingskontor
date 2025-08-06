@@ -1,6 +1,7 @@
 package http.client
 
 import com.expediagroup.graphql.client.types.GraphQLClientResponse
+import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.ints.shouldBePositive
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -9,8 +10,7 @@ import io.ktor.server.testing.testApplication
 import no.nav.db.Fnr
 import no.nav.db.Npid
 import no.nav.http.client.AlderFunnet
-import no.nav.http.client.FnrFunnet
-import no.nav.http.client.FnrOppslagFeil
+import no.nav.http.client.IdentFunnet
 import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.GeografiskTilknytningKommuneNr
 import no.nav.http.client.GeografiskTilknytningLand
@@ -20,7 +20,10 @@ import no.nav.http.client.GtLandForBrukerFunnet
 import no.nav.http.client.GtNummerForBrukerFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseOppslagFeil
+import no.nav.http.client.IdenterFunnet
+import no.nav.http.client.IdenterOppslagFeil
 import no.nav.http.client.PdlClient
+import no.nav.http.client.finnForetrukketIdent
 import no.nav.http.client.mockPdl
 import no.nav.http.client.pdlTestUrl
 import no.nav.http.client.toGeografiskTilknytning
@@ -241,8 +244,8 @@ class PdlClientTest {
 
         val fnrResult = pdlClient.hentFnrFraAktorId(aktorId)
 
-        fnrResult.shouldBeInstanceOf<FnrFunnet>()
-        fnrResult.ident.value shouldBe fnr.value
+        fnrResult.shouldBeInstanceOf<IdenterFunnet>()
+        fnrResult.identer shouldHaveSize 3
     }
 
     @Test
@@ -274,9 +277,11 @@ class PdlClientTest {
 
         val fnrResult = pdlClient.hentFnrFraAktorId(aktorId)
 
-        fnrResult.shouldBeInstanceOf<FnrFunnet>()
-        fnrResult.ident.shouldBeInstanceOf<Npid>()
-        fnrResult.ident shouldBe npid
+        fnrResult.shouldBeInstanceOf<IdenterFunnet>()
+        val ident = fnrResult.finnForetrukketIdent()
+        ident.shouldBeInstanceOf<IdentFunnet>()
+        ident.ident.shouldBeInstanceOf<Npid>()
+        ident.ident shouldBe npid
     }
 
     @Test
@@ -303,7 +308,7 @@ class PdlClientTest {
 
         val fnrResult = pdlClient.hentFnrFraAktorId(aktorId)
 
-        fnrResult.shouldBeInstanceOf<FnrOppslagFeil>()
+        fnrResult.shouldBeInstanceOf<IdenterOppslagFeil>()
         fnrResult.message shouldBe "Fant ikke person: not_found"
     }
 

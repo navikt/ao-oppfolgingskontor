@@ -8,6 +8,7 @@ import kafka.retry.TestLockProvider
 import kafka.retry.library.internal.setupKafkaMock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import no.nav.db.AktorId
 import no.nav.db.Fnr
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.domain.HarSkjerming
@@ -15,7 +16,7 @@ import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.http.client.AlderFunnet
-import no.nav.http.client.FnrFunnet
+import no.nav.http.client.IdentFunnet
 import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.SkjermingFunnet
@@ -43,7 +44,7 @@ class BigAppTest {
     @Test
     fun `app should forward from SisteOppfolgingsperiodeProcessor to KontortilordningsProcessor if not prod`() = testApplication {
         val fnr = Fnr("22325678901")
-        val aktorId = "22325678902"
+        val aktorId = AktorId("22325678902333")
         val kontor = KontorId("2232")
         val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
         environment {
@@ -54,7 +55,7 @@ class BigAppTest {
             val sistePeriodeProcessor = SisteOppfolgingsperiodeProcessor(
                 OppfolgingsperiodeService,
                 false
-            ) { FnrFunnet(fnr) }
+            ) { IdentFunnet(fnr) }
 
             val automatiskKontorRutingService =  AutomatiskKontorRutingService(
             KontorTilordningService::tilordneKontor,
@@ -70,7 +71,7 @@ class BigAppTest {
 
             val leesahProcessor = LeesahProcessor(
                 automatiskKontorRutingService,
-                { FnrFunnet(fnr) },
+                { IdentFunnet(fnr) },
                 false,
             )
 
@@ -95,7 +96,7 @@ class BigAppTest {
                 listOf("pto.siste-oppfolgingsperiode-v1"), null
             )
 
-            inputTopics.first().pipeInput(aktorId, oppfolgingsperiodeMessage(
+            inputTopics.first().pipeInput(aktorId.value, oppfolgingsperiodeMessage(
                 aktorId = aktorId,
                 oppfolgingsperiodeId = oppfolgingsperiodeId,
                 startDato = ZonedDateTime.now(),
@@ -113,7 +114,7 @@ class BigAppTest {
     @Test
     fun `app should not forward messages to KontorTilordning in prod`() = testApplication {
         val fnr = Fnr("67825678901")
-        val aktorId = "22325678902"
+        val aktorId = AktorId("22325678902444")
         val kontor = KontorId("2232")
         val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
         environment {
@@ -124,7 +125,7 @@ class BigAppTest {
             val sistePeriodeProcessor = SisteOppfolgingsperiodeProcessor(
                 OppfolgingsperiodeService,
                 false
-            ) { FnrFunnet(fnr) }
+            ) { IdentFunnet(fnr) }
 
             val automatiskKontorRutingService =  AutomatiskKontorRutingService(
                 KontorTilordningService::tilordneKontor,
@@ -140,7 +141,7 @@ class BigAppTest {
 
             val leesahProcessor = LeesahProcessor(
                 automatiskKontorRutingService,
-                { FnrFunnet(fnr) },
+                { IdentFunnet(fnr) },
                 false,
             )
 
@@ -165,7 +166,7 @@ class BigAppTest {
                 listOf("pto.siste-oppfolgingsperiode-v1"), null
             )
 
-            inputTopics.first().pipeInput(aktorId, oppfolgingsperiodeMessage(
+            inputTopics.first().pipeInput(aktorId.value, oppfolgingsperiodeMessage(
                 aktorId = aktorId,
                 oppfolgingsperiodeId = oppfolgingsperiodeId,
                 startDato = ZonedDateTime.now(),
@@ -183,9 +184,9 @@ class BigAppTest {
         oppfolgingsperiodeId: OppfolgingsperiodeId,
         startDato: ZonedDateTime,
         sluttDato: ZonedDateTime?,
-        aktorId: String
+        aktorId: AktorId,
     ): String {
-        return """{"uuid":"${oppfolgingsperiodeId.value}", "startDato":"$startDato", "sluttDato":${sluttDato?.let { "\"$it\"" } ?: "null"}, "aktorId":"$aktorId"}"""
+        return """{"uuid":"${oppfolgingsperiodeId.value}", "startDato":"$startDato", "sluttDato":${sluttDato?.let { "\"$it\"" } ?: "null"}, "aktorId":"${aktorId.value}"}"""
     }
 
 }

@@ -19,7 +19,7 @@ import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.events.KontorSattAvVeileder
 import no.nav.getIssuer
-import no.nav.http.client.FnrFunnet
+import no.nav.http.client.IdentFunnet
 import no.nav.http.client.poaoTilgang.HarIkkeTilgang
 import no.nav.http.client.poaoTilgang.HarTilgang
 import no.nav.http.client.poaoTilgang.PoaoTilgangKtorHttpClient
@@ -83,7 +83,7 @@ fun Application.configureArbeidsoppfolgingskontorModule(
                     val kontorId = KontorId(kontorTilordning.kontorId)
 
                     val fnr = Fnr(kontorTilordning.fnr)
-                    val oppfolgingsperiode = OppfolgingsperiodeService.getCurrentOppfolgingsperiode(FnrFunnet(fnr))
+                    val oppfolgingsperiode = OppfolgingsperiodeService.getCurrentOppfolgingsperiode(IdentFunnet(fnr))
                     val oppfolgingsperiodeId = when(oppfolgingsperiode) {
                         is AktivOppfolgingsperiode -> oppfolgingsperiode.periodeId
                         NotUnderOppfolging -> {

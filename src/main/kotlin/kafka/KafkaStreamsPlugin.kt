@@ -14,13 +14,13 @@ import io.micrometer.core.instrument.binder.kafka.KafkaStreamsMetrics
 import kafka.consumers.SisteOppfolgingsperiodeProcessor
 import java.time.Duration
 import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
-import no.nav.http.client.FnrResult
+import no.nav.db.Ident
+import no.nav.http.client.IdentResult
 import no.nav.isProduction
 import no.nav.kafka.config.StringStringSinkConfig
 import no.nav.kafka.config.kafkaStreamsProps
 import no.nav.kafka.config.configureTopology
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
-import no.nav.kafka.consumers.FnrEllerAktorIdEllerNpid
 import no.nav.kafka.consumers.LeesahProcessor
 import no.nav.kafka.consumers.KontortilordningsProcessor
 import no.nav.kafka.consumers.SkjermingProcessor
@@ -43,12 +43,12 @@ val shutDownTimeout = Duration.ofSeconds(1)
 val logger = LoggerFactory.getLogger("no.nav.kafka.KafkaStreamsPlugin")
 
 class KafkaStreamsPluginConfig(
-        var automatiskKontorRutingService: AutomatiskKontorRutingService? = null,
-        var fnrProvider: (suspend (fnrEllerAktorIdEllerNpid: FnrEllerAktorIdEllerNpid) -> FnrResult)? = null,
-        var database: Database? = null,
-        var meterRegistry: MeterRegistry? = null,
-        var oppfolgingsperiodeService: OppfolgingsperiodeService? = null,
-        var identService: IdentService? = null
+    var automatiskKontorRutingService: AutomatiskKontorRutingService? = null,
+    var fnrProvider: (suspend (ident: Ident) -> IdentResult)? = null,
+    var database: Database? = null,
+    var meterRegistry: MeterRegistry? = null,
+    var oppfolgingsperiodeService: OppfolgingsperiodeService? = null,
+    var identService: IdentService? = null
 )
 
 const val arbeidsoppfolgingkontorSinkName = "endring-pa-arbeidsoppfolgingskontor"
@@ -81,7 +81,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val sisteOppfolgingsperiodeProcessor = SisteOppfolgingsperiodeProcessor(
         oppfolgingsperiodeService,
         skipPersonIkkeFunnet = !isProduction,
-        { aktorId -> identService.hentFnrFraAktorId(aktorId) }
+        { aktorId -> identService.hentForetrukketIdentFor(aktorId) }
     )
 
     val kontorTilordningsProcessor = KontortilordningsProcessor(

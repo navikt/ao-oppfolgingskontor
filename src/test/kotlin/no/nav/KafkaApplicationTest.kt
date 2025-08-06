@@ -3,15 +3,12 @@ package no.nav.no.nav
 import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
 import io.ktor.server.testing.testApplication
-import kafka.consumers.OppfolgingsPeriodeStartetSerde
 import kafka.consumers.SisteOppfolgingsperiodeProcessor
 import kafka.retry.TestLockProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.coroutineScope
+import no.nav.db.AktorId
 import no.nav.db.Fnr
-import no.nav.db.Ident
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.GeografiskTilknyttetKontorEntity
@@ -21,9 +18,8 @@ import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
-import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.http.client.AlderFunnet
-import no.nav.http.client.FnrFunnet
+import no.nav.http.client.IdentFunnet
 import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.SkjermingFunnet
@@ -99,14 +95,14 @@ class KafkaApplicationTest {
 
         application {
             flywayMigrationInTest()
-            val aktorId = "1234567890123"
+            val aktorId = AktorId("12345678901231")
             val periodeStart = ZonedDateTime.now().minusDays(2)
             val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
 
             val sistePeriodeProcessor = SisteOppfolgingsperiodeProcessor(
                 OppfolgingsperiodeService,
                 false
-            ) { FnrFunnet(fnr) }
+            ) { IdentFunnet(fnr) }
             val tilordningProcessor = KontortilordningsProcessor(AutomatiskKontorRutingService(
                 KontorTilordningService::tilordneKontor,
                 { _, a, b-> KontorForGtNrFantDefaultKontor(kontor, b, a, GeografiskTilknytningBydelNr("3131")) },
@@ -137,8 +133,8 @@ class KafkaApplicationTest {
 
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(
-                fnr.value,
-                oppfolgingsperiodeMessage(oppfolgingsperiodeId, periodeStart, null, aktorId)
+                aktorId.value,
+                oppfolgingsperiodeMessage(oppfolgingsperiodeId, periodeStart, null, aktorId.value)
             )
             transaction {
                 ArbeidsOppfolgingKontorEntity.Companion.findById(fnr.value)?.kontorId shouldBe "4154"

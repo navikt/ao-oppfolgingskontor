@@ -3,15 +3,16 @@ package kafka.consumers
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import no.nav.db.AktorId
 import no.nav.db.Ident
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeEndret
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
-import no.nav.http.client.FnrFunnet
-import no.nav.http.client.FnrIkkeFunnet
-import no.nav.http.client.FnrOppslagFeil
-import no.nav.http.client.FnrResult
+import no.nav.http.client.IdentFunnet
+import no.nav.http.client.IdentIkkeFunnet
+import no.nav.http.client.IdentOppslagFeil
+import no.nav.http.client.IdentResult
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.RecordProcessingResult
@@ -20,9 +21,6 @@ import no.nav.kafka.processor.Skip
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.OppfolgingsperiodeService
 import no.nav.utils.ZonedDateTimeSerializer
-import org.apache.kafka.common.serialization.Deserializer
-import org.apache.kafka.common.serialization.Serde
-import org.apache.kafka.common.serialization.Serializer
 import org.apache.kafka.streams.processor.api.Record
 import org.slf4j.LoggerFactory
 import java.time.Instant
@@ -32,18 +30,18 @@ import java.util.UUID
 class SisteOppfolgingsperiodeProcessor(
     private val oppfolgingsperiodeService: OppfolgingsperiodeService,
     private val skipPersonIkkeFunnet: Boolean = false,
-    private val fnrProvider: suspend (aktorId: String) -> FnrResult,
+    private val fnrProvider: suspend (aktorId: AktorId) -> IdentResult,
 ) {
     private val log = LoggerFactory.getLogger(SisteOppfolgingsperiodeProcessor::class.java)
 
     fun process(record: Record<String, String>): RecordProcessingResult<Ident, OppfolgingsperiodeStartet> {
-        val aktorId = record.key()
         try {
-             return runBlocking {
+            val aktorId = AktorId(record.key())
+            return runBlocking {
                 val ident: Ident = when (val result = fnrProvider(aktorId)) {
-                    is FnrFunnet -> result.ident
-                    is FnrIkkeFunnet -> return@runBlocking Retry("Kunne ikke behandle oppfolgingsperiode melding: ${result.message}")
-                    is FnrOppslagFeil -> {
+                    is IdentFunnet -> result.ident
+                    is IdentIkkeFunnet -> return@runBlocking Retry("Kunne ikke behandle oppfolgingsperiode melding: ${result.message}")
+                    is IdentOppslagFeil -> {
                         if (skipPersonIkkeFunnet) {
                             if (result.message == "Fant ikke person: not_found") {
                                 log.info("Fant ikke person i dev - hopper over melding")

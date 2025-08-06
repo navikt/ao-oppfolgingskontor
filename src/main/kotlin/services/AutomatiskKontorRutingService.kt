@@ -29,8 +29,8 @@ import no.nav.http.client.AlderFunnet
 import no.nav.http.client.AlderIkkeFunnet
 import no.nav.http.client.AlderOppslagFeil
 import no.nav.http.client.AlderResult
-import no.nav.http.client.FnrFunnet
-import no.nav.http.client.FnrResult
+import no.nav.http.client.IdentFunnet
+import no.nav.http.client.IdentResult
 import no.nav.http.client.GtForBrukerSuccess
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseIkkeFunnet
@@ -69,7 +69,7 @@ class AutomatiskKontorRutingService(
     private val erSkjermetProvider: suspend (fnr: Ident) -> SkjermingResult,
     private val harStrengtFortroligAdresseProvider:
     suspend (fnr: Ident) -> HarStrengtFortroligAdresseResult,
-    private val isUnderOppfolgingProvider: suspend (fnr: FnrResult) -> OppfolgingsperiodeOppslagResult,
+    private val isUnderOppfolgingProvider: suspend (fnr: IdentResult) -> OppfolgingsperiodeOppslagResult,
 ) {
     companion object {
         val VIKAFOSSEN = KontorId("2103")
@@ -82,7 +82,7 @@ class AutomatiskKontorRutingService(
     ): TilordningResultat {
         if (oppfolgingsperiodeEndret is OppfolgingsperiodeAvsluttet) return TilordningSuccessIngenEndring
         try {
-            val underOppfolgingResult = isUnderOppfolgingProvider(FnrFunnet(oppfolgingsperiodeEndret.fnr))
+            val underOppfolgingResult = isUnderOppfolgingProvider(IdentFunnet(oppfolgingsperiodeEndret.fnr))
             val (fnr, oppfolgingsperiodeId) = when (underOppfolgingResult) {
                 is AktivOppfolgingsperiode -> underOppfolgingResult
                 NotUnderOppfolging -> return TilordningSuccessIngenEndring
@@ -223,7 +223,7 @@ class AutomatiskKontorRutingService(
         hendelse: BostedsadresseEndret,
     ): HåndterPersondataEndretResultat {
         try {
-            val oppfolgingsStatus = isUnderOppfolgingProvider(FnrFunnet(hendelse.ident))
+            val oppfolgingsStatus = isUnderOppfolgingProvider(IdentFunnet(hendelse.ident))
             val oppfolgingsperiodeId = when (oppfolgingsStatus) {
                 is NotUnderOppfolging -> {
                     log.info("Skipping bostedsadresse endring - no active oppfølgingsperiode")
@@ -283,7 +283,7 @@ class AutomatiskKontorRutingService(
     ): HåndterPersondataEndretResultat {
         try {
             // Check oppfølgingsperiode status first
-            val oppfolgingsStatus = isUnderOppfolgingProvider(FnrFunnet(hendelse.ident))
+            val oppfolgingsStatus = isUnderOppfolgingProvider(IdentFunnet(hendelse.ident))
             val oppfolgingsperiodeId = when (oppfolgingsStatus) {
                 is NotUnderOppfolging -> {
                     log.info("Skipping adressebeskyttelse endring - no active oppfølgingsperiode")
@@ -343,7 +343,7 @@ class AutomatiskKontorRutingService(
         endringISkjermingStatus: SkjermetStatusEndret
     ): Result<EndringISkjermingResult> {
         return runCatching {
-            val oppfolgingsperiodeId = when (val result = isUnderOppfolgingProvider(FnrFunnet(endringISkjermingStatus.fnr))) {
+            val oppfolgingsperiodeId = when (val result = isUnderOppfolgingProvider(IdentFunnet(endringISkjermingStatus.fnr))) {
                 is AktivOppfolgingsperiode -> result.periodeId
                 NotUnderOppfolging -> return Result.success(EndringISkjermingResult(emptyList()))
                 is OppfolgingperiodeOppslagFeil ->

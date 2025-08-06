@@ -9,10 +9,10 @@ import no.nav.domain.externalEvents.AdressebeskyttelseEndret
 import no.nav.domain.externalEvents.BostedsadresseEndret
 import no.nav.domain.externalEvents.IrrelevantHendelse
 import no.nav.domain.externalEvents.PersondataEndret
-import no.nav.http.client.FnrFunnet
-import no.nav.http.client.FnrIkkeFunnet
-import no.nav.http.client.FnrOppslagFeil
-import no.nav.http.client.FnrResult
+import no.nav.http.client.IdentFunnet
+import no.nav.http.client.IdentIkkeFunnet
+import no.nav.http.client.IdentOppslagFeil
+import no.nav.http.client.IdentResult
 import no.nav.kafka.arbeidsoppfolgingkontorSinkName
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Forward
@@ -24,9 +24,9 @@ import org.apache.kafka.streams.processor.api.Record
 import org.slf4j.LoggerFactory
 
 class LeesahProcessor(
-        private val automatiskKontorRutingService: AutomatiskKontorRutingService,
-        private val fnrProvider: suspend (aktorId: String) -> FnrResult,
-        private val isProduction: Boolean,
+    private val automatiskKontorRutingService: AutomatiskKontorRutingService,
+    private val fnrProvider: suspend (ident: Ident) -> IdentResult,
+    private val isProduction: Boolean,
 ) {
     val log = LoggerFactory.getLogger(this::class.java)
 
@@ -36,12 +36,12 @@ class LeesahProcessor(
         log.info("Consumer Personhendelse record ${record.value().opplysningstype} ${record.value().endringstype}")
         return record.value()
                 .let { hendelse ->
-                    val fnrResult = runBlocking { finnFnr(hendelse) }
+                    val fnrResult = runBlocking { finnIdent(hendelse) }
                     when (fnrResult) {
-                        is FnrFunnet -> fnrResult.ident to hendelse
-                        is FnrIkkeFunnet ->
+                        is IdentFunnet -> fnrResult.ident to hendelse
+                        is IdentIkkeFunnet ->
                                 return Retry("Kunne ikke håndtere leesah melding: Fnr ikke funnet for bruker: ${fnrResult.message}")
-                        is FnrOppslagFeil ->
+                        is IdentOppslagFeil ->
                                 return Retry("Kunne ikke håndtere leesah melding: Feil ved oppslag på fnr:  ${fnrResult.message}")
                     }
                 }
@@ -84,12 +84,13 @@ class LeesahProcessor(
         }
     }
 
-    suspend fun finnFnr(hendelse: Personhendelse): FnrResult {
+    suspend fun finnIdent(hendelse: Personhendelse): IdentResult {
         if (hendelse.personidenter.isEmpty()) {
             throw IllegalStateException("Personhendelse must have at least one personident")
         }
-        val fnrEllerAktorIdEllerNpid: FnrEllerAktorIdEllerNpid = hendelse.personidenter.first()
-        return fnrProvider(fnrEllerAktorIdEllerNpid)
+
+        val ident: Ident = Ident.of(hendelse.personidenter.first())
+        return fnrProvider(ident)
     }
 }
 
