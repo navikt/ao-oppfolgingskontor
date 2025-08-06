@@ -1,14 +1,16 @@
 package eventsLogger
 
+/*
 import com.google.cloud.bigquery.BigQueryOptions
 import com.google.cloud.bigquery.InsertAllRequest
 import com.google.cloud.bigquery.TableId
+ */
 
 interface BigQueryClient {
     fun loggUfordeltBruker()
     fun loggBrukerTilNavUtland() {}
 }
-
+/*
 class BigQueryClientImplementation(projectId: String) : BigQueryClient {
 
     private fun TableId.insertRequest(row: Map<String, Any>): InsertAllRequest {
@@ -21,4 +23,4 @@ class BigQueryClientImplementation(projectId: String) : BigQueryClient {
 
     override fun loggBrukerTilNavUtland() {}
 
-}
+}*/

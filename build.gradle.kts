@@ -98,7 +98,7 @@ dependencies {
     implementation(libs.micrometer.core)
     // implementation(libs.google.cloud.bigquery)
 
-    implementation("com.google.cloud:google-cloud-bigquery:2.44.0")
+//    implementation("com.google.cloud:google-cloud-bigquery:2.44.0")
     testImplementation(libs.embedded.postgres)
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.mock.oauth2.server)
