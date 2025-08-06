@@ -35,9 +35,9 @@ class SisteOppfolgingsperiodeProcessor(
     private val log = LoggerFactory.getLogger(SisteOppfolgingsperiodeProcessor::class.java)
 
     fun process(record: Record<String, String>): RecordProcessingResult<Ident, OppfolgingsperiodeStartet> {
-        val aktorId = AktorId(record.key())
         try {
-             return runBlocking {
+            val aktorId = AktorId(record.key())
+            return runBlocking {
                 val ident: Ident = when (val result = fnrProvider(aktorId)) {
                     is IdentFunnet -> result.ident
                     is IdentIkkeFunnet -> return@runBlocking Retry("Kunne ikke behandle oppfolgingsperiode melding: ${result.message}")

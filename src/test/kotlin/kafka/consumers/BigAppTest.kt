@@ -8,6 +8,7 @@ import kafka.retry.TestLockProvider
 import kafka.retry.library.internal.setupKafkaMock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import no.nav.db.AktorId
 import no.nav.db.Fnr
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.domain.HarSkjerming
@@ -43,7 +44,7 @@ class BigAppTest {
     @Test
     fun `app should forward from SisteOppfolgingsperiodeProcessor to KontortilordningsProcessor if not prod`() = testApplication {
         val fnr = Fnr("22325678901")
-        val aktorId = "22325678902"
+        val aktorId = AktorId("22325678902333")
         val kontor = KontorId("2232")
         val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
         environment {
@@ -95,7 +96,7 @@ class BigAppTest {
                 listOf("pto.siste-oppfolgingsperiode-v1"), null
             )
 
-            inputTopics.first().pipeInput(aktorId, oppfolgingsperiodeMessage(
+            inputTopics.first().pipeInput(aktorId.value, oppfolgingsperiodeMessage(
                 aktorId = aktorId,
                 oppfolgingsperiodeId = oppfolgingsperiodeId,
                 startDato = ZonedDateTime.now(),
@@ -113,7 +114,7 @@ class BigAppTest {
     @Test
     fun `app should not forward messages to KontorTilordning in prod`() = testApplication {
         val fnr = Fnr("67825678901")
-        val aktorId = "22325678902"
+        val aktorId = AktorId("22325678902444")
         val kontor = KontorId("2232")
         val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
         environment {
@@ -165,7 +166,7 @@ class BigAppTest {
                 listOf("pto.siste-oppfolgingsperiode-v1"), null
             )
 
-            inputTopics.first().pipeInput(aktorId, oppfolgingsperiodeMessage(
+            inputTopics.first().pipeInput(aktorId.value, oppfolgingsperiodeMessage(
                 aktorId = aktorId,
                 oppfolgingsperiodeId = oppfolgingsperiodeId,
                 startDato = ZonedDateTime.now(),
@@ -183,9 +184,9 @@ class BigAppTest {
         oppfolgingsperiodeId: OppfolgingsperiodeId,
         startDato: ZonedDateTime,
         sluttDato: ZonedDateTime?,
-        aktorId: String
+        aktorId: AktorId,
     ): String {
-        return """{"uuid":"${oppfolgingsperiodeId.value}", "startDato":"$startDato", "sluttDato":${sluttDato?.let { "\"$it\"" } ?: "null"}, "aktorId":"$aktorId"}"""
+        return """{"uuid":"${oppfolgingsperiodeId.value}", "startDato":"$startDato", "sluttDato":${sluttDato?.let { "\"$it\"" } ?: "null"}, "aktorId":"${aktorId.value}"}"""
     }
 
 }

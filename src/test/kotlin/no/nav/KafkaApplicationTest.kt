@@ -7,6 +7,7 @@ import kafka.consumers.SisteOppfolgingsperiodeProcessor
 import kafka.retry.TestLockProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import no.nav.db.AktorId
 import no.nav.db.Fnr
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.ArenaKontorEntity
@@ -94,7 +95,7 @@ class KafkaApplicationTest {
 
         application {
             flywayMigrationInTest()
-            val aktorId = "1234567890123"
+            val aktorId = AktorId("12345678901231")
             val periodeStart = ZonedDateTime.now().minusDays(2)
             val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
 
@@ -132,8 +133,8 @@ class KafkaApplicationTest {
 
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(
-                fnr.value,
-                oppfolgingsperiodeMessage(oppfolgingsperiodeId, periodeStart, null, aktorId)
+                aktorId.value,
+                oppfolgingsperiodeMessage(oppfolgingsperiodeId, periodeStart, null, aktorId.value)
             )
             transaction {
                 ArbeidsOppfolgingKontorEntity.Companion.findById(fnr.value)?.kontorId shouldBe "4154"
