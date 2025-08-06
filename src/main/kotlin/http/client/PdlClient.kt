@@ -134,7 +134,7 @@ class PdlClient(
 
     suspend fun hentFnrFraAktorId(aktorId: String): IdenterResult {
         try {
-            val query = HentFnrQuery(HentFnrQuery.Variables(ident = aktorId, historikk = false))
+            val query = HentFnrQuery(HentFnrQuery.Variables(ident = aktorId, historikk = true))
             val result = client.execute(query)
             if (result.errors != null && result.errors!!.isNotEmpty()) {
                 return IdenterOppslagFeil(result.errors!!.joinToString { "${it.message}: ${it.extensions?.get("code")}" })
