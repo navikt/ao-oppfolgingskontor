@@ -85,9 +85,9 @@ class IdentServiceTest {
         application {
             flywayMigrationInTest()
             runTest {
-                val npid = Npid("01220304050")
-                val aktorId = AktorId("4141112122441")
-                val dnr = Dnr("41020304050")
+                val npid = Npid("01220304052")
+                val aktorId = AktorId("4141112122442")
+                val dnr = Dnr("41020304052")
                 val npIdIdentInformasjon = IdentInformasjon(
                     historisk = false,
                     gruppe = IdentGruppe.NPID,
