@@ -7,27 +7,15 @@ import db.table.IdentMappingTable.internIdent
 import db.table.IdentMappingTable.updatedAt
 import db.table.InternIdentSequence
 import db.table.nextValueOf
-import no.nav.db.AktorId
-import no.nav.db.Dnr
-import no.nav.db.Fnr
-import no.nav.db.Ident
-import no.nav.db.Npid
-import no.nav.http.client.IdentFunnet
-import no.nav.http.client.IdentResult
-import no.nav.http.client.IdenterFunnet
-import no.nav.http.client.IdenterResult
-import no.nav.http.client.finnForetrukketIdent
+import no.nav.db.*
+import no.nav.http.client.*
 import no.nav.http.graphql.generated.client.enums.IdentGruppe
 import no.nav.http.graphql.generated.client.hentfnrquery.IdentInformasjon
-import org.jetbrains.exposed.sql.JoinType
-import org.jetbrains.exposed.sql.alias
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.batchInsert
-import org.jetbrains.exposed.sql.batchUpsert
+import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
+import java.sql.BatchUpdateException
 import java.time.ZonedDateTime
-import kotlin.collections.filter
 
 class IdentService(
     val identForAktorIdProvider: suspend (aktorId: String) -> IdenterResult,
@@ -50,8 +38,8 @@ class IdentService(
             val identMappings = hentIdentMappinger(ident)
             when {
                 identMappings.isNotEmpty() -> {
-                    val foretrukketIdent =  identMappings
-                        .filter {  it !is AktorId }
+                    val foretrukketIdent = identMappings
+                        .filter { it !is AktorId }
                         .map { Ident.of(it.value) }
                         .minByOrNull {
                             when (it) {
@@ -63,6 +51,7 @@ class IdentService(
                         }
                     return IdentFunnet(foretrukketIdent!!)
                 }
+
                 else -> return null
             }
         } catch (e: Exception) {
@@ -72,6 +61,7 @@ class IdentService(
     }
 
     private fun lagreNyIdentMapping(identer: IdenterFunnet) {
+
         try {
             transaction {
                 val internId = nextValueOf(InternIdentSequence)
@@ -83,6 +73,23 @@ class IdentService(
                     this[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
                 }
             }
+        } catch (e: BatchUpdateException) {
+            val regex = Regex("Key (ident)=\\((\\d+)\\) already exists")
+            if (e.message == null) return
+            val match = regex.find(e.message!!)
+            if (match == null) {
+                log.error("Ingen matchende ident. ")
+                return
+            }
+
+            val lokaleIdenter = hentIdentMappinger(Ident.of(match.groupValues[1]))
+
+            log.error(
+                "Identer inn: ${
+                    identer.identer.joinToString(",")
+                }, Lokale identer: ${lokaleIdenter.joinToString(",")}"
+            )
+
         } catch (e: Throwable) {
             log.error("Kunne ikke lagre ident-mapping ${e.message}", e)
         }
@@ -110,7 +117,7 @@ class IdentService(
         }
     }
 
-    private fun IdentInformasjon.toIdentType() : String {
+    private fun IdentInformasjon.toIdentType(): String {
         val ident = Ident.of(this.ident)
         return when (ident) {
             is AktorId -> "AKTOR_ID"
