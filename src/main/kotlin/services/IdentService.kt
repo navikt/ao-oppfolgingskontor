@@ -75,9 +75,9 @@ class IdentService(
                 }
             }
         } catch (e: ExposedSQLException) {
-            val batchUpdateException = e.cause
+            val batchUpdateException = e.cause as? BatchUpdateException
 
-            val regex = Regex("Key (ident)=\\((\\d+)\\) already exists")
+            val regex = Regex("Key \\(ident\\)=\\((\\d+)\\) already exists")
             if (batchUpdateException?.message == null) return
             val match = regex.find(batchUpdateException.message!!)
             if (match == null) {
