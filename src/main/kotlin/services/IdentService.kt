@@ -133,7 +133,7 @@ class IdentService(
         }
     }
 
-    private fun hentIdentMappinger(identInput: Ident): List<Ident> = transaction {
+    fun hentIdentMappinger(identInput: Ident): List<Ident> = transaction {
         val identMappingAlias = IdentMappingTable.alias("ident_mapping_alias")
 
         IdentMappingTable.join(
