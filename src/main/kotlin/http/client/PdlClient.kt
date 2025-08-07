@@ -128,7 +128,7 @@ class PdlClient(
         }
     }
 
-    suspend fun hentFnrFraAktorId(aktorId: String): IdenterResult {
+    suspend fun hentIdenterFor(aktorId: String): IdenterResult {
         try {
             val query = HentFnrQuery(HentFnrQuery.Variables(ident = aktorId, historikk = true))
             val result = client.execute(query)

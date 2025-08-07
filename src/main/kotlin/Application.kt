@@ -52,7 +52,7 @@ fun Application.module() {
         texasClient.tokenProvider(environment.getPoaoTilgangScope())
     )
 
-    val identService = IdentService({ pdlClient.hentFnrFraAktorId(it) })
+    val identService = IdentService({ pdlClient.hentIdenterFor(it) })
     val gtNorgService = GTNorgService(
         { pdlClient.hentGt(it) },
         { gt, strengtFortroligAdresse, skjermet -> norg2Client.hentKontorForGt(gt, strengtFortroligAdresse, skjermet) },
