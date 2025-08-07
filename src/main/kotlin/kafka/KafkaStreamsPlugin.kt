@@ -159,7 +159,7 @@ private fun configureStateListenerMetrics(
                 kafkaStateGaugeValue.set(2)
             }
             else -> {
-                logger.error("Setting kafka_streams_application_state to STOPPED/ERROR")
+                logger.error("Setting kafka_streams_application_state to ${newState.name}")
                 kafkaStateGaugeValue.set(0)
             } // Dekker ERROR, NOT_RUNNING, PENDING_SHUTDOWN
         }
