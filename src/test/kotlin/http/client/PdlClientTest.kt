@@ -231,7 +231,7 @@ class PdlClientTest {
     }
 
     @Test
-    fun `hentFnrFraAktorId skal returnere fnr for aktorId`() = testApplication {
+    fun `hentIdenter skal returnere fnr for aktorId`() = testApplication {
         val aktorId = "12345678901"
         val fnr = Fnr("12345678901")
         val client = mockPdl(
@@ -264,7 +264,7 @@ class PdlClientTest {
         )
         val pdlClient = PdlClient(pdlTestUrl, client)
 
-        val fnrResult = pdlClient.hentFnrFraAktorId(aktorId)
+        val fnrResult = pdlClient.hentIdenterFor(aktorId)
 
         fnrResult.shouldBeInstanceOf<IdenterFunnet>()
         fnrResult.identer shouldHaveSize 3
@@ -299,7 +299,7 @@ class PdlClientTest {
         )
         val pdlClient = PdlClient(pdlTestUrl, client)
 
-        val fnrResult = pdlClient.hentFnrFraAktorId(aktorId)
+        val fnrResult = pdlClient.hentIdenterFor(aktorId)
 
         fnrResult.shouldBeInstanceOf<IdenterFunnet>()
         val ident = fnrResult.finnForetrukketIdent()
@@ -332,7 +332,7 @@ class PdlClientTest {
         )
         val pdlClient = PdlClient(pdlTestUrl, client)
 
-        val fnrResult = pdlClient.hentFnrFraAktorId(aktorId)
+        val fnrResult = pdlClient.hentIdenterFor(aktorId)
 
         fnrResult.shouldBeInstanceOf<IdenterOppslagFeil>()
         fnrResult.message shouldBe "Fant ikke person: not_found"

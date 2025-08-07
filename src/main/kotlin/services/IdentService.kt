@@ -26,8 +26,8 @@ import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.batchUpsert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
-import java.lang.IllegalArgumentException
 import java.time.ZonedDateTime
+import kotlin.collections.filter
 
 class IdentService(
     val identForAktorIdProvider: suspend (aktorId: String) -> IdenterResult,
@@ -50,8 +50,18 @@ class IdentService(
             val identMappings = hentIdentMappinger(ident)
             when {
                 identMappings.isNotEmpty() -> {
-                    val fnr = identMappings.firstOrNull { it is Fnr }
-                    return IdentFunnet(fnr ?: identMappings.first { it is Npid })
+                    val foretrukketIdent =  identMappings
+                        .filter {  it !is AktorId }
+                        .map { Ident.of(it.value) }
+                        .minByOrNull {
+                            when (it) {
+                                is Fnr -> 1
+                                is Dnr -> 2
+                                is Npid -> 3
+                                else -> 5 // Aktørid eller annen ukjent ident
+                            }
+                        }
+                    return IdentFunnet(foretrukketIdent!!)
                 }
                 else -> return null
             }
@@ -83,9 +93,9 @@ class IdentService(
             transaction {
                 val aktorId = identer.identer.first { it.gruppe == IdentGruppe.AKTORID }.ident
                 val internIdent = IdentMappingTable
-                    .select(IdentMappingTable.internIdent)
+                    .select(internIdent)
                     .where { IdentMappingTable.id eq aktorId }
-                    .map { row -> row[IdentMappingTable.internIdent] }
+                    .map { row -> row[internIdent] }
                     .first()
                 IdentMappingTable.batchUpsert(identer.identer) {
                     this[IdentMappingTable.id] = it.ident
@@ -120,7 +130,7 @@ class IdentService(
             otherColumn = identMappingAlias[internIdent]
         )
             .select(identMappingAlias[IdentMappingTable.id], identMappingAlias[identType], identMappingAlias[historisk])
-            .where { (IdentMappingTable.id eq identInput.value) and (historisk eq false) }
+            .where { (IdentMappingTable.id eq identInput.value) and (identMappingAlias[historisk] eq false) }
             .map {
                 val id = it[identMappingAlias[IdentMappingTable.id]]
                 when (val identType = it[identMappingAlias[identType]]) {

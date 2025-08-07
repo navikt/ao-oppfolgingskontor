@@ -5,6 +5,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.server.testing.testApplication
 import kotlinx.coroutines.test.runTest
 import no.nav.db.AktorId
+import no.nav.db.Dnr
 import no.nav.db.Fnr
 import no.nav.db.Npid
 import no.nav.http.client.IdentFunnet
@@ -17,12 +18,10 @@ import org.junit.jupiter.api.Test
 class IdentServiceTest {
 
     @Test
-    fun `skal cache påfølgende kall til hentFnrFraAktorId`() = testApplication {
+    fun `skal cache påfølgende kall til hentForetrukketIdentFor`() = testApplication {
         application {
             flywayMigrationInTest()
 
-            /* Ikkje bra - tester burde ikke kjøre inni application {} men da
-            * feiler connection til db */
             runTest {
                 val aktorId = AktorId("4141112121313")
                 val fnr = Fnr("01020304052")
@@ -52,11 +51,11 @@ class IdentServiceTest {
     }
 
     @Test
-    fun `skal gi ut npid hvis det kom inn npid`() = testApplication {
+    fun `skal gi ut npid hvis det er beste match`() = testApplication {
         application {
             flywayMigrationInTest()
             runTest {
-                val npid = Npid("01020304050")
+                val npid = Npid("01220304050")
                 val aktorId = AktorId("4141112122441")
                 val npIdIdentInformasjon = IdentInformasjon(
                     historisk = false,
@@ -78,6 +77,42 @@ class IdentServiceTest {
 
                 npidUt.shouldBeInstanceOf<IdentFunnet>()
                 npidUt.ident shouldBe npid
+            }
+        }
+    }
+    @Test
+    fun `skal gi ut dnr hvis det er beste match`() = testApplication {
+        application {
+            flywayMigrationInTest()
+            runTest {
+                val npid = Npid("01220304050")
+                val aktorId = AktorId("4141112122441")
+                val dnr = Dnr("41020304050")
+                val npIdIdentInformasjon = IdentInformasjon(
+                    historisk = false,
+                    gruppe = IdentGruppe.NPID,
+                    ident = npid.value
+                )
+                val dnrIdentInformasjon = IdentInformasjon(
+                    historisk = false,
+                    gruppe = IdentGruppe.FOLKEREGISTERIDENT,
+                    ident = dnr.value
+                )
+                val aktorIdIdentInformasjon = IdentInformasjon(
+                    historisk = false,
+                    gruppe = IdentGruppe.AKTORID,
+                    ident = aktorId.value
+                )
+                val fnrProvider = { ident: String ->
+                    IdenterFunnet(listOf(npIdIdentInformasjon,dnrIdentInformasjon, aktorIdIdentInformasjon), inputIdent = aktorId.value)
+                }
+                val identService = IdentService(fnrProvider)
+
+                identService.hentForetrukketIdentFor(aktorId)
+                val dnrUt = identService.hentForetrukketIdentFor(aktorId)
+
+                dnrUt.shouldBeInstanceOf<IdentFunnet>()
+                dnrUt.ident shouldBe dnr
             }
         }
     }
