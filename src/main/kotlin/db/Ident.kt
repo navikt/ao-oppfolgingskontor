@@ -15,7 +15,8 @@ sealed class Ident {
             val firstDigit by lazy { value[0].digitToInt() }
             val lengthIs13 by lazy { value.length == 13 }
             val monthIsValidMonth by lazy { digitNumber3and4 in 1..12 }
-            val monthIsDollyMonth by lazy { digitNumber3and4 in 81..92 }
+            val monthIsTenorMonth by lazy { digitNumber3and4 in 81..92 }
+            val monthIsDollyMonth by lazy { digitNumber3and4 in 41..52 }
             val lengthIs11 by lazy { value.length == 11 }
             val isValidDate by lazy { value.substring(0, 2).toInt() in 1..31 }
 
@@ -23,7 +24,7 @@ sealed class Ident {
                 lengthIs13 -> AktorId(value)
                 firstDigit in gyldigeDnrStart && monthIsValidMonth -> Dnr(value)
                 digitNumber3and4 in 21..32 -> Npid(value) // NPID er måned + 20
-                lengthIs11 && isValidDate && (monthIsDollyMonth || monthIsValidMonth) -> Fnr(value)
+                lengthIs11 && isValidDate && (monthIsValidMonth || monthIsTenorMonth || monthIsDollyMonth) -> Fnr(value)
                 else -> { throw Exception("Ugyldig Ident: $value")
                 }
             }
