@@ -10,5 +10,5 @@ ENV TZ="Europe/Oslo"
 WORKDIR /app
 COPY build/libs/*.jar ./
 EXPOSE 8080
-USER nonroot
+USER root
 CMD ["ao-oppfolgingskontor-all.jar"]
