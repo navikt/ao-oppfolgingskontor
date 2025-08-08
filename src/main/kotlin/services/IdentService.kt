@@ -11,11 +11,9 @@ import no.nav.db.*
 import no.nav.http.client.*
 import no.nav.http.graphql.generated.client.enums.IdentGruppe
 import no.nav.http.graphql.generated.client.hentfnrquery.IdentInformasjon
-import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
-import java.sql.BatchUpdateException
 import java.time.ZonedDateTime
 
 class IdentService(
@@ -74,26 +72,8 @@ class IdentService(
                     this[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
                 }
             }
-        } catch (e: ExposedSQLException) {
-            val batchUpdateException = e.cause as? BatchUpdateException
-
-            val regex = Regex("Key \\(ident\\)=\\((\\d+)\\) already exists")
-            if (batchUpdateException?.message == null) return
-            val match = regex.find(batchUpdateException.message!!)
-            if (match == null) {
-                log.error("Ingen matchende ident", e)
-                return
-            }
-
-            val lokaleIdenter = hentIdentMappinger(Ident.of(match.groupValues[1]))
-
-            log.error(
-                "Identer inn: ${
-                    identer.identer.joinToString(",")
-                }, Lokale identer: ${lokaleIdenter.joinToString(",")}"
-            )
-
         } catch (e: Throwable) {
+            // TODO: Ikke sluk denne feilen(?)
             log.error("Kunne ikke lagre ident-mapping ${e.message}", e)
         }
     }
