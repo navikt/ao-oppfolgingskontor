@@ -16,6 +16,7 @@ import no.nav.kafka.consumers.SkjermingProcessor
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.retry.library.RetryConfig
 import org.apache.kafka.clients.CommonClientConfigs
+import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.config.SslConfigs
 import org.apache.kafka.common.serialization.Serde
@@ -150,6 +151,7 @@ private fun Properties.streamsConfig(config: NaisKafkaEnv, appConfig: Applicatio
     put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().javaClass.name)
     put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().javaClass.name)
     put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, "1000") // Control commit interval
+    put(ConsumerConfig.GROUP_INSTANCE_ID_CONFIG, appConfig.property("kafka.instance-id").getString())
     put(StreamsConfig.producerPrefix(ProducerConfig.RETRIES_CONFIG), Int.MAX_VALUE) // Enable retries
     put(StreamsConfig.producerPrefix(ProducerConfig.ACKS_CONFIG), "all") // Ensure strong consistency
     return this

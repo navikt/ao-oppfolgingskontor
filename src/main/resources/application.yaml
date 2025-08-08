@@ -64,6 +64,7 @@ kafka:
   credstore-password: "$KAFKA_CREDSTORE_PASSWORD"
   keystore-path: "$KAFKA_KEYSTORE_PATH"
   truststore-path: "$KAFKA_TRUSTSTORE_PATH"
+  instance-id: "$NAIS_POD_NAME"
 
 topics:
   inn:
