@@ -22,7 +22,7 @@ sealed class Ident {
 
             return when {
                 lengthIs13 -> AktorId(value)
-                firstDigit in gyldigeDnrStart && monthIsValidMonth -> Dnr(value)
+                firstDigit in gyldigeDnrStart && (monthIsValidMonth || monthIsTenorMonth || monthIsDollyMonth) -> Dnr(value)
                 digitNumber3and4 in 21..32 -> Npid(value) // NPID er måned + 20
                 lengthIs11 && isValidDate && (monthIsValidMonth || monthIsTenorMonth || monthIsDollyMonth) -> Fnr(value)
                 else -> { throw Exception("Ugyldig Ident: $value")

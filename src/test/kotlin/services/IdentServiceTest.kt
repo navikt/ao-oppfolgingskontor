@@ -2,11 +2,12 @@ package services
 
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.ktor.server.testing.testApplication
+import io.ktor.server.testing.*
 import kotlinx.coroutines.test.runTest
 import no.nav.db.AktorId
 import no.nav.db.Dnr
 import no.nav.db.Fnr
+import no.nav.db.Ident
 import no.nav.db.Npid
 import no.nav.http.client.IdentFunnet
 import no.nav.http.client.IdenterFunnet
@@ -80,6 +81,7 @@ class IdentServiceTest {
             }
         }
     }
+
     @Test
     fun `skal gi ut dnr hvis det er beste match`() = testApplication {
         application {
@@ -104,7 +106,10 @@ class IdentServiceTest {
                     ident = aktorId.value
                 )
                 val fnrProvider = { ident: String ->
-                    IdenterFunnet(listOf(npIdIdentInformasjon,dnrIdentInformasjon, aktorIdIdentInformasjon), inputIdent = aktorId.value)
+                    IdenterFunnet(
+                        listOf(npIdIdentInformasjon, dnrIdentInformasjon, aktorIdIdentInformasjon),
+                        inputIdent = aktorId.value
+                    )
                 }
                 val identService = IdentService(fnrProvider)
 
@@ -142,7 +147,10 @@ class IdentServiceTest {
                 )
 
                 val fnrProvider = { ident: String ->
-                    IdenterFunnet(listOf(npIdIdentInformasjon, aktorIdIdentInformasjon, fnrIdentInformasjon), inputIdent = npid.value)
+                    IdenterFunnet(
+                        listOf(npIdIdentInformasjon, aktorIdIdentInformasjon, fnrIdentInformasjon),
+                        inputIdent = npid.value
+                    )
                 }
                 val identService = IdentService(fnrProvider)
                 val foretrukketIdent = identService.hentForetrukketIdentFor(npid)
@@ -153,4 +161,26 @@ class IdentServiceTest {
             }
         }
     }
+
+
+    @Test
+    fun `skal gi dnr for Tenor som starter med 4,5,6,7`() = testApplication {
+        val identValue = "42876702740";
+
+        val ident = Ident.of(identValue)
+
+        ident.shouldBeInstanceOf<Dnr>()
+        ident.value shouldBe identValue
+    }
+
+    @Test
+    fun `skal gi dnr for Dolly som starter med 4,5,6,7`() = testApplication {
+        val identValue = "42456702740";
+
+        val ident = Ident.of(identValue)
+
+        ident.shouldBeInstanceOf<Dnr>()
+        ident.value shouldBe identValue
+    }
+
 }
