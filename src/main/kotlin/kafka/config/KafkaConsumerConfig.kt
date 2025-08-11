@@ -152,7 +152,7 @@ private fun Properties.streamsConfig(config: NaisKafkaEnv, appConfig: Applicatio
     put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().javaClass.name)
     put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, "1000") // Control commit interval
     put(ConsumerConfig.GROUP_INSTANCE_ID_CONFIG, appConfig.property("kafka.instance-id").getString())
-    put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "500")
+    put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "250")
     put(StreamsConfig.producerPrefix(ProducerConfig.RETRIES_CONFIG), Int.MAX_VALUE) // Enable retries
     put(StreamsConfig.producerPrefix(ProducerConfig.ACKS_CONFIG), "all") // Ensure strong consistency
     return this
