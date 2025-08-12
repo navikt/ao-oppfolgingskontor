@@ -15,7 +15,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.vendors.ForUpdateOption
 import java.time.OffsetDateTime
 
-class FailedMessageRepository(val repositoryTopic: String) {
+class RetryableRepository(val repositoryTopic: String) {
 
     fun hasFailedMessages(key: String): Boolean = transaction {
         if (key.isEmpty()) throw IllegalArgumentException("Key cannot be empty")
@@ -90,6 +90,10 @@ class FailedMessageRepository(val repositoryTopic: String) {
 
     fun countTotalFailedMessages(): Long = transaction {
         FailedMessagesTable.selectAll().count()
+    }
+
+    fun saveOffset(partition: Int, offset: Long) {
+        TODO("Implement KafkaOffsetRepository")
     }
 }
 

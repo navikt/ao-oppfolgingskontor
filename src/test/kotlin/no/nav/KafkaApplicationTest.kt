@@ -32,7 +32,7 @@ import no.nav.kafka.consumers.KontortilordningsProcessor
 import no.nav.kafka.consumers.SkjermingProcessor
 import no.nav.kafka.processor.ProcessRecord
 import no.nav.kafka.retry.library.RetryConfig
-import no.nav.kafka.retry.library.internal.FailedMessageRepository
+import no.nav.kafka.retry.library.internal.RetryableRepository
 import no.nav.kafka.retry.library.internal.RetryableProcessor
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
@@ -251,7 +251,7 @@ class KafkaApplicationTest {
         valueInSerde: Serde<VIn>,
         processRecord: ProcessRecord<KIn ,VIn, KOut, VOut>
     ): ProcessorSupplier<KIn, VIn, KOut, VOut> {
-        val testRepository = FailedMessageRepository(topic)
+        val testRepository = RetryableRepository(topic)
         return ProcessorSupplier {
             RetryableProcessor(
                 config = RetryConfig(),

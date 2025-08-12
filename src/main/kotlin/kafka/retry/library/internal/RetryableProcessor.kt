@@ -43,7 +43,7 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
     private val keyInSerde: Serde<KIn>,
     private val valueInSerde: Serde<VIn>,
     private val topic: String, // Nødvendig for SerDes
-    private val repository: FailedMessageRepository, // Nødvendig for metrikk-initialiserin
+    private val repository: RetryableRepository, // Nødvendig for metrikk-initialiserin
     /* businessLogig er selve forretningslogikken fra brukeren. Kan returnere Record<KOut,VOut> eller Unit.     */
     private val businessLogic: (Record<KIn, VIn>) -> RecordProcessingResult<KOut, VOut>,
     private val lockProvider: LockProvider,
@@ -73,7 +73,14 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
             ?: throw IllegalArgumentException("RetryableProcessor requires a non-null key. Cannot process message with null key.")
 
         val keyString = key.toString()
-        val (topic, partition, offset) = context.recordMetadata().map { Triple(it.topic(), it.partition(), it.offset()) }.get()
+        val recordMetadata = context.recordMetadata()
+        val (topic, partition, offset) = if(recordMetadata.isPresent) {
+            Triple(recordMetadata.get().topic(), recordMetadata.get().partition(), recordMetadata.get().offset())
+        } else {
+            logger.warn("Record metadata is not present. Cannot log topic, partition, or offset.")
+            Triple("unknown-topic", -1, -1L) //TODO: håndter bedre
+        }
+
         context.recordMetadata().map { logger.debug("Processing record with key $keyString from Kafka topic: $topic, partition: $partition, offset: $offset") }
 
         if (store.hasFailedMessages(keyString)) {
@@ -86,7 +93,7 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
                 val result = businessLogic(record)
                 when (result) {
                     is Commit, is Skip -> {
-                        saveOffset(topic, partition, offset)
+                        saveOffset(partition, offset)
                     }
                     is Forward -> context.forward(result.forwardedRecord, result.topic)
                     is Retry -> enqueue(record, result.reason)
@@ -225,8 +232,8 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
         }
     }
 
-    private fun saveOffset(topic: String, partition: Int, offset: Long) {
-
+    private fun saveOffset(partition: Int, offset: Long) {
+        repository.saveOffset(partition, offset)
     }
 
     private fun enqueue(record: Record<KIn, VIn>, reason: String) {

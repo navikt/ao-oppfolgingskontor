@@ -5,7 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import net.javacrumbs.shedlock.core.LockProvider
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.retry.library.RetryConfig
-import no.nav.kafka.retry.library.internal.FailedMessageRepository
+import no.nav.kafka.retry.library.internal.RetryableRepository
 import no.nav.kafka.retry.library.internal.RetryableProcessor
 import org.apache.kafka.common.serialization.Serde
 import org.apache.kafka.streams.processor.api.ProcessorSupplier
@@ -21,7 +21,7 @@ object RetryProcessorWrapper {
         lockProvider: LockProvider,
         businessLogic: (Record<KIn, VIn>) -> RecordProcessingResult<KOut, VOut>,
         config: RetryConfig = RetryConfig(),
-        repository: FailedMessageRepository = FailedMessageRepository(topic),
+        repository: RetryableRepository = RetryableRepository(topic),
         punctuationCoroutineScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
     ): ProcessorSupplier<KIn, VIn, KOut, VOut> {
         return ProcessorSupplier {

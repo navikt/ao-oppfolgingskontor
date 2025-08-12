@@ -15,7 +15,7 @@ import no.nav.kafka.retry.library.AvroJsonConverter
 import no.nav.kafka.retry.library.MaxRetries
 import no.nav.kafka.retry.library.RetryConfig
 import no.nav.kafka.retry.library.internal.FailedMessage
-import no.nav.kafka.retry.library.internal.FailedMessageRepository
+import no.nav.kafka.retry.library.internal.RetryableRepository
 import no.nav.kafka.retry.library.internal.RetryMetrics
 import no.nav.kafka.retry.library.internal.RetryableProcessor
 import no.nav.person.pdl.leesah.Endringstype
@@ -60,7 +60,7 @@ class RetryableProcessorTest {
 
     private data class TestSetup(
         val processor: RetryableProcessor<String, String, Unit, Unit>,
-        var mockedStore: FailedMessageRepository,
+        var mockedStore: RetryableRepository,
         var mockedMetrics: RetryMetrics,
         var mockedContext: ProcessorContext<Unit, Unit>,
         )
@@ -68,7 +68,7 @@ class RetryableProcessorTest {
     private fun TestScope.setupTest(): TestSetup {
         val mockedContext: ProcessorContext<Unit, Unit> = mockk(relaxed = true)
         every { mockedContext.schedule(any(), any(), capture(punctuationCallback)) } returns mockk()
-        val mockedStore: FailedMessageRepository = mockk(relaxed = true)
+        val mockedStore: RetryableRepository = mockk(relaxed = true)
         val processor = RetryableProcessor<String, String, Unit, Unit>(
             config = config,
             keyInSerde = Serdes.String(),
@@ -294,5 +294,20 @@ class RetryableProcessorTest {
         val humanReadableValue = AvroJsonConverter.convertAvroToJson(personhendelse, true)
         verify { mockedStore.enqueue("key1", "key1".toByteArray(), valueBytes, any(), humanReadableValue) }
     }
+
+    @Test
+    fun `save offset when a message is processed`() = runTest {
+        val (processor, mockedStore, mockedMetrics) = setupTest()
+        processor.process(Record("key1", "{}", 0L))
+
+//        runCurrent()
+//        advanceUntilIdle()
+//        // Assert: Nå vil verifiseringen lykkes!
+//        verify { mockedMetrics.updateCurrentFailedMessagesGauge() }
+//        verify { mockedMetrics.retryAttempted() }
+//        verify { mockedStore.delete(1L) }
+//        verify { mockedMetrics.retrySucceeded() }
+    }
+
 }
 

@@ -1,10 +1,9 @@
 package kafka.retry.library.internal
 
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.matchers.longs.beGreaterThan
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
-import no.nav.kafka.retry.library.internal.FailedMessageRepository
+import no.nav.kafka.retry.library.internal.RetryableRepository
 import no.nav.utils.TestDb
 import org.flywaydb.core.Flyway
 import org.junit.jupiter.api.BeforeEach
@@ -12,10 +11,10 @@ import org.junit.jupiter.api.Test
 import javax.sql.DataSource
 import kotlin.text.toByteArray
 
-class FailedMessageRepositoryTest {
+class RetryableRepositoryTest {
     private val topic = "test-topic"
     private var dataSource: DataSource = TestDb.postgres
-    private var repository: FailedMessageRepository = FailedMessageRepository( topic)
+    private var repository: RetryableRepository = RetryableRepository( topic)
 
     @BeforeEach
     fun createTable() {
@@ -71,7 +70,7 @@ class FailedMessageRepositoryTest {
         val key = "test-key"
         val otherKey = "other-key"
         val value = "test-value".toByteArray()
-        val otherRepository = FailedMessageRepository( "other-topic")
+        val otherRepository = RetryableRepository( "other-topic")
         repository.hasFailedMessages(key) shouldBe false
         repository.countTotalFailedMessages() shouldBe 0
 
@@ -160,6 +159,4 @@ class FailedMessageRepositoryTest {
             repository.hasFailedMessages("")
         }
     }
-
-
 }

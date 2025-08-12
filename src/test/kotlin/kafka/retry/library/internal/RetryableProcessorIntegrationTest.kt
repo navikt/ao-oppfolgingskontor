@@ -1,6 +1,5 @@
 package kafka.retry.library.internal
 
-import com.google.common.base.Verify.verify
 import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
 import io.mockk.every
@@ -24,11 +23,10 @@ import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.ProcessRecord
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.retry.library.RetryConfig
-import no.nav.kafka.retry.library.internal.FailedMessageRepository
+import no.nav.kafka.retry.library.internal.RetryableRepository
 import no.nav.kafka.retry.library.internal.RetryableProcessor
 import no.nav.utils.TestDb
 import org.apache.kafka.common.serialization.Serdes
-import org.apache.kafka.streams.KeyValue
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
 import org.apache.kafka.streams.TestInputTopic
@@ -45,7 +43,6 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.time.Duration
 import java.time.Instant
-import java.time.ZonedDateTime
 import java.time.temporal.ChronoUnit
 import java.util.Properties
 
@@ -66,7 +63,7 @@ class RetryableProcessorIntegrationTest {
     @Test
     fun `should retry message when processing fails`() = runTest {
         val topic = "test-topic"
-        val failedMessageRepository = FailedMessageRepository(topic)
+        val retryableRepository = RetryableRepository(topic)
 
         var hasFailed = false
         fun failFirstThenOk(): Res {
@@ -93,7 +90,7 @@ class RetryableProcessorIntegrationTest {
         testInputTopics.first().pipeInput("key1", "value1")
 
         withClue("Shoud have enqueued message in failed message repository after first failure") {
-            failedMessageRepository.hasFailedMessages("key1") shouldBe true
+            retryableRepository.hasFailedMessages("key1") shouldBe true
             countFailedMessagesOnKey("key1") shouldBe 2
         }
 
@@ -101,14 +98,14 @@ class RetryableProcessorIntegrationTest {
         runCurrent()
 
         withClue("Should not have any failed message in failed message repository after it has been successfully processed") {
-            failedMessageRepository.hasFailedMessages("key1") shouldBe false
+            retryableRepository.hasFailedMessages("key1") shouldBe false
         }
     }
 
     @Test
     fun `should enqueue message when processing failed for previous message on same key`() = runTest {
         val topic = "test-topic"
-        val failedMessageRepository = FailedMessageRepository(topic)
+        val retryableRepository = RetryableRepository(topic)
 
         val (testDriver, testInputTopics) =  setupKafkaTestDriver(topic, { _ -> Retry("Dette gikk galt") })
 
@@ -116,7 +113,7 @@ class RetryableProcessorIntegrationTest {
         testInputTopics.first().pipeInput("key2", "value2")
 
         withClue("Shoud have enqueued message in failed message repository after first failure") {
-            failedMessageRepository.hasFailedMessages("key2") shouldBe true
+            retryableRepository.hasFailedMessages("key2") shouldBe true
             countFailedMessagesOnKey("key2") shouldBe 2
         }
 
@@ -124,21 +121,21 @@ class RetryableProcessorIntegrationTest {
 
         withClue("Should still be 2 failed messages on key") {
             countFailedMessagesOnKey("key2") shouldBe 2
-            failedMessageRepository.hasFailedMessages("key2") shouldBe true
+            retryableRepository.hasFailedMessages("key2") shouldBe true
         }
     }
 
     @Test
     fun `should still have message in queue if reprocessing throws`() = runTest {
         val topic = "test-topic"
-        val failedMessageRepository = FailedMessageRepository(topic)
+        val retryableRepository = RetryableRepository(topic)
 
         val (testDriver, testInputTopic) =  setupKafkaTestDriver(topic, { _ -> throw Error("Test") })
 
         testInputTopic.first().pipeInput("key3", "value2")
 
         withClue("Shoud have enqueued message in failed message repository after first failure") {
-            failedMessageRepository.hasFailedMessages("key3") shouldBe true
+            retryableRepository.hasFailedMessages("key3") shouldBe true
             countFailedMessagesOnKey("key3") shouldBe 1
         }
 
@@ -146,14 +143,14 @@ class RetryableProcessorIntegrationTest {
 
         withClue("Should still be 1 failed messages on key") {
             countFailedMessagesOnKey("key3") shouldBe 1
-            failedMessageRepository.hasFailedMessages("key3") shouldBe true
+            retryableRepository.hasFailedMessages("key3") shouldBe true
         }
     }
 
     @Test
     fun `skal forwarde meldinger som er retry-ed til neste processor`() = runTest {
         val topic = "test-topic"
-        val failedMessageRepository = FailedMessageRepository(topic)
+        val retryableRepository = RetryableRepository(topic)
 
         var hasFailed = false
         fun failFirstThenOk(): Res {
@@ -184,7 +181,7 @@ class RetryableProcessorIntegrationTest {
             config = retryConfig,
             keyInSerde = Serdes.String(),
             valueInSerde = Serdes.String(),
-            repository = failedMessageRepository,
+            repository = retryableRepository,
             topic = topic,
             businessLogic = firstStep,
             lockProvider = TestLockProvider,
@@ -212,14 +209,14 @@ class RetryableProcessorIntegrationTest {
         testInputTopics.first().pipeInput("key1", "value1")
 
         withClue("Shoud have enqueued message in failed message repository after first failure") {
-            failedMessageRepository.hasFailedMessages("key1") shouldBe true
+            retryableRepository.hasFailedMessages("key1") shouldBe true
             countFailedMessagesOnKey("key1") shouldBe 1
         }
 
         testDriver.advanceWallClockTime(Duration.of(7, ChronoUnit.SECONDS))
 
         withClue("Should not have any failed message in failed message repository after it has been successfully processed") {
-            failedMessageRepository.hasFailedMessages("key1") shouldBe false
+            retryableRepository.hasFailedMessages("key1") shouldBe false
         }
 
         verify(exactly = 1) {
@@ -269,7 +266,7 @@ class RetryableProcessorIntegrationTest {
     ): Triple<TopologyTestDriver, List<TestInputTopic<String, String>>, TestOutputTopic<String, String>?> {
 
         val builder = StreamsBuilder()
-        val testRepository = FailedMessageRepository(topic)
+        val testRepository = RetryableRepository(topic)
         val testSupplier = ProcessorSupplier {
             RetryableProcessor(
                 config = RetryConfig(),
