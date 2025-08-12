@@ -89,7 +89,7 @@ class FailedMessageRepository(val repositoryTopic: String) {
     }
 
     fun countTotalFailedMessages(): Long = transaction {
-        FailedMessagesTable.selectAll().count()
+        FailedMessagesTable.selectAll().where(FailedMessagesTable.topic eq repositoryTopic).count()
     }
 }
 
