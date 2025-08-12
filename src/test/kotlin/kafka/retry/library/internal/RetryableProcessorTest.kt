@@ -309,8 +309,9 @@ class RetryableProcessorTest {
 
     @Test
     fun `only save offset when offset is higher than the previous offset`() = runTest {
-        val (processor, mockedStore, mockedMetrics, mockedContext) = setupTest()
+        val (processor, mockedStore, _, mockedContext) = setupTest()
         val partition = 0
+
         val recordMetadataOffset5 = getRecordMetadata(partition,5)
         every { mockedContext.recordMetadata().get() } returns recordMetadataOffset5
         processor.process(Record("key1", "{}", 0L))
@@ -319,7 +320,7 @@ class RetryableProcessorTest {
         every { mockedContext.recordMetadata().get() } returns recordMetadataOffset2
         processor.process(Record("key2", "{}", 0L))
 
-        verify(exactly = 1) { mockedStore.saveOffset(any(), any()) }
+        verify(exactly = 1) { mockedStore.saveOffset(partition, recordMetadataOffset5.offset()) }
         mockedStore.getOffset(partition)?.shouldBeEqual(5)
     }
 }

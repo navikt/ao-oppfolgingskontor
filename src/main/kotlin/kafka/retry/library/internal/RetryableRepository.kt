@@ -101,13 +101,13 @@ class RetryableRepository(val repositoryTopic: String) {
         }
     }
 
-    fun getOffset(partition: Int): Long? = transaction {
+    fun getOffset(partition: Int): Long = transaction {
          KafkaOffsetTable
             .selectAll()
             .where { (KafkaOffsetTable.partition eq partition) and (KafkaOffsetTable.topic eq repositoryTopic) }
             .singleOrNull()
             .let { row ->
-                row?.get(KafkaOffsetTable.offset)
+                row?.get(KafkaOffsetTable.offset) ?: 0
             }
     }
 }

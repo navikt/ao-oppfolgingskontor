@@ -233,7 +233,10 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
     }
 
     private fun saveOffset(partition: Int, offset: Long) {
-        repository.saveOffset(partition, offset)
+        val savedOffset = repository.getOffset(partition)
+        if (offset > savedOffset) {
+            repository.saveOffset(partition, offset)
+        }
     }
 
     private fun enqueue(record: Record<KIn, VIn>, reason: String) {
