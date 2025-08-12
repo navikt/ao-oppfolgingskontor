@@ -28,8 +28,8 @@ fun Application.flywayMigrationInTest(): DataSource {
 
 fun gittBrukerUnderOppfolging(
     fnr: Fnr,
+    oppfolgingsperiodeId: OppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
 ): OppfolgingsperiodeId {
-    val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
     transaction {
         OppfolgingsperiodeTable.insert {
             it[this.id] = fnr.value

@@ -21,6 +21,7 @@ import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
 import no.nav.services.OppfolgingsperiodeService
 import no.nav.utils.flywayMigrationInTest
+import no.nav.utils.gittBrukerUnderOppfolging
 import no.nav.utils.randomFnr
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -50,6 +51,10 @@ class SisteOppfolgingsperiodeProcessorTest {
                 entity.shouldBeNull()
             }
         }
+    }
+
+    fun gittBrukerUnderOppfolging(bruker: Bruker) {
+        gittBrukerUnderOppfolging(bruker.fnr, bruker.oppfolgingsperiodeId)
     }
 
     fun testBruker() = Bruker(
@@ -285,6 +290,28 @@ class SisteOppfolgingsperiodeProcessorTest {
         ))
 
         result.shouldBeInstanceOf<Retry<*, *>>()
+    }
+
+    @Test
+    fun `skal gi Commit ved feil på henting av fnr som ER not_found fra pdl og perioden er avsluttet`() = testApplication {
+        application {
+            flywayMigrationInTest()
+
+            val bruker = testBruker()
+            gittBrukerUnderOppfolging(bruker)
+            val consumer = SisteOppfolgingsperiodeProcessor(
+                OppfolgingsperiodeService,
+                false
+            ) { IdentOppslagFeil("Fant ikke person: not_found") }
+
+            val result = consumer.process(oppfolgingsperiodeMessage(
+                bruker,
+                ZonedDateTime.now()
+            ))
+
+            result.shouldBeInstanceOf<Commit<*, *>>()
+            bruker.skalIkkeVæreUnderOppfølging()
+        }
     }
 
     @Test

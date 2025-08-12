@@ -2,7 +2,6 @@ package no.nav.kafka.retry.library.internal
 
 import org.apache.kafka.streams.processor.StateStore
 import org.apache.kafka.streams.processor.StateStoreContext
-import org.jetbrains.exposed.dao.id.EntityID
 
 interface PostgresRetryStore : StateStore {
     fun hasFailedMessages(key: String): Boolean

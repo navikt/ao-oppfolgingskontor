@@ -104,9 +104,7 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
     }
 
     private fun runReprocessingWithLock(timestamp: Long) {
-        logger.info("Ready to reprocess failed messages for topic: $topic at timestamp: $timestamp")
         runWithInterPodLevelLock {
-            logger.info("Starting to reprocess failed messages for topic: $topic at timestamp: $timestamp")
 //            punctuationCoroutineScope.launch {
                 try {
 //                    withTimeout(10_000) {
