@@ -73,7 +73,8 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
             ?: throw IllegalArgumentException("RetryableProcessor requires a non-null key. Cannot process message with null key.")
 
         val keyString = key.toString()
-        context.recordMetadata().map { logger.debug("Processing record with key $keyString from Kafka topic: ${it.topic()}, partition: ${it.partition()}, offset: ${it.offset()}") }
+        val (topic, partition, offset) = context.recordMetadata().map { Triple(it.topic(), it.partition(), it.offset()) }.get()
+        context.recordMetadata().map { logger.debug("Processing record with key $keyString from Kafka topic: $topic, partition: $partition, offset: $offset") }
 
         if (store.hasFailedMessages(keyString)) {
             enqueue(record, "Queued behind a previously failed message.")
@@ -84,7 +85,9 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
             transaction {
                 val result = businessLogic(record)
                 when (result) {
-                    is Commit, is Skip -> {}
+                    is Commit, is Skip -> {
+                        saveOffset(topic, partition, offset)
+                    }
                     is Forward -> context.forward(result.forwardedRecord, result.topic)
                     is Retry -> enqueue(record, result.reason)
                 }
@@ -220,6 +223,10 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
             // Frigi låsen for MITT topic, slik at en annen tråd kan ta over neste gang.
             TopicLevelLock.release(this.topic)
         }
+    }
+
+    private fun saveOffset(topic: String, partition: Int, offset: Long) {
+
     }
 
     private fun enqueue(record: Record<KIn, VIn>, reason: String) {

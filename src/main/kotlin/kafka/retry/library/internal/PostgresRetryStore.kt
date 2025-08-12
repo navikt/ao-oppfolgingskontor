@@ -1,8 +1,8 @@
 package no.nav.kafka.retry.library.internal
 
+import kafka.retry.library.internal.KafkaOffsetRepository
 import org.apache.kafka.streams.processor.StateStore
 import org.apache.kafka.streams.processor.StateStoreContext
-import org.jetbrains.exposed.dao.id.EntityID
 
 interface PostgresRetryStore : StateStore {
     fun hasFailedMessages(key: String): Boolean
@@ -11,11 +11,13 @@ interface PostgresRetryStore : StateStore {
     fun getBatchToRetry(limit: Int): List<FailedMessage>
     fun delete(messageId: Long)
     fun updateAfterFailedAttempt(messageId: Long, newReason: String)
+    fun saveOffset(topic: String, partition: Int, offset: Long)
 }
 
 internal class PostgresRetryStoreImpl(
     private val storeName: String,
-    private val repository: FailedMessageRepository
+    private val failedMessageRepository: FailedMessageRepository,
+    private val kafkaOffsetRepository: KafkaOffsetRepository,
 ) : PostgresRetryStore {
     private var open = false
     override fun name() = storeName
@@ -34,11 +36,14 @@ internal class PostgresRetryStoreImpl(
     }
 
     // Deleger kall til repository
-    override fun hasFailedMessages(key: String) = repository.hasFailedMessages(key)
-    override fun enqueue(keyString: String, keyBytes: ByteArray, value: ByteArray, reason: String) = repository.enqueue(keyString, keyBytes, value, reason)
-    override fun enqueue(keyString: String, keyBytes: ByteArray, value: ByteArray, reason: String, humanReadableValue: String?) = repository.enqueue(keyString, keyBytes, value, reason, humanReadableValue)
-    override fun getBatchToRetry(limit: Int): List<FailedMessage> = repository.getBatchToRetry(limit)
-    override fun delete(messageId: Long) = repository.delete(messageId)
+    override fun hasFailedMessages(key: String) = failedMessageRepository.hasFailedMessages(key)
+    override fun enqueue(keyString: String, keyBytes: ByteArray, value: ByteArray, reason: String) = failedMessageRepository.enqueue(keyString, keyBytes, value, reason)
+    override fun enqueue(keyString: String, keyBytes: ByteArray, value: ByteArray, reason: String, humanReadableValue: String?) = failedMessageRepository.enqueue(keyString, keyBytes, value, reason, humanReadableValue)
+    override fun getBatchToRetry(limit: Int): List<FailedMessage> = failedMessageRepository.getBatchToRetry(limit)
+    override fun delete(messageId: Long) = failedMessageRepository.delete(messageId)
     override fun updateAfterFailedAttempt(messageId: Long, newReason: String) =
-        repository.updateAfterFailedAttempt(messageId, newReason)
+        failedMessageRepository.updateAfterFailedAttempt(messageId, newReason)
+    override fun saveOffset(topic: String, partition: Int, offset: Long) {
+        kafkaOffsetRepository.storeOffset(topic, partition, offset)
+    }
 }
