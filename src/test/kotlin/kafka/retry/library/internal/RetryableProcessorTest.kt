@@ -294,20 +294,5 @@ class RetryableProcessorTest {
         val humanReadableValue = AvroJsonConverter.convertAvroToJson(personhendelse, true)
         verify { mockedStore.enqueue("key1", "key1".toByteArray(), valueBytes, any(), humanReadableValue) }
     }
-
-    @Test
-    fun `save offset when a message is processed`() = runTest {
-        val (processor, mockedStore, mockedMetrics) = setupTest()
-        processor.process(Record("key1", "{}", 0L))
-
-//        runCurrent()
-//        advanceUntilIdle()
-//        // Assert: Nå vil verifiseringen lykkes!
-//        verify { mockedMetrics.updateCurrentFailedMessagesGauge() }
-//        verify { mockedMetrics.retryAttempted() }
-//        verify { mockedStore.delete(1L) }
-//        verify { mockedMetrics.retrySucceeded() }
-    }
-
 }
 

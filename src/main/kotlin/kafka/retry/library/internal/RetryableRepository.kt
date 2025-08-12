@@ -1,5 +1,6 @@
 package no.nav.kafka.retry.library.internal
 
+import db.table.KafkaOffsetTable
 import no.nav.db.table.FailedMessagesEntity
 import no.nav.db.table.FailedMessagesTable
 import no.nav.db.table.FailedMessagesTable.failureReason
@@ -94,6 +95,16 @@ class RetryableRepository(val repositoryTopic: String) {
 
     fun saveOffset(partition: Int, offset: Long) {
         TODO("Implement KafkaOffsetRepository")
+    }
+
+    fun getOffset(partition: Int): Long? {
+        return KafkaOffsetTable
+            .selectAll()
+            .where { (KafkaOffsetTable.partition eq partition) and (KafkaOffsetTable.topic eq repositoryTopic) }
+            .singleOrNull()
+            .let { row ->
+                row?.get(KafkaOffsetTable.offset)
+            }
     }
 }
 
