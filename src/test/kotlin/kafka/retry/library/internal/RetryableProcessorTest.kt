@@ -3,6 +3,8 @@ package kafka.retry.library.internal
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient
 import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig
 import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde
+import io.kotest.matchers.equals.shouldBeEqual
+import io.kotest.matchers.longs.exactly
 import io.mockk.*
 import kafka.retry.TestLockProvider
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -25,8 +27,10 @@ import no.nav.person.pdl.leesah.adressebeskyttelse.Gradering
 import no.nav.utils.TestDb
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.processor.Punctuator
+import org.apache.kafka.streams.processor.api.MockProcessorContext
 import org.apache.kafka.streams.processor.api.ProcessorContext
 import org.apache.kafka.streams.processor.api.Record
+import org.apache.kafka.streams.processor.api.RecordMetadata
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.time.Duration
@@ -96,6 +100,14 @@ class RetryableProcessorTest {
             mockedMetrics = mockedMetrics,
             processor = processor
         )
+    }
+
+    private fun getRecordMetadata(partition: Int = 0, offset: Long): RecordMetadata {
+        return object: RecordMetadata {
+            override fun topic(): String = "topic"
+            override fun partition(): Int = partition
+            override fun offset(): Long = offset
+        }
     }
 
     @BeforeEach
@@ -293,6 +305,22 @@ class RetryableProcessorTest {
         val valueBytes = valueAvroSerde.serializer().serialize(inputTopicName, personhendelse)
         val humanReadableValue = AvroJsonConverter.convertAvroToJson(personhendelse, true)
         verify { mockedStore.enqueue("key1", "key1".toByteArray(), valueBytes, any(), humanReadableValue) }
+    }
+
+    @Test
+    fun `only save offset when offset is higher than the previous offset`() = runTest {
+        val (processor, mockedStore, mockedMetrics, mockedContext) = setupTest()
+        val partition = 0
+        val recordMetadataOffset5 = getRecordMetadata(partition,5)
+        every { mockedContext.recordMetadata().get() } returns recordMetadataOffset5
+        processor.process(Record("key1", "{}", 0L))
+
+        val recordMetadataOffset2 = getRecordMetadata(partition, 2)
+        every { mockedContext.recordMetadata().get() } returns recordMetadataOffset2
+        processor.process(Record("key2", "{}", 0L))
+
+        verify(exactly = 1) { mockedStore.saveOffset(any(), any()) }
+        mockedStore.getOffset(partition)?.shouldBeEqual(5)
     }
 }
 
