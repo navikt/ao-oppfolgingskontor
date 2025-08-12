@@ -225,6 +225,7 @@ class RetryableProcessorIntegrationTest {
         }
     }
 
+    // TODO: Finne ut hvordan man kan sette offset i testoppsettet
     @Test
     fun `should save offset when message is processed`() = runTest {
         val topic = "test-topic"
@@ -232,10 +233,13 @@ class RetryableProcessorIntegrationTest {
         val (testDriver, testInputTopics) =  setupKafkaTestDriver(topic, { _ -> Commit() })
 
         testInputTopics.first().pipeInput("key1", "value1")
+        testInputTopics.first().pipeInput("key2", "value1")
+        testInputTopics.first().pipeInput("key3", "value1")
 
         withClue("Should have stored offset in repository") {
             val offset = retryableRepository.getOffset(0)
             offset shouldNotBe null
+            offset shouldBe 2
         }
     }
 

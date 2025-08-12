@@ -94,7 +94,7 @@ class RetryableRepository(val repositoryTopic: String) {
     }
 
     fun saveOffset(partition: Int, offset: Long) = transaction {
-        KafkaOffsetTable.insert {
+        KafkaOffsetTable.upsert {
             it[KafkaOffsetTable.topic] = repositoryTopic
             it[KafkaOffsetTable.partition] = partition
             it[KafkaOffsetTable.offset] = offset
