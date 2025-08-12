@@ -209,7 +209,7 @@ class RetryableProcessorIntegrationTest {
 
         testInputTopics.first().pipeInput("key1", "value1")
 
-        withClue("Shoud have enqueued message in failed message repository after first failure") {
+        withClue("Should have enqueued message in failed message repository after first failure") {
             retryableRepository.hasFailedMessages("key1") shouldBe true
             countFailedMessagesOnKey("key1") shouldBe 1
         }
@@ -234,10 +234,8 @@ class RetryableProcessorIntegrationTest {
         testInputTopics.first().pipeInput("key1", "value1")
 
         withClue("Should have stored offset in repository") {
-            transaction {
-                val offset = retryableRepository.getOffset(0)
-                offset shouldNotBe null
-            }
+            val offset = retryableRepository.getOffset(0)
+            offset shouldNotBe null
         }
     }
 

@@ -93,12 +93,16 @@ class RetryableRepository(val repositoryTopic: String) {
         FailedMessagesTable.selectAll().count()
     }
 
-    fun saveOffset(partition: Int, offset: Long) {
-        TODO("Implement KafkaOffsetRepository")
+    fun saveOffset(partition: Int, offset: Long) = transaction {
+        KafkaOffsetTable.insert {
+            it[KafkaOffsetTable.topic] = repositoryTopic
+            it[KafkaOffsetTable.partition] = partition
+            it[KafkaOffsetTable.offset] = offset
+        }
     }
 
-    fun getOffset(partition: Int): Long? {
-        return KafkaOffsetTable
+    fun getOffset(partition: Int): Long? = transaction {
+         KafkaOffsetTable
             .selectAll()
             .where { (KafkaOffsetTable.partition eq partition) and (KafkaOffsetTable.topic eq repositoryTopic) }
             .singleOrNull()
