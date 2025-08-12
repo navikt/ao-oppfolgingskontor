@@ -73,13 +73,8 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
             ?: throw IllegalArgumentException("RetryableProcessor requires a non-null key. Cannot process message with null key.")
 
         val keyString = key.toString()
-        val recordMetadata = context.recordMetadata()
-        val (topic, partition, offset) = if(recordMetadata.isPresent) {
-            Triple(recordMetadata.get().topic(), recordMetadata.get().partition(), recordMetadata.get().offset())
-        } else {
-            logger.warn("Record metadata is not present. Cannot log topic, partition, or offset.")
-            Triple("unknown-topic", -1, -1L) //TODO: håndter bedre
-        }
+        val recordMetadata = context.recordMetadata().get()
+        val (topic, partition, offset) = Triple(recordMetadata.topic(), recordMetadata.partition(), recordMetadata.offset())
 
         context.recordMetadata().map { logger.debug("Processing record with key $keyString from Kafka topic: $topic, partition: $partition, offset: $offset") }
 
