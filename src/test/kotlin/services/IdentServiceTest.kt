@@ -196,7 +196,7 @@ class IdentServiceTest {
         }
         val identer = oppdatertIdentService.hånterEndringPåIdenter(npid)
 
-        identer shouldBe IdenterFunnet( listOf(
+        identer shouldBe IdenterFunnet(listOf(
             npIdIdentInformasjon,
             gammelAktorIdIdentInformasjon,
             nyAktorIdIdentInformasjon,
