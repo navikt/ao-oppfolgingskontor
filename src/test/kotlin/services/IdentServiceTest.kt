@@ -10,7 +10,9 @@ import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.db.Npid
 import no.nav.http.client.IdentFunnet
+import no.nav.http.client.IdentOppslagFeil
 import no.nav.http.client.IdenterFunnet
+import no.nav.http.client.IdenterOppslagFeil
 import no.nav.http.graphql.generated.client.enums.IdentGruppe
 import no.nav.http.graphql.generated.client.hentfnrquery.IdentInformasjon
 import no.nav.utils.flywayMigrationInTest
@@ -202,6 +204,19 @@ class IdentServiceTest {
             nyAktorIdIdentInformasjon,
             fnrIdentInformasjon
         ), npid.value)
+    }
+
+    @Test
+    fun `skal gi IdenterOppslagFeilet når oppslag på lokale identer feiler`() = testApplication {
+        val identValue = "42876702740";
+
+        val identService = IdentService { _ -> IdenterFunnet(listOf(), identValue) }
+
+        // Bruker database uten å gjøre connect først som gjør at lesing feiler
+        val result = identService.hentForetrukketIdentFor(Npid(identValue))
+
+        result.shouldBeInstanceOf<IdentOppslagFeil>()
+        result.message shouldBe "Feil ved oppslag på lokalt lagret ident: Please call Database.connect() before using this code"
     }
 
     @Test
