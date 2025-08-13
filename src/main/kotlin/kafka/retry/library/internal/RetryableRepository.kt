@@ -107,7 +107,7 @@ class RetryableRepository(val repositoryTopic: String) {
             .where { (KafkaOffsetTable.partition eq partition) and (KafkaOffsetTable.topic eq repositoryTopic) }
             .singleOrNull()
             .let { row ->
-                row?.get(KafkaOffsetTable.offset) ?: 0
+                row?.get(KafkaOffsetTable.offset) ?: -1
             }
     }
 }

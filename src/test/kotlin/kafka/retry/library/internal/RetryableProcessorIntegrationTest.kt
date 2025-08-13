@@ -2,7 +2,6 @@ package kafka.retry.library.internal
 
 import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -225,12 +224,12 @@ class RetryableProcessorIntegrationTest {
         }
     }
 
-    // TODO: Finne ut hvordan man kan sette offset i testoppsettet
     @Test
     fun `should save offset when message is processed`() = runTest {
         val topic = "test-topic"
         val retryableRepository = RetryableRepository(topic)
         val (testDriver, testInputTopics) =  setupKafkaTestDriver(topic, { _ -> Commit() })
+        val offsetBeforeSendingMessages = retryableRepository.getOffset(0)
 
         testInputTopics.first().pipeInput("key1", "value1")
         testInputTopics.first().pipeInput("key2", "value1")
@@ -238,8 +237,7 @@ class RetryableProcessorIntegrationTest {
 
         withClue("Should have stored offset in repository") {
             val offset = retryableRepository.getOffset(0)
-            offset shouldNotBe null
-            offset shouldBe 2
+            offset shouldBe offsetBeforeSendingMessages + 3L
         }
     }
 
