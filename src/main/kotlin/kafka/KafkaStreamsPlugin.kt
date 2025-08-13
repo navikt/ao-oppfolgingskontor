@@ -30,7 +30,6 @@ import org.apache.kafka.streams.KafkaStreams
 import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler
 import org.jetbrains.exposed.sql.Database
 import org.slf4j.LoggerFactory
-import services.IdentService
 import topics
 import java.util.concurrent.atomic.AtomicInteger
 
