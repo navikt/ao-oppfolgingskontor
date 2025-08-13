@@ -289,6 +289,8 @@ class RetryableProcessorIntegrationTest {
 
     // TODO: Test at vi ikke lagrer offset når noe feiler
     // TODO: Test at vi lagrer offset når store har failed messages
+    // TODO: Test at vi ikke forsøker å lagre offset når ikke Kafka-melding (eg. ikke metadata)
+
 
     /*
     @Test
