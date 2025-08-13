@@ -33,6 +33,8 @@ import org.junit.jupiter.api.Test
 import java.time.Duration
 import java.time.Instant
 import java.time.OffsetDateTime
+import java.util.Optional
+import kotlin.jvm.optionals.getOrElse
 
 /**
  * Enhetstester for RetryableProcessor.
@@ -311,7 +313,7 @@ class RetryableProcessorTest {
         val alreadySavedOffset = 5L
         val newOffset = 2L
         val metadataOffset = getRecordMetadata(partition, newOffset)
-        every { mockedContext.recordMetadata().get() } returns metadataOffset
+        every { mockedContext.recordMetadata() } returns Optional.of(metadataOffset)
         every { mockedStore.getOffset(partition) } returns alreadySavedOffset
 
         processor.process(Record("key1", "{}", 0L))
@@ -325,7 +327,7 @@ class RetryableProcessorTest {
         val savedOffset = 0L
         val offsetNewMessage = savedOffset + 45
         val metadataOffset = getRecordMetadata(0, offsetNewMessage)
-        every { mockedContext.recordMetadata().get() } returns metadataOffset
+        every { mockedContext.recordMetadata() } returns Optional.of(metadataOffset)
         every { mockedStore.getOffset(0) } returns savedOffset
 
         processor.process(Record("key1", "FAIL", 0L))
@@ -340,11 +342,23 @@ class RetryableProcessorTest {
         val savedOffset = 0L
         val offsetNewMessage = savedOffset + 45
         val metadataOffset = getRecordMetadata(0, offsetNewMessage)
-        every { mockedContext.recordMetadata().get() } returns metadataOffset
+        every { mockedContext.recordMetadata() } returns Optional.of(metadataOffset)
         every { mockedStore.getOffset(0) } returns savedOffset
 
         processor.process(Record("key1", "", 0L))
 
         verify(exactly = 1) { mockedStore.saveOffset(0, offsetNewMessage) }
     }
+
+    @Test
+    fun `don't save offset when message is internal`() = runTest {
+        val (processor, mockedStore, _, mockedContext) = setupTest()
+        val partition = 0
+        every { mockedStore.getOffset(partition) } returns 0
+
+        processor.process(Record("key1", "{}", 0L))
+
+        verify(exactly = 0) { mockedStore.saveOffset(any(), any()) }
+    }
+
 }

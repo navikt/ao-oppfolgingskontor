@@ -19,10 +19,13 @@ import org.apache.kafka.streams.processor.PunctuationType
 import org.apache.kafka.streams.processor.api.Processor
 import org.apache.kafka.streams.processor.api.ProcessorContext
 import org.apache.kafka.streams.processor.api.Record
+import org.apache.kafka.streams.processor.api.RecordMetadata
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.time.Instant
+import kotlin.jvm.optionals.getOrElse
+import kotlin.jvm.optionals.getOrNull
 
 /**
  * Den sentrale prosessoren i feilhåndteringsbiblioteket.
@@ -73,14 +76,13 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
             ?: throw IllegalArgumentException("RetryableProcessor requires a non-null key. Cannot process message with null key.")
 
         val keyString = key.toString()
-        val recordMetadata = context.recordMetadata().get()
-        val (topic, partition, offset) = Triple(recordMetadata.topic(), recordMetadata.partition(), recordMetadata.offset())
+        val recordMetadata = context.recordMetadata().getOrElse { null }
 
-        context.recordMetadata().map { logger.debug("Processing record with key $keyString from Kafka topic: $topic, partition: $partition, offset: $offset") }
+        recordMetadata?.let { logger.debug("Processing record with key $keyString from Kafka topic: $topic, partition: ${it.partition()}, offset: ${it.offset()}") }
 
         if (store.hasFailedMessages(keyString)) {
             transaction {
-                saveOffset(partition, offset)
+                saveOffset(recordMetadata)
                 enqueue(record, "Queued behind a previously failed message.")
             }
             return
@@ -88,8 +90,8 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
 
         try {
             transaction {
-                saveOffset(partition, offset)
                 val result = businessLogic(record)
+                saveOffset(recordMetadata)
                 when (result) {
                     is Commit, is Skip -> {}
                     is Forward -> context.forward(result.forwardedRecord, result.topic)
@@ -99,7 +101,7 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
         } catch (e: Throwable) {
             val reason = "Initial processing failed: ${e.javaClass.simpleName} - ${e.message}"
             transaction {
-                saveOffset(partition, offset)
+                saveOffset(recordMetadata)
                 enqueue(record, reason)
             }
         }
@@ -229,10 +231,12 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
         }
     }
 
-    private fun saveOffset(partition: Int, offset: Long) {
-        val savedOffset = repository.getOffset(partition)
-        if (offset > savedOffset) {
-            repository.saveOffset(partition, offset)
+    private fun saveOffset(recordMetadata: RecordMetadata?) {
+        val isMessageFromKafka = recordMetadata != null
+        if(!isMessageFromKafka) return
+        val savedOffset = repository.getOffset(recordMetadata.partition())
+        if (recordMetadata.offset() > savedOffset) {
+            repository.saveOffset(recordMetadata.partition(), recordMetadata.offset())
         }
     }
 
