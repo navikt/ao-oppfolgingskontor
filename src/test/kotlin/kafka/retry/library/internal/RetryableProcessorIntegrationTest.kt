@@ -46,6 +46,7 @@ import java.time.Duration
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Properties
+import kotlin.random.Random
 
 enum class Res {
     Fail,
@@ -63,7 +64,7 @@ class RetryableProcessorIntegrationTest {
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun `should retry message when processing fails`() = runTest {
-        val topic = "test-topic"
+        val topic = getRandomTopicName()
         val retryableRepository = RetryableRepository(topic)
 
         var hasFailed = false
@@ -105,7 +106,7 @@ class RetryableProcessorIntegrationTest {
 
     @Test
     fun `should enqueue message when processing failed for previous message on same key`() = runTest {
-        val topic = "test-topic"
+        val topic = getRandomTopicName()
         val retryableRepository = RetryableRepository(topic)
 
         val (testDriver, testInputTopics) =  setupKafkaTestDriver(topic, { _ -> Retry("Dette gikk galt") })
@@ -128,7 +129,7 @@ class RetryableProcessorIntegrationTest {
 
     @Test
     fun `should still have message in queue if reprocessing throws`() = runTest {
-        val topic = "test-topic"
+        val topic = getRandomTopicName()
         val retryableRepository = RetryableRepository(topic)
 
         val (testDriver, testInputTopic) =  setupKafkaTestDriver(topic, { _ -> throw Error("Test") })
@@ -150,7 +151,7 @@ class RetryableProcessorIntegrationTest {
 
     @Test
     fun `skal forwarde meldinger som er retry-ed til neste processor`() = runTest {
-        val topic = "test-topic"
+        val topic = getRandomTopicName()
         val retryableRepository = RetryableRepository(topic)
 
         var hasFailed = false
@@ -227,7 +228,7 @@ class RetryableProcessorIntegrationTest {
 
     @Test
     fun `should save offset when message is processed`() = runTest {
-        val topic = "test-topic"
+        val topic = getRandomTopicName()
         val retryableRepository = RetryableRepository(topic)
         val (testDriver, testInputTopics) =  setupKafkaTestDriver(topic, { _ -> Commit() })
         val offsetBeforeSendingMessages = retryableRepository.getOffset(0)
@@ -244,12 +245,12 @@ class RetryableProcessorIntegrationTest {
 
     @Test
     fun `save offset on retry`() = runTest {
-        val topic = "test-topic"
+        val topic = getRandomTopicName()
         val retryableRepository = RetryableRepository(topic)
         val (testDriver, testInputTopics) =  setupKafkaTestDriver(topic, { _ -> Retry("") })
         val offsetBeforeSendingMessages = retryableRepository.getOffset(0)
 
-        testInputTopics.first().pipeInput("key11", "value1")
+        testInputTopics.first().pipeInput("key24", "value1")
 
         withClue("Should have stored offset in repository when processing result is retry") {
             val offset = retryableRepository.getOffset(0)
@@ -259,12 +260,12 @@ class RetryableProcessorIntegrationTest {
 
     @Test
     fun `save offset on forward`() = runTest {
-        val topic = "test-topic"
+        val topic = getRandomTopicName()
         val retryableRepository = RetryableRepository(topic)
-        val (testDriver, testInputTopics) =  setupKafkaTestDriver(topic, { _ -> Forward(Record("key1", "{}", 0L), null) })
+        val (testDriver, testInputTopics) =  setupKafkaTestDriver(topic, { _ -> Forward(Record("key25", "{}", 0L), null) })
         val offsetBeforeSendingMessages = retryableRepository.getOffset(0)
 
-        testInputTopics.first().pipeInput("key12", "value1")
+        testInputTopics.first().pipeInput("key25", "value1")
 
         withClue("Should have stored offset in repository when processing result is forward") {
             val offset = retryableRepository.getOffset(0)
@@ -274,12 +275,12 @@ class RetryableProcessorIntegrationTest {
 
     @Test
     fun `save offset on skip`() = runTest {
-        val topic = "test-topic"
+        val topic = getRandomTopicName()
         val retryableRepository = RetryableRepository(topic)
         val (testDriver, testInputTopics) =  setupKafkaTestDriver(topic, { _ -> Skip() })
         val offsetBeforeSendingMessages = retryableRepository.getOffset(0)
 
-        testInputTopics.first().pipeInput("key13", "value1")
+        testInputTopics.first().pipeInput("key26", "value1")
 
         withClue("Should have stored offset in repository when processing result is skip") {
             val offset = retryableRepository.getOffset(0)
@@ -380,4 +381,11 @@ fun setupKafkaMock(topology: Topology, inputTopics: List<String>, outputTopic: S
         return Triple(driver ,inputTopics, outputTopic)
     }
     return Triple(driver ,inputTopics, null)
+}
+
+fun getRandomTopicName(): String {
+    val chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+    return (1..10)
+        .map { chars[Random.nextInt(chars.length)] }
+        .joinToString("")
 }
