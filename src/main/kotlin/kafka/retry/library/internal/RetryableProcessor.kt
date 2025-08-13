@@ -96,7 +96,6 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
     }
 
     private fun runWithInterPodLevelLock(block: Runnable) {
-        logger.info("Attempting to acquire inter-pod lock for topic: $topic")
         lockingTaskExecutor.executeWithLock(
             block,
             LockConfiguration(Instant.now(), "${topic}-lock", lockAtMostFor, lockAtLeastFor)
