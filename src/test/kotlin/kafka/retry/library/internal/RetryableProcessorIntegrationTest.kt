@@ -232,9 +232,9 @@ class RetryableProcessorIntegrationTest {
         val (testDriver, testInputTopics) =  setupKafkaTestDriver(topic, { _ -> Commit() })
         val offsetBeforeSendingMessages = retryableRepository.getOffset(0)
 
-        testInputTopics.first().pipeInput("key1", "value1")
-        testInputTopics.first().pipeInput("key2", "value1")
-        testInputTopics.first().pipeInput("key3", "value1")
+        testInputTopics.first().pipeInput("key21", "value1")
+        testInputTopics.first().pipeInput("key22", "value1")
+        testInputTopics.first().pipeInput("key23", "value1")
 
         withClue("Should have stored offset in repository") {
             val offset = retryableRepository.getOffset(0)
@@ -249,9 +249,9 @@ class RetryableProcessorIntegrationTest {
         val (testDriver, testInputTopics) =  setupKafkaTestDriver(topic, { _ -> Retry("") })
         val offsetBeforeSendingMessages = retryableRepository.getOffset(0)
 
-        testInputTopics.first().pipeInput("key1", "value1")
+        testInputTopics.first().pipeInput("key11", "value1")
 
-        withClue("Should have stored offset in repository") {
+        withClue("Should have stored offset in repository when processing result is retry") {
             val offset = retryableRepository.getOffset(0)
             offset shouldBe offsetBeforeSendingMessages + 1L
         }
@@ -261,12 +261,12 @@ class RetryableProcessorIntegrationTest {
     fun `save offset on forward`() = runTest {
         val topic = "test-topic"
         val retryableRepository = RetryableRepository(topic)
-        val (testDriver, testInputTopics) =  setupKafkaTestDriver(topic, { _ -> Forward(Record("key1", "{}", 0L), topic) })
+        val (testDriver, testInputTopics) =  setupKafkaTestDriver(topic, { _ -> Forward(Record("key1", "{}", 0L), null) })
         val offsetBeforeSendingMessages = retryableRepository.getOffset(0)
 
-        testInputTopics.first().pipeInput("key1", "value1")
+        testInputTopics.first().pipeInput("key12", "value1")
 
-        withClue("Should have stored offset in repository") {
+        withClue("Should have stored offset in repository when processing result is forward") {
             val offset = retryableRepository.getOffset(0)
             offset shouldBe offsetBeforeSendingMessages + 1L
         }
@@ -279,13 +279,16 @@ class RetryableProcessorIntegrationTest {
         val (testDriver, testInputTopics) =  setupKafkaTestDriver(topic, { _ -> Skip() })
         val offsetBeforeSendingMessages = retryableRepository.getOffset(0)
 
-        testInputTopics.first().pipeInput("key1", "value1")
+        testInputTopics.first().pipeInput("key13", "value1")
 
-        withClue("Should have stored offset in repository") {
+        withClue("Should have stored offset in repository when processing result is skip") {
             val offset = retryableRepository.getOffset(0)
             offset shouldBe offsetBeforeSendingMessages + 1L
         }
     }
+
+    // TODO: Test at vi ikke lagrer offset når noe feiler
+    // TODO: Test at vi lagrer offset når store har failed messages
 
     /*
     @Test
