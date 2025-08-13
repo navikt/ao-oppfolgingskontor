@@ -13,11 +13,13 @@ import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.db.Npid
 import no.nav.http.client.IdentFunnet
+import no.nav.http.client.IdentOppslagFeil
 import no.nav.http.client.IdentResult
 import no.nav.http.client.IdenterFunnet
 import no.nav.http.client.IdenterResult
 import no.nav.http.client.finnForetrukketIdent
 import no.nav.http.graphql.generated.client.hentfnrquery.IdentInformasjon
+import no.nav.kafka.retry.library.internal.Success
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.alias
@@ -33,7 +35,15 @@ class IdentService(
     private val log = LoggerFactory.getLogger(IdentService::class.java)
 
     suspend fun hentForetrukketIdentFor(ident: Ident): IdentResult {
-        val lokaltLagretIdent = hentLokalIdent(ident)
+        val lokalIdentResult = hentLokalIdent(ident)
+        val lokaltLagretIdent = when {
+            lokalIdentResult.isSuccess -> lokalIdentResult.getOrNull()
+            else -> {
+                val error = lokalIdentResult.exceptionOrNull()
+                log.error("Feil ved oppslag på lokalt lagret ident: ${error?.message}", error)
+                IdentOppslagFeil("Feil ved oppslag på lokalt lagret ident: ${error?.message}")
+            }
+        }
         if (lokaltLagretIdent != null) return lokaltLagretIdent
         return hentAlleIdenterOgOppdaterMapping(ident)
             .finnForetrukketIdent()
@@ -52,8 +62,8 @@ class IdentService(
     /* Tenkt kalt ved endring på aktor-v2 topic (endring i identer) */
     suspend fun hånterEndringPåIdenter(ident: Ident): IdenterResult = hentAlleIdenterOgOppdaterMapping(ident)
 
-    private fun hentLokalIdent(ident: Ident): IdentFunnet? {
-        try {
+    private fun hentLokalIdent(ident: Ident): Result<IdentFunnet?> {
+        return runCatching {
             val identMappings = hentIdentMappinger(ident)
             when {
                 identMappings.isNotEmpty() -> {
@@ -68,14 +78,10 @@ class IdentService(
                                 else -> 5 // Aktørid eller annen ukjent ident
                             }
                         }
-                    return IdentFunnet(foretrukketIdent!!)
+                    return Result.success(IdentFunnet(foretrukketIdent!!))
                 }
-
-                else -> return null
+                else -> return Result.success(null)
             }
-        } catch (e: Exception) {
-            log.error("Feil ved oppslag på lokal-ident", e)
-            return null
         }
     }
 
