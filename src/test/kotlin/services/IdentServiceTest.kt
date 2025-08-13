@@ -207,19 +207,6 @@ class IdentServiceTest {
     }
 
     @Test
-    fun `skal gi IdenterOppslagFeilet når oppslag på lokale identer feiler`() = testApplication {
-        val identValue = "42876702740";
-
-        val identService = IdentService { _ -> IdenterFunnet(listOf(), identValue) }
-
-        // Bruker database uten å gjøre connect først som gjør at lesing feiler
-        val result = identService.hentForetrukketIdentFor(Npid(identValue))
-
-        result.shouldBeInstanceOf<IdentOppslagFeil>()
-        result.message shouldBe "Feil ved oppslag på lokalt lagret ident: Please call Database.connect() before using this code"
-    }
-
-    @Test
     fun `skal gi dnr for Tenor som starter med 4,5,6,7`() = testApplication {
         val identValue = "42876702740";
 

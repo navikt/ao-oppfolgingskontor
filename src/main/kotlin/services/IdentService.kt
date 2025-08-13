@@ -49,16 +49,6 @@ class IdentService(
             .finnForetrukketIdent()
     }
 
-    private suspend fun hentAlleIdenterOgOppdaterMapping(ident: Ident): IdenterResult {
-        return when(val identer = alleIdenterProvider(ident.value)) {
-            is IdenterFunnet -> {
-                oppdaterAlleIdentMappinger(identer)
-                identer
-            }
-            else -> identer
-        }
-    }
-
     /* Tenkt kalt ved endring på aktor-v2 topic (endring i identer) */
     suspend fun hånterEndringPåIdenter(ident: Ident): IdenterResult = hentAlleIdenterOgOppdaterMapping(ident)
 
@@ -82,6 +72,16 @@ class IdentService(
                 }
                 else -> return Result.success(null)
             }
+        }
+    }
+
+    private suspend fun hentAlleIdenterOgOppdaterMapping(ident: Ident): IdenterResult {
+        return when(val identer = alleIdenterProvider(ident.value)) {
+            is IdenterFunnet -> {
+                oppdaterAlleIdentMappinger(identer)
+                identer
+            }
+            else -> identer
         }
     }
 
