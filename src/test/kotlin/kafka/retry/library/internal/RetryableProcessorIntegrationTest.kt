@@ -22,6 +22,7 @@ import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.ProcessRecord
 import no.nav.kafka.processor.Retry
+import no.nav.kafka.processor.Skip
 import no.nav.kafka.retry.library.RetryConfig
 import no.nav.kafka.retry.library.internal.RetryableRepository
 import no.nav.kafka.retry.library.internal.RetryableProcessor
@@ -238,6 +239,51 @@ class RetryableProcessorIntegrationTest {
         withClue("Should have stored offset in repository") {
             val offset = retryableRepository.getOffset(0)
             offset shouldBe offsetBeforeSendingMessages + 3L
+        }
+    }
+
+    @Test
+    fun `save offset on retry`() = runTest {
+        val topic = "test-topic"
+        val retryableRepository = RetryableRepository(topic)
+        val (testDriver, testInputTopics) =  setupKafkaTestDriver(topic, { _ -> Retry("") })
+        val offsetBeforeSendingMessages = retryableRepository.getOffset(0)
+
+        testInputTopics.first().pipeInput("key1", "value1")
+
+        withClue("Should have stored offset in repository") {
+            val offset = retryableRepository.getOffset(0)
+            offset shouldBe offsetBeforeSendingMessages + 1L
+        }
+    }
+
+    @Test
+    fun `save offset on forward`() = runTest {
+        val topic = "test-topic"
+        val retryableRepository = RetryableRepository(topic)
+        val (testDriver, testInputTopics) =  setupKafkaTestDriver(topic, { _ -> Forward(Record("key1", "{}", 0L), topic) })
+        val offsetBeforeSendingMessages = retryableRepository.getOffset(0)
+
+        testInputTopics.first().pipeInput("key1", "value1")
+
+        withClue("Should have stored offset in repository") {
+            val offset = retryableRepository.getOffset(0)
+            offset shouldBe offsetBeforeSendingMessages + 1L
+        }
+    }
+
+    @Test
+    fun `save offset on skip`() = runTest {
+        val topic = "test-topic"
+        val retryableRepository = RetryableRepository(topic)
+        val (testDriver, testInputTopics) =  setupKafkaTestDriver(topic, { _ -> Skip() })
+        val offsetBeforeSendingMessages = retryableRepository.getOffset(0)
+
+        testInputTopics.first().pipeInput("key1", "value1")
+
+        withClue("Should have stored offset in repository") {
+            val offset = retryableRepository.getOffset(0)
+            offset shouldBe offsetBeforeSendingMessages + 1L
         }
     }
 

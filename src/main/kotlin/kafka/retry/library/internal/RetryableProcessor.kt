@@ -86,10 +86,9 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
         try {
             transaction {
                 val result = businessLogic(record)
+                saveOffset(partition, offset)
                 when (result) {
-                    is Commit, is Skip -> {
-                        saveOffset(partition, offset)
-                    }
+                    is Commit, is Skip -> {}
                     is Forward -> context.forward(result.forwardedRecord, result.topic)
                     is Retry -> enqueue(record, result.reason)
                 }
