@@ -332,4 +332,19 @@ class RetryableProcessorTest {
 
         verify(exactly = 1) { mockedStore.saveOffset(0, offsetNewMessage) }
     }
+
+    @Test
+    fun `save offset when message is enqueued because previous message failed`() = runTest {
+        val (processor, mockedStore, _, mockedContext) = setupTest()
+        every { mockedStore.hasFailedMessages("key1") } returns true
+        val savedOffset = 0L
+        val offsetNewMessage = savedOffset + 45
+        val metadataOffset = getRecordMetadata(0, offsetNewMessage)
+        every { mockedContext.recordMetadata().get() } returns metadataOffset
+        every { mockedStore.getOffset(0) } returns savedOffset
+
+        processor.process(Record("key1", "", 0L))
+
+        verify(exactly = 1) { mockedStore.saveOffset(0, offsetNewMessage) }
+    }
 }

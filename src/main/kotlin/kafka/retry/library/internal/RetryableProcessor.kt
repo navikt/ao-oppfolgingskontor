@@ -79,14 +79,17 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
         context.recordMetadata().map { logger.debug("Processing record with key $keyString from Kafka topic: $topic, partition: $partition, offset: $offset") }
 
         if (store.hasFailedMessages(keyString)) {
-            enqueue(record, "Queued behind a previously failed message.")
+            transaction {
+                saveOffset(partition, offset)
+                enqueue(record, "Queued behind a previously failed message.")
+            }
             return
         }
 
         try {
             transaction {
-                val result = businessLogic(record)
                 saveOffset(partition, offset)
+                val result = businessLogic(record)
                 when (result) {
                     is Commit, is Skip -> {}
                     is Forward -> context.forward(result.forwardedRecord, result.topic)
