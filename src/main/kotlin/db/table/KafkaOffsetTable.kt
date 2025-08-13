@@ -1,7 +1,6 @@
 package db.table
 
 import org.jetbrains.exposed.dao.id.CompositeIdTable
-import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.javatime.CurrentTimestampWithTimeZone
 import org.jetbrains.exposed.sql.javatime.timestampWithTimeZone
 

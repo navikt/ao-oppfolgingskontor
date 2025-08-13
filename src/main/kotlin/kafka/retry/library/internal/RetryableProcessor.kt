@@ -25,7 +25,6 @@ import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.time.Instant
 import kotlin.jvm.optionals.getOrElse
-import kotlin.jvm.optionals.getOrNull
 
 /**
  * Den sentrale prosessoren i feilhåndteringsbiblioteket.
