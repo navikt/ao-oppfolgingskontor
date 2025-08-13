@@ -2,10 +2,12 @@ package services
 
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.ktor.server.testing.testApplication
+import io.ktor.server.testing.*
 import kotlinx.coroutines.test.runTest
 import no.nav.db.AktorId
+import no.nav.db.Dnr
 import no.nav.db.Fnr
+import no.nav.db.Ident
 import no.nav.db.Npid
 import no.nav.http.client.IdentFunnet
 import no.nav.http.client.IdenterFunnet
@@ -45,7 +47,7 @@ class IdentServiceTest {
     }
 
     @Test
-    fun `skal gi ut npid hvis det kom inn npid`() = runTest {
+    fun `skal gi ut npid hvis det bare finnes npid`() = runTest {
         flywayMigrationInTest()
         val npid = Npid("01020304050")
         val aktorId = AktorId("4141112122441")
@@ -72,6 +74,42 @@ class IdentServiceTest {
     }
 
     @Test
+    fun `skal gi ut dnr hvis det er beste match`() = runTest {
+        flywayMigrationInTest()
+        val npid = Npid("01220304052")
+        val aktorId = AktorId("4141112122442")
+        val dnr = Dnr("41020304052")
+        val npIdIdentInformasjon = IdentInformasjon(
+            historisk = false,
+            gruppe = IdentGruppe.NPID,
+            ident = npid.value
+        )
+        val dnrIdentInformasjon = IdentInformasjon(
+            historisk = false,
+            gruppe = IdentGruppe.FOLKEREGISTERIDENT,
+            ident = dnr.value
+        )
+        val aktorIdIdentInformasjon = IdentInformasjon(
+            historisk = false,
+            gruppe = IdentGruppe.AKTORID,
+            ident = aktorId.value
+        )
+        val fnrProvider = { ident: String ->
+            IdenterFunnet(
+                listOf(npIdIdentInformasjon, dnrIdentInformasjon, aktorIdIdentInformasjon),
+                inputIdent = aktorId.value
+            )
+        }
+        val identService = IdentService(fnrProvider)
+
+        identService.hentForetrukketIdentFor(aktorId)
+        val dnrUt = identService.hentForetrukketIdentFor(aktorId)
+
+        dnrUt.shouldBeInstanceOf<IdentFunnet>()
+        dnrUt.ident shouldBe dnr
+    }
+
+    @Test
     fun `skal gi fnr ved søk på npid`() = runTest {
         flywayMigrationInTest()
         val npid = Npid("01220304055")
@@ -94,8 +132,12 @@ class IdentServiceTest {
         )
 
         val fnrProvider = { ident: String ->
-            IdenterFunnet(listOf(npIdIdentInformasjon, aktorIdIdentInformasjon, fnrIdentInformasjon), inputIdent = npid.value)
+            IdenterFunnet(
+                listOf(npIdIdentInformasjon, aktorIdIdentInformasjon, fnrIdentInformasjon),
+                inputIdent = npid.value
+            )
         }
+
         val identService = IdentService(fnrProvider)
         val foretrukketIdent = identService.hentForetrukketIdentFor(npid)
 
@@ -105,7 +147,7 @@ class IdentServiceTest {
     }
 
     @Test
-    fun `skal oppdatere identer ved splitt på aktorid`() = runTest {
+    fun `skal oppdatere identer ved merge på aktorid`() = runTest {
         flywayMigrationInTest()
         val npid = Npid("01220304055")
         val fnr = Fnr("11111111111")
@@ -152,12 +194,34 @@ class IdentServiceTest {
                 nyAktorIdIdentInformasjon,
                 fnrIdentInformasjon), npid.value)
         }
-        val identer = oppdatertIdentService.hentIdentMappinger(npid)
+        val identer = oppdatertIdentService.hånterEndringPåIdenter(npid)
 
-        identer shouldBe listOf(
-            npid,
-            nyAktorId,
-            fnr
-        )
+        identer shouldBe IdenterFunnet( listOf(
+            npIdIdentInformasjon,
+            gammelAktorIdIdentInformasjon,
+            nyAktorIdIdentInformasjon,
+            fnrIdentInformasjon
+        ), npid.value)
     }
+
+    @Test
+    fun `skal gi dnr for Tenor som starter med 4,5,6,7`() = testApplication {
+        val identValue = "42876702740";
+
+        val ident = Ident.of(identValue)
+
+        ident.shouldBeInstanceOf<Dnr>()
+        ident.value shouldBe identValue
+    }
+
+    @Test
+    fun `skal gi dnr for Dolly som starter med 4,5,6,7`() = testApplication {
+        val identValue = "42456702740";
+
+        val ident = Ident.of(identValue)
+
+        ident.shouldBeInstanceOf<Dnr>()
+        ident.value shouldBe identValue
+    }
+
 }

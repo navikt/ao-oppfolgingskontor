@@ -1,6 +1,5 @@
 package db.table
 
-import jdk.internal.org.jline.utils.ExecHelper.exec
 import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.sql.Sequence
 import org.jetbrains.exposed.sql.Transaction

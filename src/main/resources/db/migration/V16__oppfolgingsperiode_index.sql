@@ -1,0 +1,1 @@
+create unique index if not exists oppfolgingsperiode_id_idx on oppfolgingsperiode(oppfolgingsperiode_id);

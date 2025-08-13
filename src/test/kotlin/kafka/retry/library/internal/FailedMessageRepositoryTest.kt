@@ -79,7 +79,8 @@ class FailedMessageRepositoryTest {
         otherRepository.enqueue(key, value, otherKey.toByteArray(), "Initial failure")
 
         repository.getBatchToRetry(100).size shouldBe 1
-        repository.countTotalFailedMessages() shouldBe 2
+        repository.countTotalFailedMessages() shouldBe 1
+        otherRepository.countTotalFailedMessages() shouldBe 1
     }
 
     @Test

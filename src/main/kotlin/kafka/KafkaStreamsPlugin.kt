@@ -48,7 +48,6 @@ class KafkaStreamsPluginConfig(
     var database: Database? = null,
     var meterRegistry: MeterRegistry? = null,
     var oppfolgingsperiodeService: OppfolgingsperiodeService? = null,
-    var identService: IdentService? = null
 )
 
 const val arbeidsoppfolgingkontorSinkName = "endring-pa-arbeidsoppfolgingskontor"
@@ -67,9 +66,6 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val oppfolgingsperiodeService = requireNotNull(this.pluginConfig.oppfolgingsperiodeService) {
         "OppfolgingsperiodeService must be configured for KafkaStreamPlugin"
     }
-    val identService = requireNotNull(this.pluginConfig.identService) {
-        "PdlClient must be configured for KafkaStreamPlugin"
-    }
     val meterRegistry = requireNotNull(this.pluginConfig.meterRegistry) {
         "MeterRegistry must be configured for KafkaStreamPlugin"
     }
@@ -81,7 +77,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val sisteOppfolgingsperiodeProcessor = SisteOppfolgingsperiodeProcessor(
         oppfolgingsperiodeService,
         skipPersonIkkeFunnet = !isProduction,
-        { aktorId -> identService.hentForetrukketIdentFor(aktorId) }
+        fnrProvider
     )
 
     val kontorTilordningsProcessor = KontortilordningsProcessor(
@@ -159,7 +155,7 @@ private fun configureStateListenerMetrics(
                 kafkaStateGaugeValue.set(2)
             }
             else -> {
-                logger.error("Setting kafka_streams_application_state to STOPPED/ERROR")
+                logger.error("Setting kafka_streams_application_state to ${newState.name}")
                 kafkaStateGaugeValue.set(0)
             } // Dekker ERROR, NOT_RUNNING, PENDING_SHUTDOWN
         }

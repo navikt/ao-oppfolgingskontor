@@ -13,12 +13,10 @@ import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.db.Npid
 import no.nav.http.client.IdentFunnet
-import no.nav.http.client.IdentOppslagFeil
 import no.nav.http.client.IdentResult
 import no.nav.http.client.IdenterFunnet
 import no.nav.http.client.IdenterResult
 import no.nav.http.client.finnForetrukketIdent
-import no.nav.http.graphql.generated.client.enums.IdentGruppe
 import no.nav.http.graphql.generated.client.hentfnrquery.IdentInformasjon
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.Transaction
@@ -27,7 +25,6 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.batchUpsert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
-import java.lang.IllegalArgumentException
 import java.time.ZonedDateTime
 
 class IdentService(
@@ -38,27 +35,42 @@ class IdentService(
     suspend fun hentForetrukketIdentFor(ident: Ident): IdentResult {
         val lokaltLagretIdent = hentLokalIdent(ident)
         if (lokaltLagretIdent != null) return lokaltLagretIdent
-        return alleIdenterProvider(ident.value)
-            .let { indenterResult ->
-                if (indenterResult is IdenterFunnet) {
-                    runCatching { oppdaterAlleIdentMappinger(indenterResult) }
-                        .fold(
-                            { it },
-                            { IdentOppslagFeil("asdsa") }
-                        )
-                }
-                indenterResult.finnForetrukketIdent()
-            }
+        return hentAlleIdenterOgOppdaterMapping(ident)
+            .finnForetrukketIdent()
     }
+
+    private suspend fun hentAlleIdenterOgOppdaterMapping(ident: Ident): IdenterResult {
+        return when(val identer = alleIdenterProvider(ident.value)) {
+            is IdenterFunnet -> {
+                oppdaterAlleIdentMappinger(identer)
+                identer
+            }
+            else -> identer
+        }
+    }
+
+    /* Tenkt kalt ved endring på aktor-v2 topic (endring i identer) */
+    suspend fun hånterEndringPåIdenter(ident: Ident): IdenterResult = hentAlleIdenterOgOppdaterMapping(ident)
 
     private fun hentLokalIdent(ident: Ident): IdentFunnet? {
         try {
             val identMappings = hentIdentMappinger(ident)
             when {
                 identMappings.isNotEmpty() -> {
-                    val fnr = identMappings.firstOrNull { it is Fnr }
-                    return IdentFunnet(fnr ?: identMappings.first { it is Npid })
+                    val foretrukketIdent = identMappings
+                        .filter { it !is AktorId }
+                        .map { Ident.of(it.value) }
+                        .minByOrNull {
+                            when (it) {
+                                is Fnr -> 1
+                                is Dnr -> 2
+                                is Npid -> 3
+                                else -> 5 // Aktørid eller annen ukjent ident
+                            }
+                        }
+                    return IdentFunnet(foretrukketIdent!!)
                 }
+
                 else -> return null
             }
         } catch (e: Exception) {
@@ -97,33 +109,12 @@ class IdentService(
                 }
             }
         } catch (e: Throwable) {
+            // TODO: Ikke sluk denne feilen(?)
             log.error("Kunne ikke lagre ident-mapping ${e.message}", e)
         }
     }
 
-    private fun oppdaterIdentMapping(identer: IdenterFunnet) {
-        try {
-            transaction {
-                val aktorId = identer.identer.first { it.gruppe == IdentGruppe.AKTORID }.ident
-                val internIdent = IdentMappingTable
-                    .select(IdentMappingTable.internIdent)
-                    .where { IdentMappingTable.id eq aktorId }
-                    .map { row -> row[IdentMappingTable.internIdent] }
-                    .first()
-                IdentMappingTable.batchUpsert(identer.identer) {
-                    this[IdentMappingTable.id] = it.ident
-                    this[IdentMappingTable.internIdent] = internIdent
-                    this[identType] = it.toIdentType()
-                    this[historisk] = it.historisk
-                    this[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
-                }
-            }
-        } catch (e: Throwable) {
-            log.error("Kunne ikke lagre ident-mapping ${e.message}", e)
-        }
-    }
-
-    private fun IdentInformasjon.toIdentType() : String {
+    private fun IdentInformasjon.toIdentType(): String {
         val ident = Ident.of(this.ident)
         return when (ident) {
             is AktorId -> "AKTOR_ID"
@@ -143,7 +134,7 @@ class IdentService(
             otherColumn = identMappingAlias[internIdent]
         )
             .select(identMappingAlias[IdentMappingTable.id], identMappingAlias[identType], identMappingAlias[historisk])
-            .where { (IdentMappingTable.id eq identInput.value) and (historisk eq false) }
+            .where { (IdentMappingTable.id eq identInput.value) and (identMappingAlias[historisk] eq false) }
             .map {
                 val id = it[identMappingAlias[IdentMappingTable.id]]
                 when (val identType = it[identMappingAlias[identType]]) {

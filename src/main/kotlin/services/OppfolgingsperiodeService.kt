@@ -46,7 +46,7 @@ object OppfolgingsperiodeService {
             if (deletedRows > 0) {
                 log.info("Deleted oppfolgingsperiode")
             } else {
-                log.warn("Attempted to delete oppfolgingsperiode but no record was found")
+                log.info("Attempted to delete oppfolgingsperiode but no record was found")
             }
             return@transaction deletedRows
         }
