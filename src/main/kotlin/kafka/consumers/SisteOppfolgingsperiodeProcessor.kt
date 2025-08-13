@@ -38,25 +38,28 @@ class SisteOppfolgingsperiodeProcessor(
         try {
             val aktorId = AktorId(record.key())
             return runBlocking {
+                val oppfolgingsperiodeDto = Json
+                    .decodeFromString<OppfolgingsperiodeDTO>(record.value())
+
                 val ident: Ident = when (val result = fnrProvider(aktorId)) {
                     is IdentFunnet -> result.ident
                     is IdentIkkeFunnet -> return@runBlocking Retry("Kunne ikke behandle oppfolgingsperiode melding: ${result.message}")
                     is IdentOppslagFeil -> {
-                        if (skipPersonIkkeFunnet) {
-                            if (result.message == "Fant ikke person: not_found") {
-                                log.info("Fant ikke person i dev - hopper over melding")
-                                return@runBlocking Skip()
-                            } else {
-                                return@runBlocking Retry("Kunne ikke behandle oppfolgingsperiode melding: ${result.message}")
-                            }
-                        } else {
-                            return@runBlocking Retry("Kunne ikke behandle oppfolgingsperiode melding: ${result.message}")
+                        if (skipPersonIkkeFunnet && result.message == "Fant ikke person: not_found") {
+                            log.info("Fant ikke person i dev - hopper over melding")
+                            return@runBlocking Skip()
                         }
+
+                        if (oppfolgingsperiodeDto.sluttDato != null) {
+                            log.warn("Fant ikke person i PDL, men behandler melding likevel fordi oppfolgingsperioden uansett er avsluttet")
+                            return@runBlocking behandleOppfolgingsperiodeAvsluttetIdentNotFound(oppfolgingsperiodeDto)
+                        }
+
+                        return@runBlocking Retry("Kunne ikke behandle oppfolgingsperiode melding: ${result.message}")
                     }
                 }
 
-                val oppfolgingsperiode = Json
-                    .decodeFromString<OppfolgingsperiodeDTO>(record.value())
+                val oppfolgingsperiode = oppfolgingsperiodeDto
                     .toOppfolgingsperiodeEndret(ident)
 
                 when (oppfolgingsperiode) {
@@ -97,6 +100,14 @@ class SisteOppfolgingsperiodeProcessor(
             log.error(feilmelding, e)
             return Retry(feilmelding)
         }
+    }
+
+    private fun behandleOppfolgingsperiodeAvsluttetIdentNotFound(
+        oppfolgingsperiodeDto: OppfolgingsperiodeDTO,
+    ): RecordProcessingResult<Ident, OppfolgingsperiodeStartet> {
+        val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.fromString(oppfolgingsperiodeDto.uuid))
+        oppfolgingsperiodeService.deleteOppfolgingsperiode(oppfolgingsperiodeId)
+        return Commit()
     }
 
     private fun getCurrentPeriode(ident: Ident): AktivOppfolgingsperiode? {

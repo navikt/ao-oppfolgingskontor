@@ -90,7 +90,7 @@ class RetryableRepository(val repositoryTopic: String) {
     }
 
     fun countTotalFailedMessages(): Long = transaction {
-        FailedMessagesTable.selectAll().count()
+        FailedMessagesTable.selectAll().where(FailedMessagesTable.topic eq repositoryTopic).count()
     }
 
     fun saveOffset(partition: Int, offset: Long) = transaction {
