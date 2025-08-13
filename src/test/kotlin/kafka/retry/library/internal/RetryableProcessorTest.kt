@@ -318,5 +318,18 @@ class RetryableProcessorTest {
 
         verify(exactly = 0) { mockedStore.saveOffset(any(), any()) }
     }
-}
 
+    @Test
+    fun `save offset when business logic fails and the message is enqueued`() = runTest {
+        val (processor, mockedStore, _, mockedContext) = setupTest()
+        val savedOffset = 0L
+        val offsetNewMessage = savedOffset + 45
+        val metadataOffset = getRecordMetadata(0, offsetNewMessage)
+        every { mockedContext.recordMetadata().get() } returns metadataOffset
+        every { mockedStore.getOffset(0) } returns savedOffset
+
+        processor.process(Record("key1", "FAIL", 0L))
+
+        verify(exactly = 1) { mockedStore.saveOffset(0, offsetNewMessage) }
+    }
+}

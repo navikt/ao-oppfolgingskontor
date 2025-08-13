@@ -95,7 +95,10 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
             }
         } catch (e: Throwable) {
             val reason = "Initial processing failed: ${e.javaClass.simpleName} - ${e.message}"
-            enqueue(record, reason)
+            transaction {
+                saveOffset(partition, offset)
+                enqueue(record, reason)
+            }
         }
     }
 
