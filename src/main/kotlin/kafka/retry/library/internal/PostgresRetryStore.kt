@@ -43,7 +43,7 @@ internal class PostgresRetryStoreImpl(
     override fun updateAfterFailedAttempt(messageId: Long, newReason: String) =
         retryableRepository.updateAfterFailedAttempt(messageId, newReason)
     override fun saveOffset(partition: Int, offset: Long) {
-        retryableRepository.saveOffset(partition, offset)
+        retryableRepository.saveOffsetIfGreater(partition, offset)
     }
 
     override fun getOffset(partition: Int): Long? {

@@ -35,7 +35,6 @@ import java.time.Duration
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.util.Optional
-import kotlin.jvm.optionals.getOrElse
 
 /**
  * Enhetstester for RetryableProcessor.
@@ -321,7 +320,7 @@ class RetryableProcessorTest {
 
         processor.process(Record("key1", "{}", 0L))
 
-        verify(exactly = 0) { mockedStore.saveOffset(any(), any()) }
+        verify(exactly = 0) { mockedStore.saveOffsetIfGreater(any(), any()) }
     }
 
     @Test
@@ -335,7 +334,7 @@ class RetryableProcessorTest {
 
         processor.process(Record("key1", "FAIL", 0L))
 
-        verify(exactly = 1) { mockedStore.saveOffset(0, offsetNewMessage) }
+        verify(exactly = 1) { mockedStore.saveOffsetIfGreater(0, offsetNewMessage) }
     }
 
     @Test
@@ -350,7 +349,7 @@ class RetryableProcessorTest {
 
         processor.process(Record("key1", "", 0L))
 
-        verify(exactly = 1) { mockedStore.saveOffset(0, offsetNewMessage) }
+        verify(exactly = 1) { mockedStore.saveOffsetIfGreater(0, offsetNewMessage) }
     }
 
     @Test
@@ -361,7 +360,7 @@ class RetryableProcessorTest {
 
         processor.process(Record("key1", "{}", 0L))
 
-        verify(exactly = 0) { mockedStore.saveOffset(any(), any()) }
+        verify(exactly = 0) { mockedStore.saveOffsetIfGreater(any(), any()) }
     }
 
 }

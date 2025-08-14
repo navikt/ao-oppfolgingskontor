@@ -40,7 +40,13 @@ class RetryableRepository(val repositoryTopic: String) {
         x.value
     }
 
-    fun enqueue(keyString: String, keyBytes: ByteArray, value: ByteArray, reason: String, humanReadableValue: String?): Long = transaction {
+    fun enqueue(
+        keyString: String,
+        keyBytes: ByteArray,
+        value: ByteArray,
+        reason: String,
+        humanReadableValue: String?
+    ): Long = transaction {
         FailedMessagesTable.insertAndGetId {
             it[messageKeyText] = keyString
             it[messageKeyBytes] = keyBytes
@@ -93,16 +99,16 @@ class RetryableRepository(val repositoryTopic: String) {
         FailedMessagesTable.selectAll().where(FailedMessagesTable.topic eq repositoryTopic).count()
     }
 
-    fun saveOffset(partition: Int, offset: Long) = transaction {
-        KafkaOffsetTable.upsert {
+    fun saveOffsetIfGreater(partition: Int, offset: Long): Boolean = transaction {
+        KafkaOffsetTable.upsert(where = { KafkaOffsetTable.offset less offset }) {
             it[KafkaOffsetTable.topic] = repositoryTopic
             it[KafkaOffsetTable.partition] = partition
             it[KafkaOffsetTable.offset] = offset
-        }
+        }.insertedCount > 0
     }
 
     fun getOffset(partition: Int): Long = transaction {
-         KafkaOffsetTable
+        KafkaOffsetTable
             .selectAll()
             .where { (KafkaOffsetTable.partition eq partition) and (KafkaOffsetTable.topic eq repositoryTopic) }
             .singleOrNull()
