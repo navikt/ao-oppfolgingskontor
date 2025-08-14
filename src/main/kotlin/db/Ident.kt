@@ -1,8 +1,14 @@
 package no.nav.db
 
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 
-@Serializable
+@Serializable(with = ValueSerializer::class)
 sealed class Ident {
     abstract val value: String
 
@@ -84,4 +90,11 @@ class AktorId(override val value: String): Ident() {
         require(value.length == 13) { "AktorId must be 13 characters long but was ${value.length}" }
         require(value.all { it.isDigit() }) { "AktorId must contain only digits" }
     }
+}
+
+object ValueSerializer : KSerializer<Ident> {
+    override val descriptor: SerialDescriptor =
+        PrimitiveSerialDescriptor("Ident", PrimitiveKind.STRING)
+    override fun serialize(encoder: Encoder, value: Ident) = encoder.encodeString(value.value)
+    override fun deserialize(decoder: Decoder) = Ident.of(decoder.decodeString())
 }
