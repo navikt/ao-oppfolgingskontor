@@ -15,6 +15,7 @@ import kafka.consumers.SisteOppfolgingsperiodeProcessor
 import java.time.Duration
 import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
 import no.nav.db.Ident
+import no.nav.db.entity.ArenaKontorEntity
 import no.nav.http.client.IdentResult
 import no.nav.isProduction
 import no.nav.kafka.config.StringStringSinkConfig
@@ -76,7 +77,10 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val isProduction = environment.isProduction()
     if (isProduction) logger.info("Kjører i produksjonsmodus. Konsumerer kun siste-oppfølgingsperiode.")
 
-    val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor()
+    val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
+        ArenaKontorEntity::sisteLagreKontorArenaKontor,
+        { oppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) }
+    )
 
     val sisteOppfolgingsperiodeProcessor = SisteOppfolgingsperiodeProcessor(
         oppfolgingsperiodeService,

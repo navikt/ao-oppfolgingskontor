@@ -61,7 +61,9 @@ import java.util.UUID
 
 class KafkaApplicationTest {
     val topic = "test-topic"
-    val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor()
+    val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
+        ArenaKontorEntity::sisteLagreKontorArenaKontor
+    ) { OppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) }
 
     @Test
     fun `skal lagre alle nye endringer på arena-kontor i historikk tabellen`() = testApplication {
@@ -81,8 +83,8 @@ class KafkaApplicationTest {
                 endringPaOppfolgingsBrukerMessage("4321", ZonedDateTime.parse("2025-05-10T13:01:14+02:00"))
             )
             transaction {
-                ArenaKontorEntity.Companion.findById(fnr)?.kontorId shouldBe "4321"
-                KontorHistorikkEntity.Companion
+                ArenaKontorEntity.findById(fnr)?.kontorId shouldBe "4321"
+                KontorHistorikkEntity
                     .find { KontorhistorikkTable.fnr eq fnr }
                     .count() shouldBe 2
             }
