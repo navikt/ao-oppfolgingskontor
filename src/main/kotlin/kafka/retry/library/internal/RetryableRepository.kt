@@ -106,16 +106,6 @@ class RetryableRepository(val repositoryTopic: String) {
             it[KafkaOffsetTable.offset] = offset
         }.insertedCount > 0
     }
-
-    fun getOffset(partition: Int): Long = transaction {
-        KafkaOffsetTable
-            .selectAll()
-            .where { (KafkaOffsetTable.partition eq partition) and (KafkaOffsetTable.topic eq repositoryTopic) }
-            .singleOrNull()
-            .let { row ->
-                row?.get(KafkaOffsetTable.offset) ?: -1
-            }
-    }
 }
 
 fun FailedMessagesEntity.toFailedMessage(): FailedMessage {
