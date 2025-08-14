@@ -79,20 +79,24 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
         val keyString = key.toString()
         val recordMetadata = context.recordMetadata().getOrElse { null }
 
-        recordMetadata?.let { logger.debug("Processing record with key $keyString from Kafka topic: $topic, partition: ${it.partition()}, offset: ${it.offset()}") }
+        recordMetadata?.let { logger.debug("Processing record from Kafka topic: $topic, partition: ${it.partition()}, offset: ${it.offset()}") }
+
+        recordMetadata?.let {
+            transaction {}
+            val savedOffset = repository.getOffset(it.partition())
+            savedOffset >= it.offset()
+            logger.info("Record with offset: ${it.offset()}, topic: ${it.topic()}, partition: ${it.partition()} has already been processed. Saved offset: $savedOffset. Skipping further processing.")
+            return
+        }
 
         if (store.hasFailedMessages(keyString)) {
-            transaction {
-                saveOffset(recordMetadata)
-                enqueue(record, "Queued behind a previously failed message.")
-            }
+            enqueue(record, "Queued behind a previously failed message.")
             return
         }
 
         try {
             transaction {
                 val result = businessLogic(record)
-                saveOffset(recordMetadata)
                 when (result) {
                     is Commit, is Skip -> {}
                     is Forward -> context.forward(result.forwardedRecord, result.topic)
@@ -101,10 +105,7 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
             }
         } catch (e: Throwable) {
             val reason = "Initial processing failed: ${e.javaClass.simpleName} - ${e.message}"
-            transaction {
-                saveOffset(recordMetadata)
-                enqueue(record, reason)
-            }
+            enqueue(record, reason)
         }
     }
 

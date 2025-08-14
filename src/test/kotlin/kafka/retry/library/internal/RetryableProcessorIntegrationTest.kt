@@ -291,6 +291,21 @@ class RetryableProcessorIntegrationTest {
         }
     }
 
+    @Test
+    fun `ignore message if already processed`() = runTest {
+        val topic = getRandomTopicName()
+        val retryableRepository = RetryableRepository(topic)
+        val (testDriver, testInputTopics) =  setupKafkaTestDriver(topic, { _ -> Skip() })
+        val offsetBeforeSendingMessages = retryableRepository.getOffset(0)
+
+        testInputTopics.first().pipeInput("key26", "value1")
+
+        withClue("Should have stored offset in repository when processing result is skip") {
+            val offset = retryableRepository.getOffset(0)
+            offset shouldBe offsetBeforeSendingMessages + 1L
+        }
+    }
+
 
 
     // TODO: Test at vi ikke forsøker å lagre offset når ikke Kafka-melding (eg. ikke metadata)
