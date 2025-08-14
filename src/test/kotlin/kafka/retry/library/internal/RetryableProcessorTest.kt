@@ -309,21 +309,6 @@ class RetryableProcessorTest {
     }
 
     @Test
-    fun `only save offset when offset is higher than the previous offset`() = runTest {
-        val (processor, mockedStore, _, mockedContext) = setupTest()
-        val partition = 0
-        val alreadySavedOffset = 5L
-        val newOffset = 2L
-        val metadataOffset = getRecordMetadata(partition, newOffset)
-        every { mockedContext.recordMetadata() } returns Optional.of(metadataOffset)
-        every { mockedStore.getOffset(partition) } returns alreadySavedOffset
-
-        processor.process(Record("key1", "{}", 0L))
-
-        verify(exactly = 0) { mockedStore.saveOffsetIfGreater(any(), any()) }
-    }
-
-    @Test
     fun `save offset when business logic fails and the message is enqueued`() = runTest {
         val (processor, mockedStore, _, mockedContext) = setupTest()
         val savedOffset = 0L

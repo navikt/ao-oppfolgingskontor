@@ -46,6 +46,7 @@ import org.junit.jupiter.api.Test
 import java.time.Duration
 import java.time.Instant
 import java.time.temporal.ChronoUnit
+import java.util.Optional
 import java.util.Properties
 import kotlin.random.Random
 
@@ -292,6 +293,20 @@ class RetryableProcessorIntegrationTest {
     }
 
     @Test
+    fun `only save offset when offset is higher than the previous offset`() = runTest {
+        val topic = getRandomTopicName()
+        val retryableRepository = RetryableRepository(topic)
+        retryableRepository.saveOffsetIfGreater(0, 1)
+        val (testDriver, testInputTopics) =  setupKafkaTestDriver(topic, { _ -> Commit() })
+
+        testInputTopics.first().pipeInput("key1", "")
+
+        withClue("Should call business logic only for messages not already processed") {
+            retryableRepository.getOffset(0) shouldBe 1
+        }
+    }
+
+    @Test
     fun `ignore message if already processed`() = runTest {
         val topic = getRandomTopicName()
         val retryableRepository = RetryableRepository(topic)
@@ -306,8 +321,9 @@ class RetryableProcessorIntegrationTest {
         testInputTopics.first().pipeInput("key2", "")
         testInputTopics.first().pipeInput("key3", "")
 
-        withClue("Should have stored offset in repository when processing result is skip") {
+        withClue("Should call business logic only for messages not already processed") {
             businessLogicInvoked shouldBe 1
+            retryableRepository.getOffset(0) shouldBe 2
         }
     }
 
