@@ -1,6 +1,5 @@
 package kafka.retry.library.internal
 
-import com.google.common.base.Verify.verify
 import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
 import io.mockk.every
@@ -8,6 +7,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import kafka.retry.TestLockProvider
 import kafka.retry.library.RetryProcessorWrapper
+import kafka.retry.library.StreamType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
@@ -23,12 +23,12 @@ import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.ProcessRecord
 import no.nav.kafka.processor.Retry
+import no.nav.kafka.processor.Skip
 import no.nav.kafka.retry.library.RetryConfig
-import no.nav.kafka.retry.library.internal.FailedMessageRepository
+import no.nav.kafka.retry.library.internal.RetryableRepository
 import no.nav.kafka.retry.library.internal.RetryableProcessor
 import no.nav.utils.TestDb
 import org.apache.kafka.common.serialization.Serdes
-import org.apache.kafka.streams.KeyValue
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
 import org.apache.kafka.streams.TestInputTopic
@@ -45,9 +45,9 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.time.Duration
 import java.time.Instant
-import java.time.ZonedDateTime
 import java.time.temporal.ChronoUnit
 import java.util.Properties
+import kotlin.random.Random
 
 enum class Res {
     Fail,
@@ -65,8 +65,8 @@ class RetryableProcessorIntegrationTest {
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun `should retry message when processing fails`() = runTest {
-        val topic = "test-topic"
-        val failedMessageRepository = FailedMessageRepository(topic)
+        val topic = getRandomTopicName()
+        val retryableRepository = RetryableRepository(topic)
 
         var hasFailed = false
         fun failFirstThenOk(): Res {
@@ -93,7 +93,7 @@ class RetryableProcessorIntegrationTest {
         testInputTopics.first().pipeInput("key1", "value1")
 
         withClue("Shoud have enqueued message in failed message repository after first failure") {
-            failedMessageRepository.hasFailedMessages("key1") shouldBe true
+            retryableRepository.hasFailedMessages("key1") shouldBe true
             countFailedMessagesOnKey("key1") shouldBe 2
         }
 
@@ -101,14 +101,14 @@ class RetryableProcessorIntegrationTest {
         runCurrent()
 
         withClue("Should not have any failed message in failed message repository after it has been successfully processed") {
-            failedMessageRepository.hasFailedMessages("key1") shouldBe false
+            retryableRepository.hasFailedMessages("key1") shouldBe false
         }
     }
 
     @Test
     fun `should enqueue message when processing failed for previous message on same key`() = runTest {
-        val topic = "test-topic"
-        val failedMessageRepository = FailedMessageRepository(topic)
+        val topic = getRandomTopicName()
+        val retryableRepository = RetryableRepository(topic)
 
         val (testDriver, testInputTopics) =  setupKafkaTestDriver(topic, { _ -> Retry("Dette gikk galt") })
 
@@ -116,7 +116,7 @@ class RetryableProcessorIntegrationTest {
         testInputTopics.first().pipeInput("key2", "value2")
 
         withClue("Shoud have enqueued message in failed message repository after first failure") {
-            failedMessageRepository.hasFailedMessages("key2") shouldBe true
+            retryableRepository.hasFailedMessages("key2") shouldBe true
             countFailedMessagesOnKey("key2") shouldBe 2
         }
 
@@ -124,21 +124,21 @@ class RetryableProcessorIntegrationTest {
 
         withClue("Should still be 2 failed messages on key") {
             countFailedMessagesOnKey("key2") shouldBe 2
-            failedMessageRepository.hasFailedMessages("key2") shouldBe true
+            retryableRepository.hasFailedMessages("key2") shouldBe true
         }
     }
 
     @Test
     fun `should still have message in queue if reprocessing throws`() = runTest {
-        val topic = "test-topic"
-        val failedMessageRepository = FailedMessageRepository(topic)
+        val topic = getRandomTopicName()
+        val retryableRepository = RetryableRepository(topic)
 
         val (testDriver, testInputTopic) =  setupKafkaTestDriver(topic, { _ -> throw Error("Test") })
 
         testInputTopic.first().pipeInput("key3", "value2")
 
         withClue("Shoud have enqueued message in failed message repository after first failure") {
-            failedMessageRepository.hasFailedMessages("key3") shouldBe true
+            retryableRepository.hasFailedMessages("key3") shouldBe true
             countFailedMessagesOnKey("key3") shouldBe 1
         }
 
@@ -146,14 +146,14 @@ class RetryableProcessorIntegrationTest {
 
         withClue("Should still be 1 failed messages on key") {
             countFailedMessagesOnKey("key3") shouldBe 1
-            failedMessageRepository.hasFailedMessages("key3") shouldBe true
+            retryableRepository.hasFailedMessages("key3") shouldBe true
         }
     }
 
     @Test
     fun `skal forwarde meldinger som er retry-ed til neste processor`() = runTest {
-        val topic = "test-topic"
-        val failedMessageRepository = FailedMessageRepository(topic)
+        val topic = getRandomTopicName()
+        val retryableRepository = RetryableRepository(topic)
 
         var hasFailed = false
         fun failFirstThenOk(): Res {
@@ -184,8 +184,9 @@ class RetryableProcessorIntegrationTest {
             config = retryConfig,
             keyInSerde = Serdes.String(),
             valueInSerde = Serdes.String(),
-            repository = failedMessageRepository,
+            repository = retryableRepository,
             topic = topic,
+            streamType = StreamType.SOURCE,
             businessLogic = firstStep,
             lockProvider = TestLockProvider,
             punctuationCoroutineScope = this.backgroundScope,
@@ -197,6 +198,7 @@ class RetryableProcessorIntegrationTest {
             keyInSerde = Serdes.String(),
             valueInSerde = Serdes.String(),
             topic = topic,
+            streamType = StreamType.SOURCE,
             businessLogic = secondStepMock,
             lockProvider = TestLockProvider,
             punctuationCoroutineScope = this.backgroundScope,
@@ -211,21 +213,88 @@ class RetryableProcessorIntegrationTest {
 
         testInputTopics.first().pipeInput("key1", "value1")
 
-        withClue("Shoud have enqueued message in failed message repository after first failure") {
-            failedMessageRepository.hasFailedMessages("key1") shouldBe true
+        withClue("Should have enqueued message in failed message repository after first failure") {
+            retryableRepository.hasFailedMessages("key1") shouldBe true
             countFailedMessagesOnKey("key1") shouldBe 1
         }
 
         testDriver.advanceWallClockTime(Duration.of(7, ChronoUnit.SECONDS))
 
         withClue("Should not have any failed message in failed message repository after it has been successfully processed") {
-            failedMessageRepository.hasFailedMessages("key1") shouldBe false
+            retryableRepository.hasFailedMessages("key1") shouldBe false
         }
 
         verify(exactly = 1) {
             secondStepMock(any())
         }
     }
+
+    @Test
+    fun `should save offset when message is processed`() = runTest {
+        val topic = getRandomTopicName()
+        val retryableRepository = RetryableRepository(topic)
+        val (testDriver, testInputTopics) =  setupKafkaTestDriver(topic, { _ -> Commit() })
+        val offsetBeforeSendingMessages = retryableRepository.getOffset(0)
+
+        testInputTopics.first().pipeInput("key21", "value1")
+        testInputTopics.first().pipeInput("key22", "value1")
+        testInputTopics.first().pipeInput("key23", "value1")
+
+        withClue("Should have stored offset in repository") {
+            val offset = retryableRepository.getOffset(0)
+            offset shouldBe offsetBeforeSendingMessages + 3L
+        }
+    }
+
+    @Test
+    fun `save offset on retry`() = runTest {
+        val topic = getRandomTopicName()
+        val retryableRepository = RetryableRepository(topic)
+        val (testDriver, testInputTopics) =  setupKafkaTestDriver(topic, { _ -> Retry("") })
+        val offsetBeforeSendingMessages = retryableRepository.getOffset(0)
+
+        testInputTopics.first().pipeInput("key24", "value1")
+
+        withClue("Should have stored offset in repository when processing result is retry") {
+            val offset = retryableRepository.getOffset(0)
+            offset shouldBe offsetBeforeSendingMessages + 1L
+        }
+    }
+
+    @Test
+    fun `save offset on forward`() = runTest {
+        val topic = getRandomTopicName()
+        val retryableRepository = RetryableRepository(topic)
+        val (testDriver, testInputTopics) =  setupKafkaTestDriver(topic, { _ -> Forward(Record("key25", "{}", 0L), null) })
+        val offsetBeforeSendingMessages = retryableRepository.getOffset(0)
+
+        testInputTopics.first().pipeInput("key25", "value1")
+
+        withClue("Should have stored offset in repository when processing result is forward") {
+            val offset = retryableRepository.getOffset(0)
+            offset shouldBe offsetBeforeSendingMessages + 1L
+        }
+    }
+
+    @Test
+    fun `save offset on skip`() = runTest {
+        val topic = getRandomTopicName()
+        val retryableRepository = RetryableRepository(topic)
+        val (testDriver, testInputTopics) =  setupKafkaTestDriver(topic, { _ -> Skip() })
+        val offsetBeforeSendingMessages = retryableRepository.getOffset(0)
+
+        testInputTopics.first().pipeInput("key26", "value1")
+
+        withClue("Should have stored offset in repository when processing result is skip") {
+            val offset = retryableRepository.getOffset(0)
+            offset shouldBe offsetBeforeSendingMessages + 1L
+        }
+    }
+
+
+
+    // TODO: Test at vi ikke forsøker å lagre offset når ikke Kafka-melding (eg. ikke metadata)
+
 
     /*
     @Test
@@ -269,13 +338,14 @@ class RetryableProcessorIntegrationTest {
     ): Triple<TopologyTestDriver, List<TestInputTopic<String, String>>, TestOutputTopic<String, String>?> {
 
         val builder = StreamsBuilder()
-        val testRepository = FailedMessageRepository(topic)
+        val testRepository = RetryableRepository(topic)
         val testSupplier = ProcessorSupplier {
             RetryableProcessor(
                 config = RetryConfig(),
                 keyInSerde = Serdes.String(),
                 valueInSerde = Serdes.String(),
                 topic = topic,
+                streamType = StreamType.SOURCE,
                 repository = testRepository,
                 businessLogic = processRecord,
                 lockProvider = TestLockProvider,
@@ -315,4 +385,11 @@ fun setupKafkaMock(topology: Topology, inputTopics: List<String>, outputTopic: S
         return Triple(driver ,inputTopics, outputTopic)
     }
     return Triple(driver ,inputTopics, null)
+}
+
+fun getRandomTopicName(): String {
+    val chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+    return (1..10)
+        .map { chars[Random.nextInt(chars.length)] }
+        .joinToString("")
 }

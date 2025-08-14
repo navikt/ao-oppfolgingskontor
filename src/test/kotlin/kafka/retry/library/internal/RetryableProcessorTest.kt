@@ -5,6 +5,7 @@ import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig
 import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde
 import io.mockk.*
 import kafka.retry.TestLockProvider
+import kafka.retry.library.StreamType
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
@@ -15,7 +16,7 @@ import no.nav.kafka.retry.library.AvroJsonConverter
 import no.nav.kafka.retry.library.MaxRetries
 import no.nav.kafka.retry.library.RetryConfig
 import no.nav.kafka.retry.library.internal.FailedMessage
-import no.nav.kafka.retry.library.internal.FailedMessageRepository
+import no.nav.kafka.retry.library.internal.RetryableRepository
 import no.nav.kafka.retry.library.internal.RetryMetrics
 import no.nav.kafka.retry.library.internal.RetryableProcessor
 import no.nav.person.pdl.leesah.Endringstype
@@ -27,11 +28,14 @@ import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.processor.Punctuator
 import org.apache.kafka.streams.processor.api.ProcessorContext
 import org.apache.kafka.streams.processor.api.Record
+import org.apache.kafka.streams.processor.api.RecordMetadata
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.time.Duration
 import java.time.Instant
 import java.time.OffsetDateTime
+import java.util.Optional
+import kotlin.jvm.optionals.getOrElse
 
 /**
  * Enhetstester for RetryableProcessor.
@@ -60,7 +64,7 @@ class RetryableProcessorTest {
 
     private data class TestSetup(
         val processor: RetryableProcessor<String, String, Unit, Unit>,
-        var mockedStore: FailedMessageRepository,
+        var mockedStore: RetryableRepository,
         var mockedMetrics: RetryMetrics,
         var mockedContext: ProcessorContext<Unit, Unit>,
         )
@@ -68,12 +72,13 @@ class RetryableProcessorTest {
     private fun TestScope.setupTest(): TestSetup {
         val mockedContext: ProcessorContext<Unit, Unit> = mockk(relaxed = true)
         every { mockedContext.schedule(any(), any(), capture(punctuationCallback)) } returns mockk()
-        val mockedStore: FailedMessageRepository = mockk(relaxed = true)
+        val mockedStore: RetryableRepository = mockk(relaxed = true)
         val processor = RetryableProcessor<String, String, Unit, Unit>(
             config = config,
             keyInSerde = Serdes.String(),
             valueInSerde = Serdes.String(),
             topic = inputTopicName,
+            streamType = StreamType.SOURCE,
             repository = mockedStore, // Dummy mock, ikke brukt direkte av prosessoren
             // Definer en kontrollerbar forretningslogikk for testen
             businessLogic = { record ->
@@ -82,8 +87,8 @@ class RetryableProcessorTest {
                 }
                 Commit()
             },
-            TestLockProvider,
-            this.backgroundScope
+            lockProvider = TestLockProvider,
+            punctuationCoroutineScope = this.backgroundScope
         )
         processor.init(mockedContext)
         val mockedMetrics: RetryMetrics = mockk(relaxed = true)
@@ -96,6 +101,14 @@ class RetryableProcessorTest {
             mockedMetrics = mockedMetrics,
             processor = processor
         )
+    }
+
+    private fun getRecordMetadata(partition: Int = 0, offset: Long): RecordMetadata {
+        return object: RecordMetadata {
+            override fun topic(): String = "topic"
+            override fun partition(): Int = partition
+            override fun offset(): Long = offset
+        }
     }
 
     @BeforeEach
@@ -240,6 +253,7 @@ class RetryableProcessorTest {
             keyInSerde = Serdes.String(),
             valueInSerde = valueAvroSerde,
             topic = inputTopicName,
+            streamType = StreamType.SOURCE,
             repository = mockedStore, // Dummy mock, ikke brukt direkte av prosessoren
             // Definer en kontrollerbar forretningslogikk for testen
             businessLogic = { record ->
@@ -248,8 +262,8 @@ class RetryableProcessorTest {
                 }
                 Commit()
             },
-            TestLockProvider,
-            this.backgroundScope
+            lockProvider = TestLockProvider,
+            punctuationCoroutineScope = this.backgroundScope
         )
         avroProcessor.init(mockedContext)
         val metricsField = avroProcessor.javaClass.getDeclaredField("metrics")
@@ -294,5 +308,60 @@ class RetryableProcessorTest {
         val humanReadableValue = AvroJsonConverter.convertAvroToJson(personhendelse, true)
         verify { mockedStore.enqueue("key1", "key1".toByteArray(), valueBytes, any(), humanReadableValue) }
     }
-}
 
+    @Test
+    fun `only save offset when offset is higher than the previous offset`() = runTest {
+        val (processor, mockedStore, _, mockedContext) = setupTest()
+        val partition = 0
+        val alreadySavedOffset = 5L
+        val newOffset = 2L
+        val metadataOffset = getRecordMetadata(partition, newOffset)
+        every { mockedContext.recordMetadata() } returns Optional.of(metadataOffset)
+        every { mockedStore.getOffset(partition) } returns alreadySavedOffset
+
+        processor.process(Record("key1", "{}", 0L))
+
+        verify(exactly = 0) { mockedStore.saveOffset(any(), any()) }
+    }
+
+    @Test
+    fun `save offset when business logic fails and the message is enqueued`() = runTest {
+        val (processor, mockedStore, _, mockedContext) = setupTest()
+        val savedOffset = 0L
+        val offsetNewMessage = savedOffset + 45
+        val metadataOffset = getRecordMetadata(0, offsetNewMessage)
+        every { mockedContext.recordMetadata() } returns Optional.of(metadataOffset)
+        every { mockedStore.getOffset(0) } returns savedOffset
+
+        processor.process(Record("key1", "FAIL", 0L))
+
+        verify(exactly = 1) { mockedStore.saveOffset(0, offsetNewMessage) }
+    }
+
+    @Test
+    fun `save offset when message is enqueued because previous message failed`() = runTest {
+        val (processor, mockedStore, _, mockedContext) = setupTest()
+        every { mockedStore.hasFailedMessages("key1") } returns true
+        val savedOffset = 0L
+        val offsetNewMessage = savedOffset + 45
+        val metadataOffset = getRecordMetadata(0, offsetNewMessage)
+        every { mockedContext.recordMetadata() } returns Optional.of(metadataOffset)
+        every { mockedStore.getOffset(0) } returns savedOffset
+
+        processor.process(Record("key1", "", 0L))
+
+        verify(exactly = 1) { mockedStore.saveOffset(0, offsetNewMessage) }
+    }
+
+    @Test
+    fun `don't save offset when message is internal`() = runTest {
+        val (processor, mockedStore, _, mockedContext) = setupTest()
+        val partition = 0
+        every { mockedStore.getOffset(partition) } returns 0
+
+        processor.process(Record("key1", "{}", 0L))
+
+        verify(exactly = 0) { mockedStore.saveOffset(any(), any()) }
+    }
+
+}

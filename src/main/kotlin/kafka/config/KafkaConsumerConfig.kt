@@ -5,6 +5,7 @@ import io.ktor.server.application.ApplicationEnvironment
 import io.ktor.server.config.*
 import kafka.consumers.SisteOppfolgingsperiodeProcessor
 import kafka.retry.library.RetryProcessorWrapper
+import kafka.retry.library.StreamType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import net.javacrumbs.shedlock.core.LockProvider
@@ -78,6 +79,7 @@ fun configureTopology(
         keyInSerde: Serde<KIn>,
         valueInSerde: Serde<VIn>,
         topic: String,
+        streamType: StreamType,
         businessLogic: (Record<KIn, VIn>) -> RecordProcessingResult<KOut, VOut>,
     ): ProcessorSupplier<KIn, VIn, KOut, VOut> {
         return RetryProcessorWrapper.wrapInRetryProcessor(
@@ -85,17 +87,19 @@ fun configureTopology(
             keyInSerde = keyInSerde,
             valueInSerde = valueInSerde,
             topic = topic,
+            streamType = streamType,
             businessLogic = businessLogic,
             lockProvider = lockProvider,
             punctuationCoroutineScope = punctuationCoroutineScope,
         )
     }
 
-    fun <KIn, VIn, KOut, VOut> wrapInRetryProcessor(topic: Topic<KIn, VIn>, businessLogic: (Record<KIn, VIn>) -> RecordProcessingResult<KOut, VOut>)
-        = wrapInRetryProcessor(topic.keySerde, topic.valSerde, topic.name, businessLogic)
+    fun <KIn, VIn, KOut, VOut> wrapInRetryProcessor(topic: Topic<KIn, VIn>, streamType: StreamType, businessLogic: (Record<KIn, VIn>) -> RecordProcessingResult<KOut, VOut>)
+        = wrapInRetryProcessor(topic.keySerde, topic.valSerde, topic.name, streamType, businessLogic)
 
     val oppfolgingsperiodeProcessorSupplier = wrapInRetryProcessor(
             topic = topics.inn.sisteOppfolgingsperiodeV1,
+            streamType = StreamType.SOURCE,
             businessLogic = sisteOppfolgingsperiodeProcessor::process,
     )
 
@@ -103,6 +107,7 @@ fun configureTopology(
             keyInSerde = KontortilordningsProcessor.identSerde,
             valueInSerde = KontortilordningsProcessor.oppfolgingsperiodeStartetSerde,
             topic = KontortilordningsProcessor.processorName,
+            streamType = StreamType.INTERNAL,
             businessLogic = kontortilordningsProcessor::process,
     )
 
@@ -115,6 +120,7 @@ fun configureTopology(
 
         val leesahProcessorSupplier = wrapInRetryProcessor(
             topic = topics.inn.pdlLeesah,
+            streamType = StreamType.SOURCE,
             businessLogic = leesahProcessor::process
         )
         builder.stream(topics.inn.pdlLeesah.name, topics.inn.pdlLeesah.consumedWith())
@@ -122,6 +128,7 @@ fun configureTopology(
 
         val skjermingProcessorSupplier = wrapInRetryProcessor(
             topic = topics.inn.skjerming,
+            streamType = StreamType.SOURCE,
             businessLogic = skjermingProcessor::process
         )
         builder.stream(topics.inn.skjerming.name, topics.inn.skjerming.consumedWith())
@@ -129,6 +136,7 @@ fun configureTopology(
 
         val endringPaOppfolgingsBrukerProcessorSupplier = wrapInRetryProcessor(
             topic = topics.inn.endringPaOppfolgingsbruker,
+            streamType = StreamType.SOURCE,
             businessLogic = endringPaOppfolgingsBrukerProcessor::process
         )
         builder.stream(topics.inn.endringPaOppfolgingsbruker.name, topics.inn.endringPaOppfolgingsbruker.consumedWith())

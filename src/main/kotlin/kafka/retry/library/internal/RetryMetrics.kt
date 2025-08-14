@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory
  */
 internal class RetryMetrics(
     context: ProcessorContext<*, *>,
-    private val repository: FailedMessageRepository,
+    private val repository: RetryableRepository,
     private val topic: String,
 ) {
     private val metrics = context.metrics()
