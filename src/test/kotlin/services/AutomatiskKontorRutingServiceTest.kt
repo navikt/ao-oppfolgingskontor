@@ -155,6 +155,21 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 )
             }
 
+            it("skal sette AO kontor til lokalkontor hvis bruker har feilende profilering") {
+                gitt(brukerMedFeilendeProfilering).tilordneKontorAutomatisk(
+                    oppfolgingsperiodeStartet(brukerMedFeilendeProfilering)
+                ) shouldBe TilordningSuccessKontorEndret(
+                    OppfolgingsPeriodeStartetLokalKontorTilordning(
+                        KontorTilordning(
+                            brukerMedFeilendeProfilering.fnr(),
+                            brukerMedFeilendeProfilering.gtKontor(),
+                            brukerMedFeilendeProfilering.oppfolgingsperiodeId()
+                        ),
+                        ingenSensitivitet
+                    )
+                )
+            }
+
             it("skal bruke arbeidsfordeling-fallback hvis bruker har landskode som gt") {
                 gitt(brukerMedLandskodeOgFallback).tilordneKontorAutomatisk(
                     oppfolgingsperiodeStartet(brukerMedLandskodeOgFallback)
@@ -561,7 +576,16 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
             } shouldBe listOf(
                 TilordningFeil("Feil ved oppslag på oppfolgingsperiode: feil i fnr"),
                 TilordningFeil("Kunne ikke hente alder: feil i alder"),
-                TilordningFeil("Kunne ikke hente profilering: profilering ikke funnet"),
+                TilordningSuccessKontorEndret(
+                    OppfolgingsPeriodeStartetLokalKontorTilordning(
+                        KontorTilordning(
+                            brukerMedFeilendeProfilering.fnr(),
+                            brukerMedFeilendeProfilering.gtKontor(),
+                            brukerMedFeilendeProfilering.oppfolgingsperiodeId()
+                        ),
+                        ingenSensitivitet
+                    )
+                ),
                 TilordningFeil("Kunne ikke hente skjerming ved kontortilordning: feil i skjerming"),
                 TilordningFeil("Kunne ikke hente adressebeskyttelse ved kontortilordning: feil i adressebeskyttelse"),
                 TilordningFeil("Feil ved henting av gt-kontor: Feil i gt-kontor oppslag"),
