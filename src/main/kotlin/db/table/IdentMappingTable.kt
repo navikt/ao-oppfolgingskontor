@@ -8,6 +8,7 @@ import org.jetbrains.exposed.sql.kotlin.datetime.CurrentTimestampWithTimeZone
 
 object IdentMappingTable: IdTable<String>("ident_mapping") {
     override val id = char("ident", 20).entityId()
+    override val primaryKey = PrimaryKey(id)
     val identType = char("ident_type", 11)
     val historisk = bool("historisk")
     val internIdent = long("intern_ident")
