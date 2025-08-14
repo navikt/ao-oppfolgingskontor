@@ -5,6 +5,7 @@ import io.kotest.matchers.shouldBe
 import io.ktor.server.testing.testApplication
 import kafka.consumers.SisteOppfolgingsperiodeProcessor
 import kafka.retry.TestLockProvider
+import kafka.retry.library.StreamType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import no.nav.db.AktorId
@@ -258,6 +259,7 @@ class KafkaApplicationTest {
                 keyInSerde = keyInSerde,
                 valueInSerde = valueInSerde,
                 topic = topic,
+                streamType = StreamType.SOURCE,
                 repository = testRepository,
                 businessLogic = processRecord,
                 lockProvider = TestLockProvider,

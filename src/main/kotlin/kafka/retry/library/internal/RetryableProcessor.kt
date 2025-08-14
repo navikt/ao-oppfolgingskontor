@@ -1,5 +1,6 @@
 package no.nav.kafka.retry.library.internal
 
+import kafka.retry.library.StreamType
 import kafka.retry.library.internal.TopicLevelLock
 import kotlinx.coroutines.CoroutineScope
 import no.nav.kafka.retry.library.AvroJsonConverter
@@ -50,6 +51,7 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
     private val businessLogic: (Record<KIn, VIn>) -> RecordProcessingResult<KOut, VOut>,
     private val lockProvider: LockProvider,
     private val punctuationCoroutineScope: CoroutineScope,
+    private val streamType: StreamType
 ) : Processor<KIn, VIn, KOut, VOut> {
     private val keyInSerializer = keyInSerde.serializer()
     private val valueInSerializer = valueInSerde.serializer()
@@ -231,7 +233,7 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
     }
 
     private fun saveOffset(recordMetadata: RecordMetadata?) {
-        val isMessageFromKafka = recordMetadata != null
+        val isMessageFromKafka = recordMetadata != null && streamType == StreamType.SOURCE
         if(!isMessageFromKafka) return
         val savedOffset = repository.getOffset(recordMetadata.partition())
         if (recordMetadata.offset() > savedOffset) {

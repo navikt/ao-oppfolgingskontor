@@ -23,6 +23,7 @@ object RetryProcessorWrapper {
         config: RetryConfig = RetryConfig(),
         repository: RetryableRepository = RetryableRepository(topic),
         punctuationCoroutineScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
+        streamType: StreamType
     ): ProcessorSupplier<KIn, VIn, KOut, VOut> {
         return ProcessorSupplier {
             RetryableProcessor(
@@ -34,8 +35,14 @@ object RetryProcessorWrapper {
                 businessLogic = businessLogic,
                 lockProvider = lockProvider,
                 punctuationCoroutineScope = punctuationCoroutineScope,
+                streamType = streamType
             )
         }
     }
 
+}
+
+enum class StreamType {
+    SOURCE,                     // Kafka topic
+    INTERNAL                    // Intern prosessor
 }

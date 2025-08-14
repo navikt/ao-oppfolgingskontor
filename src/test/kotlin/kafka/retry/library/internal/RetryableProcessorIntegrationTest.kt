@@ -7,6 +7,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import kafka.retry.TestLockProvider
 import kafka.retry.library.RetryProcessorWrapper
+import kafka.retry.library.StreamType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
@@ -185,6 +186,7 @@ class RetryableProcessorIntegrationTest {
             valueInSerde = Serdes.String(),
             repository = retryableRepository,
             topic = topic,
+            streamType = StreamType.SOURCE,
             businessLogic = firstStep,
             lockProvider = TestLockProvider,
             punctuationCoroutineScope = this.backgroundScope,
@@ -196,6 +198,7 @@ class RetryableProcessorIntegrationTest {
             keyInSerde = Serdes.String(),
             valueInSerde = Serdes.String(),
             topic = topic,
+            streamType = StreamType.SOURCE,
             businessLogic = secondStepMock,
             lockProvider = TestLockProvider,
             punctuationCoroutineScope = this.backgroundScope,
@@ -342,6 +345,7 @@ class RetryableProcessorIntegrationTest {
                 keyInSerde = Serdes.String(),
                 valueInSerde = Serdes.String(),
                 topic = topic,
+                streamType = StreamType.SOURCE,
                 repository = testRepository,
                 businessLogic = processRecord,
                 lockProvider = TestLockProvider,

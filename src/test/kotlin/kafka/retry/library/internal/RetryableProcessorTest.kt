@@ -5,6 +5,7 @@ import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig
 import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde
 import io.mockk.*
 import kafka.retry.TestLockProvider
+import kafka.retry.library.StreamType
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
@@ -77,6 +78,7 @@ class RetryableProcessorTest {
             keyInSerde = Serdes.String(),
             valueInSerde = Serdes.String(),
             topic = inputTopicName,
+            streamType = StreamType.SOURCE,
             repository = mockedStore, // Dummy mock, ikke brukt direkte av prosessoren
             // Definer en kontrollerbar forretningslogikk for testen
             businessLogic = { record ->
@@ -85,8 +87,8 @@ class RetryableProcessorTest {
                 }
                 Commit()
             },
-            TestLockProvider,
-            this.backgroundScope
+            lockProvider = TestLockProvider,
+            punctuationCoroutineScope = this.backgroundScope
         )
         processor.init(mockedContext)
         val mockedMetrics: RetryMetrics = mockk(relaxed = true)
@@ -251,6 +253,7 @@ class RetryableProcessorTest {
             keyInSerde = Serdes.String(),
             valueInSerde = valueAvroSerde,
             topic = inputTopicName,
+            streamType = StreamType.SOURCE,
             repository = mockedStore, // Dummy mock, ikke brukt direkte av prosessoren
             // Definer en kontrollerbar forretningslogikk for testen
             businessLogic = { record ->
@@ -259,8 +262,8 @@ class RetryableProcessorTest {
                 }
                 Commit()
             },
-            TestLockProvider,
-            this.backgroundScope
+            lockProvider = TestLockProvider,
+            punctuationCoroutineScope = this.backgroundScope
         )
         avroProcessor.init(mockedContext)
         val metricsField = avroProcessor.javaClass.getDeclaredField("metrics")
