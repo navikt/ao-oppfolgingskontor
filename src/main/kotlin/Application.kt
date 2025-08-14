@@ -72,11 +72,10 @@ fun Application.module() {
 
     install(KafkaStreamsPlugin) {
         this.automatiskKontorRutingService = automatiskKontorRutingService
-        this.fnrProvider = { aktorId ->  identService.hentForetrukketIdentFor(aktorId)}
+        this.fnrProvider = { aktorId ->  identService.hentForetrukketIdentFor(aktorId) }
         this.database = database
         this.meterRegistry = meterRegistry
         this.oppfolgingsperiodeService = OppfolgingsperiodeService
-        this.identService = identService
     }
 
     val issuer = environment.getIssuer()
