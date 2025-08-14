@@ -5,6 +5,7 @@ import io.kotest.matchers.shouldBe
 import io.ktor.server.testing.testApplication
 import kafka.consumers.SisteOppfolgingsperiodeProcessor
 import kafka.retry.TestLockProvider
+import kafka.retry.library.StreamType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import no.nav.db.AktorId
@@ -32,7 +33,7 @@ import no.nav.kafka.consumers.KontortilordningsProcessor
 import no.nav.kafka.consumers.SkjermingProcessor
 import no.nav.kafka.processor.ProcessRecord
 import no.nav.kafka.retry.library.RetryConfig
-import no.nav.kafka.retry.library.internal.FailedMessageRepository
+import no.nav.kafka.retry.library.internal.RetryableRepository
 import no.nav.kafka.retry.library.internal.RetryableProcessor
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
@@ -251,13 +252,14 @@ class KafkaApplicationTest {
         valueInSerde: Serde<VIn>,
         processRecord: ProcessRecord<KIn ,VIn, KOut, VOut>
     ): ProcessorSupplier<KIn, VIn, KOut, VOut> {
-        val testRepository = FailedMessageRepository(topic)
+        val testRepository = RetryableRepository(topic)
         return ProcessorSupplier {
             RetryableProcessor(
                 config = RetryConfig(),
                 keyInSerde = keyInSerde,
                 valueInSerde = valueInSerde,
                 topic = topic,
+                streamType = StreamType.SOURCE,
                 repository = testRepository,
                 businessLogic = processRecord,
                 lockProvider = TestLockProvider,

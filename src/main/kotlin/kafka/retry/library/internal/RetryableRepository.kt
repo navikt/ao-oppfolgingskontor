@@ -1,5 +1,6 @@
 package no.nav.kafka.retry.library.internal
 
+import db.table.KafkaOffsetTable
 import no.nav.db.table.FailedMessagesEntity
 import no.nav.db.table.FailedMessagesTable
 import no.nav.db.table.FailedMessagesTable.failureReason
@@ -15,7 +16,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.vendors.ForUpdateOption
 import java.time.OffsetDateTime
 
-class FailedMessageRepository(val repositoryTopic: String) {
+class RetryableRepository(val repositoryTopic: String) {
 
     fun hasFailedMessages(key: String): Boolean = transaction {
         if (key.isEmpty()) throw IllegalArgumentException("Key cannot be empty")
@@ -90,6 +91,24 @@ class FailedMessageRepository(val repositoryTopic: String) {
 
     fun countTotalFailedMessages(): Long = transaction {
         FailedMessagesTable.selectAll().where(FailedMessagesTable.topic eq repositoryTopic).count()
+    }
+
+    fun saveOffset(partition: Int, offset: Long) = transaction {
+        KafkaOffsetTable.upsert {
+            it[KafkaOffsetTable.topic] = repositoryTopic
+            it[KafkaOffsetTable.partition] = partition
+            it[KafkaOffsetTable.offset] = offset
+        }
+    }
+
+    fun getOffset(partition: Int): Long = transaction {
+         KafkaOffsetTable
+            .selectAll()
+            .where { (KafkaOffsetTable.partition eq partition) and (KafkaOffsetTable.topic eq repositoryTopic) }
+            .singleOrNull()
+            .let { row ->
+                row?.get(KafkaOffsetTable.offset) ?: -1
+            }
     }
 }
 

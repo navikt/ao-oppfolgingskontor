@@ -1,5 +1,6 @@
 package no.nav.kafka.retry.library.internal
 
+import kafka.retry.library.StreamType
 import kafka.retry.library.internal.TopicLevelLock
 import kotlinx.coroutines.CoroutineScope
 import no.nav.kafka.retry.library.AvroJsonConverter
@@ -19,10 +20,12 @@ import org.apache.kafka.streams.processor.PunctuationType
 import org.apache.kafka.streams.processor.api.Processor
 import org.apache.kafka.streams.processor.api.ProcessorContext
 import org.apache.kafka.streams.processor.api.Record
+import org.apache.kafka.streams.processor.api.RecordMetadata
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.time.Instant
+import kotlin.jvm.optionals.getOrElse
 
 /**
  * Den sentrale prosessoren i feilhåndteringsbiblioteket.
@@ -43,11 +46,12 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
     private val keyInSerde: Serde<KIn>,
     private val valueInSerde: Serde<VIn>,
     private val topic: String, // Nødvendig for SerDes
-    private val repository: FailedMessageRepository, // Nødvendig for metrikk-initialiserin
+    private val repository: RetryableRepository, // Nødvendig for metrikk-initialiserin
     /* businessLogig er selve forretningslogikken fra brukeren. Kan returnere Record<KOut,VOut> eller Unit.     */
     private val businessLogic: (Record<KIn, VIn>) -> RecordProcessingResult<KOut, VOut>,
     private val lockProvider: LockProvider,
     private val punctuationCoroutineScope: CoroutineScope,
+    private val streamType: StreamType
 ) : Processor<KIn, VIn, KOut, VOut> {
     private val keyInSerializer = keyInSerde.serializer()
     private val valueInSerializer = valueInSerde.serializer()
@@ -73,16 +77,22 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
             ?: throw IllegalArgumentException("RetryableProcessor requires a non-null key. Cannot process message with null key.")
 
         val keyString = key.toString()
-        context.recordMetadata().map { logger.debug("Processing record with key $keyString from Kafka topic: ${it.topic()}, partition: ${it.partition()}, offset: ${it.offset()}") }
+        val recordMetadata = context.recordMetadata().getOrElse { null }
+
+        recordMetadata?.let { logger.debug("Processing record with key $keyString from Kafka topic: $topic, partition: ${it.partition()}, offset: ${it.offset()}") }
 
         if (store.hasFailedMessages(keyString)) {
-            enqueue(record, "Queued behind a previously failed message.")
+            transaction {
+                saveOffset(recordMetadata)
+                enqueue(record, "Queued behind a previously failed message.")
+            }
             return
         }
 
         try {
             transaction {
                 val result = businessLogic(record)
+                saveOffset(recordMetadata)
                 when (result) {
                     is Commit, is Skip -> {}
                     is Forward -> context.forward(result.forwardedRecord, result.topic)
@@ -91,7 +101,10 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
             }
         } catch (e: Throwable) {
             val reason = "Initial processing failed: ${e.javaClass.simpleName} - ${e.message}"
-            enqueue(record, reason)
+            transaction {
+                saveOffset(recordMetadata)
+                enqueue(record, reason)
+            }
         }
     }
 
@@ -216,6 +229,15 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
         } finally {
             // Frigi låsen for MITT topic, slik at en annen tråd kan ta over neste gang.
             TopicLevelLock.release(this.topic)
+        }
+    }
+
+    private fun saveOffset(recordMetadata: RecordMetadata?) {
+        val isMessageFromKafka = recordMetadata != null && streamType == StreamType.SOURCE
+        if(!isMessageFromKafka) return
+        val savedOffset = repository.getOffset(recordMetadata.partition())
+        if (recordMetadata.offset() > savedOffset) {
+            repository.saveOffset(recordMetadata.partition(), recordMetadata.offset())
         }
     }
 

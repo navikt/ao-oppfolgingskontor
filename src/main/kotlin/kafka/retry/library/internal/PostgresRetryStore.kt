@@ -10,11 +10,13 @@ interface PostgresRetryStore : StateStore {
     fun getBatchToRetry(limit: Int): List<FailedMessage>
     fun delete(messageId: Long)
     fun updateAfterFailedAttempt(messageId: Long, newReason: String)
+    fun saveOffset(partition: Int, offset: Long)
+    fun getOffset(partition: Int): Long?
 }
 
 internal class PostgresRetryStoreImpl(
     private val storeName: String,
-    private val repository: FailedMessageRepository
+    private val retryableRepository: RetryableRepository,
 ) : PostgresRetryStore {
     private var open = false
     override fun name() = storeName
@@ -33,11 +35,18 @@ internal class PostgresRetryStoreImpl(
     }
 
     // Deleger kall til repository
-    override fun hasFailedMessages(key: String) = repository.hasFailedMessages(key)
-    override fun enqueue(keyString: String, keyBytes: ByteArray, value: ByteArray, reason: String) = repository.enqueue(keyString, keyBytes, value, reason)
-    override fun enqueue(keyString: String, keyBytes: ByteArray, value: ByteArray, reason: String, humanReadableValue: String?) = repository.enqueue(keyString, keyBytes, value, reason, humanReadableValue)
-    override fun getBatchToRetry(limit: Int): List<FailedMessage> = repository.getBatchToRetry(limit)
-    override fun delete(messageId: Long) = repository.delete(messageId)
+    override fun hasFailedMessages(key: String) = retryableRepository.hasFailedMessages(key)
+    override fun enqueue(keyString: String, keyBytes: ByteArray, value: ByteArray, reason: String) = retryableRepository.enqueue(keyString, keyBytes, value, reason)
+    override fun enqueue(keyString: String, keyBytes: ByteArray, value: ByteArray, reason: String, humanReadableValue: String?) = retryableRepository.enqueue(keyString, keyBytes, value, reason, humanReadableValue)
+    override fun getBatchToRetry(limit: Int): List<FailedMessage> = retryableRepository.getBatchToRetry(limit)
+    override fun delete(messageId: Long) = retryableRepository.delete(messageId)
     override fun updateAfterFailedAttempt(messageId: Long, newReason: String) =
-        repository.updateAfterFailedAttempt(messageId, newReason)
+        retryableRepository.updateAfterFailedAttempt(messageId, newReason)
+    override fun saveOffset(partition: Int, offset: Long) {
+        retryableRepository.saveOffset(partition, offset)
+    }
+
+    override fun getOffset(partition: Int): Long? {
+        return retryableRepository.getOffset(partition)
+    }
 }
