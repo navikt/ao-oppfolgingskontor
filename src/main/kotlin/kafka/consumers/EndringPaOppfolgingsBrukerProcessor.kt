@@ -78,7 +78,7 @@ class EndringPaOppfolgingsBrukerProcessor(
 
     fun internalProcess(record: Record<String, String>): EndringPaaOppfolgingsBrukerResult {
         val fnr = Fnr(record.key())
-        val endringPaOppfolgingsBruker = json.decodeFromString<EndringPaOppfolgingsBruker>(record.value())
+        val endringPaOppfolgingsBruker = json.decodeFromString<EndringPaOppfolgingsBrukerDto>(record.value())
         val oppfolgingsenhet = endringPaOppfolgingsBruker.oppfolgingsenhet
         val endretTidspunktInnkommendeMelding = endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime()
 
@@ -146,7 +146,7 @@ fun String.convertToOffsetDatetime(): OffsetDateTime {
 }
 
 @Serializable
-data class EndringPaOppfolgingsBruker(
+data class EndringPaOppfolgingsBrukerDto(
     val oppfolgingsenhet: String?,
     val sistEndretDato: String
 )
