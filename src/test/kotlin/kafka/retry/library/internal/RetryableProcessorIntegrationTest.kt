@@ -11,6 +11,7 @@ import kafka.retry.library.RetryProcessorWrapper
 import kafka.retry.library.StreamType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -328,11 +329,10 @@ class RetryableProcessorIntegrationTest {
         }
     }
 
-    /*
+
     @Test
     fun `Meldinger som er Forward(ed) skal sendes ut på topic og sende ut melding på sink`() {
-        val inputTopic = "test-topic"
-        val inputTopic2 = "test-topic-2"
+        val inputTopic = randomTopicName()
         val outputTopic = "test-output-topic"
         val sinkName = "sinkName"
 
@@ -340,19 +340,19 @@ class RetryableProcessorIntegrationTest {
             sinkName,
             outputTopic,
         )
-        val topology = configureTopology()
+        val (_, testInputTopics, testOutputtopic) = setupKafkaTestDriver(inputTopic, { record -> Forward(
+            Record(record.key(), "new value", Instant.now().toEpochMilli()),
+            sinkName) }, sinkConfig, MainScope())
 
-        val (_, testInputTopics, testOutputtopic) = setupKafkaMock(topology,listOf(inputTopic, inputTopic2), outputTopic)
 
         testInputTopics.first().pipeInput("key3", "value2")
-        testInputTopics.last().pipeInput("key3", "value2")
 
-        testOutputtopic!!.queueSize shouldBe 2
+        testOutputtopic!!.queueSize shouldBe 1
         val record = testOutputtopic.readRecord()
-        record.key shouldBe "new key"
+        record.key shouldBe "key3"
         record.value shouldBe "new value"
-        testOutputtopic.queueSize shouldBe 1
-    }*/
+        testOutputtopic.queueSize shouldBe 0
+    }
 
     fun TestScope.setupKafkaTestDriver(
         topic: String,
@@ -388,7 +388,10 @@ class RetryableProcessorIntegrationTest {
         builder.stream(topic, Consumed.with(Serdes.String(), Serdes.String()))
             .process(testSupplier, Named.`as`(processorName(topic)))
 
+
         val topology = builder.build()
+            sinkConfigs?.let {
+                topology.addSink(it.sinkName, it.outputTopicName, it.keySerde.serializer(), it.valueSerde.serializer(), processorName(topic)) }
 
         return setupKafkaMock(topology, listOf(topic), sinkConfigs?.outputTopicName)
     }
