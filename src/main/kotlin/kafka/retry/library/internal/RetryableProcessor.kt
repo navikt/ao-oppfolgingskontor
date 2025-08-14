@@ -82,7 +82,7 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
 
         val shouldProcess = recordMetadata?.let {
             if (streamType == StreamType.INTERNAL) true
-            repository.saveOffsetIfGreater(it.partition(), it.offset())
+            else repository.saveOffsetIfGreater(it.partition(), it.offset())
         } ?: true
 
         if (!shouldProcess) {

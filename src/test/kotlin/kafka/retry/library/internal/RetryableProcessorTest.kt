@@ -68,7 +68,7 @@ class RetryableProcessorTest {
         var mockedContext: ProcessorContext<Unit, Unit>,
         )
 
-    private fun TestScope.setupTest(): TestSetup {
+    private fun TestScope.setupTest(streamType: StreamType = StreamType.SOURCE): TestSetup {
         val mockedContext: ProcessorContext<Unit, Unit> = mockk(relaxed = true)
         every { mockedContext.schedule(any(), any(), capture(punctuationCallback)) } returns mockk()
         val mockedStore: RetryableRepository = mockk(relaxed = true)
@@ -77,7 +77,7 @@ class RetryableProcessorTest {
             keyInSerde = Serdes.String(),
             valueInSerde = Serdes.String(),
             topic = inputTopicName,
-            streamType = StreamType.SOURCE,
+            streamType = streamType,
             repository = mockedStore, // Dummy mock, ikke brukt direkte av prosessoren
             // Definer en kontrollerbar forretningslogikk for testen
             businessLogic = { record ->
@@ -315,7 +315,6 @@ class RetryableProcessorTest {
         val offsetNewMessage = savedOffset + 45
         val metadataOffset = getRecordMetadata(0, offsetNewMessage)
         every { mockedContext.recordMetadata() } returns Optional.of(metadataOffset)
-        every { mockedStore.getOffset(0) } returns savedOffset
 
         processor.process(Record("key1", "FAIL", 0L))
 
@@ -330,7 +329,6 @@ class RetryableProcessorTest {
         val offsetNewMessage = savedOffset + 45
         val metadataOffset = getRecordMetadata(0, offsetNewMessage)
         every { mockedContext.recordMetadata() } returns Optional.of(metadataOffset)
-        every { mockedStore.getOffset(0) } returns savedOffset
 
         processor.process(Record("key1", "", 0L))
 
@@ -339,9 +337,8 @@ class RetryableProcessorTest {
 
     @Test
     fun `don't save offset when message is internal`() = runTest {
-        val (processor, mockedStore, _, mockedContext) = setupTest()
-        val partition = 0
-        every { mockedStore.getOffset(partition) } returns 0
+        val (processor, mockedStore, _, mockedContext) = setupTest(StreamType.INTERNAL)
+        every { mockedContext.recordMetadata() } returns Optional.of(getRecordMetadata(0, 1))
 
         processor.process(Record("key1", "{}", 0L))
 
