@@ -41,9 +41,9 @@ fun Application.configureDatabase() : Database {
     install(FlywayPlugin) {
         this.dataSource = dataSource
     }
-    this.monitor.subscribe(ApplicationStopping)
-    {
-        dataSource.close()
-    }
+//    this.monitor.subscribe(ApplicationStopping)
+//    {
+//        dataSource.close()
+//    }
     return database
 }
