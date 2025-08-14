@@ -5,6 +5,7 @@ import io.ktor.server.application.install
 import io.zonky.test.db.postgres.embedded.EmbeddedPostgres
 import no.nav.db.FlywayPlugin
 import no.nav.db.Fnr
+import no.nav.db.flywayMigrate
 import no.nav.db.table.OppfolgingsperiodeTable
 import no.nav.domain.OppfolgingsperiodeId
 import org.jetbrains.exposed.sql.Database
@@ -24,6 +25,10 @@ fun Application.flywayMigrationInTest(): DataSource {
         this.dataSource = TestDb.postgres
     }
     return TestDb.postgres
+}
+
+fun flywayMigrationInTest() {
+    flywayMigrate(TestDb.postgres)
 }
 
 fun gittBrukerUnderOppfolging(

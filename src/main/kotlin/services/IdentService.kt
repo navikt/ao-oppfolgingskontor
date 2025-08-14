@@ -7,33 +7,53 @@ import db.table.IdentMappingTable.internIdent
 import db.table.IdentMappingTable.updatedAt
 import db.table.InternIdentSequence
 import db.table.nextValueOf
-import no.nav.db.*
-import no.nav.http.client.*
-import no.nav.http.graphql.generated.client.enums.IdentGruppe
+import no.nav.db.AktorId
+import no.nav.db.Dnr
+import no.nav.db.Fnr
+import no.nav.db.Ident
+import no.nav.db.Npid
+import no.nav.http.client.IdentFunnet
+import no.nav.http.client.IdentOppslagFeil
+import no.nav.http.client.IdentResult
+import no.nav.http.client.IdenterFunnet
+import no.nav.http.client.IdenterResult
+import no.nav.http.client.finnForetrukketIdent
 import no.nav.http.graphql.generated.client.hentfnrquery.IdentInformasjon
-import org.jetbrains.exposed.sql.*
+import no.nav.kafka.retry.library.internal.Success
+import org.jetbrains.exposed.sql.JoinType
+import org.jetbrains.exposed.sql.Transaction
+import org.jetbrains.exposed.sql.alias
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.batchUpsert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.time.ZonedDateTime
 
 class IdentService(
-    val identForAktorIdProvider: suspend (aktorId: String) -> IdenterResult,
+    val alleIdenterProvider: suspend (aktorId: String) -> IdenterResult,
 ) {
     private val log = LoggerFactory.getLogger(IdentService::class.java)
 
     suspend fun hentForetrukketIdentFor(ident: Ident): IdentResult {
-        val lokaltLagretIdent = hentLokalIdent(ident)
+        val lokalIdentResult = hentLokalIdent(ident)
+        val lokaltLagretIdent = when {
+            lokalIdentResult.isSuccess -> lokalIdentResult.getOrNull()
+            else -> {
+                val error = lokalIdentResult.exceptionOrNull()
+                log.error("Feil ved oppslag på lokalt lagret ident: ${error?.message}", error)
+                IdentOppslagFeil("Feil ved oppslag på lokalt lagret ident: ${error?.message}")
+            }
+        }
         if (lokaltLagretIdent != null) return lokaltLagretIdent
-        return identForAktorIdProvider(ident.value)
-            .also {
-                if (it is IdenterFunnet) {
-                    lagreNyIdentMapping(it)
-                }
-            }.finnForetrukketIdent()
+        return hentAlleIdenterOgOppdaterMapping(ident)
+            .finnForetrukketIdent()
     }
 
-    private fun hentLokalIdent(ident: Ident): IdentFunnet? {
-        try {
+    /* Tenkt kalt ved endring på aktor-v2 topic (endring i identer) */
+    suspend fun hånterEndringPåIdenter(ident: Ident): IdenterResult = hentAlleIdenterOgOppdaterMapping(ident)
+
+    private fun hentLokalIdent(ident: Ident): Result<IdentFunnet?> {
+        return runCatching {
             val identMappings = hentIdentMappinger(ident)
             when {
                 identMappings.isNotEmpty() -> {
@@ -48,23 +68,45 @@ class IdentService(
                                 else -> 5 // Aktørid eller annen ukjent ident
                             }
                         }
-                    return IdentFunnet(foretrukketIdent!!)
+                    return Result.success(IdentFunnet(foretrukketIdent!!))
                 }
-
-                else -> return null
+                else -> return Result.success(null)
             }
-        } catch (e: Exception) {
-            log.error("Feil ved oppslag på lokal-ident", e)
-            return null
         }
     }
 
-    private fun lagreNyIdentMapping(identer: IdenterFunnet) {
+    private suspend fun hentAlleIdenterOgOppdaterMapping(ident: Ident): IdenterResult {
+        return when(val identer = alleIdenterProvider(ident.value)) {
+            is IdenterFunnet -> {
+                oppdaterAlleIdentMappinger(identer)
+                identer
+            }
+            else -> identer
+        }
+    }
 
+    fun Transaction.getInternId(eksitrerendeInternIder: List<Long>): Long {
+        return if (eksitrerendeInternIder.isNotEmpty()) {
+            if (eksitrerendeInternIder.distinct().size != 1)
+                throw IllegalStateException("Fant flere forskjellige intern-id-er på en ident-liste-response fra PDL")
+            else eksitrerendeInternIder.first()
+        } else {
+            nextValueOf(InternIdentSequence)
+        }
+    }
+
+    private fun oppdaterAlleIdentMappinger(identer: IdenterFunnet) {
         try {
+            val eksitrerendeInternIder = transaction {
+                IdentMappingTable
+                    .select(internIdent)
+                    .where { IdentMappingTable.id inList(identer.identer.map { it.ident }) }
+                    .map { it[internIdent] }
+            }
+
             transaction {
-                val internId = nextValueOf(InternIdentSequence)
-                IdentMappingTable.batchInsert(identer.identer) {
+                val internId = getInternId(eksitrerendeInternIder)
+                IdentMappingTable.batchUpsert(identer.identer) {
                     this[IdentMappingTable.id] = it.ident
                     this[identType] = it.toIdentType()
                     this[internIdent] = internId
@@ -74,28 +116,6 @@ class IdentService(
             }
         } catch (e: Throwable) {
             // TODO: Ikke sluk denne feilen(?)
-            log.error("Kunne ikke lagre ident-mapping ${e.message}", e)
-        }
-    }
-
-    private fun oppdaterIdentMapping(identer: IdenterFunnet) {
-        try {
-            transaction {
-                val aktorId = identer.identer.first { it.gruppe == IdentGruppe.AKTORID }.ident
-                val internIdent = IdentMappingTable
-                    .select(internIdent)
-                    .where { IdentMappingTable.id eq aktorId }
-                    .map { row -> row[internIdent] }
-                    .first()
-                IdentMappingTable.batchUpsert(identer.identer) {
-                    this[IdentMappingTable.id] = it.ident
-                    this[IdentMappingTable.internIdent] = internIdent
-                    this[identType] = it.toIdentType()
-                    this[historisk] = it.historisk
-                    this[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
-                }
-            }
-        } catch (e: Throwable) {
             log.error("Kunne ikke lagre ident-mapping ${e.message}", e)
         }
     }

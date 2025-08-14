@@ -30,7 +30,6 @@ import org.apache.kafka.streams.KafkaStreams
 import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler
 import org.jetbrains.exposed.sql.Database
 import org.slf4j.LoggerFactory
-import services.IdentService
 import topics
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -48,7 +47,6 @@ class KafkaStreamsPluginConfig(
     var database: Database? = null,
     var meterRegistry: MeterRegistry? = null,
     var oppfolgingsperiodeService: OppfolgingsperiodeService? = null,
-    var identService: IdentService? = null
 )
 
 const val arbeidsoppfolgingkontorSinkName = "endring-pa-arbeidsoppfolgingskontor"
@@ -67,9 +65,6 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val oppfolgingsperiodeService = requireNotNull(this.pluginConfig.oppfolgingsperiodeService) {
         "OppfolgingsperiodeService must be configured for KafkaStreamPlugin"
     }
-    val identService = requireNotNull(this.pluginConfig.identService) {
-        "PdlClient must be configured for KafkaStreamPlugin"
-    }
     val meterRegistry = requireNotNull(this.pluginConfig.meterRegistry) {
         "MeterRegistry must be configured for KafkaStreamPlugin"
     }
@@ -81,7 +76,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val sisteOppfolgingsperiodeProcessor = SisteOppfolgingsperiodeProcessor(
         oppfolgingsperiodeService,
         skipPersonIkkeFunnet = !isProduction,
-        { aktorId -> identService.hentForetrukketIdentFor(aktorId) }
+        fnrProvider
     )
 
     val kontorTilordningsProcessor = KontortilordningsProcessor(
