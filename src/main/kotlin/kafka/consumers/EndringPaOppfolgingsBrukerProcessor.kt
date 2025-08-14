@@ -5,8 +5,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import no.nav.db.Fnr
 import no.nav.db.entity.ArenaKontorEntity
-import no.nav.db.table.ArenaKontorTable
-import no.nav.domain.ArenaKontor
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
@@ -22,11 +20,8 @@ import no.nav.services.KontorTilordningService
 import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingperiodeOppslagFeil
 import no.nav.services.OppfolgingsperiodeOppslagResult
-import no.nav.services.OppfolgingsperiodeService
 import org.apache.kafka.streams.processor.api.Record
-import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
-import java.time.Duration
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 
@@ -40,8 +35,14 @@ class EndringPaOppfolgingsBrukerProcessor(
 
     fun handleResult(result: EndringPaaOppfolgingsBrukerResult): RecordProcessingResult<String, String> {
         return when (result) {
-            is BeforeCutoff -> { Skip() }
-            is Feil -> { result.retry }
+            is BeforeCutoff -> {
+                log.info("Endring på oppfolgingsbruker var fra før cutoff, hopper over")
+                Skip()
+            }
+            is Feil -> {
+                log.error("Klarte ikke behandle melding om endring på oppfølgingsbruker: ${result.retry.reason}")
+                result.retry
+            }
             is HaddeNyereEndring -> {
                 log.warn("Sist endret kontor er eldre enn endring på oppfølgingsbruker")
                 Skip()
@@ -86,8 +87,6 @@ class EndringPaOppfolgingsBrukerProcessor(
             return (sistEndretDatoArena != null && sistEndretDatoArena > endretTidspunktInnkommendeMelding)
         }
 
-        log.info(Duration.between(endretTidspunktInnkommendeMelding, ENDRING_PA_OPPFOLINGSBRUKER_CUTOFF).toString())
-
         return when {
             oppfolgingsenhet.isNullOrBlank() -> MeldingManglerEnhet()
             endretTidspunktInnkommendeMelding.isBefore(ENDRING_PA_OPPFOLINGSBRUKER_CUTOFF) -> BeforeCutoff()
@@ -109,12 +108,6 @@ class EndringPaOppfolgingsBrukerProcessor(
                 }
             }
         }
-    }
-
-    fun sisteLagreKontorArenaKontor(fnr: Fnr) = transaction {
-        ArenaKontorEntity
-            .find { ArenaKontorTable.id eq fnr.value }
-            .firstOrNull()
     }
 }
 
