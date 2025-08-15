@@ -13,6 +13,8 @@ sealed class Ident {
     abstract val value: String
 
     companion object {
+        val isDev = System.getenv("NAIS_CLUSTER_NAME")?.contains("dev") ?: false
+
         fun of(value: String): Ident {
             require(value.isNotBlank())
             require(value.all { it.isDigit() }) { "Ident must contain only digits" }
@@ -23,6 +25,7 @@ sealed class Ident {
             val monthIsValidMonth by lazy { digitNumber3and4 in 1..12 }
             val monthIsTenorMonth by lazy { digitNumber3and4 in 81..92 }
             val monthIsDollyMonth by lazy { digitNumber3and4 in 41..80 }
+            val monthIsBostMonth by lazy { digitNumber3and4 in 61..72 }
             val lengthIs11 by lazy { value.length == 11 }
             val isValidDate by lazy { value.substring(0, 2).toInt() in 1..31 }
 
@@ -30,7 +33,8 @@ sealed class Ident {
                 lengthIs13 -> AktorId(value)
                 firstDigit in gyldigeDnrStart && (monthIsValidMonth || monthIsTenorMonth || monthIsDollyMonth) -> Dnr(value)
                 digitNumber3and4 in 21..32 -> Npid(value) // NPID er måned + 20
-                lengthIs11 && isValidDate && (monthIsValidMonth || monthIsTenorMonth || monthIsDollyMonth) -> Fnr(value)
+                lengthIs11 && monthIsValidMonth && isValidDate -> Fnr(value)
+                isDev && lengthIs11 && isValidDate && (monthIsTenorMonth || monthIsDollyMonth || monthIsBostMonth) -> Fnr(value)
                 else -> { throw Exception("Ugyldig Ident: $value")
                 }
             }
