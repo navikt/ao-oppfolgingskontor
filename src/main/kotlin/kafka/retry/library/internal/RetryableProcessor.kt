@@ -20,7 +20,6 @@ import org.apache.kafka.streams.processor.PunctuationType
 import org.apache.kafka.streams.processor.api.Processor
 import org.apache.kafka.streams.processor.api.ProcessorContext
 import org.apache.kafka.streams.processor.api.Record
-import org.apache.kafka.streams.processor.api.RecordMetadata
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.time.Duration
@@ -79,20 +78,28 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
         val keyString = key.toString()
         val recordMetadata = context.recordMetadata().getOrElse { null }
 
-        recordMetadata?.let { logger.debug("Processing record with key $keyString from Kafka topic: $topic, partition: ${it.partition()}, offset: ${it.offset()}") }
+        recordMetadata?.let { logger.debug("Processing record from Kafka topic: $topic, partition: ${it.partition()}, offset: ${it.offset()}") }
+
+        val shouldProcess = recordMetadata?.let {
+            if (streamType == StreamType.INTERNAL) true
+            else repository.saveOffsetIfGreater(it.partition(), it.offset())
+        } ?: true
+
+        if (!shouldProcess) {
+            recordMetadata.let {
+                logger.info("Record with offset: ${it.offset()}, topic: ${it.topic()}, partition: ${it.partition()} has already been processed. Skipping further processing.")
+            }
+            return
+        }
 
         if (store.hasFailedMessages(keyString)) {
-            transaction {
-                saveOffset(recordMetadata)
-                enqueue(record, "Queued behind a previously failed message.")
-            }
+            enqueue(record, "Queued behind a previously failed message.")
             return
         }
 
         try {
             transaction {
                 val result = businessLogic(record)
-                saveOffset(recordMetadata)
                 when (result) {
                     is Commit, is Skip -> {}
                     is Forward -> context.forward(result.forwardedRecord, result.topic)
@@ -101,10 +108,7 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
             }
         } catch (e: Throwable) {
             val reason = "Initial processing failed: ${e.javaClass.simpleName} - ${e.message}"
-            transaction {
-                saveOffset(recordMetadata)
-                enqueue(record, reason)
-            }
+            enqueue(record, reason)
         }
     }
 
@@ -118,15 +122,15 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
     private fun runReprocessingWithLock(timestamp: Long) {
         runWithInterPodLevelLock {
 //            punctuationCoroutineScope.launch {
-                try {
+            try {
 //                    withTimeout(10_000) {
-                        runReprocessingOnOneBatch(timestamp)
+                runReprocessingOnOneBatch(timestamp)
 //                    }
 //                } catch (e: TimeoutCancellationException) {
 //                    logger.warn("Reprocessing failed messages timed out after 10 seconds")
-                } catch (e: Throwable) {
-                    logger.error("Unexpected error when processing failed messages: ${e.message}", e)
-                }
+            } catch (e: Throwable) {
+                logger.error("Unexpected error when processing failed messages: ${e.message}", e)
+            }
 //            }
         }
     }
@@ -168,17 +172,23 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
                 logger.error("Message ${result.msg.id} for key '${result.msg.messageKeyText}' has exceeded max retries. Deleting from queue.")
                 store.delete(result.msg.id)
             }
+
             is RetryableFail -> {
                 val reason = "Reprocessing failed: ${result.error.javaClass.simpleName} - ${result.error.message}"
                 store.updateAfterFailedAttempt(result.msg.id, reason)
                 metrics.retryFailed()
-                logger.warn("Reprocessing messageId:${result.msg.id}, key:'${result.msg.messageKeyText}', topic:${topic} failed again. Reason: $reason", result.error)
+                logger.warn(
+                    "Reprocessing messageId:${result.msg.id}, key:'${result.msg.messageKeyText}', topic:${topic} failed again. Reason: $reason",
+                    result.error
+                )
             }
+
             is UnrecoverableFail -> {
                 metrics.messageDeadLettered()
                 store.delete(result.msg.id)
                 logger.error("Message $result.msg.id could not be deserialized (${result.reason}). Moving to dead-letter.")
             }
+
             is Success -> {
                 store.delete(result.msg.id)
                 metrics.retrySucceeded()
@@ -222,22 +232,13 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
             store.getBatchToRetry(config.retryBatchSize)
                 .also { logger.debug("hentet ${it.size} meldinger for topic: $topic") }
                 .proccessInOrderOnKey {
-                   reprocessSingleMessage(it).also(::handleReprocessingResult)
+                    reprocessSingleMessage(it).also(::handleReprocessingResult)
                 }
 
 
         } finally {
             // Frigi låsen for MITT topic, slik at en annen tråd kan ta over neste gang.
             TopicLevelLock.release(this.topic)
-        }
-    }
-
-    private fun saveOffset(recordMetadata: RecordMetadata?) {
-        val isMessageFromKafka = recordMetadata != null && streamType == StreamType.SOURCE
-        if(!isMessageFromKafka) return
-        val savedOffset = repository.getOffset(recordMetadata.partition())
-        if (recordMetadata.offset() > savedOffset) {
-            repository.saveOffset(recordMetadata.partition(), recordMetadata.offset())
         }
     }
 
@@ -285,11 +286,17 @@ fun <KIn, VIn, KOut, VOut> List<FailedMessage>.proccessInOrderOnKey(block: (mess
 }
 
 sealed class ReprocessingResult<KIn, VIn, KOut, VOut>(val msg: FailedMessage)
-class MaxRetryReached<KIn, VIn, KOut, VOut>(msg: FailedMessage): ReprocessingResult<KIn, VIn, KOut, VOut>(msg)
-class RetryableFail<KIn, VIn, KOut, VOut>(msg: FailedMessage, val error: Throwable): ReprocessingResult<KIn, VIn, KOut, VOut>(msg)
-class UnrecoverableFail<KIn, VIn, KOut, VOut>(msg: FailedMessage, val reason: String): ReprocessingResult<KIn, VIn, KOut, VOut>(msg)
-class Success<KIn, VIn, KOut, VOut>(msg: FailedMessage, val processingResult: RecordProcessingResult<KOut, VOut>): ReprocessingResult<KIn, VIn, KOut, VOut>(msg)
+class MaxRetryReached<KIn, VIn, KOut, VOut>(msg: FailedMessage) : ReprocessingResult<KIn, VIn, KOut, VOut>(msg)
+class RetryableFail<KIn, VIn, KOut, VOut>(msg: FailedMessage, val error: Throwable) :
+    ReprocessingResult<KIn, VIn, KOut, VOut>(msg)
+
+class UnrecoverableFail<KIn, VIn, KOut, VOut>(msg: FailedMessage, val reason: String) :
+    ReprocessingResult<KIn, VIn, KOut, VOut>(msg)
+
+class Success<KIn, VIn, KOut, VOut>(msg: FailedMessage, val processingResult: RecordProcessingResult<KOut, VOut>) :
+    ReprocessingResult<KIn, VIn, KOut, VOut>(msg)
 
 sealed class MessageReconstructionResult<KIn, VIn>()
 class ReconstructedRecord<KIn, VIn>(val record: Record<KIn, VIn>) : MessageReconstructionResult<KIn, VIn>()
-class UnrecoverableDeserialization<KIn, VIn>(val messageId: Long, val reason: String) : MessageReconstructionResult<KIn, VIn>()
+class UnrecoverableDeserialization<KIn, VIn>(val messageId: Long, val reason: String) :
+    MessageReconstructionResult<KIn, VIn>()

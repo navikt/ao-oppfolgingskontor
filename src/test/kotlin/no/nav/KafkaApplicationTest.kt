@@ -42,6 +42,7 @@ import no.nav.services.KontorTilordningService
 import no.nav.services.OppfolgingsperiodeService
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.gittBrukerUnderOppfolging
+import no.nav.utils.randomTopicName
 import org.apache.kafka.common.serialization.Serde
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.StreamsBuilder
@@ -60,19 +61,19 @@ import java.util.Properties
 import java.util.UUID
 
 class KafkaApplicationTest {
-    val topic = "test-topic"
     val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
         ArenaKontorEntity::sisteLagreKontorArenaKontor
     ) { OppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) }
 
     @Test
     fun `skal lagre alle nye endringer på arena-kontor i historikk tabellen`() = testApplication {
+        val topic = randomTopicName()
         val fnr = "12345768901"
 
         application {
             flywayMigrationInTest()
             gittBrukerUnderOppfolging(Fnr(fnr))
-            val topology = configureStringStringInputTopology(endringPaOppfolgingsBrukerProcessor::process)
+            val topology = configureStringStringInputTopology(endringPaOppfolgingsBrukerProcessor::process, topic)
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(
                 fnr,
@@ -95,6 +96,7 @@ class KafkaApplicationTest {
     fun `skal tilordne kontor til brukere som har fått startet oppfølging`() = testApplication {
         val fnr = Fnr("22325678901")
         val kontor = KontorId("2228")
+        val topic = randomTopicName()
 
         application {
             flywayMigrationInTest()
@@ -124,10 +126,11 @@ class KafkaApplicationTest {
                 processRecord = sistePeriodeProcessor::process,
             )
             val tilordningProcessorSupplier = wrapInRetryProcessor(
-                topic = topic,
+                topic = "Kontortilordning",
                 keyInSerde = KontortilordningsProcessor.identSerde,
                 valueInSerde = KontortilordningsProcessor.oppfolgingsperiodeStartetSerde,
                 processRecord = tilordningProcessor::process,
+                streamType = StreamType.INTERNAL
             )
             builder.stream(topic, Consumed.with(Serdes.String(), Serdes.String()))
                 .process(sistePeriodeProcessorSupplier, Named.`as`(processorName(topic)))
@@ -155,11 +158,12 @@ class KafkaApplicationTest {
     @Test
     fun `skal kun lagre nyere data i arena-kontor tabell og historikk tabellen`() = testApplication {
         val fnr = "52345678901"
+        val topic = randomTopicName()
 
         application {
             flywayMigrationInTest()
             gittBrukerUnderOppfolging(Fnr(fnr))
-            val topology = configureStringStringInputTopology(endringPaOppfolgingsBrukerProcessor::process)
+            val topology = configureStringStringInputTopology(endringPaOppfolgingsBrukerProcessor::process, topic)
 
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(
@@ -181,6 +185,7 @@ class KafkaApplicationTest {
     fun `skal behandle endring i skjerming sett kontor fra GT`() = testApplication {
         val fnr = Fnr("55345678901")
         val skjermetKontor = "4555"
+        val topic = randomTopicName()
 
         val automatiskKontorRutingService = AutomatiskKontorRutingService(
             KontorTilordningService::tilordneKontor,
@@ -195,7 +200,7 @@ class KafkaApplicationTest {
 
         application {
             flywayMigrationInTest()
-            val topology = configureStringStringInputTopology(skjermingProcessor::process)
+            val topology = configureStringStringInputTopology(skjermingProcessor::process, topic)
             val kafkaMockTopic = setupKafkaMock(topology, topic)
 
             kafkaMockTopic.pipeInput(fnr.value, "true")
@@ -213,25 +218,13 @@ class KafkaApplicationTest {
 //    @Test
     fun testKafkaRetry() = testApplication {
         val fnr = "12345678901"
-
+        val topic = randomTopicName()
         application {
             val dataSource = flywayMigrationInTest()
 
-            val topology = configureStringStringInputTopology(endringPaOppfolgingsBrukerProcessor::process)
+            val topology = configureStringStringInputTopology(endringPaOppfolgingsBrukerProcessor::process, topic)
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(fnr, endringPaOppfolgingsBrukerMessage("1234", ZonedDateTime.now()))
-        }
-    }
-
-//    @Test
-    fun testKafkaSkipMessage() = testApplication {
-        val fnr = "12345678901"
-        application {
-            val dataSource = flywayMigrationInTest()
-
-            val topology = configureStringStringInputTopology(endringPaOppfolgingsBrukerProcessor::process)
-            val kafkaMockTopic = setupKafkaMock(topology, topic)
-            kafkaMockTopic.pipeInput(fnr, """{"oppfolgingsenhet":"ugyldigEnhet"}""")
         }
     }
 
@@ -252,7 +245,8 @@ class KafkaApplicationTest {
         topic: String,
         keyInSerde: Serde<KIn>,
         valueInSerde: Serde<VIn>,
-        processRecord: ProcessRecord<KIn ,VIn, KOut, VOut>
+        processRecord: ProcessRecord<KIn ,VIn, KOut, VOut>,
+        streamType: StreamType = StreamType.SOURCE
     ): ProcessorSupplier<KIn, VIn, KOut, VOut> {
         val testRepository = RetryableRepository(topic)
         return ProcessorSupplier {
@@ -261,7 +255,7 @@ class KafkaApplicationTest {
                 keyInSerde = keyInSerde,
                 valueInSerde = valueInSerde,
                 topic = topic,
-                streamType = StreamType.SOURCE,
+                streamType = streamType,
                 repository = testRepository,
                 businessLogic = processRecord,
                 lockProvider = TestLockProvider,
@@ -270,7 +264,7 @@ class KafkaApplicationTest {
         }
     }
 
-    private fun configureStringStringInputTopology(processRecord: ProcessRecord<String, String, String, String>): Topology {
+    private fun configureStringStringInputTopology(processRecord: ProcessRecord<String, String, String, String>, topic: String): Topology {
         val builder = StreamsBuilder()
         val testSupplier = wrapInRetryProcessor(
             topic = topic,

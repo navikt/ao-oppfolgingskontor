@@ -39,7 +39,7 @@ val KafkaStreamsStarted: EventDefinition<Application> = EventDefinition()
 val KafkaStreamsStopping: EventDefinition<Application> = EventDefinition()
 val KafkaStreamsStopped: EventDefinition<Application> = EventDefinition()
 
-val shutDownTimeout = Duration.ofSeconds(1)
+val shutDownTimeout = Duration.ofSeconds(60)
 val logger = LoggerFactory.getLogger("no.nav.kafka.KafkaStreamsPlugin")
 
 class KafkaStreamsPluginConfig(

@@ -1,12 +1,20 @@
 package no.nav.db
 
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 
-@Serializable
+@Serializable(with = ValueSerializer::class)
 sealed class Ident {
     abstract val value: String
 
     companion object {
+        val isDev = System.getenv("NAIS_CLUSTER_NAME")?.contains("dev") ?: false
+
         fun of(value: String): Ident {
             require(value.isNotBlank())
             require(value.all { it.isDigit() }) { "Ident must contain only digits" }
@@ -16,7 +24,8 @@ sealed class Ident {
             val lengthIs13 by lazy { value.length == 13 }
             val monthIsValidMonth by lazy { digitNumber3and4 in 1..12 }
             val monthIsTenorMonth by lazy { digitNumber3and4 in 81..92 }
-            val monthIsDollyMonth by lazy { digitNumber3and4 in 41..52 }
+            val monthIsDollyMonth by lazy { digitNumber3and4 in 41..80 }
+            val monthIsBostMonth by lazy { digitNumber3and4 in 61..72 }
             val lengthIs11 by lazy { value.length == 11 }
             val isValidDate by lazy { value.substring(0, 2).toInt() in 1..31 }
 
@@ -24,7 +33,8 @@ sealed class Ident {
                 lengthIs13 -> AktorId(value)
                 firstDigit in gyldigeDnrStart && (monthIsValidMonth || monthIsTenorMonth || monthIsDollyMonth) -> Dnr(value)
                 digitNumber3and4 in 21..32 -> Npid(value) // NPID er måned + 20
-                lengthIs11 && isValidDate && (monthIsValidMonth || monthIsTenorMonth || monthIsDollyMonth) -> Fnr(value)
+                lengthIs11 && monthIsValidMonth && isValidDate -> Fnr(value)
+                isDev && lengthIs11 && isValidDate && (monthIsTenorMonth || monthIsDollyMonth || monthIsBostMonth) -> Fnr(value)
                 else -> { throw Exception("Ugyldig Ident: $value")
                 }
             }
@@ -84,4 +94,11 @@ class AktorId(override val value: String): Ident() {
         require(value.length == 13) { "AktorId must be 13 characters long but was ${value.length}" }
         require(value.all { it.isDigit() }) { "AktorId must contain only digits" }
     }
+}
+
+object ValueSerializer : KSerializer<Ident> {
+    override val descriptor: SerialDescriptor =
+        PrimitiveSerialDescriptor("Ident", PrimitiveKind.STRING)
+    override fun serialize(encoder: Encoder, value: Ident) = encoder.encodeString(value.value)
+    override fun deserialize(decoder: Decoder) = Ident.of(decoder.decodeString())
 }

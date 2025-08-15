@@ -43,7 +43,7 @@ import no.nav.http.client.arbeidssogerregisteret.HentProfileringsResultat
 import no.nav.http.client.arbeidssogerregisteret.ProfileringFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringIkkeFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
-import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultatFeil
+import no.nav.http.client.arbeidssogerregisteret.ProfileringOppslagFeil
 import no.nav.kafka.consumers.EndringISkjermingResult
 import no.nav.kafka.consumers.HåndterPersondataEndretFail
 import no.nav.kafka.consumers.HåndterPersondataEndretResultat
@@ -110,12 +110,12 @@ class AutomatiskKontorRutingService(
             }
             val profilering = when (val profileringResultat = profileringProvider(fnr)) {
                 is ProfileringFunnet -> profileringResultat
-                is ProfileringIkkeFunnet -> return TilordningFeil("Kunne ikke hente profilering: ${profileringResultat.melding}") // TODO: Skal ikke retries
-                is ProfileringsResultatFeil -> return TilordningFeil("Kunne ikke hente profilering: ${profileringResultat.error.message}")
+                is ProfileringIkkeFunnet -> profileringResultat
+                is ProfileringOppslagFeil -> return TilordningFeil("Kunne ikke hente profilering: ${profileringResultat.error.message}")
             }
             val kontorTilordning = when (val gtKontorResultat = gtKontorProvider(fnr, harStrengtFortroligAdresse, erSkjermet)) {
-                is KontorForGtFinnesIkke -> hentTilordningUtenGT(fnr, alder, profileringProvider(fnr), oppfolgingsperiodeId, gtKontorResultat)
-                is KontorForGtFantLandEllerKontor -> hentTilordning(fnr, gtKontorResultat, alder, profileringProvider(fnr), oppfolgingsperiodeId)
+                is KontorForGtFinnesIkke -> hentTilordningUtenGT(fnr, alder, profilering, oppfolgingsperiodeId, gtKontorResultat)
+                is KontorForGtFantLandEllerKontor -> hentTilordning(fnr, gtKontorResultat, alder, profilering, oppfolgingsperiodeId)
                 is KontorForGtFeil -> return TilordningFeil("Feil ved henting av gt-kontor: ${gtKontorResultat.melding}")
             }
             tilordneKontor(kontorTilordning)
@@ -179,8 +179,7 @@ class AutomatiskKontorRutingService(
     ): AOKontorEndret {
         val skalTilNOE = skalTilNasjonalOppfølgingsEnhet(gtKontor.sensitivitet(), profilering, alder)
         return when {
-            skalTilNOE ->
-                OppfolgingsperiodeStartetNoeTilordning(fnr, oppfolgingsperiodeId)
+            skalTilNOE -> OppfolgingsperiodeStartetNoeTilordning(fnr, oppfolgingsperiodeId)
             gtKontor.sensitivitet().erSensitiv() -> {
                 when (gtKontor) {
                     is KontorForGtNrFantKontor ->

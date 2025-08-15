@@ -35,7 +35,6 @@ import java.time.Duration
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.util.Optional
-import kotlin.jvm.optionals.getOrElse
 
 /**
  * Enhetstester for RetryableProcessor.
@@ -69,7 +68,7 @@ class RetryableProcessorTest {
         var mockedContext: ProcessorContext<Unit, Unit>,
         )
 
-    private fun TestScope.setupTest(): TestSetup {
+    private fun TestScope.setupTest(streamType: StreamType = StreamType.SOURCE): TestSetup {
         val mockedContext: ProcessorContext<Unit, Unit> = mockk(relaxed = true)
         every { mockedContext.schedule(any(), any(), capture(punctuationCallback)) } returns mockk()
         val mockedStore: RetryableRepository = mockk(relaxed = true)
@@ -78,7 +77,7 @@ class RetryableProcessorTest {
             keyInSerde = Serdes.String(),
             valueInSerde = Serdes.String(),
             topic = inputTopicName,
-            streamType = StreamType.SOURCE,
+            streamType = streamType,
             repository = mockedStore, // Dummy mock, ikke brukt direkte av prosessoren
             // Definer en kontrollerbar forretningslogikk for testen
             businessLogic = { record ->
@@ -310,32 +309,16 @@ class RetryableProcessorTest {
     }
 
     @Test
-    fun `only save offset when offset is higher than the previous offset`() = runTest {
-        val (processor, mockedStore, _, mockedContext) = setupTest()
-        val partition = 0
-        val alreadySavedOffset = 5L
-        val newOffset = 2L
-        val metadataOffset = getRecordMetadata(partition, newOffset)
-        every { mockedContext.recordMetadata() } returns Optional.of(metadataOffset)
-        every { mockedStore.getOffset(partition) } returns alreadySavedOffset
-
-        processor.process(Record("key1", "{}", 0L))
-
-        verify(exactly = 0) { mockedStore.saveOffset(any(), any()) }
-    }
-
-    @Test
     fun `save offset when business logic fails and the message is enqueued`() = runTest {
         val (processor, mockedStore, _, mockedContext) = setupTest()
         val savedOffset = 0L
         val offsetNewMessage = savedOffset + 45
         val metadataOffset = getRecordMetadata(0, offsetNewMessage)
         every { mockedContext.recordMetadata() } returns Optional.of(metadataOffset)
-        every { mockedStore.getOffset(0) } returns savedOffset
 
         processor.process(Record("key1", "FAIL", 0L))
 
-        verify(exactly = 1) { mockedStore.saveOffset(0, offsetNewMessage) }
+        verify(exactly = 1) { mockedStore.saveOffsetIfGreater(0, offsetNewMessage) }
     }
 
     @Test
@@ -346,22 +329,20 @@ class RetryableProcessorTest {
         val offsetNewMessage = savedOffset + 45
         val metadataOffset = getRecordMetadata(0, offsetNewMessage)
         every { mockedContext.recordMetadata() } returns Optional.of(metadataOffset)
-        every { mockedStore.getOffset(0) } returns savedOffset
 
         processor.process(Record("key1", "", 0L))
 
-        verify(exactly = 1) { mockedStore.saveOffset(0, offsetNewMessage) }
+        verify(exactly = 1) { mockedStore.saveOffsetIfGreater(0, offsetNewMessage) }
     }
 
     @Test
     fun `don't save offset when message is internal`() = runTest {
-        val (processor, mockedStore, _, mockedContext) = setupTest()
-        val partition = 0
-        every { mockedStore.getOffset(partition) } returns 0
+        val (processor, mockedStore, _, mockedContext) = setupTest(StreamType.INTERNAL)
+        every { mockedContext.recordMetadata() } returns Optional.of(getRecordMetadata(0, 1))
 
         processor.process(Record("key1", "{}", 0L))
 
-        verify(exactly = 0) { mockedStore.saveOffset(any(), any()) }
+        verify(exactly = 0) { mockedStore.saveOffsetIfGreater(any(), any()) }
     }
 
 }

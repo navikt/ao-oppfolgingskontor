@@ -11,7 +11,6 @@ interface PostgresRetryStore : StateStore {
     fun delete(messageId: Long)
     fun updateAfterFailedAttempt(messageId: Long, newReason: String)
     fun saveOffset(partition: Int, offset: Long)
-    fun getOffset(partition: Int): Long?
 }
 
 internal class PostgresRetryStoreImpl(
@@ -43,10 +42,6 @@ internal class PostgresRetryStoreImpl(
     override fun updateAfterFailedAttempt(messageId: Long, newReason: String) =
         retryableRepository.updateAfterFailedAttempt(messageId, newReason)
     override fun saveOffset(partition: Int, offset: Long) {
-        retryableRepository.saveOffset(partition, offset)
-    }
-
-    override fun getOffset(partition: Int): Long? {
-        return retryableRepository.getOffset(partition)
+        retryableRepository.saveOffsetIfGreater(partition, offset)
     }
 }
