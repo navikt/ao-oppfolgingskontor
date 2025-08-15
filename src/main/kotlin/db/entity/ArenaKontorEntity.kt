@@ -6,9 +6,15 @@ import no.nav.domain.KontorId
 import org.jetbrains.exposed.dao.Entity
 import org.jetbrains.exposed.dao.ImmutableEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
+import org.jetbrains.exposed.sql.transactions.transaction
 
 class ArenaKontorEntity(id: EntityID<String>): Entity<String>(id), KontorEntity {
-    companion object : ImmutableEntityClass<String, ArenaKontorEntity>(ArenaKontorTable)
+    companion object : ImmutableEntityClass<String, ArenaKontorEntity>(ArenaKontorTable) {
+        fun sisteLagreKontorArenaKontor(fnr: Fnr) = transaction {
+            find { ArenaKontorTable.id eq fnr.value }
+                .firstOrNull()
+        }
+    }
     val fnr by ArenaKontorTable.id
     val kontorId by ArenaKontorTable.kontorId
     val createdAt by ArenaKontorTable.createdAt

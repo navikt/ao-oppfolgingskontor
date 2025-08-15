@@ -11,6 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import no.nav.db.AktorId
 import no.nav.db.Fnr
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
+import no.nav.db.entity.ArenaKontorEntity
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
@@ -19,6 +20,7 @@ import no.nav.http.client.AlderFunnet
 import no.nav.http.client.IdentFunnet
 import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
+import no.nav.http.client.IdentResult
 import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
@@ -31,6 +33,8 @@ import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.KontorForGtNrFantDefaultKontor
 import no.nav.services.KontorTilordningService
+import no.nav.services.NotUnderOppfolging
+import no.nav.services.OppfolgingsperiodeOppslagResult
 import no.nav.services.OppfolgingsperiodeService
 import no.nav.utils.flywayMigrationInTest
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -57,6 +61,8 @@ class BigAppTest {
                 false
             ) { IdentFunnet(fnr) }
 
+
+            val oppfolgingsperiodeProvider: suspend (IdentResult) -> OppfolgingsperiodeOppslagResult  = { _: IdentResult -> AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, OffsetDateTime.now()) }
             val automatiskKontorRutingService =  AutomatiskKontorRutingService(
             KontorTilordningService::tilordneKontor,
             { _, a, b-> KontorForGtNrFantDefaultKontor(kontor, b, a, GeografiskTilknytningBydelNr("3131")) },
@@ -64,7 +70,7 @@ class BigAppTest {
             { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
             { SkjermingFunnet(HarSkjerming(false)) },
             { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
-            { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, OffsetDateTime.now()) }
+            oppfolgingsperiodeProvider
             )
 
             val tilordningProcessor = KontortilordningsProcessor(automatiskKontorRutingService)
@@ -79,7 +85,10 @@ class BigAppTest {
                 automatiskKontorRutingService
             )
 
-            val endringPaaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor()
+            val endringPaaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
+                ArenaKontorEntity::sisteLagreKontorArenaKontor,
+                oppfolgingsperiodeProvider
+            )
 
             val topology = configureTopology(
                 this.environment,
@@ -127,6 +136,7 @@ class BigAppTest {
                 false
             ) { IdentFunnet(fnr) }
 
+            val oppfolgingsperiodeProvider = { _: IdentResult -> AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, OffsetDateTime.now()) }
             val automatiskKontorRutingService =  AutomatiskKontorRutingService(
                 KontorTilordningService::tilordneKontor,
                 { _, a, b-> KontorForGtNrFantDefaultKontor(kontor, b, a, GeografiskTilknytningBydelNr("3131")) },
@@ -134,7 +144,7 @@ class BigAppTest {
                 { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
                 { SkjermingFunnet(HarSkjerming(false)) },
                 { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
-                { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, OffsetDateTime.now()) }
+                oppfolgingsperiodeProvider
             )
 
             val tilordningProcessor = KontortilordningsProcessor(automatiskKontorRutingService)
@@ -149,7 +159,10 @@ class BigAppTest {
                 automatiskKontorRutingService
             )
 
-            val endringPaaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor()
+            val endringPaaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
+                ArenaKontorEntity::sisteLagreKontorArenaKontor,
+                oppfolgingsperiodeProvider
+            )
 
             val topology = configureTopology(
                 this.environment,
