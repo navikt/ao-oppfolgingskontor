@@ -22,7 +22,7 @@ sealed class Ident {
             val lengthIs13 by lazy { value.length == 13 }
             val monthIsValidMonth by lazy { digitNumber3and4 in 1..12 }
             val monthIsTenorMonth by lazy { digitNumber3and4 in 81..92 }
-            val monthIsDollyMonth by lazy { digitNumber3and4 in 41..62 }
+            val monthIsDollyMonth by lazy { digitNumber3and4 in 41..80 }
             val lengthIs11 by lazy { value.length == 11 }
             val isValidDate by lazy { value.substring(0, 2).toInt() in 1..31 }
 
