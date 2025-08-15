@@ -82,14 +82,7 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
 
         val shouldProcess = recordMetadata?.let {
             if (streamType == StreamType.INTERNAL) true
-            else {
-                var didUpdateOffset = repository.saveOffsetIfGreater(it.partition(), it.offset())
-                if (!didUpdateOffset) {
-                    logger.info("Record with offset: ${it.offset()}, topic: ${it.topic()}, partition: ${it.partition()} has already been processed. Skipping further processing.")
-
-                }
-                didUpdateOffset
-            }
+            else repository.saveOffsetIfGreater(it.partition(), it.offset())
         } ?: true
 
         if (!shouldProcess) {
