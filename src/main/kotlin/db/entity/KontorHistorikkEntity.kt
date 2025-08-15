@@ -8,7 +8,7 @@ import org.jetbrains.exposed.dao.id.EntityID
 class KontorHistorikkEntity(id: EntityID<Int>) : Entity<Int>(id) {
     companion object : ImmutableEntityClass<Int, KontorHistorikkEntity>(KontorhistorikkTable)
 
-    val fnr by KontorhistorikkTable.fnr
+    val ident by KontorhistorikkTable.ident
     val kontorId by KontorhistorikkTable.kontorId
     val createdAt by KontorhistorikkTable.createdAt
     val endretAv by KontorhistorikkTable.endretAv

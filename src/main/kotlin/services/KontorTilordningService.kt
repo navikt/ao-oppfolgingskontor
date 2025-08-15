@@ -4,7 +4,6 @@ import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.db.table.ArenaKontorTable
 import no.nav.db.table.GeografiskTilknytningKontorTable
 import no.nav.db.table.KontorhistorikkTable
-import no.nav.db.table.KontorhistorikkTable.fnr
 import no.nav.domain.events.AOKontorEndret
 import no.nav.domain.events.ArenaKontorEndret
 import no.nav.domain.events.GTKontorEndret
@@ -24,7 +23,7 @@ object KontorTilordningService {
                 is AOKontorEndret -> {
                     ArbeidsOppfolgingKontorTable.upsert {
                         it[kontorId] = kontorTilhorighet.kontorId.id
-                        it[fnr] = kontorTilhorighet.fnr.value
+                        it[id] = kontorTilhorighet.fnr.value
                         it[endretAv] = kontorEndring.registrant.getIdent()
                         it[endretAvType] = kontorEndring.registrant.getType()
                         it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
@@ -33,7 +32,7 @@ object KontorTilordningService {
                 is ArenaKontorEndret -> {
                     ArenaKontorTable.upsert {
                         it[kontorId] = kontorTilhorighet.kontorId.id
-                        it[fnr] = kontorTilhorighet.fnr.value
+                        it[id] = kontorTilhorighet.fnr.value
                         it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
                         it[sistEndretDatoArena] = kontorEndring.sistEndretDatoArena
                     }
@@ -41,7 +40,7 @@ object KontorTilordningService {
                 is GTKontorEndret -> {
                     GeografiskTilknytningKontorTable.upsert {
                         it[kontorId] = kontorTilhorighet.kontorId.id
-                        it[fnr] = kontorTilhorighet.fnr.value
+                        it[id] = kontorTilhorighet.fnr.value
                         it[gt] = kontorEndring.gt()
                         it[gtType] = kontorEndring.gtType()
                         it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
@@ -58,7 +57,7 @@ object KontorTilordningService {
         val historikkInnslag = kontorEndring.toHistorikkInnslag()
         return KontorhistorikkTable.insert {
             it[kontorId] = historikkInnslag.kontorId.id
-            it[fnr] = historikkInnslag.ident.value
+            it[ident] = historikkInnslag.ident.value
             it[endretAv] = historikkInnslag.registrant.getIdent()
             it[endretAvType] = historikkInnslag.registrant.getType()
             it[kontorendringstype] = historikkInnslag.kontorendringstype.name

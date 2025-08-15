@@ -84,7 +84,7 @@ class KafkaApplicationTest {
             transaction {
                 ArenaKontorEntity.Companion.findById(fnr)?.kontorId shouldBe "4321"
                 KontorHistorikkEntity.Companion
-                    .find { KontorhistorikkTable.fnr eq fnr }
+                    .find { KontorhistorikkTable.ident eq fnr }
                     .count() shouldBe 2
             }
         }
@@ -143,7 +143,7 @@ class KafkaApplicationTest {
             transaction {
                 ArbeidsOppfolgingKontorEntity.Companion.findById(fnr.value)?.kontorId shouldBe "4154"
                 KontorHistorikkEntity.Companion
-                    .find { KontorhistorikkTable.fnr eq fnr.value }
+                    .find { KontorhistorikkTable.ident eq fnr.value }
                     .count().let {
                         withClue("Antall historikkinnslag skal være 1") {
                             it shouldBe 1
@@ -173,7 +173,7 @@ class KafkaApplicationTest {
             transaction {
                 ArenaKontorEntity.findById(fnr)?.kontorId shouldBe "1234"
                 KontorHistorikkEntity
-                    .find { KontorhistorikkTable.fnr eq fnr }
+                    .find { KontorhistorikkTable.ident eq fnr }
                     .count() shouldBe 1
             }
         }
@@ -207,7 +207,7 @@ class KafkaApplicationTest {
                 GeografiskTilknyttetKontorEntity.Companion.findById(fnr.value)?.kontorId shouldBe skjermetKontor
                 ArbeidsOppfolgingKontorEntity.Companion.findById(fnr.value)?.kontorId shouldBe skjermetKontor
                 KontorHistorikkEntity.Companion
-                    .find { KontorhistorikkTable.fnr eq fnr.value }
+                    .find { KontorhistorikkTable.ident eq fnr.value }
                     .count() shouldBe 2
             }
         }
