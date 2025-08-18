@@ -129,7 +129,7 @@ class Feil(
 /*
 * Endringer fra topic før cutoff har blitt eller er migrert manuelt. Vi tar bare imot endringer fra etter cutoff
 * */
-val ENDRING_PA_OPPFOLINGSBRUKER_CUTOFF = OffsetDateTime.of(
+val ENDRING_PA_OPPFOLGINGSBRUKER_CUTOFF = OffsetDateTime.of(
     2025,
     8,
     13,
