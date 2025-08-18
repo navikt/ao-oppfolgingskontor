@@ -5,13 +5,11 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.ktor.client.call.body
 import io.ktor.http.HttpStatusCode
-import io.ktor.server.auth.authenticate
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import no.nav.Authenticated
 import no.nav.SystemPrincipal
-import no.nav.configureSecurity
 import no.nav.db.Fnr
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.db.table.ArenaKontorTable
@@ -178,7 +176,7 @@ class GraphqlApplicationTest {
                 it[this.updatedAt] = insertTime.toOffsetDateTime()
             }
             KontorhistorikkTable.insert {
-                it[this.fnr] = fnr.value
+                it[this.ident] = fnr.value
                 it[this.kontorId] = kontorId
                 it[this.kontorendringstype] = KontorEndringsType.EndretIArena.name
                 it[this.endretAvType] = System().getType()
@@ -198,7 +196,7 @@ class GraphqlApplicationTest {
                 it[this.updatedAt] = insertTime.toOffsetDateTime()
             }
             KontorhistorikkTable.insert {
-                it[this.fnr] = fnr.value
+                it[this.ident] = fnr.value
                 it[this.kontorId] = kontorId
                 it[this.kontorendringstype] = KontorEndringsType.FlyttetAvVeileder.name
                 it[this.endretAvType] = "veileder"
@@ -218,7 +216,7 @@ class GraphqlApplicationTest {
                 it[this.updatedAt] = insertTime.toOffsetDateTime()
             }
             KontorhistorikkTable.insert {
-                it[this.fnr] = fnr.value
+                it[this.ident] = fnr.value
                 it[this.kontorId] = kontorId
                 it[this.kontorendringstype] = KontorEndringsType.FlyttetAvVeileder.name
                 it[this.endretAvType] = "veileder"

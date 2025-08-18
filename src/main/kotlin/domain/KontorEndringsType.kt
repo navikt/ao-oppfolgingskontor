@@ -12,4 +12,5 @@ enum class KontorEndringsType {
     AddressebeskyttelseMistet,
     EndretIArena,
     EndretBostedsadresse,
+    ArenaMigrering
 }

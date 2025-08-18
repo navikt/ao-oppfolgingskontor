@@ -4,7 +4,6 @@ import com.expediagroup.graphql.server.operations.Query
 import graphql.schema.DataFetchingEnvironment
 import no.nav.db.entity.KontorHistorikkEntity
 import no.nav.db.table.KontorhistorikkTable
-import no.nav.db.table.KontorhistorikkTable.kontorType
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorType
 import no.nav.http.graphql.schemas.KontorHistorikkQueryDto
@@ -19,7 +18,7 @@ class KontorHistorikkQuery : Query {
         return runCatching {
             transaction {
                 KontorHistorikkEntity
-                    .find { KontorhistorikkTable.fnr eq fnr }
+                    .find { KontorhistorikkTable.ident eq fnr }
                     .orderBy(KontorhistorikkTable.id to SortOrder.ASC)
                     .map {
                         val endringsType = KontorEndringsType.valueOf(it.kontorendringstype)
