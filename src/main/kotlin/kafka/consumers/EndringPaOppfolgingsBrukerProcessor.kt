@@ -5,10 +5,12 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import no.nav.db.Fnr
 import no.nav.db.entity.ArenaKontorEntity
-import no.nav.db.table.ArenaKontorTable
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
+import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.events.EndringPaaOppfolgingsBrukerFraArena
+import no.nav.http.client.IdentFunnet
+import no.nav.http.client.IdentResult
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
@@ -17,65 +19,126 @@ import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.KontorTilordningService
 import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingperiodeOppslagFeil
-import no.nav.services.OppfolgingsperiodeService
+import no.nav.services.OppfolgingsperiodeOppslagResult
 import org.apache.kafka.streams.processor.api.Record
-import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.time.OffsetDateTime
+import java.time.ZoneOffset
 
-class EndringPaOppfolgingsBrukerProcessor() {
+class EndringPaOppfolgingsBrukerProcessor(
+    val sistLagretArenaKontorProvider: (Fnr) -> ArenaKontorEntity?,
+    val oppfolgingsperiodeProvider: suspend (IdentResult) -> OppfolgingsperiodeOppslagResult,
+) {
     val log = LoggerFactory.getLogger(EndringPaOppfolgingsBrukerProcessor::class.java)
 
     val json = Json { ignoreUnknownKeys = true }
 
-    fun process(record: Record<String, String>): RecordProcessingResult<String, String> {
-        log.info("Consumed record")
-        val fnrString = record.key()
-        val endringPaOppfolgingsBruker = json.decodeFromString<EndringPaOppfolgingsBruker>(record.value())
-        if (endringPaOppfolgingsBruker.oppfolgingsenhet.isNullOrBlank()) {
-            log.warn("Mottok endring på oppfølgingsbruker uten gyldig kontorId")
-            return Commit()
-        }
-
-        val sistEndretKontorEntity = transaction {
-            ArenaKontorEntity
-                .find { ArenaKontorTable.id eq fnrString }
-                .firstOrNull()
-        }
-
-        if(sistEndretKontorEntity != null && sistEndretKontorEntity.sistEndretDatoArena > endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime()) {
-            log.warn("Sist endret kontor er eldre enn endring på oppfølgingsbruker")
-            return Skip()
-        }
-
-        val fnr = Fnr(fnrString)
-        val oppfolgingperiode = runBlocking { OppfolgingsperiodeService.getCurrentOppfolgingsperiode(fnr) }
-        val oppfolgingsperiodeId = when (oppfolgingperiode) {
-            is AktivOppfolgingsperiode -> oppfolgingperiode.periodeId
-            NotUnderOppfolging -> {
+    fun handleResult(result: EndringPaaOppfolgingsBrukerResult): RecordProcessingResult<String, String> {
+        return when (result) {
+            is BeforeCutoff -> {
+                log.info("Endring på oppfolgingsbruker var fra før cutoff, hopper over")
+                Skip()
+            }
+            is Feil -> {
+                log.error("Klarte ikke behandle melding om endring på oppfølgingsbruker: ${result.retry.reason}")
+                result.retry
+            }
+            is HaddeNyereEndring -> {
+                log.warn("Sist endret kontor er eldre enn endring på oppfølgingsbruker")
+                Skip()
+            }
+            is MeldingManglerEnhet -> {
+                log.warn("Mottok endring på oppfølgingsbruker uten gyldig kontorId")
+                Skip()
+            }
+            is IkkeUnderOppfolging -> {
                 log.warn("Bruker er ikke under oppfølging, hopper over melding om endring på oppfølgingsbruker")
-                return Skip()
+                Skip()
             }
-            is OppfolgingperiodeOppslagFeil -> {
-                log.error("Klarte ikke hente oppfølgingsperiode: ${oppfolgingperiode.message}")
-                return Retry("Klarte ikke behandle melding om endring på oppfølgingsbruker, feil ved oppslag på oppfølgingsperiode: ${oppfolgingperiode.message}")
+            is SkalLagre -> {
+                KontorTilordningService.tilordneKontor(
+                    EndringPaaOppfolgingsBrukerFraArena(
+                        tilordning = KontorTilordning(
+                            fnr = result.fnr,
+                            kontorId = KontorId(result.oppfolgingsenhet),
+                            result.oppfolgingsperiodeId
+                        ),
+                        sistEndretDatoArena = result.endretTidspunkt,
+                    )
+                )
+                Commit()
             }
         }
+    }
 
-        KontorTilordningService.tilordneKontor(
-            EndringPaaOppfolgingsBrukerFraArena(
-                tilordning = KontorTilordning(
-                    fnr = Fnr(fnrString),
-                    kontorId = KontorId(endringPaOppfolgingsBruker.oppfolgingsenhet),
-                    oppfolgingsperiodeId
-                ),
-                sistEndretDatoArena = endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime(),
-            )
-        )
-        return Commit()
+    fun process(record: Record<String, String>): RecordProcessingResult<String, String> {
+        val result = internalProcess(record)
+        return handleResult(result)
+    }
+
+    fun internalProcess(record: Record<String, String>): EndringPaaOppfolgingsBrukerResult {
+        val fnr = Fnr(record.key())
+        val endringPaOppfolgingsBruker = json.decodeFromString<EndringPaOppfolgingsBrukerDto>(record.value())
+        val oppfolgingsenhet = endringPaOppfolgingsBruker.oppfolgingsenhet
+        val endretTidspunktInnkommendeMelding = endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime()
+
+        fun harNyereLagretEndring(): Boolean {
+            val sistEndretDatoArena = sistLagretArenaKontorProvider(fnr)?.sistEndretDatoArena
+            return (sistEndretDatoArena != null && sistEndretDatoArena > endretTidspunktInnkommendeMelding)
+        }
+
+        return when {
+            oppfolgingsenhet.isNullOrBlank() -> MeldingManglerEnhet()
+            endretTidspunktInnkommendeMelding.isBefore(ENDRING_PA_OPPFOLGINGSBRUKER_CUTOFF) -> BeforeCutoff()
+            harNyereLagretEndring() -> HaddeNyereEndring()
+            else -> {
+                when (val oppfolgingperiode = runBlocking {  oppfolgingsperiodeProvider(IdentFunnet(fnr)) }) {
+                    is AktivOppfolgingsperiode -> {
+                        SkalLagre(
+                            oppfolgingsenhet,
+                            endretTidspunktInnkommendeMelding,
+                            fnr,
+                            oppfolgingperiode.periodeId
+                        )
+                    }
+                    NotUnderOppfolging -> IkkeUnderOppfolging()
+                    is OppfolgingperiodeOppslagFeil -> Feil(
+                        Retry("Klarte ikke behandle melding om endring på oppfølgingsbruker, feil ved oppslag på oppfølgingsperiode: ${oppfolgingperiode.message}"),
+                    )
+                }
+            }
+        }
     }
 }
 
+sealed class EndringPaaOppfolgingsBrukerResult
+class BeforeCutoff : EndringPaaOppfolgingsBrukerResult()
+class HaddeNyereEndring: EndringPaaOppfolgingsBrukerResult()
+class IkkeUnderOppfolging: EndringPaaOppfolgingsBrukerResult()
+class MeldingManglerEnhet: EndringPaaOppfolgingsBrukerResult()
+class SkalLagre(
+    val oppfolgingsenhet: String,
+    val endretTidspunkt: OffsetDateTime,
+    val fnr: Fnr,
+    val oppfolgingsperiodeId: OppfolgingsperiodeId
+): EndringPaaOppfolgingsBrukerResult()
+class Feil(
+    val retry: Retry<String, String>
+): EndringPaaOppfolgingsBrukerResult()
+
+/*
+* Endringer fra topic før cutoff har blitt eller er migrert manuelt. Vi tar bare imot endringer fra etter cutoff
+* */
+val ENDRING_PA_OPPFOLGINGSBRUKER_CUTOFF = OffsetDateTime.of(
+    2025,
+    8,
+    13,
+    0,
+    0,
+    0,
+    0,
+    ZoneOffset.UTC
+)
 // ""sistEndretDato":string"2025-04-10T13:01:14+02:00"
 
 fun String.convertToOffsetDatetime(): OffsetDateTime {
@@ -83,7 +146,7 @@ fun String.convertToOffsetDatetime(): OffsetDateTime {
 }
 
 @Serializable
-data class EndringPaOppfolgingsBruker(
+data class EndringPaOppfolgingsBrukerDto(
     val oppfolgingsenhet: String?,
     val sistEndretDato: String
 )

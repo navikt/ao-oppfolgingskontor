@@ -61,7 +61,9 @@ import java.util.Properties
 import java.util.UUID
 
 class KafkaApplicationTest {
-    val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor()
+    val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
+        ArenaKontorEntity::sisteLagreKontorArenaKontor
+    ) { OppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) }
 
     @Test
     fun `skal lagre alle nye endringer på arena-kontor i historikk tabellen`() = testApplication {
@@ -75,11 +77,11 @@ class KafkaApplicationTest {
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(
                 fnr,
-                endringPaOppfolgingsBrukerMessage("1234", ZonedDateTime.parse("2025-04-10T13:01:14+02:00"))
+                endringPaOppfolgingsBrukerMessage("1234", ZonedDateTime.parse("2025-08-13T13:01:14+02:00"))
             )
             kafkaMockTopic.pipeInput(
                 fnr,
-                endringPaOppfolgingsBrukerMessage("4321", ZonedDateTime.parse("2025-05-10T13:01:14+02:00"))
+                endringPaOppfolgingsBrukerMessage("4321", ZonedDateTime.parse("2025-08-14T13:01:14+02:00"))
             )
             transaction {
                 ArenaKontorEntity.Companion.findById(fnr)?.kontorId shouldBe "4321"
@@ -165,10 +167,10 @@ class KafkaApplicationTest {
 
             val kafkaMockTopic = setupKafkaMock(topology, topic)
             kafkaMockTopic.pipeInput(
-                fnr, endringPaOppfolgingsBrukerMessage("1234", ZonedDateTime.parse("2025-04-10T13:01:14+02:00"))
+                fnr, endringPaOppfolgingsBrukerMessage("1234", ZonedDateTime.parse("2025-08-14T13:01:14+02:00"))
             )
             kafkaMockTopic.pipeInput(
-                fnr, endringPaOppfolgingsBrukerMessage("4321", ZonedDateTime.parse("2025-03-10T13:01:14+02:00"))
+                fnr, endringPaOppfolgingsBrukerMessage("4321", ZonedDateTime.parse("2025-08-13T13:01:14+02:00"))
             )
             transaction {
                 ArenaKontorEntity.findById(fnr)?.kontorId shouldBe "1234"
