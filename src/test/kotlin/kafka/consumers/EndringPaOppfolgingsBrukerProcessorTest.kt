@@ -48,7 +48,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
     )
 
     @Test
-    fun `skal cutte off når tidspunkt er foer 13 aug 2025 (i annen tidssone)`() {
+    fun `skal cutte off når tidspunkt er før 13 aug 2025 (i annen tidssone)`() {
         val fnr = Fnr("12081344844")
         val oppfolgingsperiode = OppfolgingsperiodeId(UUID.randomUUID())
         val processor = EndringPaOppfolgingsBrukerProcessor(
