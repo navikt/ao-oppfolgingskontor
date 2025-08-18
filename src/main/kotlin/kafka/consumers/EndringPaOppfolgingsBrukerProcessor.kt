@@ -82,15 +82,15 @@ class EndringPaOppfolgingsBrukerProcessor(
         val oppfolgingsenhet = endringPaOppfolgingsBruker.oppfolgingsenhet
         val endretTidspunktInnkommendeMelding = endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime()
 
-        fun harNyereLagreNyereEndring(): Boolean {
+        fun harNyereLagretEndring(): Boolean {
             val sistEndretDatoArena = sistLagretArenaKontorProvider(fnr)?.sistEndretDatoArena
             return (sistEndretDatoArena != null && sistEndretDatoArena > endretTidspunktInnkommendeMelding)
         }
 
         return when {
             oppfolgingsenhet.isNullOrBlank() -> MeldingManglerEnhet()
-            endretTidspunktInnkommendeMelding.isBefore(ENDRING_PA_OPPFOLINGSBRUKER_CUTOFF) -> BeforeCutoff()
-            harNyereLagreNyereEndring() -> HaddeNyereEndring()
+            endretTidspunktInnkommendeMelding.isBefore(ENDRING_PA_OPPFOLGINGSBRUKER_CUTOFF) -> BeforeCutoff()
+            harNyereLagretEndring() -> HaddeNyereEndring()
             else -> {
                 when (val oppfolgingperiode = runBlocking {  oppfolgingsperiodeProvider(IdentFunnet(fnr)) }) {
                     is AktivOppfolgingsperiode -> {
