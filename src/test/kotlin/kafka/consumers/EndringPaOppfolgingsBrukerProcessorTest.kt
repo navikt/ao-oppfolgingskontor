@@ -74,7 +74,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
     }
 
     @Test
-    fun `skal ikke behandle melding hvis bruker ikker er under oppfølging`() {
+    fun `skal ikke behandle melding hvis bruker ikke er under oppfølging`() {
         val fnr = Fnr("12081344844")
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { null },
