@@ -98,21 +98,27 @@ fun configureTopology(
         = wrapInRetryProcessor(topic.keySerde, topic.valSerde, topic.name, streamType, businessLogic)
 
     val oppfolgingsperiodeProcessorSupplier = wrapInRetryProcessor(
-            topic = topics.inn.sisteOppfolgingsperiodeV1,
-            streamType = StreamType.SOURCE,
-            businessLogic = sisteOppfolgingsperiodeProcessor::process,
+        topic = topics.inn.sisteOppfolgingsperiodeV1,
+        streamType = StreamType.SOURCE,
+        businessLogic = sisteOppfolgingsperiodeProcessor::process,
     )
-
     val kontortilordningProcessorSupplier = wrapInRetryProcessor(
-            keyInSerde = KontortilordningsProcessor.identSerde,
-            valueInSerde = KontortilordningsProcessor.oppfolgingsperiodeStartetSerde,
-            topic = KontortilordningsProcessor.processorName,
-            streamType = StreamType.INTERNAL,
-            businessLogic = kontortilordningsProcessor::process,
+        keyInSerde = KontortilordningsProcessor.identSerde,
+        valueInSerde = KontortilordningsProcessor.oppfolgingsperiodeStartetSerde,
+        topic = KontortilordningsProcessor.processorName,
+        streamType = StreamType.INTERNAL,
+        businessLogic = kontortilordningsProcessor::process,
     )
-
     val oppfolgingStartetStream = builder.stream(topics.inn.sisteOppfolgingsperiodeV1.name, topics.inn.sisteOppfolgingsperiodeV1.consumedWith())
         .process(oppfolgingsperiodeProcessorSupplier, Named.`as`(processorName(topics.inn.sisteOppfolgingsperiodeV1.name)))
+
+    val endringPaOppfolgingsBrukerProcessorSupplier = wrapInRetryProcessor(
+        topic = topics.inn.endringPaOppfolgingsbruker,
+        streamType = StreamType.SOURCE,
+        businessLogic = endringPaOppfolgingsBrukerProcessor::process
+    )
+    builder.stream(topics.inn.endringPaOppfolgingsbruker.name, topics.inn.endringPaOppfolgingsbruker.consumedWith())
+        .process(endringPaOppfolgingsBrukerProcessorSupplier, Named.`as`(processorName(topics.inn.endringPaOppfolgingsbruker.name)))
 
     if(!environment.isProduction()) {
         oppfolgingStartetStream
@@ -133,14 +139,6 @@ fun configureTopology(
         )
         builder.stream(topics.inn.skjerming.name, topics.inn.skjerming.consumedWith())
             .process(skjermingProcessorSupplier, Named.`as`(processorName(topics.inn.skjerming.name)))
-
-        val endringPaOppfolgingsBrukerProcessorSupplier = wrapInRetryProcessor(
-            topic = topics.inn.endringPaOppfolgingsbruker,
-            streamType = StreamType.SOURCE,
-            businessLogic = endringPaOppfolgingsBrukerProcessor::process
-        )
-        builder.stream(topics.inn.endringPaOppfolgingsbruker.name, topics.inn.endringPaOppfolgingsbruker.consumedWith())
-            .process(endringPaOppfolgingsBrukerProcessorSupplier, Named.`as`(processorName(topics.inn.endringPaOppfolgingsbruker.name)))
     }
 
     val topology = builder.build()
