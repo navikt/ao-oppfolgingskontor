@@ -120,6 +120,14 @@ fun configureTopology(
     builder.stream(topics.inn.endringPaOppfolgingsbruker.name, topics.inn.endringPaOppfolgingsbruker.consumedWith())
         .process(endringPaOppfolgingsBrukerProcessorSupplier, Named.`as`(processorName(topics.inn.endringPaOppfolgingsbruker.name)))
 
+    val skjermingProcessorSupplier = wrapInRetryProcessor(
+        topic = topics.inn.skjerming,
+        streamType = StreamType.SOURCE,
+        businessLogic = skjermingProcessor::process
+    )
+    builder.stream(topics.inn.skjerming.name, topics.inn.skjerming.consumedWith())
+        .process(skjermingProcessorSupplier, Named.`as`(processorName(topics.inn.skjerming.name)))
+
     if(!environment.isProduction()) {
         oppfolgingStartetStream
             .process(kontortilordningProcessorSupplier, Named.`as`(KontortilordningsProcessor.processorName))
@@ -131,14 +139,6 @@ fun configureTopology(
         )
         builder.stream(topics.inn.pdlLeesah.name, topics.inn.pdlLeesah.consumedWith())
             .process(leesahProcessorSupplier, Named.`as`(processorName(topics.inn.pdlLeesah.name)))
-
-        val skjermingProcessorSupplier = wrapInRetryProcessor(
-            topic = topics.inn.skjerming,
-            streamType = StreamType.SOURCE,
-            businessLogic = skjermingProcessor::process
-        )
-        builder.stream(topics.inn.skjerming.name, topics.inn.skjerming.consumedWith())
-            .process(skjermingProcessorSupplier, Named.`as`(processorName(topics.inn.skjerming.name)))
     }
 
     val topology = builder.build()
