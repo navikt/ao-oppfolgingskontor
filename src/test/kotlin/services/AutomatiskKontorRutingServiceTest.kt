@@ -254,24 +254,26 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
         }
 
         it("skal sette AO og GT kontor når bruker får strengt fortrolig adresse") {
-            gitt(ungBrukerMedGodeMuligheter)
+            gitt(adressebeskyttetBruker)
                 .handterEndringForAdressebeskyttelse(
-                AdressebeskyttelseEndret(ungBrukerMedGodeMuligheter.fnr(), Gradering.STRENGT_FORTROLIG)
+                    /* Setter med vilje en "utdatert" verdi (UGRADERT) i kafka meldingen. Vi må hente ferske
+                    data på nytt fra PDL når vi behandler endring i adressebeskyttelse */
+                AdressebeskyttelseEndret(adressebeskyttetBruker.fnr(), Gradering.UGRADERT)
             ) shouldBe HåndterPersondataEndretSuccess(listOf(
                 GTKontorEndret.endretPgaAdressebeskyttelseEndret(
                     KontorTilordning(
-                        ungBrukerMedGodeMuligheter.fnr(),
-                        ungBrukerMedGodeMuligheter.gtKontor(),
-                        ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()
+                        adressebeskyttetBruker.fnr(),
+                        adressebeskyttetBruker.gtKontor(),
+                        adressebeskyttetBruker.oppfolgingsperiodeId()
                     ),
                     HarStrengtFortroligAdresse(true),
-                    ungBrukerMedGodeMuligheter.gtForBruker as GtForBrukerFunnet
+                    adressebeskyttetBruker.gtForBruker as GtForBrukerFunnet
                 ),
                 AOKontorEndretPgaAdressebeskyttelseEndret(
                     KontorTilordning(
-                        ungBrukerMedGodeMuligheter.fnr(),
-                        ungBrukerMedGodeMuligheter.gtKontor(),
-                        ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()
+                        adressebeskyttetBruker.fnr(),
+                        adressebeskyttetBruker.gtKontor(),
+                        adressebeskyttetBruker.oppfolgingsperiodeId()
                     )
                 )
             ))

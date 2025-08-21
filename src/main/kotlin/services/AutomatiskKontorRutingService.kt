@@ -295,26 +295,33 @@ class AutomatiskKontorRutingService(
                 is AktivOppfolgingsperiode -> oppfolgingsStatus.periodeId
             }
 
-            val erSkjermet =
-                when (val skjermetResult = erSkjermetProvider(hendelse.ident)) {
-                    is SkjermingFunnet -> skjermetResult.skjermet
-                    is SkjermingIkkeFunnet ->
-                        return HåndterPersondataEndretFail(
-                            "Kunne ikke hente skjerming ved endring i adressebeskyttelse: ${skjermetResult.melding}"
-                        )
-                }
+            val erSkjermet = when (val skjermetResult = erSkjermetProvider(hendelse.ident)) {
+                is SkjermingFunnet -> skjermetResult.skjermet
+                is SkjermingIkkeFunnet ->
+                    return HåndterPersondataEndretFail(
+                        "Kunne ikke hente skjerming ved endring i adressebeskyttelse: ${skjermetResult.melding}"
+                    )
+            }
 
-            val gtKontorResultat = gtKontorProvider(hendelse.ident, hendelse.erStrengtFortrolig(), erSkjermet)
+            val harStrengtFortroligAdresse = when (val result = harStrengtFortroligAdresseProvider(hendelse.ident)) {
+                is HarStrengtFortroligAdresseIkkeFunnet ->
+                    return HåndterPersondataEndretFail("Kunne ikke hente adressebeskyttelse ved endring i bostedsadresse: ${result.message}")
+                is HarStrengtFortroligAdresseOppslagFeil ->
+                    return HåndterPersondataEndretFail("Kunne ikke hente adressebeskyttelse ved endring i bostedsadresse: ${result.message}")
+                is HarStrengtFortroligAdresseFunnet -> result.harStrengtFortroligAdresse
+            }
+
+            val gtKontorResultat = gtKontorProvider(hendelse.ident, harStrengtFortroligAdresse, erSkjermet)
             return when (gtKontorResultat) {
                 is KontorForGtSuccess -> {
                     val gtKontor = getGTKontorOrFallback(gtKontorResultat)
                     val gtKontorEndring = GTKontorEndret.endretPgaAdressebeskyttelseEndret(
                         KontorTilordning(hendelse.ident, gtKontor, oppfolgingsperiodeId),
-                        hendelse.erStrengtFortrolig(),
+                        harStrengtFortroligAdresse,
                         gtKontorResultat.gt()
                     )
                     tilordneKontor(gtKontorEndring)
-                    if (hendelse.erStrengtFortrolig().value) {
+                    if (harStrengtFortroligAdresse.value) {
                         val aoKontorEndring = AOKontorEndretPgaAdressebeskyttelseEndret(
                             KontorTilordning(hendelse.ident, gtKontor, oppfolgingsperiodeId)
                         )

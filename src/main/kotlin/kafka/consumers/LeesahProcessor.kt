@@ -64,7 +64,6 @@ class LeesahProcessor(
             is HåndterPersondataEndretSuccess -> {
                 val aoKontorEndring = result.endringer.firstOrNull { it is AOKontorEndret } as AOKontorEndret?
                 return when {
-
                     aoKontorEndring != null -> {
                         if(isProduction) {
                             log.info("Hopper over forwarding av kontorendring for PROD")
@@ -104,4 +103,3 @@ fun Pair<Ident, Personhendelse>.toHendelse(): PersondataEndret {
 sealed class HåndterPersondataEndretResultat()
 data class HåndterPersondataEndretSuccess(val endringer: List<KontorEndretEvent>): HåndterPersondataEndretResultat()
 class HåndterPersondataEndretFail(val message: String, val error: Throwable? = null): HåndterPersondataEndretResultat()
-typealias FnrEllerAktorIdEllerNpid = String

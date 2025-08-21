@@ -18,6 +18,7 @@ import no.nav.domain.externalEvents.BostedsadresseEndret
 import no.nav.http.client.IdentFunnet
 import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
+import no.nav.http.client.HarStrengtFortroligAdresseResult
 import no.nav.http.client.SkjermingFunnet
 import no.nav.kafka.consumers.LeesahProcessor
 import no.nav.kafka.processor.Retry
@@ -66,7 +67,10 @@ class LeesahProcessorTest {
         application {
             flywayMigrationInTest()
             gittNåværendeGtKontor(fnr, KontorId(gammeltKontorId))
-            val automatiskKontorRutingService = gittRutingServiceMedGtKontor(KontorId(nyKontorId))
+            val automatiskKontorRutingService = defaultAutomatiskKontorRutingService(
+                { a, b, c -> KontorForGtNrFantDefaultKontor(KontorId(nyKontorId), c, b, GeografiskTilknytningBydelNr("3131")) },
+                { ident -> HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(true)) }
+            )
             val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, { IdentFunnet(fnr) }, false)
 
             leesahProcessor.handterLeesahHendelse(AdressebeskyttelseEndret(fnr, Gradering.STRENGT_FORTROLIG))
@@ -134,7 +138,8 @@ class LeesahProcessorTest {
     }
 
     private fun defaultAutomatiskKontorRutingService(
-        gtProvider: suspend (ident: Ident, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming) -> KontorForGtResultat
+        gtProvider: suspend (ident: Ident, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming) -> KontorForGtResultat,
+        strengtFortroligAdresseProvider: suspend (ident: Ident) -> HarStrengtFortroligAdresseResult = { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) }
     ): AutomatiskKontorRutingService {
         return AutomatiskKontorRutingService(
             KontorTilordningService::tilordneKontor,
@@ -142,7 +147,7 @@ class LeesahProcessorTest {
             aldersProvider = { throw Throwable("Denne skal ikke brukes") },
             profileringProvider = { throw Throwable("Denne skal ikke brukes") },
             erSkjermetProvider = { SkjermingFunnet(HarSkjerming(false)) },
-            harStrengtFortroligAdresseProvider = { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
+            harStrengtFortroligAdresseProvider = strengtFortroligAdresseProvider,
             isUnderOppfolgingProvider = { AktivOppfolgingsperiode(Fnr("66666666666"), OppfolgingsperiodeId(UUID.randomUUID()), OffsetDateTime.now()) }
         )
     }

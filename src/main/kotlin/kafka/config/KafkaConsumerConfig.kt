@@ -97,6 +97,9 @@ fun configureTopology(
     fun <KIn, VIn, KOut, VOut> wrapInRetryProcessor(topic: Topic<KIn, VIn>, streamType: StreamType, businessLogic: (Record<KIn, VIn>) -> RecordProcessingResult<KOut, VOut>)
         = wrapInRetryProcessor(topic.keySerde, topic.valSerde, topic.name, streamType, businessLogic)
 
+    /*
+    * Siste oppfolgingsperiode
+    * */
     val oppfolgingsperiodeProcessorSupplier = wrapInRetryProcessor(
         topic = topics.inn.sisteOppfolgingsperiodeV1,
         streamType = StreamType.SOURCE,
@@ -112,6 +115,9 @@ fun configureTopology(
     val oppfolgingStartetStream = builder.stream(topics.inn.sisteOppfolgingsperiodeV1.name, topics.inn.sisteOppfolgingsperiodeV1.consumedWith())
         .process(oppfolgingsperiodeProcessorSupplier, Named.`as`(processorName(topics.inn.sisteOppfolgingsperiodeV1.name)))
 
+    /*
+    * Endring på oppfølgingsbruker (Arena)
+    * */
     val endringPaOppfolgingsBrukerProcessorSupplier = wrapInRetryProcessor(
         topic = topics.inn.endringPaOppfolgingsbruker,
         streamType = StreamType.SOURCE,
@@ -120,6 +126,9 @@ fun configureTopology(
     builder.stream(topics.inn.endringPaOppfolgingsbruker.name, topics.inn.endringPaOppfolgingsbruker.consumedWith())
         .process(endringPaOppfolgingsBrukerProcessorSupplier, Named.`as`(processorName(topics.inn.endringPaOppfolgingsbruker.name)))
 
+    /*
+    * Skjerming
+    * */
     val skjermingProcessorSupplier = wrapInRetryProcessor(
         topic = topics.inn.skjerming,
         streamType = StreamType.SOURCE,
@@ -128,21 +137,23 @@ fun configureTopology(
     builder.stream(topics.inn.skjerming.name, topics.inn.skjerming.consumedWith())
         .process(skjermingProcessorSupplier, Named.`as`(processorName(topics.inn.skjerming.name)))
 
+    /*
+    * LEESAH hendelser fra PDL
+    * */
+    val leesahProcessorSupplier = wrapInRetryProcessor(
+        topic = topics.inn.pdlLeesah,
+        streamType = StreamType.SOURCE,
+        businessLogic = leesahProcessor::process
+    )
+    builder.stream(topics.inn.pdlLeesah.name, topics.inn.pdlLeesah.consumedWith())
+        .process(leesahProcessorSupplier, Named.`as`(processorName(topics.inn.pdlLeesah.name)))
+
     if(!environment.isProduction()) {
         oppfolgingStartetStream
             .process(kontortilordningProcessorSupplier, Named.`as`(KontortilordningsProcessor.processorName))
-
-        val leesahProcessorSupplier = wrapInRetryProcessor(
-            topic = topics.inn.pdlLeesah,
-            streamType = StreamType.SOURCE,
-            businessLogic = leesahProcessor::process
-        )
-        builder.stream(topics.inn.pdlLeesah.name, topics.inn.pdlLeesah.consumedWith())
-            .process(leesahProcessorSupplier, Named.`as`(processorName(topics.inn.pdlLeesah.name)))
     }
 
     val topology = builder.build()
-
     return topology
 }
 
