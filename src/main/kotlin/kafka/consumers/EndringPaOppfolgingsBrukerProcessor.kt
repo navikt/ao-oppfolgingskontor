@@ -52,7 +52,7 @@ class EndringPaOppfolgingsBrukerProcessor(
                 Skip()
             }
             is IkkeUnderOppfolging -> {
-                log.warn("Bruker er ikke under oppfølging, hopper over melding om endring på oppfølgingsbruker")
+                log.info("Bruker er ikke under oppfølging, hopper over melding om endring på oppfølgingsbruker")
                 Skip()
             }
             is SkalLagre -> {
