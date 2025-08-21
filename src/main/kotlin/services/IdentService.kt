@@ -7,6 +7,7 @@ import db.table.IdentMappingTable.internIdent
 import db.table.IdentMappingTable.updatedAt
 import db.table.InternIdentSequence
 import db.table.nextValueOf
+import kafka.consumers.NyIdent
 import no.nav.db.AktorId
 import no.nav.db.Dnr
 import no.nav.db.Fnr
@@ -26,6 +27,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.alias
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.batchUpsert
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
@@ -55,6 +57,13 @@ class IdentService(
 
     /* Tenkt kalt ved endring på aktor-v2 topic (endring i identer) */
     suspend fun hånterEndringPåIdenter(ident: Ident): IdenterResult = hentAlleIdenterOgOppdaterMapping(ident)
+
+    suspend fun hånterEndringPåIdenter(ident: Ident, nyeIdenter: List<NyIdent>) {
+        val gamleIdenter = transaction {
+            hentIdentMappinger(ident, includeHistorisk = true)
+        }
+        gamleIdenter.finnEndringer(nyeIdenter)
+    }
 
     private fun hentLokalIdent(ident: Ident): Result<IdentFunnet?> {
         return runCatching {
@@ -134,7 +143,7 @@ class IdentService(
         }
     }
 
-    private fun hentIdentMappinger(identInput: Ident): List<Ident> = transaction {
+    private fun hentIdentMappinger(identInput: Ident, includeHistorisk: Boolean = false): List<Ident> = transaction {
         val identMappingAlias = IdentMappingTable.alias("ident_mapping_alias")
 
         IdentMappingTable.join(
@@ -144,7 +153,12 @@ class IdentService(
             otherColumn = identMappingAlias[internIdent]
         )
             .select(identMappingAlias[IdentMappingTable.id], identMappingAlias[identType], identMappingAlias[historisk])
-            .where { (IdentMappingTable.id eq identInput.value) and (identMappingAlias[historisk] eq false) }
+            .where { (IdentMappingTable.id eq identInput.value) }
+            .let { query ->
+                if (!includeHistorisk) {
+                    query.andWhere { identMappingAlias[historisk] eq false }
+                } else query
+            }
             .map {
                 val id = it[identMappingAlias[IdentMappingTable.id]]
                 when (val identType = it[identMappingAlias[identType]]) {
@@ -157,4 +171,13 @@ class IdentService(
                 }
             }
     }
+}
+
+sealed class IdentEndring
+sealed class NyIdent: IdentEndring()
+sealed class BleHistorisk: IdentEndring()
+sealed class BleSlettet: IdentEndring()
+
+fun List<Ident>.finnEndringer(nyeIdenter: List<NyIdent>): List<IdentEndring> {
+
 }
