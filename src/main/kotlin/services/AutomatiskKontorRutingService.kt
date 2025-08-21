@@ -236,20 +236,24 @@ class AutomatiskKontorRutingService(
                 }
                 is AktivOppfolgingsperiode -> oppfolgingsStatus.periodeId
             }
-            val erSkjermet =
-                when (val skjermetResult = erSkjermetProvider(hendelse.ident)) {
-                    is SkjermingFunnet -> skjermetResult.skjermet
-                    is SkjermingIkkeFunnet ->
-                        return HåndterPersondataEndretFail(skjermetResult.melding)
-                }
-            val harStrengtFortroligAdresse =
-                when (val result = harStrengtFortroligAdresseProvider(hendelse.ident)) {
-                    is HarStrengtFortroligAdresseIkkeFunnet ->
-                        return HåndterPersondataEndretFail("Kunne ikke hente adressebeskyttelse ved endring i bostedsadresse: ${result.message}")
-                    is HarStrengtFortroligAdresseOppslagFeil ->
-                        return HåndterPersondataEndretFail("Kunne ikke hente adressebeskyttelse ved endring i bostedsadresse: ${result.message}")
-                    is HarStrengtFortroligAdresseFunnet -> result.harStrengtFortroligAdresse
-                }
+
+            val (skjermetResult, adressebeskyttelseResult) = coroutineScope {
+                val skjermetDeferred = async { erSkjermetProvider(hendelse.ident) }
+                val adressebeskyttelseDeferred = async { harStrengtFortroligAdresseProvider(hendelse.ident) }
+                Pair(skjermetDeferred, adressebeskyttelseDeferred)
+            }
+
+            val erSkjermet = when (val result = skjermetResult.await()) {
+                is SkjermingFunnet -> result.skjermet
+                is SkjermingIkkeFunnet -> return HåndterPersondataEndretFail("Kunne ikke hente skjerming ved endring i bostedsadresse: ${result.melding}")
+            }
+            val harStrengtFortroligAdresse = when (val result = adressebeskyttelseResult.await()) {
+                is HarStrengtFortroligAdresseIkkeFunnet ->
+                    return HåndterPersondataEndretFail("Kunne ikke hente adressebeskyttelse ved endring i bostedsadresse: ${result.message}")
+                is HarStrengtFortroligAdresseOppslagFeil ->
+                    return HåndterPersondataEndretFail("Kunne ikke hente adressebeskyttelse ved endring i bostedsadresse: ${result.message}")
+                is HarStrengtFortroligAdresseFunnet -> result.harStrengtFortroligAdresse
+            }
 
             val gtKontorResultat = gtKontorProvider(hendelse.ident, harStrengtFortroligAdresse, erSkjermet)
             return when (gtKontorResultat) {
@@ -295,15 +299,20 @@ class AutomatiskKontorRutingService(
                 is AktivOppfolgingsperiode -> oppfolgingsStatus.periodeId
             }
 
-            val erSkjermet = when (val skjermetResult = erSkjermetProvider(hendelse.ident)) {
-                is SkjermingFunnet -> skjermetResult.skjermet
-                is SkjermingIkkeFunnet ->
-                    return HåndterPersondataEndretFail(
-                        "Kunne ikke hente skjerming ved endring i adressebeskyttelse: ${skjermetResult.melding}"
-                    )
+            val (skjermetResult, adressebeskyttelseResult) = coroutineScope {
+                val skjermetDeferred = async { erSkjermetProvider(hendelse.ident) }
+                val adressebeskyttelseDeferred = async { harStrengtFortroligAdresseProvider(hendelse.ident) }
+                Pair(skjermetDeferred, adressebeskyttelseDeferred)
             }
 
-            val harStrengtFortroligAdresse = when (val result = harStrengtFortroligAdresseProvider(hendelse.ident)) {
+            val erSkjermet = when (val result = skjermetResult.await()) {
+                is SkjermingFunnet -> result.skjermet
+                is SkjermingIkkeFunnet -> return HåndterPersondataEndretFail(
+                    "Kunne ikke hente skjerming ved endring i adressebeskyttelse: ${result.melding}"
+                )
+            }
+
+            val harStrengtFortroligAdresse = when (val result = adressebeskyttelseResult.await()) {
                 is HarStrengtFortroligAdresseIkkeFunnet ->
                     return HåndterPersondataEndretFail("Kunne ikke hente adressebeskyttelse ved endring i bostedsadresse: ${result.message}")
                 is HarStrengtFortroligAdresseOppslagFeil ->
