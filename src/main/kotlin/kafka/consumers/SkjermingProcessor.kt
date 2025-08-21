@@ -8,6 +8,7 @@ import no.nav.domain.externalEvents.SkjermetStatusEndret
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
+import no.nav.kafka.processor.Skip
 import no.nav.services.AutomatiskKontorRutingService
 import org.apache.kafka.streams.processor.api.Record
 import org.slf4j.LoggerFactory
@@ -24,20 +25,27 @@ class SkjermingProcessor(
 
     fun handterEndringISKjermetStatus(fnr: String, skjermingStatus: Boolean): RecordProcessingResult<String, String> {
         return runBlocking {
-            val result = automatiskKontorRutingService.handterEndringISkjermingStatus(
-                SkjermetStatusEndret(Fnr(fnr), HarSkjerming(skjermingStatus))
-            )
-            when (result.isSuccess) {
-                true -> {
-                    log.info("Behandling endring i skjerming med resultat: ${result.getOrNull()}")
-                    Commit()
-                }
-                false -> {
-                    val exception = result.exceptionOrNull()
-                    log.error("Kunne ikke behandle melding om endring i skjermingstatus", exception)
-                    Retry("Kunne ikke behandle melding om endring i skjermingstatus: ${exception?.message}")
-                }
-            }
+            runCatching { Fnr(fnr) }
+                .fold( { validFnr ->
+                    val result = automatiskKontorRutingService.handterEndringISkjermingStatus(
+                        SkjermetStatusEndret(validFnr, HarSkjerming(skjermingStatus))
+                    )
+                    when (result.isSuccess) {
+                        true -> {
+                            log.info("Behandling endring i skjerming med resultat: ${result.getOrNull()}")
+                            Commit()
+                        }
+                        false -> {
+                            val exception = result.exceptionOrNull()
+                            log.error("Kunne ikke behandle melding om endring i skjermingstatus", exception)
+                            Retry("Kunne ikke behandle melding om endring i skjermingstatus: ${exception?.message}")
+                        }
+                    }
+                },
+                 { e ->
+                     log.warn("Mottak ident på skjerming-topic som ikke var gyldig, hopper over", e)
+                     Skip()
+                })
         }
     }
 }
