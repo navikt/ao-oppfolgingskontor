@@ -4,6 +4,7 @@ import db.table.IdentMappingTable
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.server.testing.*
+import kafka.consumers.IdentChangeProcessor
 import kafka.consumers.OppdatertIdent
 import kotlinx.coroutines.test.runTest
 import no.nav.db.AktorId
@@ -18,7 +19,9 @@ import no.nav.http.client.IdenterOppslagFeil
 import no.nav.http.graphql.generated.client.enums.IdentGruppe
 import no.nav.http.graphql.generated.client.hentfnrquery.IdentInformasjon
 import no.nav.utils.flywayMigrationInTest
+import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.batchUpsert
+import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
 import java.time.OffsetDateTime
@@ -283,6 +286,32 @@ class IdentServiceTest {
         val resultRows = identService.hånterEndringPåIdenter(aktorId, innkommendeIdenter)
 
         resultRows shouldBe 0
+    }
+
+    @Test
+    fun `aktor-v2 endring - skal sette aktorId som slettet når det kommer en tombstone`() = runTest {
+        flywayMigrationInTest()
+
+        val identProvider: suspend (String) -> IdenterFunnet = { aktorId -> IdenterFunnet(emptyList(), aktorId) }
+        val identService = IdentService(identProvider)
+        val proccessor = IdentChangeProcessor(identService)
+        val aktorId = AktorId("2938764298763")
+        val internId = 1231231231L
+
+        transaction {
+            IdentMappingTable.insert {
+                it[IdentMappingTable.internIdent] = internId
+                it[IdentMappingTable.historisk] = false
+                it[IdentMappingTable.id] = aktorId.value
+                it[IdentMappingTable.identType] = aktorId.toIdentType()
+            }
+        }
+
+        proccessor.process(Record(aktorId.value, null, 1010L))
+
+        hentIdenter(internId) shouldBe listOf(
+            IdentFraDb(aktorId.value, "AKTOR_ID", false, true),
+        )
     }
 
     data class IdentFraDb(

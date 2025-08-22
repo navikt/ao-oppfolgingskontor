@@ -22,11 +22,13 @@ import no.nav.http.client.IdenterResult
 import no.nav.http.client.finnForetrukketIdent
 import no.nav.http.graphql.generated.client.hentfnrquery.IdentInformasjon
 import org.jetbrains.exposed.sql.JoinType
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.alias
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.batchUpsert
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 import org.slf4j.LoggerFactory
 import java.time.OffsetDateTime
 import java.time.ZonedDateTime
@@ -54,8 +56,8 @@ class IdentService(
     /* Tenkt kalt ved endring på aktor-v2 topic (endring i identer) */
     suspend fun hånterEndringPåIdenter(ident: Ident): IdenterResult = hentAlleIdenterOgOppdaterMapping(ident)
 
-    suspend fun hånterEndringPåIdenter(ident: Ident, nyeIdenter: List<OppdatertIdent>): Int {
-        val eksisterendeIdenter = hentIdentMappinger(ident, includeHistorisk = true)
+    suspend fun hånterEndringPåIdenter(aktorId: AktorId, nyeIdenter: List<OppdatertIdent>): Int {
+        val eksisterendeIdenter = hentIdentMappinger(aktorId, includeHistorisk = true)
         if(eksisterendeIdenter.isEmpty()) return 0
 
         val endringer = eksisterendeIdenter.finnEndringer(nyeIdenter)
@@ -68,6 +70,15 @@ class IdentService(
                 this[identType] = row.ident.toIdentType()
                 this[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
             }.size
+        }
+    }
+
+    fun markerAktorIdSomSlettet(aktorId: AktorId) {
+        transaction {
+            IdentMappingTable
+                .update({ IdentMappingTable.id eq aktorId.value }) {
+                    it[slettetHosOss] = ZonedDateTime.now().toOffsetDateTime()
+                }
         }
     }
 

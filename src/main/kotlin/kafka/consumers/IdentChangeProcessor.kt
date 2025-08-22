@@ -1,6 +1,7 @@
 package kafka.consumers
 
 import kotlinx.coroutines.runBlocking
+import no.nav.db.AktorId
 import no.nav.db.Ident
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.RecordProcessingResult
@@ -15,14 +16,20 @@ class IdentChangeProcessor(
 ) {
     val log = LoggerFactory.getLogger(IdentChangeProcessor::class.java)
 
-    fun process(record: Record<String, Aktor>): RecordProcessingResult<String, Aktor> {
+    fun process(record: Record<String, Aktor?>): RecordProcessingResult<String, Aktor> {
         return runBlocking {
-            runCatching { Ident.of(record.key()) }
-                .map { ident ->
-                    val nyeIdenter = record.value().identifikatorer
-                        .map { OppdatertIdent(Ident.of(it.idnummer), !it.gjeldende) }
-                    identService.hånterEndringPåIdenter(ident, nyeIdenter)
-                    Commit<String, Aktor>()
+            runCatching { AktorId(record.key()) }
+                .map { aktorId ->
+                    val payload = record.value()
+                    if (payload == null) {
+                        identService.markerAktorIdSomSlettet(aktorId)
+                        Commit()
+                    } else {
+                        val nyeIdenter = payload.identifikatorer
+                            .map { OppdatertIdent(Ident.of(it.idnummer), !it.gjeldende) }
+                        identService.hånterEndringPåIdenter(aktorId, nyeIdenter)
+                        Commit<String, Aktor>()
+                    }
                 }
                 .getOrElse { error ->
                     val message = "Kunne ikke behandle endring i identer: ${error.message}"
