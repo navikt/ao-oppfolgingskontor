@@ -18,6 +18,8 @@ import no.nav.http.client.IdentFunnet
 import no.nav.http.client.IdentOppslagFeil
 import no.nav.http.client.IdentResult
 import no.nav.http.client.IdenterFunnet
+import no.nav.http.client.IdenterIkkeFunnet
+import no.nav.http.client.IdenterOppslagFeil
 import no.nav.http.client.IdenterResult
 import no.nav.http.client.finnForetrukketIdent
 import no.nav.http.graphql.generated.client.hentfnrquery.IdentInformasjon
@@ -57,7 +59,20 @@ class IdentService(
 
     suspend fun håndterEndringPåIdenter(aktorId: AktorId, nyeIdenter: List<OppdatertIdent>): Int {
         val eksisterendeIdenter = hentIdentMappinger(aktorId, includeHistorisk = true)
-        if(eksisterendeIdenter.isEmpty()) return 0
+            .let { eksisterende ->
+                eksisterende.ifEmpty {
+                    val alleIdenter = alleIdenterProvider(aktorId.value)
+                    when (alleIdenter) {
+                        is IdenterFunnet -> {
+                            hentEksisterendeIdenter(alleIdenter.identer.map { Ident.of(it.ident) })
+                        }
+                        is IdenterIkkeFunnet -> emptyList()
+                        is IdenterOppslagFeil -> throw Exception("Klarte ikke hente identer fra PDL: ${alleIdenter.message}")
+                    }
+                }
+            }
+
+        if (eksisterendeIdenter.isEmpty()) return 0
 
         val endringer = eksisterendeIdenter.finnEndringer(nyeIdenter)
         return transaction {
@@ -114,7 +129,7 @@ class IdentService(
         }
     }
 
-    fun Transaction.getInternId(eksitrerendeInternIder: List<Long>): Long {
+    fun Transaction.getOrCreateInternId(eksitrerendeInternIder: List<Long>): Long {
         return if (eksitrerendeInternIder.isNotEmpty()) {
             if (eksitrerendeInternIder.distinct().size != 1)
                 throw IllegalStateException("Fant flere forskjellige intern-id-er på en ident-liste-response fra PDL")
@@ -124,17 +139,26 @@ class IdentService(
         }
     }
 
+    private fun hentEksisterendeIdenter(identer: List<Ident>): List<IdentInfo> = transaction {
+        IdentMappingTable
+            .select(internIdent, historisk, identType, IdentMappingTable.id)
+            .where { IdentMappingTable.id inList(identer.map { it.value }) }
+            .map {
+                IdentInfo(
+                    Ident.of(it[IdentMappingTable.id].value),
+                    it[historisk],
+                    it[internIdent]
+                )
+            }
+    }
+
     private fun oppdaterAlleIdentMappinger(identer: IdenterFunnet) {
         try {
-            val eksitrerendeInternIder = transaction {
-                IdentMappingTable
-                    .select(internIdent)
-                    .where { IdentMappingTable.id inList(identer.identer.map { it.ident }) }
-                    .map { it[internIdent] }
-            }
+            val eksitrerendeInternIder = hentEksisterendeIdenter(identer.identer.map { Ident.of(it.ident) })
+                .map { it.internIdent }
 
             transaction {
-                val internId = getInternId(eksitrerendeInternIder)
+                val internId = getOrCreateInternId(eksitrerendeInternIder)
                 IdentMappingTable.batchUpsert(identer.identer) {
                     this[IdentMappingTable.id] = it.ident
                     this[identType] = it.toIdentType()
