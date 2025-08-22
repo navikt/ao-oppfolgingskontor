@@ -4,7 +4,7 @@ protocol AktorProtoV2 {
 	enum Type {
 		FOLKEREGISTERIDENT,
 		AKTORID,
-		NPIDq
+		NPID
 	}
 
 	record Identifikator {
