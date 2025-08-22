@@ -27,7 +27,7 @@ class IdentChangeProcessor(
                     } else {
                         val nyeIdenter = payload.identifikatorer
                             .map { OppdatertIdent(Ident.of(it.idnummer), !it.gjeldende) }
-                        identService.hånterEndringPåIdenter(aktorId, nyeIdenter)
+                        identService.håndterEndringPåIdenter(aktorId, nyeIdenter)
                         Commit<String, Aktor>()
                     }
                 }

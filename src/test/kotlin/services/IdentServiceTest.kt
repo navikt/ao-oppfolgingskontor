@@ -205,7 +205,7 @@ class IdentServiceTest {
                 nyAktorIdIdentInformasjon,
                 fnrIdentInformasjon), npid.value)
         }
-        val identer = oppdatertIdentService.hånterEndringPåIdenter(npid)
+        val identer = oppdatertIdentService.håndterEndringPåIdenter(npid)
 
         identer shouldBe IdenterFunnet(listOf(
             npIdIdentInformasjon,
@@ -261,7 +261,7 @@ class IdentServiceTest {
             OppdatertIdent(fnr, false)
         )
 
-        identService.hånterEndringPåIdenter(aktorId, innkommendeIdenter)
+        identService.håndterEndringPåIdenter(aktorId, innkommendeIdenter)
 
         hentIdenter(internIdent) shouldBe listOf(
             IdentFraDb(aktorId.value, "AKTOR_ID", false, false),
@@ -284,7 +284,7 @@ class IdentServiceTest {
             OppdatertIdent(fnr, false)
         )
 
-        val resultRows = identService.hånterEndringPåIdenter(aktorId, innkommendeIdenter)
+        val resultRows = identService.håndterEndringPåIdenter(aktorId, innkommendeIdenter)
 
         resultRows shouldBe 0
     }
@@ -301,21 +301,15 @@ class IdentServiceTest {
         val internId = 1231231231L
 
         transaction {
-            IdentMappingTable.insert {
-                it[IdentMappingTable.internIdent] = internId
-                it[IdentMappingTable.historisk] = false
-                it[IdentMappingTable.id] = aktorId.value
-                it[IdentMappingTable.identType] = aktorId.toIdentType()
-            }
-            IdentMappingTable.insert {
-                it[IdentMappingTable.internIdent] = internId
-                it[IdentMappingTable.historisk] = false
-                it[IdentMappingTable.id] = fnr.value
-                it[IdentMappingTable.identType] = fnr.toIdentType()
+            IdentMappingTable.batchUpsert(listOf(aktorId, fnr)) {
+                this[IdentMappingTable.internIdent] = internId
+                this[IdentMappingTable.historisk] = false
+                this[IdentMappingTable.id] = it.value
+                this[IdentMappingTable.identType] = it.toIdentType()
             }
         }
 
-        proccessor.process(Record(aktorId.value, mockAktor(), 1010L))
+        proccessor.process(Record(aktorId.value, null, 1010L))
 
         hentIdenter(internId) shouldBe listOf(
             IdentFraDb(aktorId.value, "AKTOR_ID", false, true),

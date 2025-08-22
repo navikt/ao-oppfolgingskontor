@@ -22,7 +22,6 @@ import no.nav.http.client.IdenterResult
 import no.nav.http.client.finnForetrukketIdent
 import no.nav.http.graphql.generated.client.hentfnrquery.IdentInformasjon
 import org.jetbrains.exposed.sql.JoinType
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.alias
 import org.jetbrains.exposed.sql.andWhere
@@ -54,9 +53,9 @@ class IdentService(
     }
 
     /* Tenkt kalt ved endring på aktor-v2 topic (endring i identer) */
-    suspend fun hånterEndringPåIdenter(ident: Ident): IdenterResult = hentAlleIdenterOgOppdaterMapping(ident)
+    suspend fun håndterEndringPåIdenter(ident: Ident): IdenterResult = hentAlleIdenterOgOppdaterMapping(ident)
 
-    suspend fun hånterEndringPåIdenter(aktorId: AktorId, nyeIdenter: List<OppdatertIdent>): Int {
+    suspend fun håndterEndringPåIdenter(aktorId: AktorId, nyeIdenter: List<OppdatertIdent>): Int {
         val eksisterendeIdenter = hentIdentMappinger(aktorId, includeHistorisk = true)
         if(eksisterendeIdenter.isEmpty()) return 0
 
