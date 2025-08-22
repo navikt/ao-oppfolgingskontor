@@ -1,8 +1,13 @@
 package services
 
+import db.table.IdentMappingTable
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.server.testing.*
+import io.mockk.every
+import io.mockk.mockk
+import kafka.consumers.IdentChangeProcessor
+import kafka.consumers.OppdatertIdent
 import kotlinx.coroutines.test.runTest
 import no.nav.db.AktorId
 import no.nav.db.Dnr
@@ -10,12 +15,16 @@ import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.db.Npid
 import no.nav.http.client.IdentFunnet
-import no.nav.http.client.IdentOppslagFeil
 import no.nav.http.client.IdenterFunnet
-import no.nav.http.client.IdenterOppslagFeil
 import no.nav.http.graphql.generated.client.enums.IdentGruppe
 import no.nav.http.graphql.generated.client.hentfnrquery.IdentInformasjon
+import no.nav.person.pdl.aktor.v2.Aktor
+import no.nav.person.pdl.aktor.v2.Identifikator
 import no.nav.utils.flywayMigrationInTest
+import org.apache.kafka.streams.processor.api.Record
+import org.jetbrains.exposed.sql.batchUpsert
+import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
 
 class IdentServiceTest {
@@ -196,7 +205,7 @@ class IdentServiceTest {
                 nyAktorIdIdentInformasjon,
                 fnrIdentInformasjon), npid.value)
         }
-        val identer = oppdatertIdentService.hånterEndringPåIdenter(npid)
+        val identer = oppdatertIdentService.håndterEndringPåIdenter(npid)
 
         identer shouldBe IdenterFunnet(listOf(
             npIdIdentInformasjon,
@@ -226,4 +235,144 @@ class IdentServiceTest {
         ident.value shouldBe identValue
     }
 
+    @Test
+    fun `aktor-v2 endring - skal oppdatere identer når det kommer endring`() = runTest {
+        flywayMigrationInTest()
+
+        val identProvider: suspend (String) -> IdenterFunnet = { aktorId -> IdenterFunnet(emptyList(), aktorId) }
+        val identService = IdentService(identProvider)
+        val aktorId = AktorId("2938764298763")
+        val dnr = Dnr("48764298763")
+        val fnr = Fnr("38764298763")
+        val internIdent = 4343L
+
+        transaction {
+            IdentMappingTable.batchUpsert(listOf(aktorId, dnr)) {
+                this[IdentMappingTable.internIdent] = internIdent
+                this[IdentMappingTable.historisk] = false
+                this[IdentMappingTable.id] = it.value
+                this[IdentMappingTable.identType] = it.toIdentType()
+            }
+        }
+
+        val innkommendeIdenter = listOf(
+            OppdatertIdent(aktorId, false),
+            OppdatertIdent(dnr, true),
+            OppdatertIdent(fnr, false)
+        )
+
+        identService.håndterEndringPåIdenter(aktorId, innkommendeIdenter)
+
+        hentIdenter(internIdent) shouldBe listOf(
+            IdentFraDb(aktorId.value, "AKTOR_ID", false, false),
+            IdentFraDb(dnr.value, "DNR", true, false),
+            IdentFraDb(fnr.value, "FNR", false, false),
+        )
+    }
+
+    @Test
+    fun `aktor-v2 endring - skal ikke oppdatere identer når vi ikke har noe intern-ident på bruker`() = runTest {
+        flywayMigrationInTest()
+
+        val identProvider: suspend (String) -> IdenterFunnet = { aktorId -> IdenterFunnet(emptyList(), aktorId) }
+        val identService = IdentService(identProvider)
+        val aktorId = AktorId("2938764298763")
+        val fnr = Fnr("38764298763")
+
+        val innkommendeIdenter = listOf(
+            OppdatertIdent(aktorId, false),
+            OppdatertIdent(fnr, false)
+        )
+
+        val resultRows = identService.håndterEndringPåIdenter(aktorId, innkommendeIdenter)
+
+        resultRows shouldBe 0
+    }
+
+    @Test
+    fun `aktor-v2 endring - skal kun sette aktørId i key som slettet når det kommer en tombstone`() = runTest {
+        flywayMigrationInTest()
+
+        val identProvider: suspend (String) -> IdenterFunnet = { aktorId -> IdenterFunnet(emptyList(), aktorId) }
+        val identService = IdentService(identProvider)
+        val proccessor = IdentChangeProcessor(identService)
+        val aktorId = AktorId("2938764298763")
+        val fnr = Fnr("01010198765")
+        val internId = 1231231231L
+
+        transaction {
+            IdentMappingTable.batchUpsert(listOf(aktorId, fnr)) {
+                this[IdentMappingTable.internIdent] = internId
+                this[IdentMappingTable.historisk] = false
+                this[IdentMappingTable.id] = it.value
+                this[IdentMappingTable.identType] = it.toIdentType()
+            }
+        }
+
+        proccessor.process(Record(aktorId.value, null, 1010L))
+
+        hentIdenter(internId) shouldBe listOf(
+            IdentFraDb(aktorId.value, "AKTOR_ID", false, true),
+            IdentFraDb(fnr.value, "FNR", false, false),
+        )
+    }
+    @Test
+    fun `aktor-v2 endring - skal slette identer som ikke er med i endringssettet`() = runTest {
+        flywayMigrationInTest()
+
+        val identProvider: suspend (String) -> IdenterFunnet = { aktorId -> IdenterFunnet(emptyList(), aktorId) }
+        val identService = IdentService(identProvider)
+        val aktorId = AktorId("2938764298793")
+        val dnr = Dnr("48764298868")
+        val fnr = Fnr("01010196769")
+        val internId = 1231231291L
+
+        transaction {
+            IdentMappingTable.batchUpsert(listOf(aktorId, dnr, fnr)) {
+                this[IdentMappingTable.internIdent] = internId
+                this[IdentMappingTable.historisk] = false
+                this[IdentMappingTable.id] = it.value
+                this[IdentMappingTable.identType] = it.toIdentType()
+            }
+        }
+
+        val innkommendeIdenter = listOf(
+            OppdatertIdent(aktorId, false),
+            OppdatertIdent(fnr, false)
+        )
+
+        identService.håndterEndringPåIdenter(aktorId, innkommendeIdenter)
+
+        hentIdenter(internId) shouldBe listOf(
+            IdentFraDb(aktorId.value, "AKTOR_ID", false, false),
+            IdentFraDb(dnr.value, "DNR", false, true),
+            IdentFraDb(fnr.value, "FNR", false, false),
+        )
+    }
+
+    data class IdentFraDb(
+        val ident: String,
+        val type: String,
+        val historisk: Boolean,
+        val slettet: Boolean,
+    )
+
+    fun hentIdenter(internId: Long): List<IdentFraDb> {
+        return transaction {
+            IdentMappingTable.select(IdentMappingTable.id, IdentMappingTable.slettetHosOss, IdentMappingTable.historisk, IdentMappingTable.identType)
+                .where { IdentMappingTable.internIdent eq internId }
+                .map { row -> IdentFraDb(
+                    row[IdentMappingTable.id].value,
+                    row[IdentMappingTable.identType],
+                    row[IdentMappingTable.historisk],
+                    row[IdentMappingTable.slettetHosOss] != null
+                )  }
+        }
+    }
+
+    fun mockAktor(identer: List<Identifikator> = emptyList()): Aktor {
+        return mockk<Aktor> {
+            every { identifikatorer } returns identer
+        }
+    }
 }

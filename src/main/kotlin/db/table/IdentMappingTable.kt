@@ -11,6 +11,7 @@ object IdentMappingTable: IdTable<String>("ident_mapping") {
     override val primaryKey = PrimaryKey(id)
     val identType = char("ident_type", 11)
     val historisk = bool("historisk")
+    val slettetHosOss = timestampWithTimeZone("slettet_hos_oss").nullable().default(null)
     val internIdent = long("intern_ident")
     val createdAt = timestampWithTimeZone("created_at").defaultExpression(CurrentTimestampWithTimeZone)
     val updatedAt = timestampWithTimeZone("updated_at").defaultExpression(CurrentTimestampWithTimeZone)
