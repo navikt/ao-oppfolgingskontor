@@ -54,10 +54,12 @@ class IdentService(
     /* Tenkt kalt ved endring på aktor-v2 topic (endring i identer) */
     suspend fun hånterEndringPåIdenter(ident: Ident): IdenterResult = hentAlleIdenterOgOppdaterMapping(ident)
 
-    suspend fun hånterEndringPåIdenter(ident: Ident, nyeIdenter: List<OppdatertIdent>) {
-        val gamleIdenter = hentIdentMappinger(ident, includeHistorisk = true)
-        val endringer = gamleIdenter.finnEndringer(nyeIdenter)
-        transaction {
+    suspend fun hånterEndringPåIdenter(ident: Ident, nyeIdenter: List<OppdatertIdent>): Int {
+        val eksisterendeIdenter = hentIdentMappinger(ident, includeHistorisk = true)
+        if(eksisterendeIdenter.isEmpty()) return 0
+
+        val endringer = eksisterendeIdenter.finnEndringer(nyeIdenter)
+        return transaction {
             IdentMappingTable.batchUpsert(endringer) { row ->
                 this[IdentMappingTable.id] = row.ident.value
                 this[slettetHosOss] = if (row is BleSlettet) OffsetDateTime.now() else null
@@ -65,7 +67,7 @@ class IdentService(
                 this[internIdent] = row.internIdent
                 this[identType] = row.ident.toIdentType()
                 this[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
-            }
+            }.size
         }
     }
 

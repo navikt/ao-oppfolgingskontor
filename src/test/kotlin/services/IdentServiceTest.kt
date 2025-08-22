@@ -272,6 +272,17 @@ class IdentServiceTest {
 
         val identProvider: suspend (String) -> IdenterFunnet = { aktorId -> IdenterFunnet(emptyList(), aktorId) }
         val identService = IdentService(identProvider)
+        val aktorId = AktorId("2938764298763")
+        val fnr = Fnr("38764298763")
+
+        val innkommendeIdenter = listOf(
+            OppdatertIdent(aktorId, false),
+            OppdatertIdent(fnr, false)
+        )
+
+        val resultRows = identService.hånterEndringPåIdenter(aktorId, innkommendeIdenter)
+
+        resultRows shouldBe 0
     }
 
     data class IdentFraDb(
