@@ -4,10 +4,11 @@ import db.table.IdentMappingTable
 import db.table.IdentMappingTable.historisk
 import db.table.IdentMappingTable.identType
 import db.table.IdentMappingTable.internIdent
+import db.table.IdentMappingTable.slettetHosOss
 import db.table.IdentMappingTable.updatedAt
 import db.table.InternIdentSequence
 import db.table.nextValueOf
-import kafka.consumers.NyIdent
+import kafka.consumers.OppdatertIdent
 import no.nav.db.AktorId
 import no.nav.db.Dnr
 import no.nav.db.Fnr
@@ -27,6 +28,7 @@ import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.batchUpsert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
+import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 
 class IdentService(
@@ -52,11 +54,18 @@ class IdentService(
     /* Tenkt kalt ved endring på aktor-v2 topic (endring i identer) */
     suspend fun hånterEndringPåIdenter(ident: Ident): IdenterResult = hentAlleIdenterOgOppdaterMapping(ident)
 
-    suspend fun hånterEndringPåIdenter(ident: Ident, nyeIdenter: List<NyIdent>) {
+    suspend fun hånterEndringPåIdenter(ident: Ident, nyeIdenter: List<OppdatertIdent>) {
         val gamleIdenter = hentIdentMappinger(ident, includeHistorisk = true)
         val endringer = gamleIdenter.finnEndringer(nyeIdenter)
-        IdentMappingTable.batchUpsert(endringer) {
-            this[IdentMappingTable.id] = it
+        transaction {
+            IdentMappingTable.batchUpsert(endringer) { row ->
+                this[IdentMappingTable.id] = row.ident.value
+                this[slettetHosOss] = if (row is BleSlettet) OffsetDateTime.now() else null
+                this[historisk] = row.historisk
+                this[internIdent] = row.internIdent
+                this[identType] = row.ident.toIdentType()
+                this[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
+            }
         }
     }
 
@@ -128,16 +137,6 @@ class IdentService(
         }
     }
 
-    private fun IdentInformasjon.toIdentType(): String {
-        val ident = Ident.of(this.ident)
-        return when (ident) {
-            is AktorId -> "AKTOR_ID"
-            is Dnr -> "DNR"
-            is Fnr -> "FNR"
-            is Npid -> "NPID"
-        }
-    }
-
     /**
      * Henter alle koblebe identer utenom historiske
      */
@@ -178,28 +177,43 @@ class IdentService(
     }
 }
 
+fun IdentInformasjon.toIdentType() = Ident.of(this.ident).toIdentType()
+fun Ident.toIdentType(): String {
+    return when (this) {
+        is AktorId -> "AKTOR_ID"
+        is Dnr -> "DNR"
+        is Fnr -> "FNR"
+        is Npid -> "NPID"
+    }
+}
+
 data class IdentInfo(
     val ident: Ident,
     val historisk: Boolean,
     val internIdent: Long
 )
 
-sealed class IdentEndring(ident: Ident)
-class NyIdent(ident: Ident): IdentEndring(ident)
-class BleHistorisk(ident: Ident): IdentEndring(ident)
-class BleSlettet(ident: Ident): IdentEndring(ident)
-class IngenEndring(ident: Ident): IdentEndring(ident)
+sealed class IdentEndring(val ident: Ident, val historisk: Boolean, val internIdent: Long)
+class NyIdent(ident: Ident, historisk: Boolean, internIdent: Long): IdentEndring(ident, historisk, internIdent)
+class BleHistorisk(ident: Ident, internIdent: Long): IdentEndring(ident, true, internIdent)
+class BleSlettet(ident: Ident, internIdent: Long): IdentEndring(ident, true, internIdent)
+class IngenEndring(ident: Ident, historisk: Boolean, internIdent: Long): IdentEndring(ident, historisk, internIdent)
 
-fun List<IdentInfo>.finnEndringer(oppdaterteIdenter: List<NyIdent>): List<IdentEndring> {
+fun List<IdentInfo>.finnEndringer(oppdaterteIdenter: List<OppdatertIdent>): List<IdentEndring> {
+    val internIdent = this.map { it.internIdent }.distinct()
+        .also { require(it.size == 1) { "Fant ${it.size} forskjellige intern-identer ved oppdatering av identer-endringer" } }
+        .first()
+
     val endringerPåEksiterendeIdenter = this.map { eksisterendeIdent ->
         val identMatch = oppdaterteIdenter.find { eksisterendeIdent.ident == it.ident }
         when {
-            identMatch == null -> BleSlettet(eksisterendeIdent.ident)
-            !eksisterendeIdent.historisk && identMatch.historisk -> BleHistorisk(eksisterendeIdent.ident)
-            else -> IngenEndring(eksisterendeIdent.ident)
+            identMatch == null -> BleSlettet(eksisterendeIdent.ident, internIdent)
+            !eksisterendeIdent.historisk && identMatch.historisk -> BleHistorisk(eksisterendeIdent.ident, internIdent)
+            else -> IngenEndring(eksisterendeIdent.ident, identMatch.historisk, internIdent)
         }
     }
-    val nyeIdenter = (oppdaterteIdenter.toSet().map { IdentInfo(it.ident, false, it.internIdent) } - this.toSet())
-        .map { NyIdent(it) }
+
+    val innkommendeIdenter = oppdaterteIdenter.toSet().map { IdentInfo(it.ident, it.historisk, internIdent) }
+    val nyeIdenter = (innkommendeIdenter - this.toSet()).map { NyIdent(it.ident, it.historisk, internIdent) }
     return endringerPåEksiterendeIdenter + nyeIdenter
 }

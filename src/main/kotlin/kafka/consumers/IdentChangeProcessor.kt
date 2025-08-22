@@ -17,26 +17,23 @@ class IdentChangeProcessor(
 
     fun process(record: Record<String, Aktor>): RecordProcessingResult<String, Aktor> {
         return runBlocking {
-            runCatching {
-                Ident.of(record.key())
-            }
-                .fold(
-                { ident ->
+            runCatching { Ident.of(record.key()) }
+                .map { ident ->
                     val nyeIdenter = record.value().identifikatorer
-                        .map { NyIdent(Ident.of(it.idnummer), !it.gjeldende) }
+                        .map { OppdatertIdent(Ident.of(it.idnummer), !it.gjeldende) }
                     identService.hånterEndringPåIdenter(ident, nyeIdenter)
-                    Commit()
-                },
-                { error ->
+                    Commit<String, Aktor>()
+                }
+                .getOrElse { error ->
                     val message = "Kunne ikke behandle endring i identer: ${error.message}"
                     log.error(message, error.message)
                     Retry(message)
-                })
+                }
         }
     }
 }
 
-data class NyIdent(
+data class OppdatertIdent(
     val ident: Ident,
     val historisk: Boolean,
 )
