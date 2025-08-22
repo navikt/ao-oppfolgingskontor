@@ -4,6 +4,8 @@ import db.table.IdentMappingTable
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.server.testing.*
+import io.mockk.every
+import io.mockk.mockk
 import kafka.consumers.IdentChangeProcessor
 import kafka.consumers.OppdatertIdent
 import kotlinx.coroutines.test.runTest
@@ -13,18 +15,17 @@ import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.db.Npid
 import no.nav.http.client.IdentFunnet
-import no.nav.http.client.IdentOppslagFeil
 import no.nav.http.client.IdenterFunnet
-import no.nav.http.client.IdenterOppslagFeil
 import no.nav.http.graphql.generated.client.enums.IdentGruppe
 import no.nav.http.graphql.generated.client.hentfnrquery.IdentInformasjon
+import no.nav.person.pdl.aktor.v2.Aktor
+import no.nav.person.pdl.aktor.v2.Identifikator
 import no.nav.utils.flywayMigrationInTest
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.batchUpsert
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
-import java.time.OffsetDateTime
 
 class IdentServiceTest {
 
@@ -289,13 +290,14 @@ class IdentServiceTest {
     }
 
     @Test
-    fun `aktor-v2 endring - skal sette aktorId som slettet når det kommer en tombstone`() = runTest {
+    fun `aktor-v2 endring - skal kun sette aktørId i key som slettet når det kommer en tombstone`() = runTest {
         flywayMigrationInTest()
 
         val identProvider: suspend (String) -> IdenterFunnet = { aktorId -> IdenterFunnet(emptyList(), aktorId) }
         val identService = IdentService(identProvider)
         val proccessor = IdentChangeProcessor(identService)
         val aktorId = AktorId("2938764298763")
+        val fnr = Fnr("01010198765")
         val internId = 1231231231L
 
         transaction {
@@ -305,12 +307,19 @@ class IdentServiceTest {
                 it[IdentMappingTable.id] = aktorId.value
                 it[IdentMappingTable.identType] = aktorId.toIdentType()
             }
+            IdentMappingTable.insert {
+                it[IdentMappingTable.internIdent] = internId
+                it[IdentMappingTable.historisk] = false
+                it[IdentMappingTable.id] = fnr.value
+                it[IdentMappingTable.identType] = fnr.toIdentType()
+            }
         }
 
-        proccessor.process(Record(aktorId.value, null, 1010L))
+        proccessor.process(Record(aktorId.value, mockAktor(), 1010L))
 
         hentIdenter(internId) shouldBe listOf(
             IdentFraDb(aktorId.value, "AKTOR_ID", false, true),
+            IdentFraDb(fnr.value, "FNR", false, false),
         )
     }
 
@@ -331,6 +340,12 @@ class IdentServiceTest {
                     row[IdentMappingTable.historisk],
                     row[IdentMappingTable.slettetHosOss] != null
                 )  }
+        }
+    }
+
+    fun mockAktor(identer: List<Identifikator> = emptyList()): Aktor {
+        return mockk<Aktor> {
+            every { identifikatorer } returns identer
         }
     }
 }
