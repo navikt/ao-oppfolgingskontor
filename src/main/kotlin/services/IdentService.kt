@@ -208,7 +208,7 @@ data class IdentInfo(
 sealed class IdentEndring(val ident: Ident, val historisk: Boolean, val internIdent: Long)
 class NyIdent(ident: Ident, historisk: Boolean, internIdent: Long): IdentEndring(ident, historisk, internIdent)
 class BleHistorisk(ident: Ident, internIdent: Long): IdentEndring(ident, true, internIdent)
-class BleSlettet(ident: Ident, internIdent: Long): IdentEndring(ident, true, internIdent)
+class BleSlettet(ident: Ident, historisk: Boolean, internIdent: Long): IdentEndring(ident, historisk, internIdent)
 class IngenEndring(ident: Ident, historisk: Boolean, internIdent: Long): IdentEndring(ident, historisk, internIdent)
 
 fun List<IdentInfo>.finnEndringer(oppdaterteIdenter: List<OppdatertIdent>): List<IdentEndring> {
@@ -219,7 +219,7 @@ fun List<IdentInfo>.finnEndringer(oppdaterteIdenter: List<OppdatertIdent>): List
     val endringerPåEksiterendeIdenter = this.map { eksisterendeIdent ->
         val identMatch = oppdaterteIdenter.find { eksisterendeIdent.ident == it.ident }
         when {
-            identMatch == null -> BleSlettet(eksisterendeIdent.ident, internIdent)
+            identMatch == null -> BleSlettet(eksisterendeIdent.ident, eksisterendeIdent.historisk, internIdent)
             !eksisterendeIdent.historisk && identMatch.historisk -> BleHistorisk(eksisterendeIdent.ident, internIdent)
             else -> IngenEndring(eksisterendeIdent.ident, identMatch.historisk, internIdent)
         }
