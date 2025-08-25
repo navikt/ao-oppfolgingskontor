@@ -68,7 +68,7 @@ class RetryableRepository(val repositoryTopic: String) {
             .map { row ->
                 FailedMessage(
                     id = row[FailedMessagesTable.id].value,
-                    messageKeyText = row[messageKeyText],
+                    messageKeyText = RetryKey.of(row[messageKeyText]),
                     messageKeyBytes = row[messageKeyBytes],
                     messageValue = row[messageValue],
                     queueTimestamp = row[queueTimestamp],
@@ -108,10 +108,10 @@ class RetryableRepository(val repositoryTopic: String) {
     }
 }
 
-class RetryKey(val value: String) {
+class RetryKey private constructor(val value: String) {
 
-    fun of() {
-        
+    companion object {
+        fun of(value: String): RetryKey = RetryKey(value.trim())
     }
 
     init {
@@ -123,7 +123,7 @@ class RetryKey(val value: String) {
 fun FailedMessagesEntity.toFailedMessage(): FailedMessage {
     return FailedMessage(
         id = this.id.value,
-        messageKeyText = this.messageKeyText,
+        messageKeyText = RetryKey.of(this.messageKeyText),
         messageKeyBytes = this.messageKeyBytes,
         messageValue = this.messageValue,
         queueTimestamp = this.queueTimestamp,

@@ -3,6 +3,7 @@ package kafka.retry.library.internal
 import io.kotest.matchers.shouldBe
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.retry.library.internal.FailedMessage
+import no.nav.kafka.retry.library.internal.RetryKey
 import no.nav.kafka.retry.library.internal.RetryableFail
 import no.nav.kafka.retry.library.internal.Success
 import no.nav.kafka.retry.library.internal.proccessInOrderOnKey
@@ -13,7 +14,7 @@ class ProcessOnKeyInOrderTest {
 
     val simpleFailedMessage = FailedMessage(
         id = Long.MAX_VALUE,
-        messageKeyText = "key1",
+        messageKeyText = RetryKey.of("key1"),
         messageKeyBytes = "key1".toByteArray(),
         messageValue = "value1".toByteArray(),
         queueTimestamp = OffsetDateTime.now(),

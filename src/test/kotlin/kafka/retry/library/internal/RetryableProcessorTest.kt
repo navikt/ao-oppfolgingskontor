@@ -16,6 +16,7 @@ import no.nav.kafka.retry.library.AvroJsonConverter
 import no.nav.kafka.retry.library.MaxRetries
 import no.nav.kafka.retry.library.RetryConfig
 import no.nav.kafka.retry.library.internal.FailedMessage
+import no.nav.kafka.retry.library.internal.RetryKey
 import no.nav.kafka.retry.library.internal.RetryableRepository
 import no.nav.kafka.retry.library.internal.RetryMetrics
 import no.nav.kafka.retry.library.internal.RetryableProcessor
@@ -170,7 +171,7 @@ class RetryableProcessorTest {
         val (processor, mockedStore, mockedMetrics) = setupTest()
         // Arrange
         val realTimestamp = OffsetDateTime.now()
-        val failedMessage = FailedMessage(1L, "key1", "key1".toByteArray(), "value".toByteArray(), realTimestamp, 0)
+        val failedMessage = FailedMessage(1L, RetryKey.of("key1"), "key1".toByteArray(), "value".toByteArray(), realTimestamp, 0)
         every { mockedStore.getBatchToRetry(any()) } returns listOf(failedMessage)
 
         // Act
@@ -197,7 +198,7 @@ class RetryableProcessorTest {
         val realTimestamp = OffsetDateTime.now()
         // Meldingen inneholder "FAIL" for å trigge feil i businessLogic
         val failedMessage =
-            FailedMessage(1L, "key1", "key1".toByteArray(), "value-with-FAIL".toByteArray(), realTimestamp, 1)
+            FailedMessage(1L, RetryKey.of("key1"), "key1".toByteArray(), "value-with-FAIL".toByteArray(), realTimestamp, 1)
         every { mockedStore.getBatchToRetry(any()) } returns listOf(failedMessage)
 
         // Act
@@ -217,7 +218,7 @@ class RetryableProcessorTest {
         // Arrange
         val realTimestamp = OffsetDateTime.now()
         val failedMessage =
-            FailedMessage(1L, "key1", "key1".toByteArray(), "value".toByteArray(), realTimestamp, retryCount = 2)
+            FailedMessage(1L, RetryKey.of("key1"), "key1".toByteArray(), "value".toByteArray(), realTimestamp, retryCount = 2)
         every { mockedStore.getBatchToRetry(any()) } returns listOf(failedMessage)
 
         // Act
