@@ -148,6 +148,37 @@ class RetryableProcessorIntegrationTest {
     }
 
     @Test
+    fun `En melding skal kunne ha key paddet med null`() = runTest{
+        val topic = randomTopicName()
+        val retryableRepository = RetryableRepository(topic)
+
+        var hasFailed = false
+        fun failFirstThenOk(): Res {
+            if (!hasFailed) {
+                hasFailed = true
+                return Res.Fail // Simulate failure on the first call
+            } else {
+                return Res.Succ
+            }
+        }
+
+        val (testDriver, testInputTopics) = setupKafkaTestDriver(topic, { record ->
+            val failed = failFirstThenOk()
+            if (failed == Res.Fail) {
+                Retry("Dette gikk galt")
+            } else {
+                Commit()
+            }
+        })
+
+        testInputTopics.first().pipeInput("\u0000key1\u0000", "value")
+
+        withClue("Should not have any failed message in failed message repository after it has been successfully processed") {
+            retryableRepository.hasFailedMessages("key1") shouldBe false
+        }
+    }
+
+    @Test
     fun `should enqueue message when processing failed for previous message on same key`() = runTest {
         val topic = randomTopicName()
         val retryableRepository = RetryableRepository(topic)
