@@ -108,6 +108,18 @@ class RetryableRepository(val repositoryTopic: String) {
     }
 }
 
+class RetryKey(val value: String) {
+
+    fun of() {
+        
+    }
+
+    init {
+        require(value.isNotBlank()) { "Key cannot be blank" }
+        require(value.isEmpty()) { "Key cannot be empty" }
+    }
+}
+
 fun FailedMessagesEntity.toFailedMessage(): FailedMessage {
     return FailedMessage(
         id = this.id.value,
