@@ -6,7 +6,7 @@ data class FailedMessage(
     val id: Long,
     val messageKeyText: String, // Lagres som String for enkel indeksering
     val messageKeyBytes: ByteArray?, // Den komplette nøkkelen som ByteArray.
-    val messageValue: ByteArray, // Rådata fra Kafka
+    val messageValue: ByteArray?, // Rådata fra Kafka
     val queueTimestamp: OffsetDateTime,
     val retryCount: Int = 0,
     val lastAttemptTimestamp: OffsetDateTime? = null,
