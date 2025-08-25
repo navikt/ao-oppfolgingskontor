@@ -16,7 +16,7 @@ class IdentChangeProcessor(
 ) {
     val log = LoggerFactory.getLogger(IdentChangeProcessor::class.java)
 
-    fun process(record: Record<String, Aktor?>): RecordProcessingResult<String, Aktor> {
+    fun process(record: Record<String, Aktor>): RecordProcessingResult<String, Aktor> {
         return runBlocking {
             runCatching { AktorId(record.key()) }
                 .map { aktorId ->

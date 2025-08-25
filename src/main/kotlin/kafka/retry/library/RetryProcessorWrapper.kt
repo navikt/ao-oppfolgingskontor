@@ -19,7 +19,7 @@ object RetryProcessorWrapper {
         keyInSerde: Serde<KIn>,
         valueInSerde: Serde<VIn>,
         lockProvider: LockProvider,
-        businessLogic: (Record<KIn, VIn?>) -> RecordProcessingResult<KOut, VOut>,
+        businessLogic: (Record<KIn, VIn>) -> RecordProcessingResult<KOut, VOut>,
         config: RetryConfig = RetryConfig(),
         repository: RetryableRepository = RetryableRepository(topic),
         punctuationCoroutineScope: CoroutineScope = CoroutineScope(Dispatchers.IO),

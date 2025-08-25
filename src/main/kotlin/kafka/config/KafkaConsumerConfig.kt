@@ -96,7 +96,7 @@ fun configureTopology(
         )
     }
 
-    fun <KIn, VIn, KOut, VOut> wrapInRetryProcessor(topic: Topic<KIn, VIn>, streamType: StreamType, businessLogic: (Record<KIn, VIn?>) -> RecordProcessingResult<KOut, VOut>)
+    fun <KIn, VIn, KOut, VOut> wrapInRetryProcessor(topic: Topic<KIn, VIn>, streamType: StreamType, businessLogic: (Record<KIn, VIn>) -> RecordProcessingResult<KOut, VOut>)
         = wrapInRetryProcessor(topic.keySerde, topic.valSerde, topic.name, streamType, businessLogic)
 
     /*

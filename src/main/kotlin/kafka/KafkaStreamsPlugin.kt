@@ -113,7 +113,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         leesahProcessor = leesahProcessor,
         skjermingProcessor = skjermingProcessor,
         endringPaOppfolgingsBrukerProcessor = endringPaOppfolgingsBrukerProcessor,
-        identEndringProcessor = identEndringProcessor
+        identEndringsProcessor = identEndringProcessor,
     )
     val kafkaStream = KafkaStreams(topology, kafkaStreamsProps(environment.config))
 
