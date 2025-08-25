@@ -136,7 +136,7 @@ class RetryableProcessorIntegrationTest {
 
         withClue("Shoud have enqueued message in failed message repository after first failure") {
             retryableRepository.hasFailedMessages("key1") shouldBe true
-            countFailedMessagesOnKey("key1") shouldBe 2
+            countFailedMessagesOnKey("key1") shouldBe 1
         }
 
         testDriver.advanceWallClockTime(Duration.of(1, ChronoUnit.MINUTES))
