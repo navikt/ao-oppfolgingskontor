@@ -76,6 +76,7 @@ fun Application.module() {
         this.database = database
         this.meterRegistry = meterRegistry
         this.oppfolgingsperiodeService = OppfolgingsperiodeService
+        this.identService = identService
     }
 
     val issuer = environment.getIssuer()
