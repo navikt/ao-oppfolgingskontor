@@ -1,6 +1,6 @@
-import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde
 import io.ktor.server.application.ApplicationEnvironment
-import no.nav.kafka.processor.LeesahAvroSerdes
+import no.nav.kafka.processor.AvroSerdes
+import no.nav.person.pdl.aktor.v2.Aktor
 import no.nav.person.pdl.leesah.Personhendelse
 import org.apache.kafka.common.serialization.Serde
 import org.apache.kafka.common.serialization.Serdes
@@ -26,6 +26,7 @@ class Topics(
         val sisteOppfolgingsperiodeV1: Topic<String, String>,
         val pdlLeesah: Topic<String, Personhendelse>,
         val skjerming: Topic<String, String>,
+        val aktorV2: Topic<String, Aktor>,
     )
     class Ut(
         val arbeidsoppfolgingskontortilordninger: String,
@@ -37,26 +38,29 @@ private fun getInnTopicsWithSerde(
     sisteOppfolgingsperiodeV1Name: String,
     pdlLeesahName: String,
     skjermingName: String,
-    lessahAvro: LeesahAvroSerdes
+    avroSerdes: AvroSerdes,
+    aktorV2Name: String,
     ): Topics.Inn {
     return Topics.Inn(
         Topic(endringPaOppfolgingsbrukerName, Serdes.String(), Serdes.String()),
         Topic(sisteOppfolgingsperiodeV1Name, Serdes.String(), Serdes.String()),
-        Topic(pdlLeesahName,  lessahAvro.keyAvroSerde, lessahAvro.valueAvroSerde),
+        Topic(pdlLeesahName,  avroSerdes.leesahKeyAvroSerde, avroSerdes.leesahValueAvroSerde),
         Topic(skjermingName, Serdes.String(), Serdes.String()),
+        Topic(aktorV2Name, Serdes.String(), avroSerdes.aktorV2ValueAvroSerde)
     )
 }
 
 fun ApplicationEnvironment.topics(): Topics {
-    val leesahAvroSerdes = LeesahAvroSerdes(this.config)
+    val avroSerdes = AvroSerdes(this.config)
     return Topics(
         getInnTopicsWithSerde(
             this.config.property("topics.inn.endringPaOppfolgingsbruker").getString(),
             this.config.property("topics.inn.sisteOppfolgingsperiodeV1").getString(),
             this.config.property("topics.inn.pdlLeesah").getString(),
             this.config.property("topics.inn.skjerming").getString(),
-            leesahAvroSerdes
-            ),
+            avroSerdes,
+            aktorV2Name = this.config.property("topics.inn.aktor-v2").getString()
+        ),
         Topics.Ut(
             this.config.property("topics.ut.arbeidsoppfolgingskontortilordninger").getString()
         )

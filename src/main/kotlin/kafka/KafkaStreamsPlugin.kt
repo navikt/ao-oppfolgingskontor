@@ -11,6 +11,7 @@ import io.ktor.server.application.log
 import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.binder.kafka.KafkaStreamsMetrics
+import kafka.consumers.IdentChangeProcessor
 import kafka.consumers.SisteOppfolgingsperiodeProcessor
 import java.time.Duration
 import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
@@ -31,6 +32,7 @@ import org.apache.kafka.streams.KafkaStreams
 import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler
 import org.jetbrains.exposed.sql.Database
 import org.slf4j.LoggerFactory
+import services.IdentService
 import topics
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -48,6 +50,7 @@ class KafkaStreamsPluginConfig(
     var database: Database? = null,
     var meterRegistry: MeterRegistry? = null,
     var oppfolgingsperiodeService: OppfolgingsperiodeService? = null,
+    var identService: IdentService? = null,
 )
 
 const val arbeidsoppfolgingkontorSinkName = "endring-pa-arbeidsoppfolgingskontor"
@@ -68,6 +71,9 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     }
     val meterRegistry = requireNotNull(this.pluginConfig.meterRegistry) {
         "MeterRegistry must be configured for KafkaStreamPlugin"
+    }
+    val identService = requireNotNull(this.pluginConfig.identService) {
+        "IdentService must be configured for KafkaStreamPlugin"
     }
     val isProduction = environment.isProduction()
     if (isProduction) logger.info("Kjører i produksjonsmodus. Konsumerer kun siste-oppfølgingsperiode.")
@@ -92,6 +98,8 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
 
     val skjermingProcessor = SkjermingProcessor(automatiskKontorRutingService)
 
+    val identEndringProcessor = IdentChangeProcessor(identService)
+
     val aoKontorEndretSink = StringStringSinkConfig(
         arbeidsoppfolgingkontorSinkName,
         topics.ut.arbeidsoppfolgingskontortilordninger
@@ -105,6 +113,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         leesahProcessor = leesahProcessor,
         skjermingProcessor = skjermingProcessor,
         endringPaOppfolgingsBrukerProcessor = endringPaOppfolgingsBrukerProcessor,
+        identEndringProcessor = identEndringProcessor
     )
     val kafkaStream = KafkaStreams(topology, kafkaStreamsProps(environment.config))
 

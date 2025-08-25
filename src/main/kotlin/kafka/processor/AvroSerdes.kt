@@ -6,10 +6,11 @@ import io.confluent.kafka.schemaregistry.client.SchemaRegistryClientConfig
 import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig
 import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde
 import io.ktor.server.config.ApplicationConfig
+import no.nav.person.pdl.aktor.v2.Aktor
 import no.nav.person.pdl.leesah.Personhendelse
 import org.apache.kafka.common.serialization.Serdes
 
-class LeesahAvroSerdes (
+class AvroSerdes (
     config: ApplicationConfig,
 ) {
     val schemaRegistryUrl: String = config.property("kafka.schema-registry").getString()
@@ -29,7 +30,15 @@ class LeesahAvroSerdes (
         AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG to schemaRegistryUrl,
         "specific.avro.reader" to true
     )
-    val valueAvroSerde: SpecificAvroSerde<Personhendelse> = SpecificAvroSerde<Personhendelse>(schemaRegistryClient)
+    val leesahValueAvroSerde: SpecificAvroSerde<Personhendelse> = SpecificAvroSerde<Personhendelse>(schemaRegistryClient)
+        .apply {
+            configure(
+                valueSerdeConfig,
+                false
+            )
+        }
+
+    val aktorV2ValueAvroSerde: SpecificAvroSerde<Aktor> = SpecificAvroSerde<Aktor>(schemaRegistryClient)
         .apply {
             configure(
                 valueSerdeConfig,
@@ -46,5 +55,5 @@ class LeesahAvroSerdes (
         .apply {
             configure(schemaRegistryConfig, true)
         }
-    val keyAvroSerde = Serdes.serdeFrom(keySerializer, keyDeserializer)
+    val leesahKeyAvroSerde = Serdes.serdeFrom(keySerializer, keyDeserializer)
 }

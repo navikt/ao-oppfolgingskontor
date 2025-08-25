@@ -5,14 +5,14 @@ import io.kotest.matchers.shouldNotBe
 import io.ktor.server.config.*
 import io.mockk.every
 import io.mockk.mockk
-import no.nav.kafka.processor.LeesahAvroSerdes
+import no.nav.kafka.processor.AvroSerdes
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
 class LeesahAvroSerdesTest {
 
  private lateinit var config: ApplicationConfig
- private lateinit var serdes: LeesahAvroSerdes
+ private lateinit var serdes: AvroSerdes
 
  @BeforeEach
  fun setup() {
@@ -20,7 +20,7 @@ class LeesahAvroSerdesTest {
   every { config.property("kafka.schema-registry").getString() } returns "http://localhost:8081"
   every { config.property("kafka.schema-registry-user").getString() } returns "testuser"
   every { config.property("kafka.schema-registry-password").getString() } returns "testpassword"
-  serdes = LeesahAvroSerdes(config)
+  serdes = AvroSerdes(config)
  }
 
  @Test
@@ -32,7 +32,7 @@ class LeesahAvroSerdesTest {
 
  @Test
  fun `should initialize serdes`() {
-  serdes.keyAvroSerde shouldNotBe null
-  serdes.valueAvroSerde shouldNotBe null
+  serdes.leesahKeyAvroSerde shouldNotBe null
+  serdes.leesahValueAvroSerde shouldNotBe null
  }
 }

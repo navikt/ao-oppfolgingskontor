@@ -47,7 +47,7 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
     private val topic: String, // Nødvendig for SerDes
     private val repository: RetryableRepository, // Nødvendig for metrikk-initialiserin
     /* businessLogig er selve forretningslogikken fra brukeren. Kan returnere Record<KOut,VOut> eller Unit.     */
-    private val businessLogic: (Record<KIn, VIn>) -> RecordProcessingResult<KOut, VOut>,
+    private val businessLogic: (Record<KIn, VIn?>) -> RecordProcessingResult<KOut, VOut>,
     private val lockProvider: LockProvider,
     private val punctuationCoroutineScope: CoroutineScope,
     private val streamType: StreamType
@@ -70,7 +70,7 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
         context.schedule(config.retryInterval, PunctuationType.WALL_CLOCK_TIME, this::runReprocessingWithLock)
     }
 
-    override fun process(record: Record<KIn, VIn>) {
+    override fun process(record: Record<KIn, VIn?>) {
         // Vi krever en ikke-null nøkkel for å kunne garantere rekkefølge
         val key = record.key()
             ?: throw IllegalArgumentException("RetryableProcessor requires a non-null key. Cannot process message with null key.")
