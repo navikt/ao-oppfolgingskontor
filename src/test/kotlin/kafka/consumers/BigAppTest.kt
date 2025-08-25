@@ -34,7 +34,6 @@ import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.KontorForGtNrFantDefaultKontor
 import no.nav.services.KontorTilordningService
-import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingsperiodeOppslagResult
 import no.nav.services.OppfolgingsperiodeService
 import no.nav.utils.flywayMigrationInTest

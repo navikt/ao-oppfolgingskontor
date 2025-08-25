@@ -72,7 +72,7 @@ topics:
     sisteOppfolgingsperiodeV1: "pto.siste-oppfolgingsperiode-v1"
     pdlLeesah: "pdl.leesah-v1"
     skjerming: "nom.skjermede-personer-status-v1"
-    aktorV2: "pdl.aktor-v2"
+    aktor-v2: "pdl.aktor-v2"
   ut:
     arbeidsoppfolgingskontortilordninger: "arbeidsoppfolgingskontortilordninger-v1"
 
