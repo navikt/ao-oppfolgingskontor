@@ -322,6 +322,39 @@ class IdentServiceTest {
             IdentFraDb(fnr.value, "FNR", false, false),
         )
     }
+    @Test
+    fun `aktor-v2 endring - skal slette identer som ikke er med i endringssettet`() = runTest {
+        flywayMigrationInTest()
+
+        val identProvider: suspend (String) -> IdenterFunnet = { aktorId -> IdenterFunnet(emptyList(), aktorId) }
+        val identService = IdentService(identProvider)
+        val aktorId = AktorId("2938764298793")
+        val dnr = Dnr("48764298868")
+        val fnr = Fnr("01010196769")
+        val internId = 1231231291L
+
+        transaction {
+            IdentMappingTable.batchUpsert(listOf(aktorId, dnr, fnr)) {
+                this[IdentMappingTable.internIdent] = internId
+                this[IdentMappingTable.historisk] = false
+                this[IdentMappingTable.id] = it.value
+                this[IdentMappingTable.identType] = it.toIdentType()
+            }
+        }
+
+        val innkommendeIdenter = listOf(
+            OppdatertIdent(aktorId, false),
+            OppdatertIdent(fnr, false)
+        )
+
+        identService.håndterEndringPåIdenter(aktorId, innkommendeIdenter)
+
+        hentIdenter(internId) shouldBe listOf(
+            IdentFraDb(aktorId.value, "AKTOR_ID", false, false),
+            IdentFraDb(dnr.value, "DNR", false, true),
+            IdentFraDb(fnr.value, "FNR", false, false),
+        )
+    }
 
     @Test
     fun `skal finne internId på ny aktørId selvom gammel aktørId er opphørt hvis fnr finnes`() = runTest {
