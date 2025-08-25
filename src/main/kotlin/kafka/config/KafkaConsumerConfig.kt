@@ -10,7 +10,6 @@ import kafka.retry.library.StreamType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import net.javacrumbs.shedlock.core.LockProvider
-import no.nav.isProduction
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
 import no.nav.kafka.consumers.KontortilordningsProcessor
 import no.nav.kafka.consumers.LeesahProcessor
@@ -114,8 +113,9 @@ fun configureTopology(
         streamType = StreamType.INTERNAL,
         businessLogic = kontortilordningsProcessor::process,
     )
-    val oppfolgingStartetStream = builder.stream(topics.inn.sisteOppfolgingsperiodeV1.name, topics.inn.sisteOppfolgingsperiodeV1.consumedWith())
+    builder.stream(topics.inn.sisteOppfolgingsperiodeV1.name, topics.inn.sisteOppfolgingsperiodeV1.consumedWith())
         .process(oppfolgingsperiodeProcessorSupplier, Named.`as`(processorName(topics.inn.sisteOppfolgingsperiodeV1.name)))
+        .process(kontortilordningProcessorSupplier, Named.`as`(KontortilordningsProcessor.processorName))
 
     /*
     * Endring på oppfølgingsbruker (Arena)
@@ -160,11 +160,6 @@ fun configureTopology(
     )
     builder.stream(topics.inn.aktorV2.name, topics.inn.aktorV2.consumedWith())
         .process(identChangeProcessorSupplier, Named.`as`(processorName(topics.inn.aktorV2.name)))
-
-    if(!environment.isProduction()) {
-        oppfolgingStartetStream
-            .process(kontortilordningProcessorSupplier, Named.`as`(KontortilordningsProcessor.processorName))
-    }
 
     val topology = builder.build()
     return topology

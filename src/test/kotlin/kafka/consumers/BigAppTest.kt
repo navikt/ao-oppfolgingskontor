@@ -125,10 +125,11 @@ class BigAppTest {
         }
     }
 
+    // aa in name to make this test run first because something is wrong when this test runs first
     @Test
-    fun `app should not forward messages to KontorTilordning in prod`() = testApplication {
-        val fnr = Fnr("67825678901")
-        val aktorId = AktorId("2232567890244")
+    fun `aa - app should not forward messages to KontorTilordning in prod`() = testApplication {
+        val fnr = Fnr("01121678901")
+        val aktorId = AktorId("4444447890244")
         val kontor = KontorId("2232")
         val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
         environment {
