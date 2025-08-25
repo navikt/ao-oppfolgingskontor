@@ -20,12 +20,14 @@ import no.nav.http.graphql.generated.client.enums.IdentGruppe
 import no.nav.http.graphql.generated.client.hentfnrquery.IdentInformasjon
 import no.nav.person.pdl.aktor.v2.Aktor
 import no.nav.person.pdl.aktor.v2.Identifikator
+import no.nav.person.pdl.aktor.v2.Type
 import no.nav.utils.flywayMigrationInTest
 import org.apache.kafka.streams.processor.api.Record
+import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.batchUpsert
-import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
+import java.time.OffsetDateTime
 
 class IdentServiceTest {
 
@@ -274,10 +276,14 @@ class IdentServiceTest {
     fun `aktor-v2 endring - skal ikke oppdatere identer når vi ikke har noe intern-ident på bruker`() = runTest {
         flywayMigrationInTest()
 
-        val identProvider: suspend (String) -> IdenterFunnet = { aktorId -> IdenterFunnet(emptyList(), aktorId) }
-        val identService = IdentService(identProvider)
         val aktorId = AktorId("2938764298763")
-        val fnr = Fnr("38764298763")
+        val fnr = Fnr("18111298763")
+
+        val identProvider: suspend (String) -> IdenterFunnet = { innkommendeAktorId -> IdenterFunnet(listOf(
+            IdentInformasjon(aktorId.value, false) ,
+            IdentInformasjon(fnr.value, false),
+        ), innkommendeAktorId) }
+        val identService = IdentService(identProvider)
 
         val innkommendeIdenter = listOf(
             OppdatertIdent(aktorId, false),
@@ -347,6 +353,50 @@ class IdentServiceTest {
             IdentFraDb(aktorId.value, "AKTOR_ID", false, false),
             IdentFraDb(dnr.value, "DNR", false, true),
             IdentFraDb(fnr.value, "FNR", false, false),
+        )
+    }
+
+    @Test
+    fun `skal finne internId på ny aktørId selvom gammel aktørId er opphørt hvis fnr finnes`() = runTest {
+        flywayMigrationInTest()
+
+        val opphortAktorId = AktorId("4938764598763")
+        val nyAktorId = AktorId("2938764297763")
+        val fnr = Fnr("02010198765")
+        val internId = 31231L
+
+        /* AktorId er slettet, men det finnes fortsatt FNR som ikke er slettet */
+        transaction {
+            IdentMappingTable.batchInsert(listOf(opphortAktorId, fnr)) {
+                this[IdentMappingTable.internIdent] = internId
+                this[IdentMappingTable.historisk] = false
+                this[IdentMappingTable.id] = it.value
+                this[IdentMappingTable.identType] = it.toIdentType()
+                this[IdentMappingTable.slettetHosOss] = if (it is AktorId) OffsetDateTime.now() else null
+            }
+        }
+
+        val identProvider: suspend (String) -> IdenterFunnet = { nyMenIkkeLagretEndaAktorId ->
+            IdenterFunnet(listOf(
+                IdentInformasjon(fnr.value, false, IdentGruppe.FOLKEREGISTERIDENT),
+                IdentInformasjon(nyAktorId.value, false, IdentGruppe.AKTORID)
+            ), nyMenIkkeLagretEndaAktorId)
+        }
+        val identService = IdentService(identProvider)
+        val proccessor = IdentChangeProcessor(identService)
+
+        val payload = mockk<Aktor> {
+            every { identifikatorer } returns listOf(
+                Identifikator(fnr.value, Type.FOLKEREGISTERIDENT, true),
+                Identifikator(nyAktorId.value, Type.AKTORID, true),
+            )
+        }
+        proccessor.process(Record(nyAktorId.value, payload, 1010L))
+
+        hentIdenter(internId) shouldBe listOf(
+            IdentFraDb(opphortAktorId.value, "AKTOR_ID", false, true),
+            IdentFraDb(fnr.value, "FNR", false, false),
+            IdentFraDb(nyAktorId.value, "AKTOR_ID", false, false),
         )
     }
 
