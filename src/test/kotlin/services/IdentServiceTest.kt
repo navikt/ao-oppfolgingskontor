@@ -327,14 +327,14 @@ class IdentServiceTest {
     fun `skal finne internId på ny aktørId selvom gammel aktørId er opphørt hvis fnr finnes`() = runTest {
         flywayMigrationInTest()
 
-        val oppohortAktorId = AktorId("4938764598763")
+        val opphortAktorId = AktorId("4938764598763")
         val nyAktorId = AktorId("2938764297763")
         val fnr = Fnr("02010198765")
         val internId = 31231L
 
         /* AktorId er slettet, men det finnes fortsatt FNR som ikke er slettet */
         transaction {
-            IdentMappingTable.batchInsert(listOf(oppohortAktorId, fnr)) {
+            IdentMappingTable.batchInsert(listOf(opphortAktorId, fnr)) {
                 this[IdentMappingTable.internIdent] = internId
                 this[IdentMappingTable.historisk] = false
                 this[IdentMappingTable.id] = it.value
@@ -361,7 +361,7 @@ class IdentServiceTest {
         proccessor.process(Record(nyAktorId.value, payload, 1010L))
 
         hentIdenter(internId) shouldBe listOf(
-            IdentFraDb(oppohortAktorId.value, "AKTOR_ID", false, true),
+            IdentFraDb(opphortAktorId.value, "AKTOR_ID", false, true),
             IdentFraDb(fnr.value, "FNR", false, false),
             IdentFraDb(nyAktorId.value, "AKTOR_ID", false, false),
         )

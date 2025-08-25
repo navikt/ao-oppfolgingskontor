@@ -174,7 +174,7 @@ class IdentService(
     }
 
     /**
-     * Henter alle koblebe identer utenom historiske
+     * Henter alle koblede identer utenom historiske
      */
     private fun hentIdentMappinger(identInput: Ident): List<Ident> = hentIdentMappinger(identInput, false).map { it.ident }
     private fun hentIdentMappinger(identInput: Ident, includeHistorisk: Boolean): List<IdentInfo> = transaction {
