@@ -18,13 +18,10 @@ import java.time.OffsetDateTime
 
 class RetryableRepository(val repositoryTopic: String) {
 
-    fun hasFailedMessages(key: String): Boolean = transaction {
-        if (key.isEmpty()) throw IllegalArgumentException("Key cannot be empty")
-        if (key.isBlank()) throw IllegalArgumentException("Key cannot be blank")
-        if (key.contains('\u0000')) throw IllegalArgumentException("Key: <${key}> contained contain null characters topic $repositoryTopic ")
+    fun hasFailedMessages(key: RetryKey): Boolean = transaction {
         !FailedMessagesTable
             .selectAll()
-            .where { (FailedMessagesTable.topic eq repositoryTopic) and (messageKeyText eq key) }
+            .where { (FailedMessagesTable.topic eq repositoryTopic) and (messageKeyText eq key.value) }
             .limit(1)
             .empty()
     }

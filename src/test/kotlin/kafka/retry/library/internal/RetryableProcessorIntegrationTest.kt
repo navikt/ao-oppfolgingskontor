@@ -27,6 +27,7 @@ import no.nav.kafka.processor.ProcessRecord
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
 import no.nav.kafka.retry.library.RetryConfig
+import no.nav.kafka.retry.library.internal.RetryKey
 import no.nav.kafka.retry.library.internal.RetryableRepository
 import no.nav.kafka.retry.library.internal.RetryableProcessor
 import no.nav.utils.TestDb
@@ -96,7 +97,7 @@ class RetryableProcessorIntegrationTest {
         testInputTopics.first().pipeInput("key1", "value1")
 
         withClue("Shoud have enqueued message in failed message repository after first failure") {
-            retryableRepository.hasFailedMessages("key1") shouldBe true
+            retryableRepository.hasFailedMessages(RetryKey.of("key1")) shouldBe true
             countFailedMessagesOnKey("key1") shouldBe 2
         }
 
@@ -104,7 +105,7 @@ class RetryableProcessorIntegrationTest {
         runCurrent()
 
         withClue("Should not have any failed message in failed message repository after it has been successfully processed") {
-            retryableRepository.hasFailedMessages("key1") shouldBe false
+            retryableRepository.hasFailedMessages(RetryKey.of("key1")) shouldBe false
         }
     }
 
@@ -135,7 +136,7 @@ class RetryableProcessorIntegrationTest {
         testInputTopics.first().pipeInput("key1", null as String?)
 
         withClue("Shoud have enqueued message in failed message repository after first failure") {
-            retryableRepository.hasFailedMessages("key1") shouldBe true
+            retryableRepository.hasFailedMessages(RetryKey.of("key1")) shouldBe true
             countFailedMessagesOnKey("key1") shouldBe 1
         }
 
@@ -143,7 +144,7 @@ class RetryableProcessorIntegrationTest {
         runCurrent()
 
         withClue("Should not have any failed message in failed message repository after it has been successfully processed") {
-            retryableRepository.hasFailedMessages("key1") shouldBe false
+            retryableRepository.hasFailedMessages(RetryKey.of("key1")) shouldBe false
         }
     }
 
@@ -174,7 +175,7 @@ class RetryableProcessorIntegrationTest {
         testInputTopics.first().pipeInput("\u0000key1\u0000", "value")
 
         withClue("Should not have any failed message in failed message repository after it has been successfully processed") {
-            retryableRepository.hasFailedMessages("key1") shouldBe false
+            retryableRepository.hasFailedMessages(RetryKey.of("key1")) shouldBe false
         }
     }
 
@@ -189,7 +190,7 @@ class RetryableProcessorIntegrationTest {
         testInputTopics.first().pipeInput("key2", "value2")
 
         withClue("Shoud have enqueued message in failed message repository after first failure") {
-            retryableRepository.hasFailedMessages("key2") shouldBe true
+            retryableRepository.hasFailedMessages(RetryKey.of("key2")) shouldBe true
             countFailedMessagesOnKey("key2") shouldBe 2
         }
 
@@ -197,7 +198,7 @@ class RetryableProcessorIntegrationTest {
 
         withClue("Should still be 2 failed messages on key") {
             countFailedMessagesOnKey("key2") shouldBe 2
-            retryableRepository.hasFailedMessages("key2") shouldBe true
+            retryableRepository.hasFailedMessages(RetryKey.of("key2")) shouldBe true
         }
     }
 
@@ -211,7 +212,7 @@ class RetryableProcessorIntegrationTest {
         testInputTopic.first().pipeInput("key3", "value2")
 
         withClue("Shoud have enqueued message in failed message repository after first failure") {
-            retryableRepository.hasFailedMessages("key3") shouldBe true
+            retryableRepository.hasFailedMessages(RetryKey.of("key3")) shouldBe true
             countFailedMessagesOnKey("key3") shouldBe 1
         }
 
@@ -219,7 +220,7 @@ class RetryableProcessorIntegrationTest {
 
         withClue("Should still be 1 failed messages on key") {
             countFailedMessagesOnKey("key3") shouldBe 1
-            retryableRepository.hasFailedMessages("key3") shouldBe true
+            retryableRepository.hasFailedMessages(RetryKey.of("key3")) shouldBe true
         }
     }
 
@@ -287,14 +288,14 @@ class RetryableProcessorIntegrationTest {
         testInputTopics.first().pipeInput("key1", "value1")
 
         withClue("Should have enqueued message in failed message repository after first failure") {
-            retryableRepository.hasFailedMessages("key1") shouldBe true
+            retryableRepository.hasFailedMessages(RetryKey.of("key1")) shouldBe true
             countFailedMessagesOnKey("key1") shouldBe 1
         }
 
         testDriver.advanceWallClockTime(Duration.of(7, ChronoUnit.SECONDS))
 
         withClue("Should not have any failed message in failed message repository after it has been successfully processed") {
-            retryableRepository.hasFailedMessages("key1") shouldBe false
+            retryableRepository.hasFailedMessages(RetryKey.of("key1")) shouldBe false
         }
 
         verify(exactly = 1) {

@@ -92,7 +92,7 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
             return
         }
 
-        if (store.hasFailedMessages(keyString)) {
+        if (store.hasFailedMessages(RetryKey.of(keyString))) {
             enqueue(record, "Queued behind a previously failed message.")
             return
         }

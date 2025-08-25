@@ -3,6 +3,7 @@ package kafka.retry.library.internal
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import no.nav.kafka.retry.library.internal.RetryKey
 import no.nav.kafka.retry.library.internal.RetryableRepository
 import no.nav.utils.TestDb
 import org.flywaydb.core.Flyway
@@ -49,15 +50,15 @@ class RetryableRepositoryTest {
 
     @Test
     fun `should enqueue and correctly check for failed messages`() {
-        val key = "test-key"
-        val otherKey = "other-key"
+        val key = RetryKey.of("test-key")
+        val otherKey = RetryKey.of("other-key")
         val value = "test-value".toByteArray()
 
         repository.hasFailedMessages(key) shouldBe false
         repository.countTotalFailedMessages() shouldBe 0
 
 
-        repository.enqueue(key, value, key.toByteArray(), "Initial failure")
+        repository.enqueue(key.value, value, key.value.toByteArray(), "Initial failure")
 
         repository.hasFailedMessages(key) shouldBe true
         repository.hasFailedMessages(otherKey) shouldBe false
@@ -67,15 +68,15 @@ class RetryableRepositoryTest {
 
     @Test
     fun `should only fetch from single topic in one batch (getBatchToRetry)`() {
-        val key = "test-key"
-        val otherKey = "other-key"
+        val key = RetryKey.of("test-key")
+        val otherKey = RetryKey.of("other-key")
         val value = "test-value".toByteArray()
         val otherRepository = RetryableRepository( "other-topic")
         repository.hasFailedMessages(key) shouldBe false
         repository.countTotalFailedMessages() shouldBe 0
 
-        repository.enqueue(key, value, otherKey.toByteArray(), "Initial failure")
-        otherRepository.enqueue(key, value, otherKey.toByteArray(), "Initial failure")
+        repository.enqueue(key.value, value, otherKey.value.toByteArray(), "Initial failure")
+        otherRepository.enqueue(key.value, value, otherKey.value.toByteArray(), "Initial failure")
 
         repository.getBatchToRetry(100).size shouldBe 1
         repository.countTotalFailedMessages() shouldBe 1
@@ -84,8 +85,8 @@ class RetryableRepositoryTest {
 
     @Test
     fun `should enqueue and correctly check for failed messages for messages with additional human readable value`() {
-        val key = "test-key"
-        val otherKey = "other-key"
+        val key = RetryKey.of("test-key")
+        val otherKey = RetryKey.of("other-key")
         val value = "some-avro-message".toByteArray()
         val humanReadableValue = "Human readable value"
 
@@ -93,7 +94,7 @@ class RetryableRepositoryTest {
         repository.countTotalFailedMessages() shouldBe 0
 
 
-        repository.enqueue(key, key.toByteArray(), value, "Initial failure", humanReadableValue)
+        repository.enqueue(key.value, key.value.toByteArray(), value, "Initial failure", humanReadableValue)
 
         repository.hasFailedMessages(key) shouldBe true
         repository.hasFailedMessages(otherKey) shouldBe false
@@ -157,7 +158,7 @@ class RetryableRepositoryTest {
     @Test
     fun `should fail on empty key`() {
         shouldThrow<IllegalArgumentException> {
-            repository.hasFailedMessages("")
+            repository.hasFailedMessages(RetryKey.of(""))
         }
     }
 }

@@ -120,7 +120,7 @@ class RetryableProcessorTest {
     fun `should process successfully when store is empty and logic succeeds`() = runTest {
         val (processor, mockedStore, mockedMetrics) = setupTest()
         // Arrange
-        every { mockedStore.hasFailedMessages("key1") } returns false
+        every { mockedStore.hasFailedMessages(RetryKey.of("key1")) } returns false
 
         // Act
         processor.process(Record("key1", "good-value", 0L))
@@ -134,7 +134,7 @@ class RetryableProcessorTest {
     fun `should enqueue when business logic fails`() = runTest {
         val (processor, mockedStore, mockedMetrics) = setupTest()
         // Arrange
-        every { mockedStore.hasFailedMessages("key1") } returns false
+        every { mockedStore.hasFailedMessages(RetryKey.of("key1")) } returns false
 
         // Act
         processor.process(Record("key1", "value-with-FAIL", 0L))
@@ -155,7 +155,7 @@ class RetryableProcessorTest {
     fun `should enqueue when store already has failures for the key`() = runTest {
         val (processor, mockedStore, mockedMetrics) = setupTest()
         // Arrange
-        every { mockedStore.hasFailedMessages("key1") } returns true
+        every { mockedStore.hasFailedMessages(RetryKey.of("key1")) } returns true
 
         // Act
         processor.process(Record("key1", "good-value-but-blocked", 0L))
@@ -271,7 +271,7 @@ class RetryableProcessorTest {
         metricsField.set(avroProcessor, mockedMetrics)
 
         // Arrange
-        every { mockedStore.hasFailedMessages("key1") } returns false
+        every { mockedStore.hasFailedMessages(RetryKey.of("key1")) } returns false
 
         // Act
 
@@ -325,7 +325,7 @@ class RetryableProcessorTest {
     @Test
     fun `save offset when message is enqueued because previous message failed`() = runTest {
         val (processor, mockedStore, _, mockedContext) = setupTest()
-        every { mockedStore.hasFailedMessages("key1") } returns true
+        every { mockedStore.hasFailedMessages(RetryKey.of("key1")) } returns true
         val savedOffset = 0L
         val offsetNewMessage = savedOffset + 45
         val metadataOffset = getRecordMetadata(0, offsetNewMessage)
