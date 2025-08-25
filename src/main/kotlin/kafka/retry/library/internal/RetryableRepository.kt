@@ -26,7 +26,7 @@ class RetryableRepository(val repositoryTopic: String) {
             .empty()
     }
 
-    fun enqueue(keyString: String, keyBytes: ByteArray, value: ByteArray?, reason: String): Long = transaction {
+    fun enqueue(keyString: RetryKey, keyBytes: ByteArray, value: ByteArray?, reason: String): Long = transaction {
         val x = FailedMessagesTable.insertAndGetId {
             it[messageKeyText] = keyString
             it[messageKeyBytes] = keyBytes
@@ -38,7 +38,7 @@ class RetryableRepository(val repositoryTopic: String) {
     }
 
     fun enqueue(
-        keyString: String,
+        keyString: RetryKey,
         keyBytes: ByteArray,
         value: ByteArray?,
         reason: String,

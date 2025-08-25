@@ -252,7 +252,7 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
         val pk = when (recordValue) {
             is SpecificRecord -> {
                 val humanReadableValue = AvroJsonConverter.convertAvroToJson(recordValue)
-                store.enqueue(keyString, keyBytes, valueBytes, reason, humanReadableValue)
+                store.enqueue(RetryKey.of(keyString), keyBytes, valueBytes, reason, humanReadableValue)
             }
 
             else -> {
