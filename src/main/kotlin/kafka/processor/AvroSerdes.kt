@@ -56,4 +56,5 @@ class AvroSerdes (
             configure(schemaRegistryConfig, true)
         }
     val leesahKeyAvroSerde = Serdes.serdeFrom(keySerializer, keyDeserializer)
+    val aktorV2KeyAvroSerde = Serdes.serdeFrom(keySerializer, keyDeserializer)
 }

@@ -18,7 +18,7 @@ class IdentChangeProcessor(
 
     fun process(record: Record<String, Aktor>): RecordProcessingResult<String, Aktor> {
         return runBlocking {
-            runCatching { AktorId(record.key()) }
+            runCatching { AktorId(record.key().replace("\u0000", "")) }
                 .map { aktorId ->
                     val payload = record.value()
                     if (payload == null) {

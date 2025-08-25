@@ -46,7 +46,7 @@ private fun getInnTopicsWithSerde(
         Topic(sisteOppfolgingsperiodeV1Name, Serdes.String(), Serdes.String()),
         Topic(pdlLeesahName,  avroSerdes.leesahKeyAvroSerde, avroSerdes.leesahValueAvroSerde),
         Topic(skjermingName, Serdes.String(), Serdes.String()),
-        Topic(aktorV2Name, Serdes.String(), avroSerdes.aktorV2ValueAvroSerde)
+        Topic(aktorV2Name, avroSerdes.aktorV2KeyAvroSerde, avroSerdes.aktorV2ValueAvroSerde)
     )
 }
 
