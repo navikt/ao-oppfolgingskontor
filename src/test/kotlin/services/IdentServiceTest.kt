@@ -400,6 +400,37 @@ class IdentServiceTest {
         )
     }
 
+    @Test
+    fun `skal støtte at aktorId (key) er padded med noe ekstra null greier`() = runTest {
+        flywayMigrationInTest()
+
+        val nyAktorId = AktorId("2938764297763")
+        val fnr = Fnr("02010198765")
+        val internId = 31231L
+
+        val identProvider: suspend (String) -> IdenterFunnet = { nyMenIkkeLagretEndaAktorId ->
+            IdenterFunnet(listOf(
+                IdentInformasjon(fnr.value, false, IdentGruppe.FOLKEREGISTERIDENT),
+                IdentInformasjon(nyAktorId.value, false, IdentGruppe.AKTORID)
+            ), nyMenIkkeLagretEndaAktorId)
+        }
+        val identService = IdentService(identProvider)
+        val proccessor = IdentChangeProcessor(identService)
+
+        val payload = mockk<Aktor> {
+            every { identifikatorer } returns listOf(
+                Identifikator(fnr.value, Type.FOLKEREGISTERIDENT, true),
+                Identifikator(nyAktorId.value, Type.AKTORID, true),
+            )
+        }
+        proccessor.process(Record("\u0000${nyAktorId.value}", payload, 1010L))
+
+        hentIdenter(internId) shouldBe listOf(
+            IdentFraDb(fnr.value, "FNR", false, false),
+            IdentFraDb(nyAktorId.value, "AKTOR_ID", false, false),
+        )
+    }
+
     data class IdentFraDb(
         val ident: String,
         val type: String,
