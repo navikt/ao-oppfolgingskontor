@@ -3,6 +3,7 @@ package no.nav.kafka.config
 import Topic
 import io.ktor.server.application.ApplicationEnvironment
 import io.ktor.server.config.*
+import kafka.consumers.IdentChangeProcessor
 import kafka.consumers.SisteOppfolgingsperiodeProcessor
 import kafka.retry.library.RetryProcessorWrapper
 import kafka.retry.library.StreamType
@@ -71,6 +72,7 @@ fun configureTopology(
     leesahProcessor: LeesahProcessor,
     skjermingProcessor: SkjermingProcessor,
     endringPaOppfolgingsBrukerProcessor: EndringPaOppfolgingsBrukerProcessor,
+    identEndringsProcessor: IdentChangeProcessor
 ): Topology {
     val topics = environment.topics()
     val builder = StreamsBuilder()
@@ -147,6 +149,17 @@ fun configureTopology(
     )
     builder.stream(topics.inn.pdlLeesah.name, topics.inn.pdlLeesah.consumedWith())
         .process(leesahProcessorSupplier, Named.`as`(processorName(topics.inn.pdlLeesah.name)))
+
+    /*
+     * AKTOR V2
+     * */
+    val identChangeProcessorSupplier = wrapInRetryProcessor(
+        topic = topics.inn.aktorV2,
+        streamType = StreamType.SOURCE,
+        businessLogic = identEndringsProcessor::process
+    )
+    builder.stream(topics.inn.aktorV2.name, topics.inn.aktorV2.consumedWith())
+        .process(identChangeProcessorSupplier, Named.`as`(processorName(topics.inn.aktorV2.name)))
 
     if(!environment.isProduction()) {
         oppfolgingStartetStream

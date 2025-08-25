@@ -21,6 +21,7 @@ import no.nav.http.client.IdentFunnet
 import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.IdentResult
+import no.nav.http.client.IdenterFunnet
 import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
@@ -33,12 +34,12 @@ import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.KontorForGtNrFantDefaultKontor
 import no.nav.services.KontorTilordningService
-import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingsperiodeOppslagResult
 import no.nav.services.OppfolgingsperiodeService
 import no.nav.utils.flywayMigrationInTest
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
+import services.IdentService
 import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 import java.util.UUID
@@ -90,6 +91,9 @@ class BigAppTest {
                 oppfolgingsperiodeProvider
             )
 
+            val identService = IdentService { IdenterFunnet(emptyList(), "") }
+            val identendringsProcessor = IdentChangeProcessor(identService)
+
             val topology = configureTopology(
                 this.environment,
                 TestLockProvider,
@@ -98,7 +102,8 @@ class BigAppTest {
                 tilordningProcessor,
                 leesahProcessor,
                 skjermingProcessor,
-                endringPaaOppfolgingsBrukerProcessor
+                endringPaaOppfolgingsBrukerProcessor,
+                identendringsProcessor
             )
 
             val (driver, inputTopics, _) = setupKafkaMock(topology,
@@ -164,6 +169,9 @@ class BigAppTest {
                 oppfolgingsperiodeProvider
             )
 
+            val identService = IdentService { IdenterFunnet(emptyList(), "") }
+            val identendringsProcessor = IdentChangeProcessor(identService)
+
             val topology = configureTopology(
                 this.environment,
                 TestLockProvider,
@@ -172,7 +180,8 @@ class BigAppTest {
                 tilordningProcessor,
                 leesahProcessor,
                 skjermingProcessor,
-                endringPaaOppfolgingsBrukerProcessor
+                endringPaaOppfolgingsBrukerProcessor,
+                identendringsProcessor
             )
 
             val (driver, inputTopics, _) = setupKafkaMock(topology,
