@@ -132,7 +132,7 @@ class RetryableProcessorIntegrationTest {
             }
         })
 
-        testInputTopics.first().pipeInput("key1", null)
+        testInputTopics.first().pipeInput("key1", null as String?)
 
         withClue("Shoud have enqueued message in failed message repository after first failure") {
             retryableRepository.hasFailedMessages("key1") shouldBe true
