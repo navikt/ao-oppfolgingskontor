@@ -24,6 +24,7 @@ fun flywayMigrate(dataSource: DataSource) {
     val logger = LoggerFactory.getLogger("FlywayPlugin::class.java")
     logger.info("Starting Flyway migration")
     Flyway.configure()
+        .validateMigrationNaming(true)
         .dataSource(dataSource)
         .load()
         .migrate()
