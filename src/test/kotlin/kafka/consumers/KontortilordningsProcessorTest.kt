@@ -72,7 +72,7 @@ class KontortilordningsProcessorTest {
     }
 
     @Test
-    fun `skal hoppe over melding hvis  Retry på uventete feil `() {
+    fun `skal hoppe over melding hvis Retry på uventete feil `() {
         val oppfolgingsperiode = oppfolgingsperiodeStartet()
         val processor = KontortilordningsProcessor(
             feilendeAutomatiskKontorRutingService(oppfolgingsperiode),
