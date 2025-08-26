@@ -243,25 +243,29 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
     }
 
     private fun enqueue(record: Record<KIn, VIn>, reason: String) {
-        val key = record.key()!! // Vi har allerede sjekket for null i process()
-        val keyString = key.toString()
-        val keyBytes = keyInSerializer.serialize(topic, key)
-        val valueBytes = valueInSerializer.serialize(topic, record.value())
+        runCatching {
+            val key = record.key()!! // Vi har allerede sjekket for null i process()
+            val keyString = key.toString()
+            val keyBytes = keyInSerializer.serialize(topic, key)
+            val valueBytes = valueInSerializer.serialize(topic, record.value())
 
-        val recordValue = record.value()
-        val pk = when (recordValue) {
-            is SpecificRecord -> {
-                val humanReadableValue = AvroJsonConverter.convertAvroToJson(recordValue)
-                store.enqueue(keyString, keyBytes, valueBytes, reason, humanReadableValue)
-            }
-
-            else -> {
-                store.enqueue(keyString, keyBytes, valueBytes, reason)
+            val recordValue = record.value()
+            when (recordValue) {
+                is SpecificRecord -> {
+                    val humanReadableValue = AvroJsonConverter.convertAvroToJson(recordValue)
+                    store.enqueue(keyString, keyBytes, valueBytes, reason, humanReadableValue)
+                }
+                else -> store.enqueue(keyString, keyBytes, valueBytes, reason)
             }
         }
-
-        metrics.messageEnqueued()
-        logger.info("Message messageId: '$pk' was enqueued for retry. Reason: $reason")
+            .onFailure { err ->
+                logger.error("Klarte ikke enqueue melding fra topic $topic: ${err.message}",  err)
+                throw err
+            }
+            .onSuccess { pk ->
+                metrics.messageEnqueued()
+                logger.info("Message messageId: '$pk' was enqueued for retry. Reason: $reason")
+            }
     }
 
     override fun close() {
