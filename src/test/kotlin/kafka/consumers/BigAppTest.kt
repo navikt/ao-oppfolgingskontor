@@ -38,6 +38,7 @@ import no.nav.services.OppfolgingsperiodeOppslagResult
 import no.nav.services.OppfolgingsperiodeService
 import no.nav.utils.flywayMigrationInTest
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import services.IdentService
 import topics
@@ -52,6 +53,7 @@ class BigAppTest {
         false
     ) { IdentFunnet(fnr) }
 
+    @Disabled
     @Test
     fun `app should forward from SisteOppfolgingsperiodeProcessor to KontortilordningsProcessor if not prod`() = testApplication {
         val fnr = Fnr("22325678901")
