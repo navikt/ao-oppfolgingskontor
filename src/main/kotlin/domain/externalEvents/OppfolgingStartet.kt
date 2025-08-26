@@ -1,8 +1,5 @@
 package no.nav.domain.externalEvents
 
-import kotlinx.serialization.Contextual
-import kotlinx.serialization.Polymorphic
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import no.nav.db.Ident
 import no.nav.domain.OppfolgingsperiodeId
