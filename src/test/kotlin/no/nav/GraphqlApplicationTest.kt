@@ -11,13 +11,17 @@ import io.ktor.server.testing.testApplication
 import no.nav.Authenticated
 import no.nav.SystemPrincipal
 import no.nav.db.Fnr
-import no.nav.db.table.ArbeidsOppfolgingKontorTable
-import no.nav.db.table.ArenaKontorTable
-import no.nav.db.table.GeografiskTilknytningKontorTable
-import no.nav.db.table.KontorhistorikkTable
 import no.nav.domain.KontorEndringsType
+import no.nav.domain.KontorId
+import no.nav.domain.KontorTilordning
 import no.nav.domain.KontorType
+import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.System
+import no.nav.domain.events.EndringPaaOppfolgingsBrukerFraArena
+import no.nav.domain.events.GTKontorEndret
+import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
+import no.nav.http.client.GeografiskTilknytningBydelNr
+import no.nav.http.client.GtNummerForBrukerFunnet
 import no.nav.http.client.mockNorg2Host
 import no.nav.http.client.mockPoaoTilgangHost
 import no.nav.http.graphql.installGraphQl
@@ -26,6 +30,7 @@ import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
 import no.nav.http.graphql.schemas.RegistrantTypeDto
 import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
+import no.nav.services.KontorTilordningService
 import no.nav.utils.AlleKontor
 import no.nav.utils.GraphqlResponse
 import no.nav.utils.KontorTilhorighet
@@ -37,17 +42,20 @@ import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.getJsonHttpClient
 import no.nav.utils.kontorHistorikk
 import no.nav.utils.kontorTilhorighet
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
+import services.ingenSensitivitet
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 import java.time.ZonedDateTime
+import java.util.UUID
 
 fun ApplicationTestBuilder.graphqlServerInTest() {
     val norg2Client = mockNorg2Host()
     val poaoTilgangClient = mockPoaoTilgangHost(null)
     application {
         flywayMigrationInTest()
-        installGraphQl(norg2Client,
+        installGraphQl(
+            norg2Client,
             KontorTilhorighetService(KontorNavnService(norg2Client), poaoTilgangClient),
             { Authenticated(SystemPrincipal("lol")) })
         routing {
@@ -65,15 +73,17 @@ class GraphqlApplicationTest {
         val client = getJsonHttpClient()
         graphqlServerInTest()
         application {
-            gittBrukerMedKontorIArena(fnr, kontorId)
+            gittBrukerMedKontorIArena(fnr, kontorId, insertTime)
         }
 
         val response = client.kontorTilhorighet(fnr)
 
         response.status shouldBe HttpStatusCode.Companion.OK
         val payload = response.body<GraphqlResponse<KontorTilhorighet>>()
-        payload shouldBe GraphqlResponse(KontorTilhorighet(
-            KontorTilhorighetQueryDto(kontorId, "NAV test", KontorType.ARENA, "Arena", RegistrantTypeDto.ARENA))
+        payload shouldBe GraphqlResponse(
+            KontorTilhorighet(
+                KontorTilhorighetQueryDto(kontorId, "NAV test", KontorType.ARENA, "Arena", RegistrantTypeDto.ARENA)
+            )
         )
     }
 
@@ -84,7 +94,7 @@ class GraphqlApplicationTest {
         val client = getJsonHttpClient()
         graphqlServerInTest()
         application {
-            gittBrukerMedKontorIArena(fnr, kontorId)
+            gittBrukerMedKontorIArena(fnr, kontorId, insertTime)
         }
 
         val response = client.kontorHistorikk(fnr)
@@ -92,6 +102,13 @@ class GraphqlApplicationTest {
         response.status shouldBe HttpStatusCode.Companion.OK
         val payload = response.body<GraphqlResponse<KontorHistorikk>>()
         payload.errors shouldBe null
+        payload.data!!.kontorHistorikk shouldHaveSize 1
+        val kontorhistorikk = payload.data.kontorHistorikk.first()
+        kontorhistorikk.kontorId shouldBe kontorId
+        kontorhistorikk.kontorType shouldBe KontorType.ARENA
+        kontorhistorikk.endringsType shouldBe KontorEndringsType.EndretIArena
+        kontorhistorikk.endretAv shouldBe kontorId
+
         payload.data shouldBe KontorHistorikk(
             listOf(
                 KontorHistorikkQueryDto(
@@ -113,7 +130,7 @@ class GraphqlApplicationTest {
         val client = getJsonHttpClient()
         graphqlServerInTest()
         application {
-            gittBrukerMedKontorIArena(fnr, kontorId)
+            gittBrukerMedKontorIArena(fnr, kontorId, insertTime)
         }
 
         val response = client.alleKontor()
@@ -150,7 +167,7 @@ class GraphqlApplicationTest {
         val arenaKontorId = "4150"
         graphqlServerInTest()
         application {
-            gittBrukerMedKontorIArena(fnr, arenaKontorId)
+            gittBrukerMedKontorIArena(fnr, arenaKontorId, insertTime)
             gittBrukerMedGeografiskTilknyttetKontor(fnr, GTkontorId)
             gittBrukerMedAOKontor(fnr, AOKontor)
         }
@@ -167,63 +184,32 @@ class GraphqlApplicationTest {
     }
 
     val insertTime = ZonedDateTime.parse("2025-04-15T07:12:14.307878Z")
-    private fun gittBrukerMedKontorIArena(fnr: Fnr, kontorId: String) {
-        transaction {
-            ArenaKontorTable.insert {
-                it[id] = fnr.value
-                it[this.kontorId] = kontorId
-                it[this.createdAt] = insertTime.toOffsetDateTime()
-                it[this.updatedAt] = insertTime.toOffsetDateTime()
-            }
-            KontorhistorikkTable.insert {
-                it[this.ident] = fnr.value
-                it[this.kontorId] = kontorId
-                it[this.kontorendringstype] = KontorEndringsType.EndretIArena.name
-                it[this.endretAvType] = System().getType()
-                it[this.endretAv] = System().getIdent()
-                it[this.createdAt] = insertTime.toOffsetDateTime()
-                it[this.kontorType] = KontorType.ARENA.name
-            }
-        }
+
+    private fun gittBrukerMedKontorIArena(fnr: Fnr, kontorId: String, insertTime: ZonedDateTime = ZonedDateTime.now()) {
+        KontorTilordningService.tilordneKontor(
+            EndringPaaOppfolgingsBrukerFraArena(
+                tilordning = KontorTilordning(fnr, KontorId(kontorId), OppfolgingsperiodeId(UUID.randomUUID())),
+                sistEndretDatoArena = insertTime.toOffsetDateTime()
+            )
+        )
     }
 
     private fun gittBrukerMedGeografiskTilknyttetKontor(fnr: Fnr, kontorId: String) {
-        transaction {
-            GeografiskTilknytningKontorTable.insert {
-                it[id] = fnr.value
-                it[this.kontorId] = kontorId
-                it[this.createdAt] = insertTime.toOffsetDateTime()
-                it[this.updatedAt] = insertTime.toOffsetDateTime()
-            }
-            KontorhistorikkTable.insert {
-                it[this.ident] = fnr.value
-                it[this.kontorId] = kontorId
-                it[this.kontorendringstype] = KontorEndringsType.FlyttetAvVeileder.name
-                it[this.endretAvType] = "veileder"
-                it[this.endretAv] = "S515151"
-                it[this.createdAt] = insertTime.toOffsetDateTime()
-                it[this.kontorType] = KontorType.GEOGRAFISK_TILKNYTNING.name
-            }
-        }
+        KontorTilordningService.tilordneKontor(
+            GTKontorEndret(
+                kontorTilordning = KontorTilordning(fnr, KontorId(kontorId), OppfolgingsperiodeId(UUID.randomUUID())),
+                kontorEndringsType = KontorEndringsType.FlyttetAvVeileder,
+                gt = GtNummerForBrukerFunnet(GeografiskTilknytningBydelNr("3131"))
+            )
+        )
     }
 
     private fun gittBrukerMedAOKontor(fnr: Fnr, kontorId: String) {
-        transaction {
-            ArbeidsOppfolgingKontorTable.insert {
-                it[id] = fnr.value
-                it[this.kontorId] = kontorId
-                it[this.createdAt] = insertTime.toOffsetDateTime()
-                it[this.updatedAt] = insertTime.toOffsetDateTime()
-            }
-            KontorhistorikkTable.insert {
-                it[this.ident] = fnr.value
-                it[this.kontorId] = kontorId
-                it[this.kontorendringstype] = KontorEndringsType.FlyttetAvVeileder.name
-                it[this.endretAvType] = "veileder"
-                it[this.endretAv] = "S515151"
-                it[this.createdAt] = insertTime.toOffsetDateTime()
-                it[this.kontorType] = KontorType.ARBEIDSOPPFOLGING.name
-            }
-        }
+        KontorTilordningService.tilordneKontor(
+            OppfolgingsPeriodeStartetLokalKontorTilordning(
+                kontorTilordning = KontorTilordning(fnr, KontorId(kontorId), OppfolgingsperiodeId(UUID.randomUUID())),
+                ingenSensitivitet
+            )
+        )
     }
 }
