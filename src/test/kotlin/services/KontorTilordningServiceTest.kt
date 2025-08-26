@@ -1,15 +1,19 @@
 package services
 
+import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.shouldBe
 import no.nav.db.Fnr
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.KontorHistorikkEntity
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
+import no.nav.db.table.KontorhistorikkTable
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.events.ArenaKontorEndret
 import no.nav.domain.events.OppfolgingsperiodeStartetNoeTilordning
 import no.nav.services.KontorTilordningService
 import no.nav.utils.flywayMigrationInTest
 import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
 import java.util.UUID
 
@@ -24,10 +28,18 @@ class KontorTilordningServiceTest {
         val kontorEndretEvent = OppfolgingsperiodeStartetNoeTilordning(Fnr(fnr), oppfolginsperiodeUuid)
 
         KontorTilordningService.tilordneKontor(kontorEndretEvent)
+        KontorTilordningService.tilordneKontor(kontorEndretEvent)
 
-        val arbeidsoppfolgingskontor = ArbeidsOppfolgingKontorEntity.get(fnr)
-        val historikkEntry = KontorHistorikkEntity.
-        ArbeidsOppfolgingKontorTable.selectAll()
+        val (arbeidsoppfolgingskontor, historikkEntries) = transaction {
+            val arbeidsoppfolgingskontor = ArbeidsOppfolgingKontorEntity[fnr]
+            val historikkEntries = KontorHistorikkEntity
+                .find { KontorhistorikkTable.ident eq fnr }
+                .toList()
+            arbeidsoppfolgingskontor to historikkEntries
+        }
 
+        historikkEntries.size shouldBe 2
+        val sisteEntry = historikkEntries.maxBy { it.id.value }
+        arbeidsoppfolgingskontor.historikkEntry shouldBe sisteEntry.id
     }
 }
