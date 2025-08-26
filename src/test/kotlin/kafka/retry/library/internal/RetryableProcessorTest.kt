@@ -345,4 +345,13 @@ class RetryableProcessorTest {
         verify(exactly = 0) { mockedStore.saveOffsetIfGreater(any(), any()) }
     }
 
+    @Test
+    fun `save in failed messages also when message is internal`() = runTest {
+        val (processor, mockedStore, _, mockedContext) = setupTest(StreamType.INTERNAL)
+
+        processor.process(Record("key1", "FAIL", 0L))
+
+        verify { mockedStore.enqueue("key1", "key1".toByteArray(), "FAIL".toByteArray(), any(), "FAIL") }
+    }
+
 }
