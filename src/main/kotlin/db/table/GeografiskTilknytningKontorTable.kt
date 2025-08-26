@@ -12,4 +12,5 @@ object GeografiskTilknytningKontorTable: IdTable<String>("geografisktilknytningk
     val gtType = varchar("gt_type", 10).nullable() // VARCHAR(4),
     val createdAt = timestampWithTimeZone("created_at").defaultExpression(CurrentTimestampWithTimeZone) // TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     val updatedAt = timestampWithTimeZone("updated_at").defaultExpression(CurrentTimestampWithTimeZone)
+    val historikkEntry = integer("historikk_entry").references(KontorhistorikkTable.id)
 }

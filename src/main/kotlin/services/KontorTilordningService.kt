@@ -8,7 +8,9 @@ import no.nav.domain.events.AOKontorEndret
 import no.nav.domain.events.ArenaKontorEndret
 import no.nav.domain.events.GTKontorEndret
 import no.nav.domain.events.KontorEndretEvent
+import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.insertReturning
 import org.jetbrains.exposed.sql.statements.InsertStatement
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.upsert
@@ -19,6 +21,7 @@ object KontorTilordningService {
         val kontorTilhorighet = kontorEndring.tilordning
         transaction {
             kontorEndring.logg()
+            val entryId = settKontorIHistorikk(kontorEndring)
             when (kontorEndring) {
                 is AOKontorEndret -> {
                     ArbeidsOppfolgingKontorTable.upsert {
@@ -27,6 +30,7 @@ object KontorTilordningService {
                         it[endretAv] = kontorEndring.registrant.getIdent()
                         it[endretAvType] = kontorEndring.registrant.getType()
                         it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
+                        it[historikkEntry] = entryId.value
                     }
                 }
                 is ArenaKontorEndret -> {
@@ -35,6 +39,7 @@ object KontorTilordningService {
                         it[id] = kontorTilhorighet.fnr.value
                         it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
                         it[sistEndretDatoArena] = kontorEndring.sistEndretDatoArena
+                        it[historikkEntry] = entryId.value
                     }
                 }
                 is GTKontorEndret -> {
@@ -44,16 +49,16 @@ object KontorTilordningService {
                         it[gt] = kontorEndring.gt()
                         it[gtType] = kontorEndring.gtType()
                         it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
+                        it[historikkEntry] = entryId.value
                     }
                 }
             }
-            settKontorIHistorikk(kontorEndring)
         }
     }
 
     private fun settKontorIHistorikk(
         kontorEndring: KontorEndretEvent
-    ): InsertStatement<Number> {
+    ): EntityID<Int> {
         val historikkInnslag = kontorEndring.toHistorikkInnslag()
         return KontorhistorikkTable.insert {
             it[kontorId] = historikkInnslag.kontorId.id
@@ -63,6 +68,6 @@ object KontorTilordningService {
             it[kontorendringstype] = historikkInnslag.kontorendringstype.name
             it[kontorType] = historikkInnslag.kontorType.name
             it[oppfolgingsperiodeId] = historikkInnslag.oppfolgingId.value
-        }
+        }[KontorhistorikkTable.id]
     }
 }
