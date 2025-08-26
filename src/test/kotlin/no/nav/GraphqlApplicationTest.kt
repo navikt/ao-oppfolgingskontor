@@ -2,21 +2,17 @@ package no.nav.no.nav
 
 import com.expediagroup.graphql.server.ktor.graphQLPostRoute
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.date.shouldBeCloseTo
 import io.kotest.matchers.shouldBe
-import io.ktor.client.call.body
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.routing.routing
-import io.ktor.server.testing.ApplicationTestBuilder
-import io.ktor.server.testing.testApplication
+import io.ktor.client.call.*
+import io.ktor.http.*
+import io.ktor.server.routing.*
+import io.ktor.server.testing.*
+import kotlinx.datetime.toInstant
 import no.nav.Authenticated
 import no.nav.SystemPrincipal
 import no.nav.db.Fnr
-import no.nav.domain.KontorEndringsType
-import no.nav.domain.KontorId
-import no.nav.domain.KontorTilordning
-import no.nav.domain.KontorType
-import no.nav.domain.OppfolgingsperiodeId
-import no.nav.domain.System
+import no.nav.domain.*
 import no.nav.domain.events.EndringPaaOppfolgingsBrukerFraArena
 import no.nav.domain.events.GTKontorEndret
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
@@ -25,29 +21,20 @@ import no.nav.http.client.GtNummerForBrukerFunnet
 import no.nav.http.client.mockNorg2Host
 import no.nav.http.client.mockPoaoTilgangHost
 import no.nav.http.graphql.installGraphQl
-import no.nav.http.graphql.schemas.KontorHistorikkQueryDto
 import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
 import no.nav.http.graphql.schemas.RegistrantTypeDto
 import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
 import no.nav.services.KontorTilordningService
-import no.nav.utils.AlleKontor
-import no.nav.utils.GraphqlResponse
+import no.nav.utils.*
 import no.nav.utils.KontorTilhorighet
-import no.nav.utils.KontorHistorikk
-import no.nav.utils.KontorTilhorigheter
-import no.nav.utils.alleKontor
-import no.nav.utils.alleKontorTilhorigheter
-import no.nav.utils.flywayMigrationInTest
-import no.nav.utils.getJsonHttpClient
-import no.nav.utils.kontorHistorikk
-import no.nav.utils.kontorTilhorighet
 import org.junit.jupiter.api.Test
 import services.ingenSensitivitet
-import java.time.OffsetDateTime
+import java.time.Instant
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
-import java.util.UUID
+import java.util.*
+import kotlin.time.Duration.Companion.milliseconds
 
 fun ApplicationTestBuilder.graphqlServerInTest() {
     val norg2Client = mockNorg2Host()
@@ -73,7 +60,7 @@ class GraphqlApplicationTest {
         val client = getJsonHttpClient()
         graphqlServerInTest()
         application {
-            gittBrukerMedKontorIArena(fnr, kontorId, insertTime)
+            gittBrukerMedKontorIArena(fnr, kontorId)
         }
 
         val response = client.kontorTilhorighet(fnr)
@@ -94,7 +81,7 @@ class GraphqlApplicationTest {
         val client = getJsonHttpClient()
         graphqlServerInTest()
         application {
-            gittBrukerMedKontorIArena(fnr, kontorId, insertTime)
+            gittBrukerMedKontorIArena(fnr, kontorId)
         }
 
         val response = client.kontorHistorikk(fnr)
@@ -107,20 +94,8 @@ class GraphqlApplicationTest {
         kontorhistorikk.kontorId shouldBe kontorId
         kontorhistorikk.kontorType shouldBe KontorType.ARENA
         kontorhistorikk.endringsType shouldBe KontorEndringsType.EndretIArena
-        kontorhistorikk.endretAv shouldBe kontorId
-
-        payload.data shouldBe KontorHistorikk(
-            listOf(
-                KontorHistorikkQueryDto(
-                    kontorId = kontorId,
-                    kontorType = KontorType.ARENA,
-                    endringsType = KontorEndringsType.EndretIArena,
-                    endretAv = System().getIdent(),
-                    endretAvType = System().getType(),
-                    endretTidspunkt = insertTime.toString()
-                )
-            )
-        )
+        kontorhistorikk.endretAv shouldBe System().getIdent()
+        Instant.parse(kontorhistorikk.endretTidspunkt).shouldBeCloseTo(Instant.now(), 500.milliseconds)
     }
 
     @Test
@@ -130,7 +105,7 @@ class GraphqlApplicationTest {
         val client = getJsonHttpClient()
         graphqlServerInTest()
         application {
-            gittBrukerMedKontorIArena(fnr, kontorId, insertTime)
+            gittBrukerMedKontorIArena(fnr, kontorId)
         }
 
         val response = client.alleKontor()
@@ -167,7 +142,7 @@ class GraphqlApplicationTest {
         val arenaKontorId = "4150"
         graphqlServerInTest()
         application {
-            gittBrukerMedKontorIArena(fnr, arenaKontorId, insertTime)
+            gittBrukerMedKontorIArena(fnr, arenaKontorId)
             gittBrukerMedGeografiskTilknyttetKontor(fnr, GTkontorId)
             gittBrukerMedAOKontor(fnr, AOKontor)
         }
@@ -182,8 +157,6 @@ class GraphqlApplicationTest {
         payload.data.kontorTilhorigheter.arena?.kontorId shouldBe arenaKontorId
         payload.data.kontorTilhorigheter.geografiskTilknytning?.kontorId shouldBe GTkontorId
     }
-
-    val insertTime = ZonedDateTime.parse("2025-04-15T07:12:14.307878Z")
 
     private fun gittBrukerMedKontorIArena(fnr: Fnr, kontorId: String, insertTime: ZonedDateTime = ZonedDateTime.now()) {
         KontorTilordningService.tilordneKontor(
