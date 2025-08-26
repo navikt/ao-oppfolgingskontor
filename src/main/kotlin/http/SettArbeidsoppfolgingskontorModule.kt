@@ -35,7 +35,7 @@ import no.nav.services.OppfolgingsperiodeService
 import no.nav.toRegistrant
 import org.slf4j.LoggerFactory
 
-val logger = LoggerFactory.getLogger("Applcation.configureArbeidsoppfolgingskontorModule")
+val logger = LoggerFactory.getLogger("Application.configureArbeidsoppfolgingskontorModule")
 
 fun Application.configureArbeidsoppfolgingskontorModule(
     kontorNavnService: KontorNavnService,
@@ -43,7 +43,7 @@ fun Application.configureArbeidsoppfolgingskontorModule(
     poaoTilgangClient: PoaoTilgangKtorHttpClient,
     authenticateRequest: AuthenticateRequest = { req -> req.call.authenticateCall(environment.getIssuer()) }
 ) {
-    val log = LoggerFactory.getLogger("Applcation.configureArbeidsoppfolgingskontorModule")
+    val log = LoggerFactory.getLogger("Application.configureArbeidsoppfolgingskontorModule")
 
     routing {
         install(ContentNegotiation) {
