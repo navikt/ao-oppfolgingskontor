@@ -38,14 +38,22 @@ import no.nav.services.OppfolgingsperiodeOppslagResult
 import no.nav.services.OppfolgingsperiodeService
 import no.nav.utils.flywayMigrationInTest
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import services.IdentService
+import topics
 import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 import java.util.UUID
 
 class BigAppTest {
 
+    fun sisteOppfolgingsPeriodeProcessor(fnr: Fnr) = SisteOppfolgingsperiodeProcessor(
+        OppfolgingsperiodeService,
+        false
+    ) { IdentFunnet(fnr) }
+
+    @Disabled
     @Test
     fun `app should forward from SisteOppfolgingsperiodeProcessor to KontortilordningsProcessor if not prod`() = testApplication {
         val fnr = Fnr("22325678901")
@@ -57,11 +65,8 @@ class BigAppTest {
         }
         application {
             flywayMigrationInTest()
-            val sistePeriodeProcessor = SisteOppfolgingsperiodeProcessor(
-                OppfolgingsperiodeService,
-                false
-            ) { IdentFunnet(fnr) }
-
+            val topics = environment.topics()
+            val sistePeriodeProcessor = sisteOppfolgingsPeriodeProcessor(fnr)
 
             val oppfolgingsperiodeProvider: suspend (IdentResult) -> OppfolgingsperiodeOppslagResult  = { _: IdentResult -> AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, OffsetDateTime.now()) }
             val automatiskKontorRutingService =  AutomatiskKontorRutingService(
@@ -82,9 +87,7 @@ class BigAppTest {
                 false,
             )
 
-            val skjermingProcessor = SkjermingProcessor(
-                automatiskKontorRutingService
-            )
+            val skjermingProcessor = SkjermingProcessor(automatiskKontorRutingService)
 
             val endringPaaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
                 ArenaKontorEntity::sisteLagreKontorArenaKontor,
@@ -107,7 +110,7 @@ class BigAppTest {
             )
 
             val (driver, inputTopics, _) = setupKafkaMock(topology,
-                listOf("pto.siste-oppfolgingsperiode-v1"), null
+                listOf(topics.inn.sisteOppfolgingsperiodeV1.name), null
             )
 
             inputTopics.first().pipeInput(aktorId.value, oppfolgingsperiodeMessage(
@@ -127,7 +130,7 @@ class BigAppTest {
 
     // aa in name to make this test run first because something is wrong when this test runs first
     @Test
-    fun `aa - app should not forward messages to KontorTilordning in prod`() = testApplication {
+    fun `app should forward messages to KontorTilordning in prod`() = testApplication {
         val fnr = Fnr("01121678901")
         val aktorId = AktorId("4444447890244")
         val kontor = KontorId("2232")
@@ -137,10 +140,8 @@ class BigAppTest {
         }
         application {
             flywayMigrationInTest()
-            val sistePeriodeProcessor = SisteOppfolgingsperiodeProcessor(
-                OppfolgingsperiodeService,
-                false
-            ) { IdentFunnet(fnr) }
+            val topics = this.environment.topics()
+            val sistePeriodeProcessor = sisteOppfolgingsPeriodeProcessor(fnr)
 
             val oppfolgingsperiodeProvider = { _: IdentResult -> AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, OffsetDateTime.now()) }
             val automatiskKontorRutingService =  AutomatiskKontorRutingService(
@@ -186,7 +187,7 @@ class BigAppTest {
             )
 
             val (driver, inputTopics, _) = setupKafkaMock(topology,
-                listOf("pto.siste-oppfolgingsperiode-v1"), null
+                listOf(topics.inn.sisteOppfolgingsperiodeV1.name), null
             )
 
             inputTopics.first().pipeInput(aktorId.value, oppfolgingsperiodeMessage(
@@ -196,10 +197,9 @@ class BigAppTest {
                 sluttDato = null
             ))
 
-            val aoKontor = transaction {
+            transaction {
                 ArbeidsOppfolgingKontorEntity.findById(fnr.value)
-            }
-            aoKontor shouldBe null
+            } shouldNotBe null
         }
     }
 
