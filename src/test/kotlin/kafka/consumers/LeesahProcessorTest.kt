@@ -11,12 +11,21 @@ import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.db.table.GeografiskTilknytningKontorTable
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
+import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorId
+import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
+import no.nav.domain.Sensitivitet
+import no.nav.domain.events.GTKontorEndret
+import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.domain.externalEvents.AdressebeskyttelseEndret
 import no.nav.domain.externalEvents.BostedsadresseEndret
 import no.nav.http.client.IdentFunnet
 import no.nav.http.client.GeografiskTilknytningBydelNr
+import no.nav.http.client.GeografiskTilknytningNr
+import no.nav.http.client.GtForBrukerSuccess
+import no.nav.http.client.GtNummerForBrukerFunnet
+import no.nav.http.client.GtType
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseResult
 import no.nav.http.client.SkjermingFunnet
@@ -159,26 +168,23 @@ class LeesahProcessorTest {
     }
 
     private fun gittNåværendeGtKontor(fnr: Fnr, kontorId: KontorId) {
-        transaction {
-            GeografiskTilknytningKontorTable.insert {
-                it[id] = fnr.value
-                it[this.kontorId] = kontorId.id
-                it[this.createdAt] = ZonedDateTime.now().toOffsetDateTime()
-                it[this.updatedAt] = ZonedDateTime.now().toOffsetDateTime()
-            }
-        }
+        val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
+        KontorTilordningService.tilordneKontor(
+            GTKontorEndret(
+                kontorTilordning = KontorTilordning(fnr, kontorId, oppfolgingsperiodeId),
+                kontorEndringsType = KontorEndringsType.EndretBostedsadresse,
+                gt = GtNummerForBrukerFunnet(GeografiskTilknytningBydelNr("3131"))
+            )
+        )
     }
 
     private fun gittNåværendeAOKontor(fnr: Fnr, kontorId: KontorId) {
-        transaction {
-            ArbeidsOppfolgingKontorTable.insert {
-                it[id] = fnr.value
-                it[this.kontorId] = kontorId.id
-                it[endretAv] = "test"
-                it[endretAvType] = "VEILEDER"
-                it[createdAt] = ZonedDateTime.now().toOffsetDateTime()
-                it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
-            }
-        }
+        val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
+        KontorTilordningService.tilordneKontor(
+            OppfolgingsPeriodeStartetLokalKontorTilordning(
+                kontorTilordning = KontorTilordning(fnr, kontorId, oppfolgingsperiodeId),
+                sensitivitet = Sensitivitet(HarSkjerming(false), HarStrengtFortroligAdresse(false)),
+            )
+        )
     }
 }
