@@ -13,6 +13,7 @@ import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
 import no.nav.kafka.consumers.Feil
 import no.nav.kafka.consumers.HaddeNyereEndring
 import no.nav.kafka.consumers.IkkeUnderOppfolging
+import no.nav.kafka.consumers.IngenEndring
 import no.nav.kafka.consumers.SkalLagre
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.NotUnderOppfolging
@@ -122,6 +123,21 @@ class EndringPaOppfolgingsBrukerProcessorTest {
     }
 
     @Test
+    fun `skal ikke behandle melding hvis arenakontor ikke har endret seg`() {
+        val oppfolgingsStartet = OffsetDateTime.now().minusDays(1)
+        val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
+        val fnr = Fnr("12081344844")
+        val kontorId = "3333"
+        val processor = EndringPaOppfolgingsBrukerProcessor(
+            { arenaKontor(fnr, kontor = kontorId, endret = oppfolgingsStartet) },
+            { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, oppfolgingsStartet) })
+
+        val result = processor.internalProcess(testRecord(fnr, enhet = kontorId))
+
+        result.shouldBeInstanceOf<IngenEndring>()
+    }
+
+    @Test
     fun `skal håndtere feil med perioder`() {
         val fnr = Fnr("12081344844")
         val processor = EndringPaOppfolgingsBrukerProcessor(
@@ -144,13 +160,14 @@ class EndringPaOppfolgingsBrukerProcessorTest {
         )
     }
 
-    fun arenaKontor(fnr: Fnr, endret: OffsetDateTime): ArenaKontorEntity {
+    fun arenaKontor(fnr: Fnr, endret: OffsetDateTime = OffsetDateTime.now(), kontor: String = "4111"): ArenaKontorEntity {
         val entityId = DaoEntityID(fnr.value, ArenaKontorTable)
         val arenaKontorEntity = mockk<ArenaKontorEntity> {
             every { id } returns entityId
             every { createdAt } returns OffsetDateTime.now()
             every { updatedAt } returns OffsetDateTime.now()
             every { sistEndretDatoArena } returns endret
+            every { kontorId } returns kontor
         }
         return arenaKontorEntity
     }
