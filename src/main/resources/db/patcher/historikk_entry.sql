@@ -30,3 +30,19 @@ with gtkontor_uten_historikk_entry as (
 update geografisktilknytningkontor set historikk_entry = siste_historikk_entry.id
     from siste_historikk_entry
 where fnr = siste_historikk_entry.ident;
+
+select count(*) from arenakontor where historikk_entry is null;
+with arenakontor_uten_historikk_entry as (
+    select fnr from arenakontor
+    where historikk_entry is null
+),
+     siste_historikk_entry as (
+         select distinct on (ident) id, ident from kontorhistorikk
+                                                       join arenakontor_uten_historikk_entry
+                                                            on arenakontor_uten_historikk_entry.fnr = ident
+         where kontor_type = 'ARENA'
+         order by ident, created_at desc
+     )
+update arenakontor set historikk_entry = siste_historikk_entry.id
+from siste_historikk_entry
+where fnr = siste_historikk_entry.ident;
