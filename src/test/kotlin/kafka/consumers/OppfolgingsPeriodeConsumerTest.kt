@@ -11,7 +11,6 @@ import java.util.UUID
 import no.nav.db.Fnr
 import no.nav.db.entity.OppfolgingsperiodeEntity
 import no.nav.db.table.OppfolgingsperiodeTable
-import no.nav.db.table.OppfolgingsperiodeTable.oppfolgingsperiodeId
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.http.client.IdentFunnet
