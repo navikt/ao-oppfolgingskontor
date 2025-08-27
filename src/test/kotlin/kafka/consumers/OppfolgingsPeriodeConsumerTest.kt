@@ -10,6 +10,8 @@ import java.time.ZonedDateTime
 import java.util.UUID
 import no.nav.db.Fnr
 import no.nav.db.entity.OppfolgingsperiodeEntity
+import no.nav.db.table.OppfolgingsperiodeTable
+import no.nav.db.table.OppfolgingsperiodeTable.oppfolgingsperiodeId
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.http.client.IdentFunnet
@@ -24,6 +26,7 @@ import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.gittBrukerUnderOppfolging
 import no.nav.utils.randomFnr
 import org.apache.kafka.streams.processor.api.Record
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
 import java.time.Instant
@@ -45,6 +48,7 @@ class SisteOppfolgingsperiodeProcessorTest {
                 entity.oppfolgingsperiodeId shouldBe (periodeId ?: this@Bruker.oppfolgingsperiodeId.value)
             }
         }
+
         fun skalIkkeVæreUnderOppfølging() {
             transaction {
                 val entity = OppfolgingsperiodeEntity.findById(this@Bruker.fnr.value)
@@ -242,6 +246,27 @@ class SisteOppfolgingsperiodeProcessorTest {
                 bruker.skalIkkeVæreUnderOppfølging()
             }
         }
+
+    @Test
+    fun `Skal gi Forward selv når oppfølgingsperiode allerede er registrert`() = testApplication {
+        val bruker = testBruker()
+        application {
+            flywayMigrationInTest()
+            val consumer = SisteOppfolgingsperiodeProcessor(OppfolgingsperiodeService) { IdentFunnet(bruker.fnr) }
+            val record = oppfolgingsperiodeMessage(bruker, sluttDato = null)
+            consumer.process(record)
+
+            val resultMeldingForAndreGang = consumer.process(record)
+
+            resultMeldingForAndreGang.shouldBeInstanceOf<Forward<*, *>>()
+            transaction {
+                val antallOppfølgingsperioder = OppfolgingsperiodeTable.selectAll()
+                    .where { (OppfolgingsperiodeTable.id eq bruker.fnr.value) }
+                    .count()
+                antallOppfølgingsperioder shouldBe 1
+            }
+        }
+    }
 
     @Test
     fun `skal gi Retry ved feil på henting av fnr`() =
