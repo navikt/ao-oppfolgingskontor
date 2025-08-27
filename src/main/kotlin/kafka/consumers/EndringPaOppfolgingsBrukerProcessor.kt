@@ -92,18 +92,19 @@ class EndringPaOppfolgingsBrukerProcessor(
         val oppfolgingsenhet = endringPaOppfolgingsBruker.oppfolgingsenhet
         val endretTidspunktInnkommendeMelding = endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime()
 
-        val sistLagreArenaKontor by lazy { sistLagretArenaKontorProvider(fnr) }
+        val sistLagretArenaKontor by lazy { sistLagretArenaKontorProvider(fnr) }
 
         fun harNyereLagretEndring(): Boolean {
-            val sistEndretDatoArena = sistLagreArenaKontor?.sistEndretDatoArena
+            val sistEndretDatoArena = sistLagretArenaKontor?.sistEndretDatoArena
             return (sistEndretDatoArena != null && sistEndretDatoArena > endretTidspunktInnkommendeMelding)
         }
 
         fun harKontorBlittEndret(): Boolean {
-            return sistLagreArenaKontor?.kontorId?.let { sistLagretKontor ->
-                sistLagretKontor != oppfolgingsenhet
-            } ?: true
-//            return (sistLagretKontorId != null && sistLagretKontorId != oppfolgingsenhet)
+            val sistLagretKontorId = sistLagretArenaKontor?.kontorId
+            return when (sistLagretKontorId) {
+                null -> true
+                else -> sistLagretKontorId != oppfolgingsenhet
+            }
         }
 
         return when {

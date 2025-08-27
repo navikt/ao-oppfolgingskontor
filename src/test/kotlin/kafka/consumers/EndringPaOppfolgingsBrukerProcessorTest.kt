@@ -122,6 +122,15 @@ class EndringPaOppfolgingsBrukerProcessorTest {
     }
 
     @Test
+    fun `skal ikke behandle melding hvis arenakontor ikke har endret seg`() {
+        val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
+        val fnr = Fnr("12081344844")
+        val processor = EndringPaOppfolgingsBrukerProcessor(
+            { arenaKontor(fnr, sisteLagreMeldingTidspunkt) },
+            { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, oppfolgingsStartet) })
+    }
+
+    @Test
     fun `skal håndtere feil med perioder`() {
         val fnr = Fnr("12081344844")
         val processor = EndringPaOppfolgingsBrukerProcessor(
