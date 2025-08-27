@@ -82,9 +82,16 @@ class EndringPaOppfolgingsBrukerProcessor(
         val oppfolgingsenhet = endringPaOppfolgingsBruker.oppfolgingsenhet
         val endretTidspunktInnkommendeMelding = endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime()
 
+        val sistLagreArenaKontor by lazy { sistLagretArenaKontorProvider(fnr) }
+
         fun harNyereLagretEndring(): Boolean {
-            val sistEndretDatoArena = sistLagretArenaKontorProvider(fnr)?.sistEndretDatoArena
+            val sistEndretDatoArena = sistLagreArenaKontor?.sistEndretDatoArena
             return (sistEndretDatoArena != null && sistEndretDatoArena > endretTidspunktInnkommendeMelding)
+        }
+
+        fun harKontorBlittEndret(): Boolean {
+            val sistLagretKontorId = sistLagreArenaKontor?.kontorId
+            return (sistLagretKontorId != null && sistLagretKontorId != oppfolgingsenhet)
         }
 
         return when {
@@ -94,12 +101,16 @@ class EndringPaOppfolgingsBrukerProcessor(
             else -> {
                 when (val oppfolgingperiode = runBlocking {  oppfolgingsperiodeProvider(IdentFunnet(fnr)) }) {
                     is AktivOppfolgingsperiode -> {
-                        SkalLagre(
-                            oppfolgingsenhet,
-                            endretTidspunktInnkommendeMelding,
-                            fnr,
-                            oppfolgingperiode.periodeId
-                        )
+                        if (harKontorBlittEndret() {
+                            SkalLagre(
+                                oppfolgingsenhet,
+                                endretTidspunktInnkommendeMelding,
+                                fnr,
+                                oppfolgingperiode.periodeId
+                            )
+                        } else {
+                            IngenEndring()
+                        }
                     }
                     NotUnderOppfolging -> IkkeUnderOppfolging()
                     is OppfolgingperiodeOppslagFeil -> Feil(
@@ -122,6 +133,7 @@ class SkalLagre(
     val fnr: Fnr,
     val oppfolgingsperiodeId: OppfolgingsperiodeId
 ): EndringPaaOppfolgingsBrukerResult()
+class IngenEndring: EndringPaaOppfolgingsBrukerResult()
 class Feil(
     val retry: Retry<String, String>
 ): EndringPaaOppfolgingsBrukerResult()
