@@ -3,6 +3,8 @@ Oppfølgingskontor for Arbeidsrettet Oppfølging
 
 <img src="[https://github.com/favicon.ico](https://github.com/user-attachments/assets/26fbe963-22c7-44e7-a14d-397f8626abb0)" width="48" height="48" >
 
+<img width="911" height="739" alt="image" src="https://github.com/user-attachments/assets/a96969f1-06d3-4ea0-83b4-be9f962c4a47" />
+
 
 ## Inbound data
 | Endepunkt                              | Beskrivelse                                                       |      
