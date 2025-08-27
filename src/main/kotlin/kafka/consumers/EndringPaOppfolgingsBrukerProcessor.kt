@@ -39,22 +39,32 @@ class EndringPaOppfolgingsBrukerProcessor(
                 log.info("Endring på oppfolgingsbruker var fra før cutoff, hopper over")
                 Skip()
             }
+
             is Feil -> {
                 log.error("Klarte ikke behandle melding om endring på oppfølgingsbruker: ${result.retry.reason}")
                 result.retry
             }
+
             is HaddeNyereEndring -> {
                 log.warn("Sist endret kontor er eldre enn endring på oppfølgingsbruker")
                 Skip()
             }
+
             is MeldingManglerEnhet -> {
                 log.warn("Mottok endring på oppfølgingsbruker uten gyldig kontorId")
                 Skip()
             }
+
             is IkkeUnderOppfolging -> {
                 log.info("Bruker er ikke under oppfølging, hopper over melding om endring på oppfølgingsbruker")
                 Skip()
             }
+
+            is IngenEndring -> {
+                log.info("Kontor har ikke blitt endret, hopper over melding om endring på oppfølgingsbruker")
+                Skip()
+            }
+
             is SkalLagre -> {
                 KontorTilordningService.tilordneKontor(
                     EndringPaaOppfolgingsBrukerFraArena(
@@ -90,8 +100,10 @@ class EndringPaOppfolgingsBrukerProcessor(
         }
 
         fun harKontorBlittEndret(): Boolean {
-            val sistLagretKontorId = sistLagreArenaKontor?.kontorId
-            return (sistLagretKontorId != null && sistLagretKontorId != oppfolgingsenhet)
+            return sistLagreArenaKontor?.kontorId?.let { sistLagretKontor ->
+                sistLagretKontor != oppfolgingsenhet
+            } ?: true
+//            return (sistLagretKontorId != null && sistLagretKontorId != oppfolgingsenhet)
         }
 
         return when {
@@ -99,19 +111,19 @@ class EndringPaOppfolgingsBrukerProcessor(
             endretTidspunktInnkommendeMelding.isBefore(ENDRING_PA_OPPFOLGINGSBRUKER_CUTOFF) -> BeforeCutoff()
             harNyereLagretEndring() -> HaddeNyereEndring()
             else -> {
-                when (val oppfolgingperiode = runBlocking {  oppfolgingsperiodeProvider(IdentFunnet(fnr)) }) {
+                when (val oppfolgingperiode = runBlocking { oppfolgingsperiodeProvider(IdentFunnet(fnr)) }) {
                     is AktivOppfolgingsperiode -> {
-                        if (harKontorBlittEndret() {
-                            SkalLagre(
+                        return when (harKontorBlittEndret()) {
+                            true -> SkalLagre(
                                 oppfolgingsenhet,
                                 endretTidspunktInnkommendeMelding,
                                 fnr,
                                 oppfolgingperiode.periodeId
                             )
-                        } else {
-                            IngenEndring()
+                            false -> IngenEndring()
                         }
                     }
+
                     NotUnderOppfolging -> IkkeUnderOppfolging()
                     is OppfolgingperiodeOppslagFeil -> Feil(
                         Retry("Klarte ikke behandle melding om endring på oppfølgingsbruker, feil ved oppslag på oppfølgingsperiode: ${oppfolgingperiode.message}"),
@@ -124,19 +136,20 @@ class EndringPaOppfolgingsBrukerProcessor(
 
 sealed class EndringPaaOppfolgingsBrukerResult
 class BeforeCutoff : EndringPaaOppfolgingsBrukerResult()
-class HaddeNyereEndring: EndringPaaOppfolgingsBrukerResult()
-class IkkeUnderOppfolging: EndringPaaOppfolgingsBrukerResult()
-class MeldingManglerEnhet: EndringPaaOppfolgingsBrukerResult()
+class HaddeNyereEndring : EndringPaaOppfolgingsBrukerResult()
+class IkkeUnderOppfolging : EndringPaaOppfolgingsBrukerResult()
+class MeldingManglerEnhet : EndringPaaOppfolgingsBrukerResult()
 class SkalLagre(
     val oppfolgingsenhet: String,
     val endretTidspunkt: OffsetDateTime,
     val fnr: Fnr,
     val oppfolgingsperiodeId: OppfolgingsperiodeId
-): EndringPaaOppfolgingsBrukerResult()
-class IngenEndring: EndringPaaOppfolgingsBrukerResult()
+) : EndringPaaOppfolgingsBrukerResult()
+
+class IngenEndring : EndringPaaOppfolgingsBrukerResult()
 class Feil(
     val retry: Retry<String, String>
-): EndringPaaOppfolgingsBrukerResult()
+) : EndringPaaOppfolgingsBrukerResult()
 
 /*
 * Endringer fra topic før cutoff har blitt eller er migrert manuelt. Vi tar bare imot endringer fra etter cutoff
