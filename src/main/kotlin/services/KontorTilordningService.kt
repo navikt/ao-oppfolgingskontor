@@ -37,6 +37,7 @@ object KontorTilordningService {
                     ArenaKontorTable.upsert {
                         it[kontorId] = kontorTilhorighet.kontorId.id
                         it[id] = kontorTilhorighet.fnr.value
+                        it[endretAv] = kontor
                         it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
                         it[sistEndretDatoArena] = kontorEndring.sistEndretDatoArena
                         it[historikkEntry] = entryId.value
