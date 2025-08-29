@@ -3,6 +3,7 @@ package services
 import db.table.IdentMappingTable
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import io.kotest.matchers.types.shouldBeSameInstanceAs
 import io.ktor.server.testing.*
 import io.mockk.every
 import io.mockk.mockk
@@ -18,6 +19,7 @@ import no.nav.http.client.IdentFunnet
 import no.nav.http.client.IdenterFunnet
 import no.nav.http.graphql.generated.client.enums.IdentGruppe
 import no.nav.http.graphql.generated.client.hentfnrquery.IdentInformasjon
+import no.nav.kafka.processor.Retry
 import no.nav.person.pdl.aktor.v2.Aktor
 import no.nav.person.pdl.aktor.v2.Identifikator
 import no.nav.person.pdl.aktor.v2.Type
@@ -398,6 +400,28 @@ class IdentServiceTest {
             IdentFraDb(fnr.value, "FNR", false, false),
             IdentFraDb(nyAktorId.value, "AKTOR_ID", false, false),
         )
+    }
+
+    @Test
+    fun `IdentChangePrcessor skal fange tekniske feil fra identService`() {
+        flywayMigrationInTest()
+
+        val identProvider: suspend (String) -> IdenterFunnet = { throw IllegalStateException("Noe gikk galt") }
+        val identService = IdentService(identProvider)
+        val proccessor = IdentChangeProcessor(identService)
+
+        val aktorId = AktorId("2938764297763")
+        val fnr = Fnr("02010198765")
+        val payload = mockk<Aktor> {
+            every { identifikatorer } returns listOf(
+                Identifikator(fnr.value, Type.FOLKEREGISTERIDENT, true),
+                Identifikator(aktorId.value, Type.AKTORID, true),
+            )
+        }
+
+        val result = proccessor.process(Record(aktorId.value, payload, 1212L))
+
+        result.shouldBeInstanceOf<Retry<String, Aktor>>()
     }
 
     data class IdentFraDb(

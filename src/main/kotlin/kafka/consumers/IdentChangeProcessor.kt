@@ -12,14 +12,15 @@ import org.slf4j.LoggerFactory
 import services.IdentService
 
 class IdentChangeProcessor(
-    val identService: IdentService
+    val identService: IdentService,
+    val skipPersonIkkeFunnet: Boolean = false,
 ) {
     val log = LoggerFactory.getLogger(IdentChangeProcessor::class.java)
 
     fun process(record: Record<String, Aktor>): RecordProcessingResult<String, Aktor> {
         return runBlocking {
             runCatching { AktorId(record.key().replace("\u0000", "")) }
-                .map { aktorId ->
+                .mapCatching { aktorId ->
                     val payload = record.value()
                     if (payload == null) {
                         identService.markerAktorIdSomSlettet(aktorId)
@@ -33,7 +34,7 @@ class IdentChangeProcessor(
                 }
                 .getOrElse { error ->
                     val message = "Kunne ikke behandle endring i identer: ${error.message}"
-                    log.error(message, error.message)
+                    log.error(message, error)
                     Retry(message)
                 }
         }
