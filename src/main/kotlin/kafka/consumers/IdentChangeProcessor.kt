@@ -6,6 +6,7 @@ import no.nav.db.Ident
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
+import no.nav.kafka.processor.Skip
 import no.nav.person.pdl.aktor.v2.Aktor
 import org.apache.kafka.streams.processor.api.Record
 import org.slf4j.LoggerFactory
@@ -33,9 +34,14 @@ class IdentChangeProcessor(
                     }
                 }
                 .getOrElse { error ->
-                    val message = "Kunne ikke behandle endring i identer: ${error.message}"
-                    log.error(message, error)
-                    Retry(message)
+                    if (skipPersonIkkeFunnet && (error.message?.endsWith("Fant ikke person: not_found") ?: false)) {
+                        log.info("Fant ikke person i dev - hopper over melding")
+                        Skip<String, Aktor>()
+                    } else {
+                        val message = "Kunne ikke behandle endring i identer: ${error.message}"
+                        log.error(message, error)
+                        Retry(message)
+                    }
                 }
         }
     }

@@ -98,7 +98,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
 
     val skjermingProcessor = SkjermingProcessor(automatiskKontorRutingService)
 
-    val identEndringProcessor = IdentChangeProcessor(identService)
+    val identEndringProcessor = IdentChangeProcessor(identService, skipPersonIkkeFunnet = !isProduction)
 
     val aoKontorEndretSink = StringStringSinkConfig(
         arbeidsoppfolgingkontorSinkName,
