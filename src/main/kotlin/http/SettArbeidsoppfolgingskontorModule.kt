@@ -1,5 +1,6 @@
 package no.nav.http
 
+import http.tilgangsEndepunkt
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.*
@@ -53,6 +54,7 @@ fun Application.configureArbeidsoppfolgingskontorModule(
             })
         }
         authenticate("EntraAD") {
+            tilgangsEndepunkt()
             post("/api/kontor") {
                 runCatching {
                     val kontorTilordning = call.receive<ArbeidsoppfolgingsKontorTilordningDTO>()

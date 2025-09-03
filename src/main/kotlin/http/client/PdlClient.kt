@@ -202,21 +202,27 @@ fun GraphQLClientResponse<HentGtQuery.Result>.toGeografiskTilknytning(): GtForBr
     } ?: GtForBrukerIkkeFunnet("Ingen geografisk tilknytning funnet for bruker $this")
 }
 
+fun List<Ident>.finnForetrukketIdent(): Ident? {
+    return this.minByOrNull {
+        when (it) {
+            is Fnr -> 1
+            is Dnr -> 2
+            is Npid -> 3
+            is AktorId -> 4
+        }
+    }
+}
+
+fun List<IdentInformasjon>.finnForetrukketIdent(): Ident? {
+    return this.filter { !it.historisk }
+        .map { Ident.of(it.ident) }
+        .finnForetrukketIdent()
+}
+
 fun IdenterResult.finnForetrukketIdent(): IdentResult {
     return when (this) {
         is IdenterFunnet -> this.identer
-            .let { identInformasjoner ->
-                identInformasjoner.filter { !it.historisk }
-                    .map { Ident.of(it.ident) }
-                    .minByOrNull {
-                        when (it) {
-                            is Fnr -> 1
-                            is Dnr -> 2
-                            is Npid -> 3
-                            is AktorId -> 4
-                        }
-                    }
-            }
+            .let { identInformasjoner -> identInformasjoner.finnForetrukketIdent() }
             ?.let { IdentFunnet(it) }
             ?: IdentIkkeFunnet("Fant ingen gyldig fnr for bruker, antall identer: ${this.identer.size}, indent-typer: ${this.identer.joinToString { it.gruppe.name }}")
 

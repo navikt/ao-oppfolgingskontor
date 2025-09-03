@@ -26,6 +26,7 @@ import no.nav.http.graphql.generated.client.hentfnrquery.IdentInformasjon
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.alias
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.batchUpsert
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -200,17 +201,58 @@ class IdentService(
                 val id = it[identMappingAlias[IdentMappingTable.id]]
                 val historisk = it[identMappingAlias[historisk]]
                 val internIdent = it[identMappingAlias[internIdent]]
-                val ident = when (val identType = it[identMappingAlias[identType]]) {
-                    "FNR" -> Fnr(id.value)
-                    "NPID" -> Npid(id.value)
-                    "DNR" -> Dnr(id.value)
-                    "AKTOR_ID" -> AktorId(id.value)
-                    else -> throw IllegalArgumentException("Ukjent identType: $identType")
-                        .also { log.error(it.message, it) }
-                }
+                val identType = it[identType]
+                val ident = id.value.tilIdentType(identType)
                 IdentInfo(ident, historisk, internIdent)
             }
     }
+
+    fun hentIdentMappingerBulk(identer: List<Ident>) {
+        val stringIdenter = identer.map { it.value }
+        val identMappingAlias = IdentMappingTable.alias("ident_mapping_alias")
+
+        IdentMappingTable.join(
+            identMappingAlias,
+            JoinType.INNER,
+            onColumn = internIdent,
+            otherColumn = identMappingAlias[internIdent]
+        )
+            .select(
+                IdentMappingTable.id,
+                identMappingAlias[IdentMappingTable.id],
+                identMappingAlias[identType],
+                identMappingAlias[historisk],
+                identMappingAlias[internIdent])
+            .where { IdentMappingTable.id inList stringIdenter and (identMappingAlias[historisk] eq false) }
+            .map {
+                val fraId = Ident.of(it[IdentMappingTable.id].value)
+                val id = it[identMappingAlias[IdentMappingTable.id]]
+                val historisk = it[identMappingAlias[historisk]]
+                val internIdent = it[identMappingAlias[internIdent]]
+                val identType = it[identMappingAlias[identType]]
+                val ident = id.value.tilIdentType(identType)
+                IdentMapping(fraId, IdentInfo(ident, historisk, internIdent))
+            }
+            .groupBy { it.fraIdent }
+            .mapValues { (key, value) -> value
+                .map { it.identInfo }
+                .filter { !it.historisk }
+                .map { it.ident }
+                .finnForetrukketIdent()
+            }
+    }
+
+    private fun String.tilIdentType(identType: String): Ident {
+        return when (val identType = identType) {
+            "FNR" -> Fnr(this)
+            "NPID" -> Npid(this)
+            "DNR" -> Dnr(this)
+            "AKTOR_ID" -> AktorId(this)
+            else -> throw IllegalArgumentException("Ukjent identType: $identType")
+                .also { log.error(it.message, it) }
+        }
+    }
+
 }
 
 fun IdentInformasjon.toIdentType() = Ident.of(this.ident).toIdentType()
@@ -222,6 +264,11 @@ fun Ident.toIdentType(): String {
         is Npid -> "NPID"
     }
 }
+
+data class IdentMapping(
+    val fraIdent: Ident,
+    val identInfo: IdentInfo,
+)
 
 data class IdentInfo(
     val ident: Ident,

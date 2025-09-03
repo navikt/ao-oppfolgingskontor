@@ -1,6 +1,5 @@
 package no.nav.kafka.consumers
 
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import no.nav.db.Fnr
@@ -9,17 +8,11 @@ import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.events.EndringPaaOppfolgingsBrukerFraArena
-import no.nav.http.client.IdentFunnet
-import no.nav.http.client.IdentResult
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
-import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.KontorTilordningService
-import no.nav.services.NotUnderOppfolging
-import no.nav.services.OppfolgingperiodeOppslagFeil
-import no.nav.services.OppfolgingsperiodeOppslagResult
 import org.apache.kafka.streams.processor.api.Record
 import org.slf4j.LoggerFactory
 import java.time.OffsetDateTime
@@ -27,7 +20,7 @@ import java.time.ZoneOffset
 
 class EndringPaOppfolgingsBrukerProcessor(
     val sistLagretArenaKontorProvider: (Fnr) -> ArenaKontorEntity?,
-    val oppfolgingsperiodeProvider: suspend (IdentResult) -> OppfolgingsperiodeOppslagResult,
+//    val oppfolgingsperiodeProvider: suspend (IdentResult) -> OppfolgingsperiodeOppslagResult,
 ) {
     val log = LoggerFactory.getLogger(EndringPaOppfolgingsBrukerProcessor::class.java)
 
@@ -39,32 +32,26 @@ class EndringPaOppfolgingsBrukerProcessor(
                 log.info("Endring på oppfolgingsbruker var fra før cutoff, hopper over")
                 Skip()
             }
-
             is Feil -> {
                 log.error("Klarte ikke behandle melding om endring på oppfølgingsbruker: ${result.retry.reason}")
                 result.retry
             }
-
             is HaddeNyereEndring -> {
                 log.warn("Sist endret kontor er eldre enn endring på oppfølgingsbruker")
                 Skip()
             }
-
             is MeldingManglerEnhet -> {
                 log.warn("Mottok endring på oppfølgingsbruker uten gyldig kontorId")
                 Skip()
             }
-
             is IkkeUnderOppfolging -> {
                 log.info("Bruker er ikke under oppfølging, hopper over melding om endring på oppfølgingsbruker")
                 Skip()
             }
-
             is IngenEndring -> {
                 log.info("Kontor har ikke blitt endret, hopper over melding om endring på oppfølgingsbruker")
                 Skip()
             }
-
             is SkalLagre -> {
                 KontorTilordningService.tilordneKontor(
                     EndringPaaOppfolgingsBrukerFraArena(
@@ -112,24 +99,34 @@ class EndringPaOppfolgingsBrukerProcessor(
             endretTidspunktInnkommendeMelding.isBefore(ENDRING_PA_OPPFOLGINGSBRUKER_CUTOFF) -> BeforeCutoff()
             harNyereLagretEndring() -> HaddeNyereEndring()
             else -> {
-                when (val oppfolgingperiode = runBlocking { oppfolgingsperiodeProvider(IdentFunnet(fnr)) }) {
-                    is AktivOppfolgingsperiode -> {
-                        return when (harKontorBlittEndret()) {
-                            true -> SkalLagre(
-                                oppfolgingsenhet,
-                                endretTidspunktInnkommendeMelding,
-                                fnr,
-                                oppfolgingperiode.periodeId
-                            )
-                            false -> IngenEndring()
-                        }
-                    }
 
-                    NotUnderOppfolging -> IkkeUnderOppfolging()
-                    is OppfolgingperiodeOppslagFeil -> Feil(
-                        Retry("Klarte ikke behandle melding om endring på oppfølgingsbruker, feil ved oppslag på oppfølgingsperiode: ${oppfolgingperiode.message}"),
+                return when (harKontorBlittEndret()) {
+                    true -> SkalLagre(
+                        oppfolgingsenhet,
+                        endretTidspunktInnkommendeMelding,
+                        fnr,
+                        oppfolgingperiode.periodeId
                     )
+                    false -> IngenEndring()
                 }
+
+//                when (val oppfolgingperiode = runBlocking { oppfolgingsperiodeProvider(IdentFunnet(fnr)) }) {
+//                    is AktivOppfolgingsperiode -> {
+//                        return when (harKontorBlittEndret()) {
+//                            true -> SkalLagre(
+//                                oppfolgingsenhet,
+//                                endretTidspunktInnkommendeMelding,
+//                                fnr,
+//                                oppfolgingperiode.periodeId
+//                            )
+//                            false -> IngenEndring()
+//                        }
+//                    }
+//                    NotUnderOppfolging -> IkkeUnderOppfolging()
+//                    is OppfolgingperiodeOppslagFeil -> Feil(
+//                        Retry("Klarte ikke behandle melding om endring på oppfølgingsbruker, feil ved oppslag på oppfølgingsperiode: ${oppfolgingperiode.message}"),
+//                    )
+//                }
             }
         }
     }
