@@ -106,7 +106,8 @@ class BigAppTest {
                 leesahProcessor,
                 skjermingProcessor,
                 endringPaaOppfolgingsBrukerProcessor,
-                identendringsProcessor
+                identendringsProcessor,
+                OppfolgingsHendelseProcessor()
             )
 
             val (driver, inputTopics, _) = setupKafkaMock(topology,
@@ -183,7 +184,8 @@ class BigAppTest {
                 leesahProcessor,
                 skjermingProcessor,
                 endringPaaOppfolgingsBrukerProcessor,
-                identendringsProcessor
+                identendringsProcessor,
+                OppfolgingsHendelseProcessor()
             )
 
             val (driver, inputTopics, _) = setupKafkaMock(topology,

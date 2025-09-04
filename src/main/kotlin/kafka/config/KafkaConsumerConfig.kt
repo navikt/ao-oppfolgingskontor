@@ -4,6 +4,7 @@ import Topic
 import io.ktor.server.application.ApplicationEnvironment
 import io.ktor.server.config.*
 import kafka.consumers.IdentChangeProcessor
+import kafka.consumers.OppfolgingsHendelseProcessor
 import kafka.consumers.SisteOppfolgingsperiodeProcessor
 import kafka.retry.library.RetryProcessorWrapper
 import kafka.retry.library.StreamType
@@ -71,7 +72,8 @@ fun configureTopology(
     leesahProcessor: LeesahProcessor,
     skjermingProcessor: SkjermingProcessor,
     endringPaOppfolgingsBrukerProcessor: EndringPaOppfolgingsBrukerProcessor,
-    identEndringsProcessor: IdentChangeProcessor
+    identEndringsProcessor: IdentChangeProcessor,
+    oppfolgingsHendelseProcessor: OppfolgingsHendelseProcessor
 ): Topology {
     val topics = environment.topics()
     val builder = StreamsBuilder()
@@ -97,6 +99,15 @@ fun configureTopology(
 
     fun <KIn, VIn, KOut, VOut> wrapInRetryProcessor(topic: Topic<KIn, VIn>, streamType: StreamType, businessLogic: (Record<KIn, VIn>) -> RecordProcessingResult<KOut, VOut>)
         = wrapInRetryProcessor(topic.keySerde, topic.valSerde, topic.name, streamType, businessLogic)
+
+
+    val oppfolgingHendelseProcessorSupplier = wrapInRetryProcessor(
+        topic = topics.inn.oppfolgingsHendelser,
+        streamType = StreamType.SOURCE,
+        businessLogic = oppfolgingsHendelseProcessor::process
+    )
+    builder.stream(topics.inn.oppfolgingsHendelser.name, topics.inn.oppfolgingsHendelser.consumedWith())
+        .process(oppfolgingHendelseProcessorSupplier, Named.`as`(processorName(topics.inn.oppfolgingsHendelser.name)))
 
     /*
     * Siste oppfolgingsperiode

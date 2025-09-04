@@ -12,6 +12,7 @@ import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.binder.kafka.KafkaStreamsMetrics
 import kafka.consumers.IdentChangeProcessor
+import kafka.consumers.OppfolgingsHendelseProcessor
 import kafka.consumers.SisteOppfolgingsperiodeProcessor
 import java.time.Duration
 import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
@@ -95,15 +96,10 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         skipPersonIkkeFunnet = !isProduction
     )
     val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, fnrProvider, isProduction)
-
     val skjermingProcessor = SkjermingProcessor(automatiskKontorRutingService)
-
     val identEndringProcessor = IdentChangeProcessor(identService, skipPersonIkkeFunnet = !isProduction)
+    val oppfolgingsHendelseProcessor = OppfolgingsHendelseProcessor()
 
-    val aoKontorEndretSink = StringStringSinkConfig(
-        arbeidsoppfolgingkontorSinkName,
-        topics.ut.arbeidsoppfolgingskontortilordninger
-    )
 
     val topology = configureTopology(
         environment,
@@ -114,6 +110,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         skjermingProcessor = skjermingProcessor,
         endringPaOppfolgingsBrukerProcessor = endringPaOppfolgingsBrukerProcessor,
         identEndringsProcessor = identEndringProcessor,
+        oppfolgingsHendelseProcessor = oppfolgingsHendelseProcessor
     )
     val kafkaStream = KafkaStreams(topology, kafkaStreamsProps(environment.config))
 
