@@ -31,7 +31,7 @@ import no.nav.services.KontorTilhorighetService
 import no.nav.services.KontorTilordningService
 import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingperiodeOppslagFeil
-import no.nav.services.OppfolgingsperiodeService
+import no.nav.services.OppfolgingsperiodeDao
 import no.nav.toRegistrant
 import org.slf4j.LoggerFactory
 
@@ -83,7 +83,7 @@ fun Application.configureArbeidsoppfolgingskontorModule(
                     val kontorId = KontorId(kontorTilordning.kontorId)
 
                     val fnr = Fnr(kontorTilordning.fnr)
-                    val oppfolgingsperiode = OppfolgingsperiodeService.getCurrentOppfolgingsperiode(IdentFunnet(fnr))
+                    val oppfolgingsperiode = OppfolgingsperiodeDao.getCurrentOppfolgingsperiode(IdentFunnet(fnr))
                     val oppfolgingsperiodeId = when(oppfolgingsperiode) {
                         is AktivOppfolgingsperiode -> oppfolgingsperiode.periodeId
                         NotUnderOppfolging -> {

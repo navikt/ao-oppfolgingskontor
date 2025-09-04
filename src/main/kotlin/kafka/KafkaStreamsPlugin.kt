@@ -20,7 +20,6 @@ import no.nav.db.Ident
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.http.client.IdentResult
 import no.nav.isProduction
-import no.nav.kafka.config.StringStringSinkConfig
 import no.nav.kafka.config.kafkaStreamsProps
 import no.nav.kafka.config.configureTopology
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
@@ -28,12 +27,13 @@ import no.nav.kafka.consumers.LeesahProcessor
 import no.nav.kafka.consumers.KontortilordningsProcessor
 import no.nav.kafka.consumers.SkjermingProcessor
 import no.nav.services.AutomatiskKontorRutingService
-import no.nav.services.OppfolgingsperiodeService
+import no.nav.services.OppfolgingsperiodeDao
 import org.apache.kafka.streams.KafkaStreams
 import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler
 import org.jetbrains.exposed.sql.Database
 import org.slf4j.LoggerFactory
 import services.IdentService
+import services.OppfolgingsperiodeService
 import topics
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -51,6 +51,7 @@ class KafkaStreamsPluginConfig(
     var database: Database? = null,
     var meterRegistry: MeterRegistry? = null,
     var oppfolgingsperiodeService: OppfolgingsperiodeService? = null,
+    var oppfolgingsperiodeDao: OppfolgingsperiodeDao? = null,
     var identService: IdentService? = null,
 )
 
@@ -67,6 +68,9 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val automatiskKontorRutingService = requireNotNull(this.pluginConfig.automatiskKontorRutingService) {
         "AutomatiskKontorRutingService must be configured for KafkaStreamPlugin"
     }
+    val oppfolgingsperiodeDao = requireNotNull(this.pluginConfig.oppfolgingsperiodeDao) {
+        "OppfolgingsperiodeDao must be configured for KafkaStreamPlugin"
+    }
     val oppfolgingsperiodeService = requireNotNull(this.pluginConfig.oppfolgingsperiodeService) {
         "OppfolgingsperiodeService must be configured for KafkaStreamPlugin"
     }
@@ -81,7 +85,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
 
     val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
         ArenaKontorEntity::sisteLagreKontorArenaKontor,
-        { oppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) }
+        { oppfolgingsperiodeDao.getCurrentOppfolgingsperiode(it) }
     )
 
     val sisteOppfolgingsperiodeProcessor = SisteOppfolgingsperiodeProcessor(
@@ -98,7 +102,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, fnrProvider, isProduction)
     val skjermingProcessor = SkjermingProcessor(automatiskKontorRutingService)
     val identEndringProcessor = IdentChangeProcessor(identService, skipPersonIkkeFunnet = !isProduction)
-    val oppfolgingsHendelseProcessor = OppfolgingsHendelseProcessor()
+    val oppfolgingsHendelseProcessor = OppfolgingsHendelseProcessor(oppfolgingsperiodeService)
 
 
     val topology = configureTopology(

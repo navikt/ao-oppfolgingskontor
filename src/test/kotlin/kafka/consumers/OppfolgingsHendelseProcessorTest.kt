@@ -8,6 +8,7 @@ import no.nav.kafka.processor.Commit
 import no.nav.utils.randomFnr
 import org.apache.kafka.streams.processor.api.Record
 import org.junit.jupiter.api.Test
+import services.OppfolgingsperiodeService
 import java.time.Instant
 import java.time.ZonedDateTime
 import java.util.UUID
@@ -17,7 +18,7 @@ class OppfolgingsHendelseProcessorTest {
     @Test
     fun `skal håndtere oppfølging startet`() {
         val fnr = randomFnr()
-        val processor = OppfolgingsHendelseProcessor()
+        val processor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
         val record = Record(
             fnr.value,
             oppfolgingStartetMelding(fnr),
@@ -32,7 +33,7 @@ class OppfolgingsHendelseProcessorTest {
     @Test
     fun `skal håndtere oppfølging avsluttet`() {
         val fnr = randomFnr()
-        val processor = OppfolgingsHendelseProcessor()
+        val processor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
         val record = Record(
             fnr.value,
             oppfolgingAvsluttetMelding(fnr),

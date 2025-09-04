@@ -19,13 +19,14 @@ import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
-import no.nav.services.OppfolgingsperiodeService
+import no.nav.services.OppfolgingsperiodeDao
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.gittBrukerUnderOppfolging
 import no.nav.utils.randomFnr
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
+import services.OppfolgingsperiodeService
 import java.time.Instant
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
@@ -71,7 +72,7 @@ class SisteOppfolgingsperiodeProcessorTest {
             application {
                 flywayMigrationInTest()
                 val consumer = SisteOppfolgingsperiodeProcessor(
-                    OppfolgingsperiodeService
+                    OppfolgingsperiodeService()
                 ) { IdentFunnet(bruker.fnr) }
 
                 val record = oppfolgingsperiodeMessage(bruker, sluttDato = null)
@@ -87,7 +88,7 @@ class SisteOppfolgingsperiodeProcessorTest {
         application {
             flywayMigrationInTest()
             val consumer = SisteOppfolgingsperiodeProcessor(
-                OppfolgingsperiodeService
+                OppfolgingsperiodeService()
             ) { IdentFunnet(bruker.fnr) }
 
             val startRecord = oppfolgingsperiodeMessage(bruker, sluttDato = null)
@@ -108,7 +109,7 @@ class SisteOppfolgingsperiodeProcessorTest {
             application {
                 flywayMigrationInTest()
                 val consumer = SisteOppfolgingsperiodeProcessor(
-                    OppfolgingsperiodeService
+                    OppfolgingsperiodeService()
                 ) { IdentFunnet(bruker.fnr) }
 
 
@@ -129,7 +130,7 @@ class SisteOppfolgingsperiodeProcessorTest {
             application {
                 flywayMigrationInTest()
                 val consumer = SisteOppfolgingsperiodeProcessor(
-                    OppfolgingsperiodeService,
+                    OppfolgingsperiodeService(),
                 ) { IdentFunnet(bruker.fnr) }
 
                 val startPeriodeRecord = oppfolgingsperiodeMessage(bruker, sluttDato = null)
@@ -152,7 +153,7 @@ class SisteOppfolgingsperiodeProcessorTest {
             application {
                 flywayMigrationInTest()
                 val consumer = SisteOppfolgingsperiodeProcessor(
-                    OppfolgingsperiodeService,
+                    OppfolgingsperiodeService(),
                 ) { IdentFunnet(bruker.fnr) }
                 val startPeriodeRecord = oppfolgingsperiodeMessage(bruker, sluttDato = null)
                 val startGammelPeriodeRecord = oppfolgingsperiodeMessage(
@@ -180,7 +181,7 @@ class SisteOppfolgingsperiodeProcessorTest {
             application {
                 flywayMigrationInTest()
                 val consumer = SisteOppfolgingsperiodeProcessor(
-                    OppfolgingsperiodeService,
+                    OppfolgingsperiodeService(),
                 ) { IdentFunnet(bruker.fnr) }
                 val startPeriodeRecord = oppfolgingsperiodeMessage(bruker, sluttDato = null)
                 val startNyerePeriodeRecord = oppfolgingsperiodeMessage(
@@ -225,7 +226,7 @@ class SisteOppfolgingsperiodeProcessorTest {
             application {
                 flywayMigrationInTest()
                 val consumer = SisteOppfolgingsperiodeProcessor(
-                    OppfolgingsperiodeService,
+                    OppfolgingsperiodeService(),
                 ) { IdentFunnet(bruker.fnr) }
                 val startPeriodeRecord = oppfolgingsperiodeMessage(bruker, sluttDato = null)
                 val sluttNyerePeriodeRecord = oppfolgingsperiodeMessage(
@@ -248,7 +249,7 @@ class SisteOppfolgingsperiodeProcessorTest {
         testApplication {
             val bruker = testBruker()
             val consumer = SisteOppfolgingsperiodeProcessor(
-                OppfolgingsperiodeService,
+                OppfolgingsperiodeService(),
             ) { IdentOppslagFeil("Feil ved henting av fnr") }
 
             val result = consumer.process(oppfolgingsperiodeMessage(
@@ -264,7 +265,7 @@ class SisteOppfolgingsperiodeProcessorTest {
     fun `skal gi Skip ved feil på henting av fnr men konfigurert til å hoppe over melding`() {
         val bruker = testBruker()
         val consumer = SisteOppfolgingsperiodeProcessor(
-            OppfolgingsperiodeService,
+            OppfolgingsperiodeService(),
             true
         ) { IdentOppslagFeil("Fant ikke person: not_found") }
 
@@ -280,7 +281,7 @@ class SisteOppfolgingsperiodeProcessorTest {
     fun `skal gi Retry ved feil på henting av fnr som ikke er not_found fra pdl når konfigurert til å hoppe de typene melding`() {
         val bruker = testBruker()
         val consumer = SisteOppfolgingsperiodeProcessor(
-            OppfolgingsperiodeService,
+            OppfolgingsperiodeService(),
             true
         ) { IdentOppslagFeil("Fant ikke person: not_not_found") }
 
@@ -300,7 +301,7 @@ class SisteOppfolgingsperiodeProcessorTest {
             val bruker = testBruker()
             gittBrukerUnderOppfolging(bruker)
             val consumer = SisteOppfolgingsperiodeProcessor(
-                OppfolgingsperiodeService,
+                OppfolgingsperiodeService(),
                 false
             ) { IdentOppslagFeil("Fant ikke person: not_found") }
 
@@ -318,7 +319,7 @@ class SisteOppfolgingsperiodeProcessorTest {
     fun `skal gi Retry når ingen fnr finnes`() {
         val bruker = testBruker()
         val consumer = SisteOppfolgingsperiodeProcessor(
-            OppfolgingsperiodeService,
+            OppfolgingsperiodeService(),
         ) { IdentIkkeFunnet("Finnes ingen fnr") }
 
         val result = consumer.process(oppfolgingsperiodeMessage(
@@ -334,7 +335,7 @@ class SisteOppfolgingsperiodeProcessorTest {
     fun `skal håndtere deserialiseringsfeil`() {
         val bruker = testBruker()
         val consumer = SisteOppfolgingsperiodeProcessor(
-            OppfolgingsperiodeService,
+            OppfolgingsperiodeService(),
         ) { IdentFunnet(bruker.fnr) }
 
         val result = consumer.process(Record(bruker.aktorId, """{ "lol": "lal" }""", Instant.now().toEpochMilli()))

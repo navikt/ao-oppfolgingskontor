@@ -18,11 +18,12 @@ import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
-import no.nav.services.AktivOppfolgingsperiode
-import no.nav.services.OppfolgingsperiodeService
 import no.nav.utils.ZonedDateTimeSerializer
 import org.apache.kafka.streams.processor.api.Record
 import org.slf4j.LoggerFactory
+import services.HaddeNyerePeriodePåIdent
+import services.OppfolgingsperiodeService
+import services.OppfølgingsperiodeLagret
 import java.time.Instant
 import java.time.ZonedDateTime
 import java.util.UUID
@@ -49,49 +50,35 @@ class SisteOppfolgingsperiodeProcessor(
                             log.info("Fant ikke person i dev - hopper over melding")
                             return@runBlocking Skip()
                         }
-
                         if (oppfolgingsperiodeDto.sluttDato != null) {
                             log.warn("Fant ikke person i PDL, men behandler melding likevel fordi oppfolgingsperioden uansett er avsluttet")
-                            return@runBlocking behandleOppfolgingsperiodeAvsluttetIdentNotFound(oppfolgingsperiodeDto)
+                            oppfolgingsperiodeService.behandleOppfolgingsperiodeAvsluttetIdentNotFound(oppfolgingsperiodeDto)
+                            return@runBlocking Commit()
                         }
-
                         return@runBlocking Retry("Kunne ikke behandle oppfolgingsperiode melding: ${result.message}")
                     }
                 }
 
-                val oppfolgingsperiode = oppfolgingsperiodeDto
-                    .toOppfolgingsperiodeEndret(ident)
+                val oppfolgingsperiode = oppfolgingsperiodeDto.toOppfolgingsperiodeEndret(ident)
 
                 when (oppfolgingsperiode) {
                     is OppfolgingsperiodeAvsluttet -> {
-                        val currentOppfolgingsperiode = getCurrentPeriode(ident)
-                        when (currentOppfolgingsperiode != null) {
-                            true -> {
-                                if (currentOppfolgingsperiode.startDato.isBefore(oppfolgingsperiode.startDato.toOffsetDateTime())) {
-                                    oppfolgingsperiodeService.deleteOppfolgingsperiode(currentOppfolgingsperiode.periodeId)
-                                }
-                            }
-                            false -> {}
-                        }
-                        oppfolgingsperiodeService.deleteOppfolgingsperiode(oppfolgingsperiode.periodeId)
+                        oppfolgingsperiodeService.handterPeriodeAvsluttet(oppfolgingsperiode)
                         log.info("melding på sisteoppfolgingsperiode (avsluttet) ferdig prosessert")
                         Commit()
                     }
                     is OppfolgingsperiodeStartet -> {
-                        if (oppfolgingsperiodeService.harNyerePeriodePåIdent(oppfolgingsperiode)) {
-                            log.warn("Hadde nyere periode på ident, hopper over melding")
-                            return@runBlocking Skip()
-                        }
-                        oppfolgingsperiodeService.saveOppfolgingsperiode(
-                            ident,
-                            oppfolgingsperiode.startDato,
-                            oppfolgingsperiode.periodeId)
+                        val result = oppfolgingsperiodeService.handterPeriodeStartet(oppfolgingsperiode)
                         log.info("melding på sisteoppfolgingsperiode (startet) ferdig prosessert")
-                        Forward(Record(
-                            ident,
-                            oppfolgingsperiode,
-                            Instant.now().toEpochMilli(),
-                        ), null)
+                        when (result) {
+                            HaddeNyerePeriodePåIdent -> Skip()
+                            OppfølgingsperiodeLagret -> Forward(
+                                Record(
+                                ident,
+                                oppfolgingsperiode,
+                                Instant.now().toEpochMilli(),
+                            ), null)
+                        }
                     }
                 }
             }
@@ -101,24 +88,7 @@ class SisteOppfolgingsperiodeProcessor(
             return Retry(feilmelding)
         }
     }
-
-    private fun behandleOppfolgingsperiodeAvsluttetIdentNotFound(
-        oppfolgingsperiodeDto: OppfolgingsperiodeDTO,
-    ): RecordProcessingResult<Ident, OppfolgingsperiodeStartet> {
-        val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.fromString(oppfolgingsperiodeDto.uuid))
-        oppfolgingsperiodeService.deleteOppfolgingsperiode(oppfolgingsperiodeId)
-        return Commit()
-    }
-
-    private fun getCurrentPeriode(ident: Ident): AktivOppfolgingsperiode? {
-        val currentOppfolgingsperiodeResult = oppfolgingsperiodeService.getCurrentOppfolgingsperiode(ident)
-        return when (currentOppfolgingsperiodeResult) {
-            is AktivOppfolgingsperiode -> currentOppfolgingsperiodeResult
-            else -> null
-        }
-    }
 }
-
 
 @Serializable
 data class OppfolgingsperiodeDTO(
@@ -140,5 +110,3 @@ fun OppfolgingsperiodeDTO.toOppfolgingsperiodeEndret(fnr: Ident): Oppfolgingsper
     if (this.sluttDato == null) return OppfolgingsperiodeStartet(fnr, this.startDato, id)
     return OppfolgingsperiodeAvsluttet(fnr, this.startDato, id)
 }
-
-val OppfolgingsPeriodeStartetSerde = jsonSerde<OppfolgingsperiodeStartet>()

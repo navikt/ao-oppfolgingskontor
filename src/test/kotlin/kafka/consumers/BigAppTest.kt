@@ -35,12 +35,13 @@ import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.KontorForGtNrFantDefaultKontor
 import no.nav.services.KontorTilordningService
 import no.nav.services.OppfolgingsperiodeOppslagResult
-import no.nav.services.OppfolgingsperiodeService
+import no.nav.services.OppfolgingsperiodeDao
 import no.nav.utils.flywayMigrationInTest
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import services.IdentService
+import services.OppfolgingsperiodeService
 import topics
 import java.time.OffsetDateTime
 import java.time.ZonedDateTime
@@ -49,7 +50,7 @@ import java.util.UUID
 class BigAppTest {
 
     fun sisteOppfolgingsPeriodeProcessor(fnr: Fnr) = SisteOppfolgingsperiodeProcessor(
-        OppfolgingsperiodeService,
+        OppfolgingsperiodeService(),
         false
     ) { IdentFunnet(fnr) }
 
@@ -107,7 +108,7 @@ class BigAppTest {
                 skjermingProcessor,
                 endringPaaOppfolgingsBrukerProcessor,
                 identendringsProcessor,
-                OppfolgingsHendelseProcessor()
+                OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
             )
 
             val (driver, inputTopics, _) = setupKafkaMock(topology,
@@ -185,7 +186,7 @@ class BigAppTest {
                 skjermingProcessor,
                 endringPaaOppfolgingsBrukerProcessor,
                 identendringsProcessor,
-                OppfolgingsHendelseProcessor()
+                OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
             )
 
             val (driver, inputTopics, _) = setupKafkaMock(topology,
