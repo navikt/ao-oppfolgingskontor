@@ -10,7 +10,10 @@ import java.time.ZonedDateTime
 import java.util.UUID
 import no.nav.db.Fnr
 import no.nav.db.entity.OppfolgingsperiodeEntity
+import no.nav.domain.KontorId
+import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
+import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.http.client.IdentFunnet
 import no.nav.http.client.IdentIkkeFunnet
@@ -19,13 +22,15 @@ import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
-import no.nav.services.OppfolgingsperiodeService
+import no.nav.services.KontorTilordningService
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.gittBrukerUnderOppfolging
 import no.nav.utils.randomFnr
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
+import services.OppfolgingsperiodeService
+import services.ingenSensitivitet
 import java.time.Instant
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
@@ -64,19 +69,28 @@ class SisteOppfolgingsperiodeProcessorTest {
         oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
     )
 
+    fun defaultConsumerSetup(bruker: Bruker): Pair<OppfolgingsHendelseProcessor, SisteOppfolgingsperiodeProcessor> {
+        return OppfolgingsHendelseProcessor(OppfolgingsperiodeService()) to SisteOppfolgingsperiodeProcessor(
+            OppfolgingsperiodeService()
+        ) { IdentFunnet(bruker.fnr) }
+    }
+
     @Test
     fun `skal lagre ny oppfolgingsperiode når oppfolgingsperiode-startet (sluttDato er null)`() =
         testApplication {
             val bruker = testBruker()
             application {
                 flywayMigrationInTest()
-                val consumer = SisteOppfolgingsperiodeProcessor(
-                    OppfolgingsperiodeService
-                ) { IdentFunnet(bruker.fnr) }
+                val (oppfolgingshendelseProcessor, sisteOppfolgingsperiodeProcessor) = defaultConsumerSetup(bruker)
 
-                val record = oppfolgingsperiodeMessage(bruker, sluttDato = null)
-                consumer.process(record)
+                val oppfolgingshendelseRecord = oppfolgingStartetMelding(bruker)
+                val oppfolgingsperiodeRecord = oppfolgingsperiodeMessage(bruker)
 
+                val resultSisteOppfolgingsperiode = sisteOppfolgingsperiodeProcessor.process(oppfolgingsperiodeRecord)
+                val resultOppfolgingshendelse = oppfolgingshendelseProcessor.process(oppfolgingshendelseRecord)
+
+                resultSisteOppfolgingsperiode.shouldBeInstanceOf<Forward<*, *>>()
+                resultOppfolgingshendelse.shouldBeInstanceOf<Skip<*, *>>()
                 bruker.skalVæreUnderOppfølging()
             }
         }
@@ -86,15 +100,19 @@ class SisteOppfolgingsperiodeProcessorTest {
         val bruker = testBruker()
         application {
             flywayMigrationInTest()
-            val consumer = SisteOppfolgingsperiodeProcessor(
-                OppfolgingsperiodeService
-            ) { IdentFunnet(bruker.fnr) }
+            val (oppfolgingshendelseProcessor, sisteOppfolgingsperiodeProcessor) = defaultConsumerSetup(bruker)
 
-            val startRecord = oppfolgingsperiodeMessage(bruker, sluttDato = null)
-            consumer.process(startRecord)
-            val sluttRecord = oppfolgingsperiodeMessage(bruker, sluttDato = ZonedDateTime.now())
-            consumer.process(sluttRecord)
+            val sisteResult = sisteOppfolgingsperiodeProcessor.process(oppfolgingsperiodeMessage(bruker))
+            val hendelseStartResult = oppfolgingshendelseProcessor.process(oppfolgingStartetMelding(bruker))
+            sisteResult.shouldBeInstanceOf<Forward<*, *>>()
+            hendelseStartResult.shouldBeInstanceOf<Skip<*, *>>()
 
+            val sluttDato = ZonedDateTime.now()
+            val sistOppResult = sisteOppfolgingsperiodeProcessor.process(oppfolgingsperiodeMessage(bruker, sluttDato))
+            val hendelseResult =  oppfolgingshendelseProcessor.process(oppfolgingAvsluttetMelding(bruker, sluttDato))
+
+            sistOppResult.shouldBeInstanceOf<Commit<*, *>>()
+            hendelseResult.shouldBeInstanceOf<Skip<*, *>>()
             bruker.skalIkkeVæreUnderOppfølging()
         }
     }
@@ -108,13 +126,10 @@ class SisteOppfolgingsperiodeProcessorTest {
             application {
                 flywayMigrationInTest()
                 val consumer = SisteOppfolgingsperiodeProcessor(
-                    OppfolgingsperiodeService
+                    OppfolgingsperiodeService()
                 ) { IdentFunnet(bruker.fnr) }
 
-
-                val record = oppfolgingsperiodeMessage(bruker, sluttDato = periodeSlutt)
-
-                consumer.process(record)
+                consumer.process(oppfolgingsperiodeMessage(bruker, sluttDato = periodeSlutt))
 
                 bruker.skalIkkeVæreUnderOppfølging()
             }
@@ -129,7 +144,7 @@ class SisteOppfolgingsperiodeProcessorTest {
             application {
                 flywayMigrationInTest()
                 val consumer = SisteOppfolgingsperiodeProcessor(
-                    OppfolgingsperiodeService,
+                    OppfolgingsperiodeService(),
                 ) { IdentFunnet(bruker.fnr) }
 
                 val startPeriodeRecord = oppfolgingsperiodeMessage(bruker, sluttDato = null)
@@ -152,7 +167,7 @@ class SisteOppfolgingsperiodeProcessorTest {
             application {
                 flywayMigrationInTest()
                 val consumer = SisteOppfolgingsperiodeProcessor(
-                    OppfolgingsperiodeService,
+                    OppfolgingsperiodeService(),
                 ) { IdentFunnet(bruker.fnr) }
                 val startPeriodeRecord = oppfolgingsperiodeMessage(bruker, sluttDato = null)
                 val startGammelPeriodeRecord = oppfolgingsperiodeMessage(
@@ -180,7 +195,7 @@ class SisteOppfolgingsperiodeProcessorTest {
             application {
                 flywayMigrationInTest()
                 val consumer = SisteOppfolgingsperiodeProcessor(
-                    OppfolgingsperiodeService,
+                    OppfolgingsperiodeService(),
                 ) { IdentFunnet(bruker.fnr) }
                 val startPeriodeRecord = oppfolgingsperiodeMessage(bruker, sluttDato = null)
                 val startNyerePeriodeRecord = oppfolgingsperiodeMessage(
@@ -225,7 +240,7 @@ class SisteOppfolgingsperiodeProcessorTest {
             application {
                 flywayMigrationInTest()
                 val consumer = SisteOppfolgingsperiodeProcessor(
-                    OppfolgingsperiodeService,
+                    OppfolgingsperiodeService(),
                 ) { IdentFunnet(bruker.fnr) }
                 val startPeriodeRecord = oppfolgingsperiodeMessage(bruker, sluttDato = null)
                 val sluttNyerePeriodeRecord = oppfolgingsperiodeMessage(
@@ -248,7 +263,7 @@ class SisteOppfolgingsperiodeProcessorTest {
         testApplication {
             val bruker = testBruker()
             val consumer = SisteOppfolgingsperiodeProcessor(
-                OppfolgingsperiodeService,
+                OppfolgingsperiodeService(),
             ) { IdentOppslagFeil("Feil ved henting av fnr") }
 
             val result = consumer.process(oppfolgingsperiodeMessage(
@@ -264,7 +279,7 @@ class SisteOppfolgingsperiodeProcessorTest {
     fun `skal gi Skip ved feil på henting av fnr men konfigurert til å hoppe over melding`() {
         val bruker = testBruker()
         val consumer = SisteOppfolgingsperiodeProcessor(
-            OppfolgingsperiodeService,
+            OppfolgingsperiodeService(),
             true
         ) { IdentOppslagFeil("Fant ikke person: not_found") }
 
@@ -280,7 +295,7 @@ class SisteOppfolgingsperiodeProcessorTest {
     fun `skal gi Retry ved feil på henting av fnr som ikke er not_found fra pdl når konfigurert til å hoppe de typene melding`() {
         val bruker = testBruker()
         val consumer = SisteOppfolgingsperiodeProcessor(
-            OppfolgingsperiodeService,
+            OppfolgingsperiodeService(),
             true
         ) { IdentOppslagFeil("Fant ikke person: not_not_found") }
 
@@ -300,7 +315,7 @@ class SisteOppfolgingsperiodeProcessorTest {
             val bruker = testBruker()
             gittBrukerUnderOppfolging(bruker)
             val consumer = SisteOppfolgingsperiodeProcessor(
-                OppfolgingsperiodeService,
+                OppfolgingsperiodeService(),
                 false
             ) { IdentOppslagFeil("Fant ikke person: not_found") }
 
@@ -318,7 +333,7 @@ class SisteOppfolgingsperiodeProcessorTest {
     fun `skal gi Retry når ingen fnr finnes`() {
         val bruker = testBruker()
         val consumer = SisteOppfolgingsperiodeProcessor(
-            OppfolgingsperiodeService,
+            OppfolgingsperiodeService(),
         ) { IdentIkkeFunnet("Finnes ingen fnr") }
 
         val result = consumer.process(oppfolgingsperiodeMessage(
@@ -334,7 +349,7 @@ class SisteOppfolgingsperiodeProcessorTest {
     fun `skal håndtere deserialiseringsfeil`() {
         val bruker = testBruker()
         val consumer = SisteOppfolgingsperiodeProcessor(
-            OppfolgingsperiodeService,
+            OppfolgingsperiodeService(),
         ) { IdentFunnet(bruker.fnr) }
 
         val result = consumer.process(Record(bruker.aktorId, """{ "lol": "lal" }""", Instant.now().toEpochMilli()))
@@ -347,15 +362,32 @@ class SisteOppfolgingsperiodeProcessorTest {
         """.trimIndent()
     }
 
+    @Test
+    fun `skal håndtere gamle meldinger på ny topic`() {
+        val bruker = testBruker()
+        flywayMigrationInTest()
+        val (hendelserProcessor, sistePeriodeProcessor) = defaultConsumerSetup(bruker)
+        val sluttDato = ZonedDateTime.now().plusDays(1)
+
+        sistePeriodeProcessor.process(oppfolgingsperiodeMessage(bruker)).shouldBeInstanceOf<Forward<*, *>>()
+        KontorTilordningService.tilordneKontor(OppfolgingsPeriodeStartetLokalKontorTilordning(
+            KontorTilordning(bruker.fnr, KontorId("1199"), bruker.oppfolgingsperiodeId),
+            ingenSensitivitet
+        ))
+        sistePeriodeProcessor.process(oppfolgingsperiodeMessage(bruker, sluttDato)).shouldBeInstanceOf<Commit<*, *>>()
+
+        hendelserProcessor.process(oppfolgingStartetMelding(bruker)).shouldBeInstanceOf<Skip<*, *>>()
+        hendelserProcessor.process(oppfolgingAvsluttetMelding(bruker, sluttDato)).shouldBeInstanceOf<Skip<*, *>>()
+    }
+
     private fun oppfolgingsperiodeMessage(
         bruker: Bruker,
-        sluttDato: ZonedDateTime?,
-    ): Record<String, String> {
-        return Record(bruker.aktorId, """{
-            "uuid": "${bruker.oppfolgingsperiodeId.value}",
-            "startDato": "${bruker.periodeStart}",
-            "sluttDato": ${sluttDato?.let { "\"$it\"" } ?: "null"},
-            "aktorId": "${bruker.aktorId}"
-        }""", System.currentTimeMillis())
-    }
+        sluttDato: ZonedDateTime? = null,
+    ) = TopicUtils.oppfolgingsperiodeMessage(bruker, sluttDato)
+
+    fun oppfolgingStartetMelding(bruker: Bruker): Record<String, String>
+        = TopicUtils.oppfolgingStartetMelding(bruker)
+
+    fun oppfolgingAvsluttetMelding(bruker: Bruker, sluttDato: ZonedDateTime): Record<String, String>
+        = TopicUtils.oppfolgingAvsluttetMelding(bruker, sluttDato)
 }

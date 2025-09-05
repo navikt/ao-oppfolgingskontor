@@ -10,8 +10,6 @@ import no.nav.domain.events.GTKontorEndret
 import no.nav.domain.events.KontorEndretEvent
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.insertReturning
-import org.jetbrains.exposed.sql.statements.InsertStatement
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.upsert
 import java.time.ZonedDateTime

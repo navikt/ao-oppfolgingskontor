@@ -24,6 +24,7 @@ class Topics(
     class Inn(
         val endringPaOppfolgingsbruker: Topic<String, String>,
         val sisteOppfolgingsperiodeV1: Topic<String, String>,
+        val oppfolgingsHendelser: Topic<String, String>,
         val pdlLeesah: Topic<String, Personhendelse>,
         val skjerming: Topic<String, String>,
         val aktorV2: Topic<String, Aktor>,
@@ -36,6 +37,7 @@ class Topics(
 private fun getInnTopicsWithSerde(
     endringPaOppfolgingsbrukerName: String,
     sisteOppfolgingsperiodeV1Name: String,
+    oppfolgingsHendelserName: String,
     pdlLeesahName: String,
     skjermingName: String,
     avroSerdes: AvroSerdes,
@@ -44,6 +46,7 @@ private fun getInnTopicsWithSerde(
     return Topics.Inn(
         Topic(endringPaOppfolgingsbrukerName, Serdes.String(), Serdes.String()),
         Topic(sisteOppfolgingsperiodeV1Name, Serdes.String(), Serdes.String()),
+        Topic(oppfolgingsHendelserName, Serdes.String(), Serdes.String()),
         Topic(pdlLeesahName,  avroSerdes.leesahKeyAvroSerde, avroSerdes.leesahValueAvroSerde),
         Topic(skjermingName, Serdes.String(), Serdes.String()),
         Topic(aktorV2Name, avroSerdes.aktorV2KeyAvroSerde, avroSerdes.aktorV2ValueAvroSerde)
@@ -56,6 +59,7 @@ fun ApplicationEnvironment.topics(): Topics {
         getInnTopicsWithSerde(
             this.config.property("topics.inn.endringPaOppfolgingsbruker").getString(),
             this.config.property("topics.inn.sisteOppfolgingsperiodeV1").getString(),
+            this.config.property("topics.inn.oppfolgingsHendelserV1").getString(),
             this.config.property("topics.inn.pdlLeesah").getString(),
             this.config.property("topics.inn.skjerming").getString(),
             avroSerdes,

@@ -70,6 +70,7 @@ topics:
   inn:
     endringPaOppfolgingsbruker: "pto.endring-paa-oppfolgingsbruker-v2"
     sisteOppfolgingsperiodeV1: "pto.siste-oppfolgingsperiode-v1"
+    oppfolgingsHendelserV1: "poao.privat-oppfolgingshendelse-v1"
     pdlLeesah: "pdl.leesah-v1"
     skjerming: "nom.skjermede-personer-status-v1"
     aktor-v2: "pdl.aktor-v2"
