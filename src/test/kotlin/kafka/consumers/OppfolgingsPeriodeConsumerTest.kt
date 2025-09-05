@@ -71,13 +71,19 @@ class SisteOppfolgingsperiodeProcessorTest {
             val bruker = testBruker()
             application {
                 flywayMigrationInTest()
-                val consumer = SisteOppfolgingsperiodeProcessor(
+                val oppfolgingshendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
+                val sisteOppfolgingsperiodeProcessor = SisteOppfolgingsperiodeProcessor(
                     OppfolgingsperiodeService()
                 ) { IdentFunnet(bruker.fnr) }
 
-                val record = oppfolgingsperiodeMessage(bruker, sluttDato = null)
-                consumer.process(record)
+                val oppfolgingshendelseRecord = oppfolgingStartetMelding(bruker)
+                val oppfolgingsperiodeRecord = oppfolgingsperiodeMessage(bruker, sluttDato = null)
 
+                val resultSisteOppfolgingsperiode = sisteOppfolgingsperiodeProcessor.process(oppfolgingsperiodeRecord)
+                val resultOppfolgingshendelse = oppfolgingshendelseProcessor.process(oppfolgingshendelseRecord)
+
+                resultSisteOppfolgingsperiode.shouldBeInstanceOf<Forward<*, *>>()
+                resultOppfolgingshendelse.shouldBeInstanceOf<Skip<*, *>>()
                 bruker.skalVæreUnderOppfølging()
             }
         }
@@ -348,6 +354,7 @@ class SisteOppfolgingsperiodeProcessorTest {
         """.trimIndent()
     }
 
+
     private fun oppfolgingsperiodeMessage(
         bruker: Bruker,
         sluttDato: ZonedDateTime?,
@@ -358,5 +365,36 @@ class SisteOppfolgingsperiodeProcessorTest {
             "sluttDato": ${sluttDato?.let { "\"$it\"" } ?: "null"},
             "aktorId": "${bruker.aktorId}"
         }""", System.currentTimeMillis())
+    }
+
+    fun oppfolgingStartetMelding(bruker: Bruker): Record<String, String> {
+        return Record(bruker.fnr.value, """
+            {
+                "hendelseType": "OPPFOLGING_STARTET",
+                "oppfolgingsPeriodeId": "${bruker.oppfolgingsperiodeId.value}",
+                "startetTidspunkt": "${ZonedDateTime.now()}",
+                "startetAv": "G151415",
+                "startetAvType": "VEILEDER",
+                "startetBegrunnelse": "FORDI",
+                "arenaKontor": "4141",
+                "arbeidsoppfolgingsKontorSattAvVeileder": null,
+                "fnr": "${bruker.fnr.value}"
+            }
+        """, System.currentTimeMillis())
+    }
+
+    fun oppfolgingAvsluttetMelding(fnr: Fnr, periodeId: UUID = UUID.randomUUID()): String {
+        return """
+            {
+                "fnr": "${fnr.value}",
+                "hendelseType": "OPPFOLGING_AVSLUTTET",
+                "oppfolgingsPeriodeId": "$periodeId",
+                "startetTidspunkt": "${ZonedDateTime.now()}",
+                "avsluttetTidspunkt": "${ZonedDateTime.now()}",
+                "avsluttetAv": "G151415",
+                "avsluttetAvType": "VEILEDER",
+                "avregistreringsType": "UtmeldtEtter28Dager"
+            }
+        """.trimIndent()
     }
 }
