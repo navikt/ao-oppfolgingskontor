@@ -357,7 +357,6 @@ class SisteOppfolgingsperiodeProcessorTest {
         """.trimIndent()
     }
 
-
     private fun oppfolgingsperiodeMessage(
         bruker: Bruker,
         sluttDato: ZonedDateTime? = null,

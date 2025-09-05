@@ -27,7 +27,7 @@ class OppfolgingsperiodeService {
         }
         val innkommendePeriodeBleAvsluttet = OppfolgingsperiodeDao.deleteOppfolgingsperiode(oppfolgingsperiode.periodeId) > 0
         return when {
-            nåværendePeriodeBleAvsluttet && innkommendePeriodeBleAvsluttet -> FlerePerioderAvsluttet
+            nåværendePeriodeBleAvsluttet && innkommendePeriodeBleAvsluttet -> throw Exception("Dette skal aldri skje! Skal ikke være flere perioder på samme person samtidig ${oppfolgingsperiode.periodeId}, ${currentOppfolgingsperiode?.periodeId}")
             nåværendePeriodeBleAvsluttet -> GammelPeriodeAvsluttet
             innkommendePeriodeBleAvsluttet -> InnkommendePeriodeAvsluttet
             else -> IngenPeriodeAvsluttet
@@ -70,6 +70,5 @@ object OppfølgingsperiodeLagret: HandterPeriodeStartetResultat()
 
 sealed class HandterPeriodeAvsluttetResultat
 object IngenPeriodeAvsluttet: HandterPeriodeAvsluttetResultat()
-object FlerePerioderAvsluttet: HandterPeriodeAvsluttetResultat()
 object GammelPeriodeAvsluttet: HandterPeriodeAvsluttetResultat()
 object InnkommendePeriodeAvsluttet: HandterPeriodeAvsluttetResultat()

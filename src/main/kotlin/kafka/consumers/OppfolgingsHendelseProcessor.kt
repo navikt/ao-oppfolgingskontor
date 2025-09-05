@@ -14,7 +14,6 @@ import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
 import org.apache.kafka.streams.processor.api.Record
 import org.slf4j.LoggerFactory
-import services.FlerePerioderAvsluttet
 import services.GammelPeriodeAvsluttet
 import services.HaddeNyerePeriodePåIdent
 import services.HaddePeriodeAllerede
@@ -79,7 +78,6 @@ fun HandterPeriodeStartetResultat.toRecordResult(): RecordProcessingResult<Ident
 }
 fun HandterPeriodeAvsluttetResultat.toRecordResult(): RecordProcessingResult<Ident, OppfolgingsperiodeStartet> {
     return when (this) {
-        FlerePerioderAvsluttet -> Commit()
         GammelPeriodeAvsluttet -> Commit()
         IngenPeriodeAvsluttet -> Skip()
         InnkommendePeriodeAvsluttet -> Commit()
