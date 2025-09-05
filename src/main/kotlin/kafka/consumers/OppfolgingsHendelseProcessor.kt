@@ -19,6 +19,7 @@ import services.HaddeNyerePeriodePåIdent
 import services.HaddePeriodeAllerede
 import services.HandterPeriodeAvsluttetResultat
 import services.HandterPeriodeStartetResultat
+import services.HarSlettetPeriode
 import services.IngenPeriodeAvsluttet
 import services.InnkommendePeriodeAvsluttet
 import services.OppfolgingsperiodeService
@@ -74,6 +75,7 @@ fun HandterPeriodeStartetResultat.toRecordResult(): RecordProcessingResult<Ident
         HaddeNyerePeriodePåIdent -> Skip()
         HaddePeriodeAllerede -> Skip()
         OppfølgingsperiodeLagret -> Commit()
+        HarSlettetPeriode -> Skip()
     }
 }
 fun HandterPeriodeAvsluttetResultat.toRecordResult(): RecordProcessingResult<Ident, OppfolgingsperiodeStartet> {

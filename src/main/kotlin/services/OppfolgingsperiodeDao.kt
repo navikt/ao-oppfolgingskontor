@@ -4,6 +4,7 @@ import java.time.ZonedDateTime
 import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.db.entity.OppfolgingsperiodeEntity
+import no.nav.db.table.KontorhistorikkTable
 import no.nav.db.table.OppfolgingsperiodeTable
 import no.nav.db.table.OppfolgingsperiodeTable.oppfolgingsperiodeId
 import no.nav.domain.OppfolgingsperiodeId
@@ -48,6 +49,16 @@ object OppfolgingsperiodeDao {
                 .select(OppfolgingsperiodeTable.id, oppfolgingsperiodeId)
                 .where { oppfolgingsperiodeId eq oppfolgingsPeriode.value }
                 .firstOrNull() != null
+        }
+    }
+
+    fun harBruktPeriodeTidligere(ident: Ident, periodeId: OppfolgingsperiodeId): Boolean {
+        return transaction {
+            val tidligereEntries = KontorhistorikkTable.select(KontorhistorikkTable.ident)
+                .where { KontorhistorikkTable.ident eq ident.value and (KontorhistorikkTable.oppfolgingsperiodeId eq periodeId.value) }
+                .map { it }
+                .size
+            (tidligereEntries) > 0
         }
     }
 

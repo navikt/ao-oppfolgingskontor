@@ -10,7 +10,10 @@ import java.time.ZonedDateTime
 import java.util.UUID
 import no.nav.db.Fnr
 import no.nav.db.entity.OppfolgingsperiodeEntity
+import no.nav.domain.KontorId
+import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
+import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.http.client.IdentFunnet
 import no.nav.http.client.IdentIkkeFunnet
@@ -19,6 +22,7 @@ import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
+import no.nav.services.KontorTilordningService
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.gittBrukerUnderOppfolging
 import no.nav.utils.randomFnr
@@ -26,6 +30,7 @@ import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
 import services.OppfolgingsperiodeService
+import services.ingenSensitivitet
 import java.time.Instant
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
@@ -357,46 +362,32 @@ class SisteOppfolgingsperiodeProcessorTest {
         """.trimIndent()
     }
 
+    @Test
+    fun `skal håndtere gamle meldinger på ny topic`() {
+        val bruker = testBruker()
+        flywayMigrationInTest()
+        val (hendelserProcessor, sistePeriodeProcessor) = defaultConsumerSetup(bruker)
+        val sluttDato = ZonedDateTime.now().plusDays(1)
+
+        sistePeriodeProcessor.process(oppfolgingsperiodeMessage(bruker)).shouldBeInstanceOf<Forward<*, *>>()
+        KontorTilordningService.tilordneKontor(OppfolgingsPeriodeStartetLokalKontorTilordning(
+            KontorTilordning(bruker.fnr, KontorId("1199"), bruker.oppfolgingsperiodeId),
+            ingenSensitivitet
+        ))
+        sistePeriodeProcessor.process(oppfolgingsperiodeMessage(bruker, sluttDato)).shouldBeInstanceOf<Commit<*, *>>()
+
+        hendelserProcessor.process(oppfolgingStartetMelding(bruker)).shouldBeInstanceOf<Skip<*, *>>()
+        hendelserProcessor.process(oppfolgingAvsluttetMelding(bruker, sluttDato)).shouldBeInstanceOf<Skip<*, *>>()
+    }
+
     private fun oppfolgingsperiodeMessage(
         bruker: Bruker,
         sluttDato: ZonedDateTime? = null,
-    ): Record<String, String> {
-        return Record(bruker.aktorId, """{
-            "uuid": "${bruker.oppfolgingsperiodeId.value}",
-            "startDato": "${bruker.periodeStart}",
-            "sluttDato": ${sluttDato?.let { "\"$it\"" } ?: "null"},
-            "aktorId": "${bruker.aktorId}"
-        }""", System.currentTimeMillis())
-    }
+    ) = TopicUtils.oppfolgingsperiodeMessage(bruker, sluttDato)
 
-    fun oppfolgingStartetMelding(bruker: Bruker): Record<String, String> {
-        return Record(bruker.fnr.value, """
-            {
-                "hendelseType": "OPPFOLGING_STARTET",
-                "oppfolgingsPeriodeId": "${bruker.oppfolgingsperiodeId.value}",
-                "startetTidspunkt": "${ZonedDateTime.now()}",
-                "startetAv": "G151415",
-                "startetAvType": "VEILEDER",
-                "startetBegrunnelse": "ARBEIDSSOKER_REGISTRERING",
-                "arenaKontor": "4141",
-                "foretrukketArbeidsoppfolgingskontor": null,
-                "fnr": "${bruker.fnr.value}"
-            }
-        """, System.currentTimeMillis())
-    }
+    fun oppfolgingStartetMelding(bruker: Bruker): Record<String, String>
+        = TopicUtils.oppfolgingStartetMelding(bruker)
 
-    fun oppfolgingAvsluttetMelding(bruker: Bruker, sluttDato: ZonedDateTime): Record<String, String> {
-        return Record(bruker.fnr.value, """
-            {
-                "fnr": "${bruker.fnr.value}",
-                "hendelseType": "OPPFOLGING_AVSLUTTET",
-                "oppfolgingsPeriodeId": "${bruker.oppfolgingsperiodeId.value}",
-                "startetTidspunkt": "${bruker.periodeStart}",
-                "avsluttetTidspunkt": "$sluttDato",
-                "avsluttetAv": "G151415",
-                "avsluttetAvType": "VEILEDER",
-                "avregistreringsType": "UtmeldtEtter28Dager"
-            }
-        """.trimIndent(), System.currentTimeMillis())
-    }
+    fun oppfolgingAvsluttetMelding(bruker: Bruker, sluttDato: ZonedDateTime): Record<String, String>
+        = TopicUtils.oppfolgingAvsluttetMelding(bruker, sluttDato)
 }

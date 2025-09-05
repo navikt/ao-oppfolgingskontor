@@ -42,6 +42,11 @@ class OppfolgingsperiodeService {
         if (OppfolgingsperiodeDao.finnesPeriode(oppfolgingsperiode.periodeId)) {
             return HaddePeriodeAllerede
         }
+        if (OppfolgingsperiodeDao.harBruktPeriodeTidligere(oppfolgingsperiode.fnr, oppfolgingsperiode.periodeId)) {
+            /* Hvis perioden ikke finnes i oppfolgingsperiode tabellen men har blitt brukt tidligere i historikken
+            * leser vi sannsynligvis inn en gammel melding som ikke skal behandles */
+            return HarSlettetPeriode
+        }
         OppfolgingsperiodeDao.saveOppfolgingsperiode(
             oppfolgingsperiode.fnr,
             oppfolgingsperiode.startDato,
@@ -66,6 +71,7 @@ class OppfolgingsperiodeService {
 sealed class HandterPeriodeStartetResultat
 object HaddeNyerePeriodePåIdent: HandterPeriodeStartetResultat()
 object HaddePeriodeAllerede: HandterPeriodeStartetResultat()
+object HarSlettetPeriode: HandterPeriodeStartetResultat()
 object OppfølgingsperiodeLagret: HandterPeriodeStartetResultat()
 
 sealed class HandterPeriodeAvsluttetResultat
