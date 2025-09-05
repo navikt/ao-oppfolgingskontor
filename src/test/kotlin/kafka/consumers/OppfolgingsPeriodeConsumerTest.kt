@@ -19,7 +19,6 @@ import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
-import no.nav.services.OppfolgingsperiodeDao
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.gittBrukerUnderOppfolging
 import no.nav.utils.randomFnr
@@ -65,19 +64,22 @@ class SisteOppfolgingsperiodeProcessorTest {
         oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
     )
 
+    fun defaultConsumerSetup(bruker: Bruker): Pair<OppfolgingsHendelseProcessor, SisteOppfolgingsperiodeProcessor> {
+        return OppfolgingsHendelseProcessor(OppfolgingsperiodeService()) to SisteOppfolgingsperiodeProcessor(
+            OppfolgingsperiodeService()
+        ) { IdentFunnet(bruker.fnr) }
+    }
+
     @Test
     fun `skal lagre ny oppfolgingsperiode når oppfolgingsperiode-startet (sluttDato er null)`() =
         testApplication {
             val bruker = testBruker()
             application {
                 flywayMigrationInTest()
-                val oppfolgingshendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
-                val sisteOppfolgingsperiodeProcessor = SisteOppfolgingsperiodeProcessor(
-                    OppfolgingsperiodeService()
-                ) { IdentFunnet(bruker.fnr) }
+                val (oppfolgingshendelseProcessor, sisteOppfolgingsperiodeProcessor) = defaultConsumerSetup(bruker)
 
                 val oppfolgingshendelseRecord = oppfolgingStartetMelding(bruker)
-                val oppfolgingsperiodeRecord = oppfolgingsperiodeMessage(bruker, sluttDato = null)
+                val oppfolgingsperiodeRecord = oppfolgingsperiodeMessage(bruker)
 
                 val resultSisteOppfolgingsperiode = sisteOppfolgingsperiodeProcessor.process(oppfolgingsperiodeRecord)
                 val resultOppfolgingshendelse = oppfolgingshendelseProcessor.process(oppfolgingshendelseRecord)
@@ -93,15 +95,19 @@ class SisteOppfolgingsperiodeProcessorTest {
         val bruker = testBruker()
         application {
             flywayMigrationInTest()
-            val consumer = SisteOppfolgingsperiodeProcessor(
-                OppfolgingsperiodeService()
-            ) { IdentFunnet(bruker.fnr) }
+            val (oppfolgingshendelseProcessor, sisteOppfolgingsperiodeProcessor) = defaultConsumerSetup(bruker)
 
-            val startRecord = oppfolgingsperiodeMessage(bruker, sluttDato = null)
-            consumer.process(startRecord)
-            val sluttRecord = oppfolgingsperiodeMessage(bruker, sluttDato = ZonedDateTime.now())
-            consumer.process(sluttRecord)
+            val sisteResult = sisteOppfolgingsperiodeProcessor.process(oppfolgingsperiodeMessage(bruker))
+            val hendelseStartResult = oppfolgingshendelseProcessor.process(oppfolgingStartetMelding(bruker))
+            sisteResult.shouldBeInstanceOf<Forward<*, *>>()
+            hendelseStartResult.shouldBeInstanceOf<Skip<*, *>>()
 
+            val sluttDato = ZonedDateTime.now()
+            val sistOppResult = sisteOppfolgingsperiodeProcessor.process(oppfolgingsperiodeMessage(bruker, sluttDato))
+            val hendelseResult =  oppfolgingshendelseProcessor.process(oppfolgingAvsluttetMelding(bruker, sluttDato))
+
+            sistOppResult.shouldBeInstanceOf<Commit<*, *>>()
+            hendelseResult.shouldBeInstanceOf<Skip<*, *>>()
             bruker.skalIkkeVæreUnderOppfølging()
         }
     }
@@ -118,10 +124,7 @@ class SisteOppfolgingsperiodeProcessorTest {
                     OppfolgingsperiodeService()
                 ) { IdentFunnet(bruker.fnr) }
 
-
-                val record = oppfolgingsperiodeMessage(bruker, sluttDato = periodeSlutt)
-
-                consumer.process(record)
+                consumer.process(oppfolgingsperiodeMessage(bruker, sluttDato = periodeSlutt))
 
                 bruker.skalIkkeVæreUnderOppfølging()
             }
@@ -357,7 +360,7 @@ class SisteOppfolgingsperiodeProcessorTest {
 
     private fun oppfolgingsperiodeMessage(
         bruker: Bruker,
-        sluttDato: ZonedDateTime?,
+        sluttDato: ZonedDateTime? = null,
     ): Record<String, String> {
         return Record(bruker.aktorId, """{
             "uuid": "${bruker.oppfolgingsperiodeId.value}",
@@ -375,26 +378,26 @@ class SisteOppfolgingsperiodeProcessorTest {
                 "startetTidspunkt": "${ZonedDateTime.now()}",
                 "startetAv": "G151415",
                 "startetAvType": "VEILEDER",
-                "startetBegrunnelse": "FORDI",
+                "startetBegrunnelse": "ARBEIDSSOKER_REGISTRERING",
                 "arenaKontor": "4141",
-                "arbeidsoppfolgingsKontorSattAvVeileder": null,
+                "foretrukketArbeidsoppfolgingskontor": null,
                 "fnr": "${bruker.fnr.value}"
             }
         """, System.currentTimeMillis())
     }
 
-    fun oppfolgingAvsluttetMelding(fnr: Fnr, periodeId: UUID = UUID.randomUUID()): String {
-        return """
+    fun oppfolgingAvsluttetMelding(bruker: Bruker, sluttDato: ZonedDateTime): Record<String, String> {
+        return Record(bruker.fnr.value, """
             {
-                "fnr": "${fnr.value}",
+                "fnr": "${bruker.fnr.value}",
                 "hendelseType": "OPPFOLGING_AVSLUTTET",
-                "oppfolgingsPeriodeId": "$periodeId",
-                "startetTidspunkt": "${ZonedDateTime.now()}",
-                "avsluttetTidspunkt": "${ZonedDateTime.now()}",
+                "oppfolgingsPeriodeId": "${bruker.oppfolgingsperiodeId.value}",
+                "startetTidspunkt": "${bruker.periodeStart}",
+                "avsluttetTidspunkt": "$sluttDato",
                 "avsluttetAv": "G151415",
                 "avsluttetAvType": "VEILEDER",
                 "avregistreringsType": "UtmeldtEtter28Dager"
             }
-        """.trimIndent()
+        """.trimIndent(), System.currentTimeMillis())
     }
 }

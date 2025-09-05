@@ -13,23 +13,34 @@ import java.util.UUID
 class OppfolgingsperiodeService {
     val log = LoggerFactory.getLogger(OppfolgingsperiodeService::class.java)
 
-    fun handterPeriodeAvsluttet(oppfolgingsperiode: OppfolgingsperiodeAvsluttet) {
+    fun handterPeriodeAvsluttet(oppfolgingsperiode: OppfolgingsperiodeAvsluttet): HandterPeriodeAvsluttetResultat {
         val currentOppfolgingsperiode = getCurrentPeriode(oppfolgingsperiode.fnr)
-        when {
+        val nåværendePeriodeBleAvsluttet = when {
             currentOppfolgingsperiode != null -> {
                 if (currentOppfolgingsperiode.startDato.isBefore(oppfolgingsperiode.startDato.toOffsetDateTime())) {
-                    OppfolgingsperiodeDao.deleteOppfolgingsperiode(currentOppfolgingsperiode.periodeId)
+                    OppfolgingsperiodeDao.deleteOppfolgingsperiode(currentOppfolgingsperiode.periodeId) > 0
+                } else {
+                    false
                 }
             }
-            else -> {}
+            else -> false
         }
-        OppfolgingsperiodeDao.deleteOppfolgingsperiode(oppfolgingsperiode.periodeId)
+        val innkommendePeriodeBleAvsluttet = OppfolgingsperiodeDao.deleteOppfolgingsperiode(oppfolgingsperiode.periodeId) > 0
+        return when {
+            nåværendePeriodeBleAvsluttet && innkommendePeriodeBleAvsluttet -> FlerePerioderAvsluttet
+            nåværendePeriodeBleAvsluttet -> GammelPeriodeAvsluttet
+            innkommendePeriodeBleAvsluttet -> InnkommendePeriodeAvsluttet
+            else -> IngenPeriodeAvsluttet
+        }
     }
 
     fun handterPeriodeStartet(oppfolgingsperiode: OppfolgingsperiodeStartet): HandterPeriodeStartetResultat {
         if (OppfolgingsperiodeDao.harNyerePeriodePåIdent(oppfolgingsperiode)) {
             log.warn("Hadde nyere periode på ident, hopper over melding")
             return HaddeNyerePeriodePåIdent
+        }
+        if (OppfolgingsperiodeDao.finnesPeriode(oppfolgingsperiode.periodeId)) {
+            return HaddePeriodeAllerede
         }
         OppfolgingsperiodeDao.saveOppfolgingsperiode(
             oppfolgingsperiode.fnr,
@@ -54,4 +65,11 @@ class OppfolgingsperiodeService {
 
 sealed class HandterPeriodeStartetResultat
 object HaddeNyerePeriodePåIdent: HandterPeriodeStartetResultat()
+object HaddePeriodeAllerede: HandterPeriodeStartetResultat()
 object OppfølgingsperiodeLagret: HandterPeriodeStartetResultat()
+
+sealed class HandterPeriodeAvsluttetResultat
+object IngenPeriodeAvsluttet: HandterPeriodeAvsluttetResultat()
+object FlerePerioderAvsluttet: HandterPeriodeAvsluttetResultat()
+object GammelPeriodeAvsluttet: HandterPeriodeAvsluttetResultat()
+object InnkommendePeriodeAvsluttet: HandterPeriodeAvsluttetResultat()

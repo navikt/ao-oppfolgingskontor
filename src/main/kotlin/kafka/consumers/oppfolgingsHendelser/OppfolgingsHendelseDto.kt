@@ -30,7 +30,6 @@ enum class HendelseType {
     OPPFOLGING_AVSLUTTET,
 }
 
-
 val module = SerializersModule {
     polymorphic(OppfolgingsHendelseDto::class) {
         subclass(OppfolgingStartetHendelseDto::class)

@@ -4,7 +4,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import no.nav.utils.ZonedDateTimeSerializer
 import java.time.ZonedDateTime
-import java.util.UUID
 
 @SerialName("OPPFOLGING_AVSLUTTET")
 @Serializable
@@ -16,7 +15,7 @@ class OppfolgingsAvsluttetHendelseDto(
     @Serializable(with = ZonedDateTimeSerializer::class)
     val avsluttetTidspunkt: ZonedDateTime,
     val avsluttetAv: String,
-    val avsluttetAvType: String,
+    val avsluttetAvType: AvsluttetAvType,
     val avregistreringsType: AvregistreringsType
 ): OppfolgingsHendelseDto(HendelseType.OPPFOLGING_AVSLUTTET)
 

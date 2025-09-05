@@ -15,6 +15,8 @@ import no.nav.http.client.IdentResult
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.exists
+import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.upsert
 import org.slf4j.LoggerFactory
@@ -37,6 +39,15 @@ object OppfolgingsperiodeDao {
                 it[this.oppfolgingsperiodeId] = oppfolgingsperiodeId.value
                 it[this.updatedAt] = OffsetDateTime.now(ZoneOffset.systemDefault())
             }
+        }
+    }
+
+    fun finnesPeriode(oppfolgingsPeriode: OppfolgingsperiodeId): Boolean {
+        return transaction {
+            OppfolgingsperiodeTable
+                .select(OppfolgingsperiodeTable.id, oppfolgingsperiodeId)
+                .where { oppfolgingsperiodeId eq oppfolgingsPeriode.value }
+                .firstOrNull() != null
         }
     }
 

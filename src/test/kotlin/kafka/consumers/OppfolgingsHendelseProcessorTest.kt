@@ -5,6 +5,8 @@ import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.kafka.processor.Commit
+import no.nav.kafka.processor.Skip
+import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.randomFnr
 import org.apache.kafka.streams.processor.api.Record
 import org.junit.jupiter.api.Test
@@ -18,6 +20,7 @@ class OppfolgingsHendelseProcessorTest {
     @Test
     fun `skal håndtere oppfølging startet`() {
         val fnr = randomFnr()
+        flywayMigrationInTest()
         val processor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
         val record = Record(
             fnr.value,
@@ -33,6 +36,7 @@ class OppfolgingsHendelseProcessorTest {
     @Test
     fun `skal håndtere oppfølging avsluttet`() {
         val fnr = randomFnr()
+        flywayMigrationInTest()
         val processor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
         val record = Record(
             fnr.value,
@@ -42,7 +46,7 @@ class OppfolgingsHendelseProcessorTest {
 
         val result = processor.process(record)
 
-        result.shouldBeInstanceOf<Commit<Ident, OppfolgingsperiodeStartet>>()
+        result.shouldBeInstanceOf<Skip<Ident, OppfolgingsperiodeStartet>>()
     }
 
     fun oppfolgingStartetMelding(fnr: Fnr, periodeId: UUID = UUID.randomUUID()): String {

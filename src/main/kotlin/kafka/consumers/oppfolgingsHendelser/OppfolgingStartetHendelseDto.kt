@@ -12,9 +12,9 @@ class OppfolgingStartetHendelseDto(
     @Serializable(with = ZonedDateTimeSerializer::class)
     val startetTidspunkt: ZonedDateTime,
     val startetAv: String,
-    val startetAvType: String,
-    val startetBegrunnelse: String,
+    val startetAvType: StartetAvType,
+    val startetBegrunnelse: OppfolgingStartBegrunnelse,
     val arenaKontor: String?,
-    val arbeidsoppfolgingsKontorSattAvVeileder: String?,
+    val foretrukketArbeidsoppfolgingskontor: String?,
     val fnr: String,
 ): OppfolgingsHendelseDto(HendelseType.OPPFOLGING_STARTET)

@@ -22,6 +22,7 @@ import no.nav.utils.ZonedDateTimeSerializer
 import org.apache.kafka.streams.processor.api.Record
 import org.slf4j.LoggerFactory
 import services.HaddeNyerePeriodePåIdent
+import services.HaddePeriodeAllerede
 import services.OppfolgingsperiodeService
 import services.OppfølgingsperiodeLagret
 import java.time.Instant
@@ -71,7 +72,7 @@ class SisteOppfolgingsperiodeProcessor(
                         val result = oppfolgingsperiodeService.handterPeriodeStartet(oppfolgingsperiode)
                         log.info("melding på sisteoppfolgingsperiode (startet) ferdig prosessert")
                         when (result) {
-                            HaddeNyerePeriodePåIdent -> Skip()
+                            HaddeNyerePeriodePåIdent, HaddePeriodeAllerede -> Skip()
                             OppfølgingsperiodeLagret -> Forward(
                                 Record(
                                 ident,
