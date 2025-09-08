@@ -368,16 +368,22 @@ class SisteOppfolgingsperiodeProcessorTest {
         flywayMigrationInTest()
         val (hendelserProcessor, sistePeriodeProcessor) = defaultConsumerSetup(bruker)
         val sluttDato = ZonedDateTime.now().plusDays(1)
-
-        sistePeriodeProcessor.process(oppfolgingsperiodeMessage(bruker)).shouldBeInstanceOf<Forward<*, *>>()
+        val opprinneligStartMelding = oppfolgingsperiodeMessage(bruker)
+        val opprinneligStoppMelding = oppfolgingsperiodeMessage(bruker, sluttDato)
+        sistePeriodeProcessor.process(opprinneligStartMelding).shouldBeInstanceOf<Forward<*, *>>()
         KontorTilordningService.tilordneKontor(OppfolgingsPeriodeStartetLokalKontorTilordning(
             KontorTilordning(bruker.fnr, KontorId("1199"), bruker.oppfolgingsperiodeId),
             ingenSensitivitet
         ))
-        sistePeriodeProcessor.process(oppfolgingsperiodeMessage(bruker, sluttDato)).shouldBeInstanceOf<Commit<*, *>>()
+        sistePeriodeProcessor.process(opprinneligStoppMelding).shouldBeInstanceOf<Commit<*, *>>()
 
-        hendelserProcessor.process(oppfolgingStartetMelding(bruker)).shouldBeInstanceOf<Skip<*, *>>()
-        hendelserProcessor.process(oppfolgingAvsluttetMelding(bruker, sluttDato)).shouldBeInstanceOf<Skip<*, *>>()
+        val startMeldingPåNyttTopic = oppfolgingStartetMelding(bruker)
+        val sluttMeldingPåNyttTopic = oppfolgingAvsluttetMelding(bruker, sluttDato)
+        val resultStartMeldingPåNyttTopic = hendelserProcessor.process(startMeldingPåNyttTopic)
+        val resultStoppMeldingPåNyttTopic = hendelserProcessor.process(sluttMeldingPåNyttTopic)
+
+        resultStartMeldingPåNyttTopic.shouldBeInstanceOf<Skip<*, *>>()
+        resultStoppMeldingPåNyttTopic.shouldBeInstanceOf<Skip<*, *>>()
     }
 
     private fun oppfolgingsperiodeMessage(
