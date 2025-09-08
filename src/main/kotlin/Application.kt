@@ -77,6 +77,7 @@ fun Application.module() {
         this.database = database
         this.meterRegistry = meterRegistry
         this.oppfolgingsperiodeService = OppfolgingsperiodeService()
+        this.oppfolgingsperiodeDao = OppfolgingsperiodeDao
         this.identService = identService
     }
 
