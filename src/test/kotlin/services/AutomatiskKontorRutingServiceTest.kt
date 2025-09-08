@@ -227,6 +227,11 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 ) shouldBe TilordningFeil("Feil ved tilordning av kontor: Vi håndterer ikke skjermede brukere uten geografisk tilknytning")
             }
 
+            it("skal ikke sette AO kontor hvis bruker allerede har fått satt kontor pga. oppfolgingsperiode startet") {
+                gitt(brukerMedTilordnetKontorForOppfolgingStartet).tilordneKontorAutomatisk(
+                    oppfolgingsperiodeStartet(brukerMedTilordnetKontorForOppfolgingStartet)
+                ) shouldBe TilordningSuccessIngenEndring
+            }
         }
 
         it("avsluttet oppfolgingsperiode skal ikke sette ao kontor") {
@@ -681,7 +686,8 @@ data class Bruker(
     val gtForBruker: GtForBrukerResult,
     val skjerming: SkjermingResult,
     val strengtFortroligAdresse: HarStrengtFortroligAdresseResult,
-    val oppfolgingsPeriodeResult: OppfolgingsperiodeOppslagResult = defaultOppfolgingsperiodeOppslagResult(fnr)
+    val oppfolgingsPeriodeResult: OppfolgingsperiodeOppslagResult = defaultOppfolgingsperiodeOppslagResult(fnr),
+    val harTilordnetKontorForOppfolgingsperiodeStartet: Outcome<Boolean> = Outcome.Success(false)
 ) {
     fun fnr(): Ident {
         if (fnr is IdentFunnet) {
@@ -813,6 +819,17 @@ val brukerIkkeUnderOppfolging = Bruker(
     SkjermingFunnet(HarSkjerming(false)),
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)),
     NotUnderOppfolging
+)
+val brukerMedTilordnetKontorForOppfolgingStartet = Bruker(
+    IdentFunnet(Fnr("94345678901")),
+    AlderFunnet(20),
+    ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
+    KontorForGtNrFantDefaultKontor(KontorId("4141"), HarSkjerming(false), HarStrengtFortroligAdresse(false), GeografiskTilknytningBydelNr("1111")),
+    GtNummerForBrukerFunnet(GeografiskTilknytningBydelNr("1111")),
+    SkjermingFunnet(HarSkjerming(false)),
+    HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)),
+    AktivOppfolgingsperiode(Fnr("94345678901"), OppfolgingsperiodeId(UUID.randomUUID()), OffsetDateTime.now()),
+    Outcome.Success(true)
 )
 
 /* Brukere med feil */
