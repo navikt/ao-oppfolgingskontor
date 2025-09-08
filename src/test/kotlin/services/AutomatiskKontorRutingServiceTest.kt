@@ -666,7 +666,7 @@ fun gitt(bruker: Bruker): AutomatiskKontorRutingService {
         { bruker.skjerming },
         { bruker.strengtFortroligAdresse },
         { bruker.oppfolgingsPeriodeResult },
-        { _, _ -> Outcome.Success(false)  }
+        { _, _ -> bruker.harTilordnetKontorForOppfolgingsperiodeStartet }
     )
 }
 
