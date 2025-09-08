@@ -77,7 +77,8 @@ class BigAppTest {
             { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
             { SkjermingFunnet(HarSkjerming(false)) },
             { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
-            oppfolgingsperiodeProvider
+            oppfolgingsperiodeProvider,
+                { _, _ -> false  }
             )
 
             val tilordningProcessor = KontortilordningsProcessor(automatiskKontorRutingService)
@@ -153,7 +154,8 @@ class BigAppTest {
                 { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
                 { SkjermingFunnet(HarSkjerming(false)) },
                 { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
-                oppfolgingsperiodeProvider
+                oppfolgingsperiodeProvider,
+                { _, _ -> false  }
             )
 
             val tilordningProcessor = KontortilordningsProcessor(automatiskKontorRutingService)

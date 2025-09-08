@@ -69,6 +69,7 @@ class AutomatiskKontorRutingService(
     private val harStrengtFortroligAdresseProvider:
     suspend (fnr: Ident) -> HarStrengtFortroligAdresseResult,
     private val isUnderOppfolgingProvider: suspend (fnr: IdentResult) -> OppfolgingsperiodeOppslagResult,
+    private val harTilordnetKontorForOppfolgingsperiodeStartetProvider: suspend (fnr: Ident, oppfolgingsperiodeId: OppfolgingsperiodeId) -> Boolean,
 ) {
     companion object {
         val VIKAFOSSEN = KontorId("2103")
@@ -86,6 +87,9 @@ class AutomatiskKontorRutingService(
                 is AktivOppfolgingsperiode -> underOppfolgingResult
                 NotUnderOppfolging -> return TilordningSuccessIngenEndring
                 is OppfolgingperiodeOppslagFeil -> return TilordningFeil("Feil ved oppslag på oppfolgingsperiode: ${underOppfolgingResult.message}")
+            }
+            if (harTilordnetKontorForOppfolgingsperiodeStartetProvider(fnr, oppfolgingsperiodeId)) {
+                return TilordningSuccessIngenEndring
             }
             val (skjermetResult, adressebeskyttelseResult, aldersResult) = coroutineScope {
                 val skjermetDeferred = async { erSkjermetProvider(fnr) }

@@ -157,7 +157,8 @@ class LeesahProcessorTest {
             profileringProvider = { throw Throwable("Denne skal ikke brukes") },
             erSkjermetProvider = { SkjermingFunnet(HarSkjerming(false)) },
             harStrengtFortroligAdresseProvider = strengtFortroligAdresseProvider,
-            isUnderOppfolgingProvider = { AktivOppfolgingsperiode(Fnr("66666666666"), OppfolgingsperiodeId(UUID.randomUUID()), OffsetDateTime.now()) }
+            isUnderOppfolgingProvider = { AktivOppfolgingsperiode(Fnr("66666666666"), OppfolgingsperiodeId(UUID.randomUUID()), OffsetDateTime.now()) },
+            harTilordnetKontorForOppfolgingsperiodeStartetProvider = { _, _ -> false }
         )
     }
 

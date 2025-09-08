@@ -68,7 +68,8 @@ fun Application.module() {
         { arbeidssokerregisterClient.hentProfilering(it) },
         { skjermingsClient.hentSkjerming(it) },
         { pdlClient.harStrengtFortroligAdresse(it) },
-        {  OppfolgingsperiodeDao.getCurrentOppfolgingsperiode(it) }
+        {  OppfolgingsperiodeDao.getCurrentOppfolgingsperiode(it) },
+        { ident, oppfolgingsperiodeId -> OppfolgingsperiodeDao.harBruktPeriodeTidligere(ident, oppfolgingsperiodeId) },
     )
 
     install(KafkaStreamsPlugin) {

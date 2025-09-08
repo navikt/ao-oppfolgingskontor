@@ -111,6 +111,7 @@ class KontortilordningsProcessorTest {
                 oppfolging.periodeId,
                 oppfolging.startDato.toOffsetDateTime()
             ) },
+            { _, _ -> false }
         )
     }
 
@@ -128,6 +129,7 @@ class KontortilordningsProcessorTest {
                 oppfolging.periodeId,
                 oppfolging.startDato.toOffsetDateTime()
             ) },
+            { _, _ -> false }
         )
     }
 
@@ -140,6 +142,7 @@ class KontortilordningsProcessorTest {
             { throw NotImplementedError("Feilet") },
             { throw NotImplementedError("Feilet") },
             {  throw NotImplementedError("Feilet") },
+            { _, _ -> false }
         )
     }
 

@@ -659,7 +659,8 @@ fun gitt(bruker: Bruker): AutomatiskKontorRutingService {
         { bruker.profilering },
         { bruker.skjerming },
         { bruker.strengtFortroligAdresse },
-        { bruker.oppfolgingsPeriodeResult }
+        { bruker.oppfolgingsPeriodeResult },
+        { _, _ -> false }
     )
 }
 

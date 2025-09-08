@@ -116,7 +116,8 @@ class KafkaApplicationTest {
                 { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
                 { SkjermingFunnet(HarSkjerming(false)) },
                 { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
-                { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, OffsetDateTime.now()) }),
+                { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, OffsetDateTime.now()) },
+                { _, _ -> false }),
             )
 
             val builder = StreamsBuilder()
@@ -195,7 +196,8 @@ class KafkaApplicationTest {
             { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
             { SkjermingFunnet(HarSkjerming(false)) },
             { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
-            { AktivOppfolgingsperiode(fnr, OppfolgingsperiodeId(UUID.randomUUID()), OffsetDateTime.now()) }
+            { AktivOppfolgingsperiode(fnr, OppfolgingsperiodeId(UUID.randomUUID()), OffsetDateTime.now()) },
+            { _, _ -> false }
         )
         val skjermingProcessor = SkjermingProcessor(automatiskKontorRutingService)
 
