@@ -1,5 +1,6 @@
 package services
 
+import io.ktor.server.routing.RoutingResolveResult
 import kafka.consumers.OppfolgingsperiodeDTO
 import no.nav.db.Ident
 import no.nav.domain.OppfolgingsperiodeId
@@ -8,6 +9,7 @@ import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.OppfolgingsperiodeDao
 import org.slf4j.LoggerFactory
+import utils.Outcome
 import java.util.UUID
 
 class OppfolgingsperiodeService {
@@ -42,7 +44,10 @@ class OppfolgingsperiodeService {
         if (OppfolgingsperiodeDao.finnesPeriode(oppfolgingsperiode.periodeId)) {
             return HaddePeriodeAllerede
         }
-        if (OppfolgingsperiodeDao.harBruktPeriodeTidligere(oppfolgingsperiode.fnr, oppfolgingsperiode.periodeId)) {
+        val harBruktPeriodeTidligere = OppfolgingsperiodeDao.harBruktPeriodeTidligere(oppfolgingsperiode.fnr, oppfolgingsperiode.periodeId)
+        if (harBruktPeriodeTidligere is Outcome.Failure) {
+            throw harBruktPeriodeTidligere.exception
+        } else if (harBruktPeriodeTidligere is Outcome.Success && harBruktPeriodeTidligere.data) {
             /* Hvis perioden ikke finnes i oppfolgingsperiode tabellen men har blitt brukt tidligere i historikken
             * leser vi sannsynligvis inn en gammel melding som ikke skal behandles */
             return HarSlettetPeriode

@@ -21,6 +21,7 @@ import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.upsert
 import org.slf4j.LoggerFactory
+import utils.Outcome
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 
@@ -52,13 +53,18 @@ object OppfolgingsperiodeDao {
         }
     }
 
-    fun harBruktPeriodeTidligere(ident: Ident, periodeId: OppfolgingsperiodeId): Boolean {
-        return transaction {
-            val tidligereEntries = KontorhistorikkTable.select(KontorhistorikkTable.ident)
-                .where { KontorhistorikkTable.ident eq ident.value and (KontorhistorikkTable.oppfolgingsperiodeId eq periodeId.value) }
-                .map { it }
-                .size
-            (tidligereEntries) > 0
+    fun harBruktPeriodeTidligere(ident: Ident, periodeId: OppfolgingsperiodeId): Outcome<Boolean> {
+        return try {
+            transaction {
+                val tidligereEntries = KontorhistorikkTable.select(KontorhistorikkTable.ident)
+                    .where { KontorhistorikkTable.ident eq ident.value and (KontorhistorikkTable.oppfolgingsperiodeId eq periodeId.value) }
+                    .map { it }
+                    .size
+                Outcome.Success((tidligereEntries) > 0)
+            }
+        } catch (e: Exception) {
+            log.error("Kunne ikke sjekke om oppfølgingsperiode allerede er brukt for å gjøre kontortilordning")
+            return Outcome.Failure(e)
         }
     }
 

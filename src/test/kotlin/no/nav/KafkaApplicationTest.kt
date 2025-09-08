@@ -56,6 +56,7 @@ import org.apache.kafka.streams.processor.api.ProcessorSupplier
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
 import services.OppfolgingsperiodeService
+import utils.Outcome
 import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 import java.util.Properties
@@ -117,7 +118,7 @@ class KafkaApplicationTest {
                 { SkjermingFunnet(HarSkjerming(false)) },
                 { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
                 { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, OffsetDateTime.now()) },
-                { _, _ -> false }),
+                { _, _ -> Outcome.Success(false)  }),
             )
 
             val builder = StreamsBuilder()
@@ -197,7 +198,7 @@ class KafkaApplicationTest {
             { SkjermingFunnet(HarSkjerming(false)) },
             { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
             { AktivOppfolgingsperiode(fnr, OppfolgingsperiodeId(UUID.randomUUID()), OffsetDateTime.now()) },
-            { _, _ -> false }
+            { _, _ -> Outcome.Success(false)  }
         )
         val skjermingProcessor = SkjermingProcessor(automatiskKontorRutingService)
 

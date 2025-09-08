@@ -70,6 +70,7 @@ import no.nav.services.OppfolgingsperiodeOppslagResult
 import no.nav.services.TilordningFeil
 import no.nav.services.TilordningSuccessIngenEndring
 import no.nav.services.TilordningSuccessKontorEndret
+import utils.Outcome
 import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 import java.util.UUID
@@ -660,7 +661,7 @@ fun gitt(bruker: Bruker): AutomatiskKontorRutingService {
         { bruker.skjerming },
         { bruker.strengtFortroligAdresse },
         { bruker.oppfolgingsPeriodeResult },
-        { _, _ -> false }
+        { _, _ -> Outcome.Success(false)  }
     )
 }
 

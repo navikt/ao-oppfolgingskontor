@@ -48,6 +48,7 @@ import no.nav.kafka.consumers.HåndterPersondataEndretFail
 import no.nav.kafka.consumers.HåndterPersondataEndretResultat
 import no.nav.kafka.consumers.HåndterPersondataEndretSuccess
 import org.slf4j.LoggerFactory
+import utils.Outcome
 
 sealed class TilordningResultat
 sealed class TilordningSuccess : TilordningResultat()
@@ -69,7 +70,7 @@ class AutomatiskKontorRutingService(
     private val harStrengtFortroligAdresseProvider:
     suspend (fnr: Ident) -> HarStrengtFortroligAdresseResult,
     private val isUnderOppfolgingProvider: suspend (fnr: IdentResult) -> OppfolgingsperiodeOppslagResult,
-    private val harTilordnetKontorForOppfolgingsperiodeStartetProvider: suspend (fnr: Ident, oppfolgingsperiodeId: OppfolgingsperiodeId) -> Boolean,
+    private val harTilordnetKontorForOppfolgingsperiodeStartetProvider: suspend (fnr: Ident, oppfolgingsperiodeId: OppfolgingsperiodeId) -> Outcome<Boolean>,
 ) {
     companion object {
         val VIKAFOSSEN = KontorId("2103")
@@ -88,8 +89,10 @@ class AutomatiskKontorRutingService(
                 NotUnderOppfolging -> return TilordningSuccessIngenEndring
                 is OppfolgingperiodeOppslagFeil -> return TilordningFeil("Feil ved oppslag på oppfolgingsperiode: ${underOppfolgingResult.message}")
             }
-            if (harTilordnetKontorForOppfolgingsperiodeStartetProvider(fnr, oppfolgingsperiodeId)) {
-                return TilordningSuccessIngenEndring
+            val harBruktOppfolgingsperiodenTidligere = harTilordnetKontorForOppfolgingsperiodeStartetProvider(fnr, oppfolgingsperiodeId)
+            when (harBruktOppfolgingsperiodenTidligere) {
+                is Outcome.Failure -> return TilordningFeil("Feil ved sjekk av om oppfølgingsperiodeStart har ført til en kontortilordning")
+                is Outcome.Success -> if (harBruktOppfolgingsperiodenTidligere.data) return TilordningSuccessIngenEndring
             }
             val (skjermetResult, adressebeskyttelseResult, aldersResult) = coroutineScope {
                 val skjermetDeferred = async { erSkjermetProvider(fnr) }

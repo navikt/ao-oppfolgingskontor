@@ -42,6 +42,7 @@ import no.nav.utils.flywayMigrationInTest
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
+import utils.Outcome
 import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 import java.util.UUID
@@ -158,7 +159,7 @@ class LeesahProcessorTest {
             erSkjermetProvider = { SkjermingFunnet(HarSkjerming(false)) },
             harStrengtFortroligAdresseProvider = strengtFortroligAdresseProvider,
             isUnderOppfolgingProvider = { AktivOppfolgingsperiode(Fnr("66666666666"), OppfolgingsperiodeId(UUID.randomUUID()), OffsetDateTime.now()) },
-            harTilordnetKontorForOppfolgingsperiodeStartetProvider = { _, _ -> false }
+            harTilordnetKontorForOppfolgingsperiodeStartetProvider = { _, _ -> Outcome.Success(false)  }
         )
     }
 

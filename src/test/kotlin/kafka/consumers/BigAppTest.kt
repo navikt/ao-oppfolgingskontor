@@ -43,6 +43,7 @@ import org.junit.jupiter.api.Test
 import services.IdentService
 import services.OppfolgingsperiodeService
 import topics
+import utils.Outcome
 import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 import java.util.UUID
@@ -78,7 +79,7 @@ class BigAppTest {
             { SkjermingFunnet(HarSkjerming(false)) },
             { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
             oppfolgingsperiodeProvider,
-                { _, _ -> false  }
+                { _, _ -> Outcome.Success(false)  }
             )
 
             val tilordningProcessor = KontortilordningsProcessor(automatiskKontorRutingService)
@@ -155,7 +156,7 @@ class BigAppTest {
                 { SkjermingFunnet(HarSkjerming(false)) },
                 { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
                 oppfolgingsperiodeProvider,
-                { _, _ -> false  }
+                { _, _ -> Outcome.Success(false)  }
             )
 
             val tilordningProcessor = KontortilordningsProcessor(automatiskKontorRutingService)
