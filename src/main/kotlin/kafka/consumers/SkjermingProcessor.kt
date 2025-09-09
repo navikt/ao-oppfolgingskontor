@@ -3,7 +3,6 @@ package no.nav.kafka.consumers
 import kotlinx.coroutines.runBlocking
 import no.nav.db.Fnr
 import no.nav.domain.HarSkjerming
-import no.nav.domain.events.KontorEndretEvent
 import no.nav.domain.externalEvents.SkjermetStatusEndret
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.RecordProcessingResult
@@ -51,5 +50,5 @@ class SkjermingProcessor(
 }
 
 data class EndringISkjermingResult(
-    val endringer: List<KontorEndretEvent>
+    val endringer: KontorEndringer
 )

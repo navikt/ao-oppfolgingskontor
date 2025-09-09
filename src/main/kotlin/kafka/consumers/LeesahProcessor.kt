@@ -4,7 +4,8 @@ import kafka.out.toRecord
 import kotlinx.coroutines.runBlocking
 import no.nav.db.Ident
 import no.nav.domain.events.AOKontorEndret
-import no.nav.domain.events.KontorEndretEvent
+import no.nav.domain.events.ArenaKontorEndret
+import no.nav.domain.events.GTKontorEndret
 import no.nav.domain.externalEvents.AdressebeskyttelseEndret
 import no.nav.domain.externalEvents.BostedsadresseEndret
 import no.nav.domain.externalEvents.IrrelevantHendelse
@@ -56,13 +57,13 @@ class LeesahProcessor(
                 is AdressebeskyttelseEndret -> automatiskKontorRutingService.handterEndringForAdressebeskyttelse(hendelse)
                 is IrrelevantHendelse -> {
                     log.info("Hendelse ${hendelse.opplysningstype} er irrelevant for kontor-ruting")
-                    HåndterPersondataEndretSuccess(emptyList())
+                    HåndterPersondataEndretSuccess(KontorEndringer())
                 }
             }
         }
         return when (result) {
             is HåndterPersondataEndretSuccess -> {
-                val aoKontorEndring = result.endringer.firstOrNull { it is AOKontorEndret } as AOKontorEndret?
+                val aoKontorEndring = result.endringer.aoKontorEndret
                 return when {
                     aoKontorEndring != null -> {
                         if(isProduction) {
@@ -101,5 +102,11 @@ fun Pair<Ident, Personhendelse>.toHendelse(): PersondataEndret {
 }
 
 sealed class HåndterPersondataEndretResultat()
-data class HåndterPersondataEndretSuccess(val endringer: List<KontorEndretEvent>): HåndterPersondataEndretResultat()
+data class HåndterPersondataEndretSuccess(val endringer: KontorEndringer): HåndterPersondataEndretResultat()
 class HåndterPersondataEndretFail(val message: String, val error: Throwable? = null): HåndterPersondataEndretResultat()
+
+data class KontorEndringer(
+    val arenaKontorEndret: ArenaKontorEndret? = null,
+    val gtKontorEndret: GTKontorEndret? = null,
+    val aoKontorEndret: AOKontorEndret? = null,
+)
