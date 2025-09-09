@@ -1,5 +1,7 @@
 package kafka.consumers
 
+import no.nav.db.Fnr
+import no.nav.domain.OppfolgingsperiodeId
 import org.apache.kafka.streams.processor.api.Record
 import java.time.ZonedDateTime
 
@@ -49,3 +51,10 @@ object TopicUtils {
     }
 
 }
+
+data class Bruker(
+    val fnr: Fnr,
+    val aktorId: String,
+    val oppfolgingsperiodeId: OppfolgingsperiodeId,
+    val periodeStart: ZonedDateTime
+)
