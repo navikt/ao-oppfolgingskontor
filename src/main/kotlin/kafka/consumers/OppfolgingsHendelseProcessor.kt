@@ -5,13 +5,16 @@ import kafka.consumers.oppfolgingsHendelser.OppfolgingsAvsluttetHendelseDto
 import kafka.consumers.oppfolgingsHendelser.OppfolgingsHendelseDto
 import kafka.consumers.oppfolgingsHendelser.oppfolgingsHendelseJson
 import no.nav.db.Ident
+import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.kafka.processor.Commit
+import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
+import no.nav.services.AutomatiskKontorRutingService
 import org.apache.kafka.streams.processor.api.Record
 import org.slf4j.LoggerFactory
 import services.GammelPeriodeAvsluttet
@@ -24,10 +27,11 @@ import services.IngenPeriodeAvsluttet
 import services.InnkommendePeriodeAvsluttet
 import services.OppfolgingsperiodeService
 import services.OppfølgingsperiodeLagret
+import java.time.Instant
 import java.util.UUID
 
 class OppfolgingsHendelseProcessor(
-    val oppfolgingsPeriodeService: OppfolgingsperiodeService
+    val oppfolgingsPeriodeService: OppfolgingsperiodeService,
 ) {
     val log = LoggerFactory.getLogger(javaClass)
 
@@ -42,8 +46,18 @@ class OppfolgingsHendelseProcessor(
             return when (oppfolgingsperiodeEvent) {
                 is OppfolgingStartetHendelseDto -> {
                     hendelseType = oppfolgingsperiodeEvent.hendelseType.name
-                    oppfolgingsPeriodeService.handterPeriodeStartet(oppfolgingsperiodeEvent.toDomainObject())
-                        .toRecordResult()
+                    val oppfolgingStartetInternalEvent = oppfolgingsperiodeEvent.toDomainObject()
+                    val periodeResult = oppfolgingsPeriodeService.handterPeriodeStartet(oppfolgingStartetInternalEvent)
+                    return when (periodeResult) {
+                        HaddeNyerePeriodePåIdent, HaddePeriodeAllerede, HarSlettetPeriode -> Skip()
+                        OppfølgingsperiodeLagret -> Forward(
+                            Record(
+                                Ident.of(record.key()),
+                                oppfolgingStartetInternalEvent,
+                            Instant.now().toEpochMilli()
+                            ), null
+                        )
+                    }
                 }
                 is OppfolgingsAvsluttetHendelseDto -> {
                     hendelseType = oppfolgingsperiodeEvent.hendelseType.name
@@ -63,21 +77,14 @@ class OppfolgingsHendelseProcessor(
 fun OppfolgingStartetHendelseDto.toDomainObject() = OppfolgingsperiodeStartet(
     Ident.of(this.fnr),
     this.startetTidspunkt,
-    OppfolgingsperiodeId(UUID.fromString(this.oppfolgingsPeriodeId))
+    OppfolgingsperiodeId(UUID.fromString(this.oppfolgingsPeriodeId)),
+    this.arenaKontor?.let { KontorId(it) }
 )
 fun OppfolgingsAvsluttetHendelseDto.toDomainObject() = OppfolgingsperiodeAvsluttet(
     Ident.of(this.fnr),
     this.startetTidspunkt,
     OppfolgingsperiodeId(UUID.fromString(this.oppfolgingsPeriodeId))
 )
-fun HandterPeriodeStartetResultat.toRecordResult(): RecordProcessingResult<Ident, OppfolgingsperiodeStartet> {
-    return when (this) {
-        HaddeNyerePeriodePåIdent -> Skip()
-        HaddePeriodeAllerede -> Skip()
-        OppfølgingsperiodeLagret -> Commit()
-        HarSlettetPeriode -> Skip()
-    }
-}
 fun HandterPeriodeAvsluttetResultat.toRecordResult(): RecordProcessingResult<Ident, OppfolgingsperiodeStartet> {
     return when (this) {
         GammelPeriodeAvsluttet -> Commit()

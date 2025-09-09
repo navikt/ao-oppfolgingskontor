@@ -109,6 +109,6 @@ data class OppfolgingsperiodeDTO(
 
 fun OppfolgingsperiodeDTO.toOppfolgingsperiodeEndret(fnr: Ident): OppfolgingsperiodeEndret {
     val id = OppfolgingsperiodeId(UUID.fromString(this.uuid))
-    if (this.sluttDato == null) return OppfolgingsperiodeStartet(fnr, this.startDato, id)
+    if (this.sluttDato == null) return OppfolgingsperiodeStartet(fnr, this.startDato, id, null)
     return OppfolgingsperiodeAvsluttet(fnr, this.startDato, id)
 }

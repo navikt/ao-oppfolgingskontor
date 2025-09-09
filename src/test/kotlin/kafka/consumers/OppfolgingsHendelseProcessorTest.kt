@@ -6,6 +6,7 @@ import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.kafka.processor.Commit
+import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
 import no.nav.utils.flywayMigrationInTest
@@ -32,7 +33,7 @@ class OppfolgingsHendelseProcessorTest {
 
         val result = processor.process(record)
 
-        result.shouldBeInstanceOf<Commit<Ident, OppfolgingsperiodeStartet>>()
+        result.shouldBeInstanceOf<Forward<Ident, OppfolgingsperiodeStartet>>()
     }
 
     @Test
