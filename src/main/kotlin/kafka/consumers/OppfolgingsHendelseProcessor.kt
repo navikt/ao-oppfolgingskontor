@@ -5,8 +5,11 @@ import kafka.consumers.oppfolgingsHendelser.OppfolgingsAvsluttetHendelseDto
 import kafka.consumers.oppfolgingsHendelser.OppfolgingsHendelseDto
 import kafka.consumers.oppfolgingsHendelser.oppfolgingsHendelseJson
 import no.nav.db.Ident
+import no.nav.db.entity.ArenaKontorEntity
 import no.nav.domain.KontorId
+import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
+import no.nav.domain.events.ArenaKontorVedOppfolgingsStart
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.kafka.processor.Commit
@@ -14,7 +17,9 @@ import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
+import no.nav.services.KontorTilordningService
 import org.apache.kafka.streams.processor.api.Record
+import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import services.GammelPeriodeAvsluttet
 import services.HaddeNyerePeriodePåIdent
@@ -47,7 +52,21 @@ class OppfolgingsHendelseProcessor(
                     val oppfolgingStartetInternalEvent = oppfolgingsperiodeEvent.toDomainObject()
                     val periodeResult = oppfolgingsPeriodeService.handterPeriodeStartet(oppfolgingStartetInternalEvent)
                     return when (periodeResult) {
-                        HaddeNyerePeriodePåIdent, HaddePeriodeAllerede, HarSlettetPeriode -> Skip()
+                        HaddePeriodeAllerede -> {
+                            val innkommendeArenaKontor = oppfolgingStartetInternalEvent.startetArenaKontor
+                            val kontor = sisteArenaKontor(oppfolgingStartetInternalEvent)
+                            if (innkommendeArenaKontor != null && kontor?.id != oppfolgingStartetInternalEvent.startetArenaKontor?.id) {
+                                KontorTilordningService.tilordneKontor(ArenaKontorVedOppfolgingsStart(
+                                    KontorTilordning(
+                                        fnr = oppfolgingStartetInternalEvent.fnr,
+                                        kontorId = innkommendeArenaKontor,
+                                        oppfolgingsperiodeId = oppfolgingStartetInternalEvent.periodeId
+                                    )
+                                ))
+                            }
+                            Commit()
+                        }
+                        HaddeNyerePeriodePåIdent, HarSlettetPeriode -> Skip()
                         OppfølgingsperiodeLagret -> Forward(
                             Record(
                                 Ident.of(record.key()),
@@ -69,6 +88,13 @@ class OppfolgingsHendelseProcessor(
                 log.error(feilmelding, error)
                 Retry<Ident, OppfolgingsperiodeStartet>(feilmelding)
             }
+    }
+
+    fun sisteArenaKontor(oppfolgingsperiode: OppfolgingsperiodeStartet): KontorId? {
+        return transaction {
+            ArenaKontorEntity.findById(oppfolgingsperiode.fnr.value)
+                ?.let { KontorId(it.kontorId) }
+        }
     }
 }
 

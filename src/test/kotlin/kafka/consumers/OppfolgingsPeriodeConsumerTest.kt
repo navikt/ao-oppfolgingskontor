@@ -9,6 +9,7 @@ import io.ktor.server.testing.testApplication
 import java.time.ZonedDateTime
 import java.util.UUID
 import no.nav.db.Fnr
+import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.OppfolgingsperiodeEntity
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
@@ -56,6 +57,11 @@ class SisteOppfolgingsperiodeProcessorTest {
                 entity.shouldBeNull()
             }
         }
+        fun skalHaArenaKontor(kontor: KontorId) {
+            transaction {
+                ArenaKontorEntity[this@Bruker.fnr.value].kontorId shouldBe kontor.id
+            }
+        }
     }
 
     fun gittBrukerUnderOppfolging(bruker: Bruker) {
@@ -90,8 +96,9 @@ class SisteOppfolgingsperiodeProcessorTest {
                 val resultOppfolgingshendelse = oppfolgingshendelseProcessor.process(oppfolgingshendelseRecord)
 
                 resultSisteOppfolgingsperiode.shouldBeInstanceOf<Forward<*, *>>()
-                resultOppfolgingshendelse.shouldBeInstanceOf<Skip<*, *>>()
+                resultOppfolgingshendelse.shouldBeInstanceOf<Commit<*, *>>()
                 bruker.skalVæreUnderOppfølging()
+                bruker.skalHaArenaKontor(defaultArenaKontor)
             }
         }
 
@@ -105,7 +112,7 @@ class SisteOppfolgingsperiodeProcessorTest {
             val sisteResult = sisteOppfolgingsperiodeProcessor.process(oppfolgingsperiodeMessage(bruker))
             val hendelseStartResult = oppfolgingshendelseProcessor.process(oppfolgingStartetMelding(bruker))
             sisteResult.shouldBeInstanceOf<Forward<*, *>>()
-            hendelseStartResult.shouldBeInstanceOf<Skip<*, *>>()
+            hendelseStartResult.shouldBeInstanceOf<Commit<*, *>>()
 
             val sluttDato = ZonedDateTime.now()
             val sistOppResult = sisteOppfolgingsperiodeProcessor.process(oppfolgingsperiodeMessage(bruker, sluttDato))
@@ -391,6 +398,7 @@ class SisteOppfolgingsperiodeProcessorTest {
         sluttDato: ZonedDateTime? = null,
     ) = TopicUtils.oppfolgingsperiodeMessage(bruker, sluttDato)
 
+    val defaultArenaKontor = KontorId("4141")
     fun oppfolgingStartetMelding(bruker: Bruker): Record<String, String>
         = TopicUtils.oppfolgingStartetMelding(bruker)
 
