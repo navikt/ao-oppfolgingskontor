@@ -5,7 +5,6 @@ import no.nav.domain.KontorHistorikkInnslag
 import no.nav.domain.KontorTilordning
 import no.nav.domain.KontorType
 import no.nav.domain.System
-import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.http.logger
 import java.time.ZonedDateTime
 
@@ -16,7 +15,7 @@ class ArenaKontorVedOppfolgingsStart(tilordning: KontorTilordning): ArenaKontorE
             kontorId = tilordning.kontorId,
             ident = tilordning.fnr,
             registrant = registrant,
-            kontorendringstype = KontorEndringsType.EndretIArena,
+            kontorendringstype = KontorEndringsType.ArenaKontorVedOppfolgingsStart,
             kontorType = KontorType.ARENA,
             oppfolgingId = tilordning.oppfolgingsperiodeId
         )
