@@ -22,7 +22,6 @@ import no.nav.domain.events.OppfolgingsPeriodeStartetSensitivKontorTilordning
 import no.nav.domain.events.OppfolgingsperiodeStartetNoeTilordning
 import no.nav.domain.externalEvents.AdressebeskyttelseEndret
 import no.nav.domain.externalEvents.BostedsadresseEndret
-import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.domain.externalEvents.SkjermetStatusEndret
 import no.nav.http.client.AlderFunnet
@@ -280,12 +279,6 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                     )
                 )
             }
-        }
-
-        it("avsluttet oppfolgingsperiode skal ikke sette ao kontor") {
-            gitt(ungBrukerMedGodeMuligheter).tilordneKontorAutomatisk(
-                OppfolgingsperiodeAvsluttet(ungBrukerMedGodeMuligheter.fnr(), ZonedDateTime.now(), OppfolgingsperiodeId(UUID.randomUUID()))
-            ) shouldBe TilordningSuccessIngenEndring
         }
     }
 

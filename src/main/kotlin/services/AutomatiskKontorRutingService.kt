@@ -83,10 +83,8 @@ class AutomatiskKontorRutingService(
     val log = LoggerFactory.getLogger(this::class.java)
 
     suspend fun tilordneKontorAutomatisk(
-        oppfolgingsperiodeEndret: OppfolgingsperiodeEndret
+        oppfolgingsperiodeEndret: OppfolgingsperiodeStartet
     ): TilordningResultat {
-        if (oppfolgingsperiodeEndret is OppfolgingsperiodeAvsluttet) return TilordningSuccessIngenEndring
-        val event: OppfolgingsperiodeStartet = oppfolgingsperiodeEndret as OppfolgingsperiodeStartet
         try {
             val underOppfolgingResult = isUnderOppfolgingProvider(IdentFunnet(oppfolgingsperiodeEndret.fnr))
             val (fnr, oppfolgingsperiodeId) = when (underOppfolgingResult) {
@@ -128,7 +126,7 @@ class AutomatiskKontorRutingService(
                 is KontorForGtFinnesIkke -> hentTilordningUtenGT(fnr, alder, profilering, oppfolgingsperiodeId, gtKontorResultat)
                 is KontorForGtFantLandEllerKontor -> hentTilordning(fnr, gtKontorResultat, alder, profilering, oppfolgingsperiodeId)
                 is KontorForGtFeil -> return TilordningFeil("Feil ved henting av gt-kontor: ${gtKontorResultat.melding}")
-            }.let { KontorEndringer(aoKontorEndret = it, arenaKontorEndret = arenaKontorEndring(event, oppfolgingsperiodeId)) }
+            }.let { KontorEndringer(aoKontorEndret = it, arenaKontorEndret = arenaKontorEndring(oppfolgingsperiodeEndret, oppfolgingsperiodeId)) }
             tilordneKontor( kontorTilordning)
             return TilordningSuccessKontorEndret(kontorTilordning)
 
