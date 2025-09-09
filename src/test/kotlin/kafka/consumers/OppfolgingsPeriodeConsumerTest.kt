@@ -117,6 +117,7 @@ class SisteOppfolgingsperiodeProcessorTest {
             sistOppResult.shouldBeInstanceOf<Commit<*, *>>()
             hendelseResult.shouldBeInstanceOf<Skip<*, *>>()
             bruker.skalIkkeVæreUnderOppfølging()
+            bruker.skalHaArenaKontor(defaultArenaKontor)
         }
     }
 

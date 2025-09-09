@@ -1,5 +1,6 @@
 package kafka.consumers
 
+import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.ktor.server.config.ApplicationConfig
@@ -14,6 +15,7 @@ import no.nav.db.AktorId
 import no.nav.db.Fnr
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.ArenaKontorEntity
+import no.nav.db.entity.OppfolgingsperiodeEntity
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
@@ -211,9 +213,11 @@ class BigAppTest {
             ).value())
 
 
-            transaction {
-                ArbeidsOppfolgingKontorEntity.findById(fnr.value)
-            } shouldNotBe null
+            withClue("Skal finnes AO  kontor på bruker med fnr:${fnr.value}") {
+                transaction {
+                    ArbeidsOppfolgingKontorEntity.findById(fnr.value)
+                } shouldNotBe null
+            }
         }
     }
 
@@ -293,9 +297,22 @@ class BigAppTest {
             ).value())
 
 
-            transaction {
-                ArbeidsOppfolgingKontorEntity.findById(fnr.value)
-            } shouldNotBe null
+            withClue("Skal finnes Oppfolgingsperiode på bruker med fnr:${fnr.value}") {
+                transaction {
+                    OppfolgingsperiodeEntity.findById(fnr.value)
+                } shouldNotBe null
+            }
+            withClue("Skal finnes Arenakontor på bruker med fnr:${fnr.value}") {
+                transaction {
+                    ArenaKontorEntity.findById(fnr.value)
+                } shouldNotBe null
+            }
+            withClue("Skal finnes AO kontor på bruker med fnr:${fnr.value}") {
+                transaction {
+                    ArbeidsOppfolgingKontorEntity.findById(fnr.value)
+                } shouldNotBe null
+            }
+
         }
     }
 }

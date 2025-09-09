@@ -100,6 +100,13 @@ fun configureTopology(
     fun <KIn, VIn, KOut, VOut> wrapInRetryProcessor(topic: Topic<KIn, VIn>, streamType: StreamType, businessLogic: (Record<KIn, VIn>) -> RecordProcessingResult<KOut, VOut>)
         = wrapInRetryProcessor(topic.keySerde, topic.valSerde, topic.name, streamType, businessLogic)
 
+    val kontortilordningProcessorSupplier = wrapInRetryProcessor(
+        keyInSerde = KontortilordningsProcessor.identSerde,
+        valueInSerde = KontortilordningsProcessor.oppfolgingsperiodeStartetSerde,
+        topic = KontortilordningsProcessor.processorName,
+        streamType = StreamType.INTERNAL,
+        businessLogic = kontortilordningsProcessor::process,
+    )
 
     val oppfolgingHendelseProcessorSupplier = wrapInRetryProcessor(
         topic = topics.inn.oppfolgingsHendelser,
@@ -108,6 +115,7 @@ fun configureTopology(
     )
     builder.stream(topics.inn.oppfolgingsHendelser.name, topics.inn.oppfolgingsHendelser.consumedWith())
         .process(oppfolgingHendelseProcessorSupplier, Named.`as`(processorName(topics.inn.oppfolgingsHendelser.name)))
+        .process(kontortilordningProcessorSupplier, Named.`as`(KontortilordningsProcessor.processorName))
 
     /*
     * Siste oppfolgingsperiode
@@ -117,16 +125,9 @@ fun configureTopology(
         streamType = StreamType.SOURCE,
         businessLogic = sisteOppfolgingsperiodeProcessor::process,
     )
-    val kontortilordningProcessorSupplier = wrapInRetryProcessor(
-        keyInSerde = KontortilordningsProcessor.identSerde,
-        valueInSerde = KontortilordningsProcessor.oppfolgingsperiodeStartetSerde,
-        topic = KontortilordningsProcessor.processorName,
-        streamType = StreamType.INTERNAL,
-        businessLogic = kontortilordningsProcessor::process,
-    )
     builder.stream(topics.inn.sisteOppfolgingsperiodeV1.name, topics.inn.sisteOppfolgingsperiodeV1.consumedWith())
         .process(oppfolgingsperiodeProcessorSupplier, Named.`as`(processorName(topics.inn.sisteOppfolgingsperiodeV1.name)))
-        .process(kontortilordningProcessorSupplier, Named.`as`(KontortilordningsProcessor.processorName))
+        .process(kontortilordningProcessorSupplier, Named.`as`(KontortilordningsProcessor.processorName + "-fra-siste-oppfolgingsperiodeV1"))
 
     /*
     * Endring på oppfølgingsbruker (Arena)
