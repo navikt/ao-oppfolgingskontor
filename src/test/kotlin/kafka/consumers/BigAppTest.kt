@@ -4,6 +4,8 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.ktor.server.config.ApplicationConfig
 import io.ktor.server.testing.testApplication
+import kafka.consumers.TopicUtils.oppfolgingStartetMelding
+import kafka.consumers.TopicUtils.oppfolgingsperiodeMessage
 import kafka.retry.TestLockProvider
 import kafka.retry.library.internal.setupKafkaMock
 import kotlinx.coroutines.CoroutineScope
@@ -117,12 +119,11 @@ class BigAppTest {
                 listOf(topics.inn.sisteOppfolgingsperiodeV1.name), null
             )
 
+            val bruker = Bruker(fnr, aktorId.value, oppfolgingsperiodeId, ZonedDateTime.now())
+
             inputTopics.first().pipeInput(aktorId.value, oppfolgingsperiodeMessage(
-                aktorId = aktorId,
-                oppfolgingsperiodeId = oppfolgingsperiodeId,
-                startDato = ZonedDateTime.now(),
-                sluttDato = null
-            ))
+                bruker = bruker
+            ).value())
 
             val aoKontor = transaction {
                 ArbeidsOppfolgingKontorEntity.findById(fnr.value)
@@ -193,29 +194,115 @@ class BigAppTest {
             )
 
             val (driver, inputTopics, _) = setupKafkaMock(topology,
-                listOf(topics.inn.sisteOppfolgingsperiodeV1.name), null
+                listOf(topics.inn.sisteOppfolgingsperiodeV1.name, topics.inn.oppfolgingsHendelser.name), null
             )
 
+            val bruker = Bruker(fnr, aktorId.value, oppfolgingsperiodeId, ZonedDateTime.now())
+
             inputTopics.first().pipeInput(aktorId.value, oppfolgingsperiodeMessage(
-                aktorId = aktorId,
-                oppfolgingsperiodeId = oppfolgingsperiodeId,
-                startDato = ZonedDateTime.now(),
-                sluttDato = null
-            ))
+                sluttDato = null,
+                bruker = bruker,
+            ).value())
+
+            inputTopics.last().pipeInput(aktorId.value, oppfolgingStartetMelding(
+                bruker = bruker,
+            ).value())
+
 
             transaction {
                 ArbeidsOppfolgingKontorEntity.findById(fnr.value)
             } shouldNotBe null
         }
     }
-
-    fun oppfolgingsperiodeMessage(
-        oppfolgingsperiodeId: OppfolgingsperiodeId,
-        startDato: ZonedDateTime,
-        sluttDato: ZonedDateTime?,
-        aktorId: AktorId,
-    ): String {
-        return """{"uuid":"${oppfolgingsperiodeId.value}", "startDato":"$startDato", "sluttDato":${sluttDato?.let { "\"$it\"" } ?: "null"}, "aktorId":"${aktorId.value}"}"""
-    }
-
 }
+
+
+// aa in name to make this test run first because something is wrong when this test runs first
+@Test
+fun `app should forward messages to KontorTilordning in prod`() = testApplication {
+    val fnr = Fnr("01121678901")
+    val aktorId = AktorId("4444447890244")
+    val kontor = KontorId("2232")
+    val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
+    environment {
+        config = ApplicationConfig("application.prod.yaml")
+    }
+    application {
+        flywayMigrationInTest()
+        val topics = this.environment.topics()
+        val sistePeriodeProcessor = sisteOppfolgingsPeriodeProcessor(fnr)
+
+        val oppfolgingsperiodeProvider = { _: IdentResult -> AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, OffsetDateTime.now()) }
+        val automatiskKontorRutingService =  AutomatiskKontorRutingService(
+            KontorTilordningService::tilordneKontor,
+            { _, a, b-> KontorForGtNrFantDefaultKontor(kontor, b, a, GeografiskTilknytningBydelNr("3131")) },
+            { AlderFunnet(40) },
+            { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
+            { SkjermingFunnet(HarSkjerming(false)) },
+            { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
+            oppfolgingsperiodeProvider,
+            { _, _ -> Outcome.Success(false)  }
+        )
+
+        val tilordningProcessor = KontortilordningsProcessor(automatiskKontorRutingService)
+
+        val leesahProcessor = LeesahProcessor(
+            automatiskKontorRutingService,
+            { IdentFunnet(fnr) },
+            false,
+        )
+
+        val skjermingProcessor = SkjermingProcessor(
+            automatiskKontorRutingService
+        )
+
+        val endringPaaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
+            ArenaKontorEntity::sisteLagreKontorArenaKontor,
+            oppfolgingsperiodeProvider
+        )
+
+        val identService = IdentService { IdenterFunnet(emptyList(), "") }
+        val identendringsProcessor = IdentChangeProcessor(identService)
+
+        val topology = configureTopology(
+            this.environment,
+            TestLockProvider,
+            CoroutineScope(Dispatchers.IO),
+            sistePeriodeProcessor,
+            tilordningProcessor,
+            leesahProcessor,
+            skjermingProcessor,
+            endringPaaOppfolgingsBrukerProcessor,
+            identendringsProcessor,
+            OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
+        )
+
+        val (driver, inputTopics, _) = setupKafkaMock(topology,
+            listOf(topics.inn.sisteOppfolgingsperiodeV1.name, topics.inn.oppfolgingsHendelser.name), null
+        )
+
+        val bruker = Bruker(fnr, aktorId.value, oppfolgingsperiodeId, ZonedDateTime.now())
+
+        inputTopics.last().pipeInput(aktorId.value, oppfolgingStartetMelding(
+            bruker = bruker,
+        ).value())
+
+        inputTopics.first().pipeInput(aktorId.value, oppfolgingsperiodeMessage(
+            sluttDato = null,
+            bruker = bruker,
+        ).value())
+
+
+        transaction {
+            ArbeidsOppfolgingKontorEntity.findById(fnr.value)
+        } shouldNotBe null
+    }
+}
+}
+
+data class Bruker(
+    val fnr: Fnr,
+    val aktorId: String,
+    val oppfolgingsperiodeId: OppfolgingsperiodeId,
+    val periodeStart: ZonedDateTime
+)

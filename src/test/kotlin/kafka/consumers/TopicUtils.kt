@@ -1,6 +1,5 @@
 package kafka.consumers
 
-import kafka.consumers.SisteOppfolgingsperiodeProcessorTest.Bruker
 import org.apache.kafka.streams.processor.api.Record
 import java.time.ZonedDateTime
 
