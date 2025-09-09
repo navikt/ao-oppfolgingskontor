@@ -1,6 +1,5 @@
 package services
 
-import io.ktor.server.routing.RoutingResolveResult
 import kafka.consumers.OppfolgingsperiodeDTO
 import no.nav.db.Ident
 import no.nav.domain.OppfolgingsperiodeId

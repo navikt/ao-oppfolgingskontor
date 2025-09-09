@@ -14,14 +14,12 @@ import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
-import no.nav.services.AutomatiskKontorRutingService
 import org.apache.kafka.streams.processor.api.Record
 import org.slf4j.LoggerFactory
 import services.GammelPeriodeAvsluttet
 import services.HaddeNyerePeriodePåIdent
 import services.HaddePeriodeAllerede
 import services.HandterPeriodeAvsluttetResultat
-import services.HandterPeriodeStartetResultat
 import services.HarSlettetPeriode
 import services.IngenPeriodeAvsluttet
 import services.InnkommendePeriodeAvsluttet

@@ -58,7 +58,6 @@ class KafkaStreamsPluginConfig(
 const val arbeidsoppfolgingkontorSinkName = "endring-pa-arbeidsoppfolgingskontor"
 
 val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createApplicationPlugin("KafkaStreams", ::KafkaStreamsPluginConfig) {
-    val topics = environment.topics()
     val database = requireNotNull(this.pluginConfig.database) {
         "DataSource must be configured for KafkaStreamsPlugin"
     }
