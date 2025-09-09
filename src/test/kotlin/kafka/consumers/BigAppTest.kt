@@ -208,7 +208,7 @@ class BigAppTest {
                 bruker = bruker,
             ).value())
 
-            inputTopics.last().pipeInput(aktorId.value, oppfolgingStartetMelding(
+            inputTopics.last().pipeInput(fnr.value, oppfolgingStartetMelding(
                 bruker = bruker,
             ).value())
 
@@ -287,7 +287,7 @@ class BigAppTest {
 
             val bruker = Bruker(fnr, aktorId.value, oppfolgingsperiodeId, ZonedDateTime.now())
 
-            inputTopics.last().pipeInput(aktorId.value, oppfolgingStartetMelding(
+            inputTopics.last().pipeInput(fnr.value, oppfolgingStartetMelding(
                 bruker = bruker,
             ).value())
 
