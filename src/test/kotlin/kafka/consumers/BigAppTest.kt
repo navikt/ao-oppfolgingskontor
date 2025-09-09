@@ -45,6 +45,7 @@ import no.nav.utils.randomTopicName
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.streams.test.TestRecord
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import services.IdentService
@@ -61,6 +62,11 @@ class BigAppTest {
         OppfolgingsperiodeService(),
         false
     ) { IdentFunnet(fnr) }
+
+    @BeforeEach
+    fun reset() {
+
+    }
 
     @Disabled
     @Test
@@ -121,7 +127,7 @@ class BigAppTest {
             )
 
             val (driver, inputTopics, _) = setupKafkaMock(topology,
-                listOf(topics.inn.sisteOppfolgingsperiodeV1.name), null
+                listOf(randomTopicName()), null
             )
 
             val bruker = Bruker(fnr, aktorId.value, oppfolgingsperiodeId, ZonedDateTime.now())
@@ -199,8 +205,8 @@ class BigAppTest {
 
             val (driver, inputTopics, _) = setupKafkaMock(topology,
                 listOf(
-                    topics.inn.sisteOppfolgingsperiodeV1.name,
-                    topics.inn.oppfolgingsHendelser.name), null
+                    randomTopicName(),
+                    randomTopicName()), null
             )
 
             val bruker = Bruker(fnr, aktorId.value, oppfolgingsperiodeId, ZonedDateTime.now())
