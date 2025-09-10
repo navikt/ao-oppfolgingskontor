@@ -1,5 +1,6 @@
 package kafka.consumers
 
+import db.table.KafkaOffsetTable
 import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -41,9 +42,7 @@ import no.nav.services.KontorTilordningService
 import no.nav.services.OppfolgingsperiodeOppslagResult
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.randomFnr
-import no.nav.utils.randomTopicName
-import org.apache.kafka.clients.consumer.ConsumerRecord
-import org.apache.kafka.streams.test.TestRecord
+import org.jetbrains.exposed.sql.deleteAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Disabled
@@ -65,7 +64,10 @@ class BigAppTest {
 
     @BeforeEach
     fun reset() {
-
+        flywayMigrationInTest()
+        transaction {
+            KafkaOffsetTable.deleteAll()
+        }
     }
 
     @Disabled
@@ -79,7 +81,6 @@ class BigAppTest {
             config = ApplicationConfig("application.yaml")
         }
         application {
-            flywayMigrationInTest()
             val topics = environment.topics()
             val sistePeriodeProcessor = sisteOppfolgingsPeriodeProcessor(fnr)
 
@@ -127,7 +128,7 @@ class BigAppTest {
             )
 
             val (driver, inputTopics, _) = setupKafkaMock(topology,
-                listOf(randomTopicName()), null
+                listOf(topics.inn.sisteOppfolgingsperiodeV1.name), null
             )
 
             val bruker = Bruker(fnr, aktorId.value, oppfolgingsperiodeId, ZonedDateTime.now())
@@ -154,7 +155,6 @@ class BigAppTest {
             config = ApplicationConfig("application.prod.yaml")
         }
         application {
-            flywayMigrationInTest()
             val topics = this.environment.topics()
             val sistePeriodeProcessor = sisteOppfolgingsPeriodeProcessor(fnr)
 
@@ -205,8 +205,8 @@ class BigAppTest {
 
             val (driver, inputTopics, _) = setupKafkaMock(topology,
                 listOf(
-                    randomTopicName(),
-                    randomTopicName()), null
+                    topics.inn.sisteOppfolgingsperiodeV1.name,
+                    topics.inn.oppfolgingsHendelser.name), null
             )
 
             val bruker = Bruker(fnr, aktorId.value, oppfolgingsperiodeId, ZonedDateTime.now())
@@ -240,7 +240,6 @@ class BigAppTest {
             config = ApplicationConfig("application.prod.yaml")
         }
         application {
-            flywayMigrationInTest()
             val topics = this.environment.topics()
             val sistePeriodeProcessor = sisteOppfolgingsPeriodeProcessor(fnr)
 
@@ -290,7 +289,7 @@ class BigAppTest {
             )
 
             val (driver, inputTopics, _) = setupKafkaMock(topology,
-                listOf(randomTopicName(), randomTopicName()), null
+                listOf(topics.inn.sisteOppfolgingsperiodeV1.name, topics.inn.oppfolgingsHendelser.name), null
             )
 
             val bruker = Bruker(fnr, aktorId.value, oppfolgingsperiodeId, ZonedDateTime.now())
