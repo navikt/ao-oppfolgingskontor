@@ -34,7 +34,6 @@ import org.jetbrains.exposed.sql.Database
 import org.slf4j.LoggerFactory
 import services.IdentService
 import services.OppfolgingsperiodeService
-import topics
 import java.util.concurrent.atomic.AtomicInteger
 
 val KafkaStreamsStarting: EventDefinition<Application> = EventDefinition()
