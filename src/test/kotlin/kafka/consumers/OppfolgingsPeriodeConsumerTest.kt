@@ -48,10 +48,6 @@ class OppfolgingsperiodeProcessorTest {
         }
     }
 
-    fun gittBrukerUnderOppfolging(bruker: Bruker) {
-        gittBrukerUnderOppfolging(bruker.fnr, bruker.oppfolgingsperiodeId)
-    }
-
     fun testBruker() = Bruker(
         fnr = randomFnr(),
         aktorId = "1234567890123",
@@ -214,7 +210,7 @@ class OppfolgingsperiodeProcessorTest {
             oppfolgingsHendelseProcessor.process(startPeriodeRecord)
             val processingResult = oppfolgingsHendelseProcessor.process(sluttNyerePeriodeRecord)
 
-            processingResult.shouldBeInstanceOf<Forward<*, *>>()
+            processingResult.shouldBeInstanceOf<Commit<*, *>>()
             bruker.skalIkkeVæreUnderOppfølging()
         }
     }

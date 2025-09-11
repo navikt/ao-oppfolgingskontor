@@ -4,6 +4,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import no.nav.db.Fnr
 import no.nav.db.Ident
+import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Forward
@@ -15,21 +16,24 @@ import org.apache.kafka.streams.processor.api.Record
 import org.junit.jupiter.api.Test
 import services.OppfolgingsperiodeService
 import java.time.Instant
+import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.UUID
 
 class OppfolgingsHendelseProcessorTest {
+    fun testBruker() = Bruker(
+        fnr = randomFnr(),
+        aktorId = "1234567890123",
+        periodeStart = ZonedDateTime.now(ZoneId.of("Europe/Oslo")).minusDays(2),
+        oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
+    )
 
     @Test
     fun `skal håndtere oppfølging startet`() {
-        val fnr = randomFnr()
+        val bruker = testBruker()
         flywayMigrationInTest()
         val processor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
-        val record = Record(
-            fnr.value,
-            oppfolgingStartetMelding(fnr),
-            Instant.now().toEpochMilli(),
-        )
+        val record = TopicUtils.oppfolgingStartetMelding(bruker)
 
         val result = processor.process(record)
 
@@ -38,14 +42,10 @@ class OppfolgingsHendelseProcessorTest {
 
     @Test
     fun `skal håndtere oppfølging avsluttet`() {
-        val fnr = randomFnr()
+        val bruker = testBruker()
         flywayMigrationInTest()
         val processor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
-        val record = Record(
-            fnr.value,
-            oppfolgingAvsluttetMelding(fnr),
-            Instant.now().toEpochMilli(),
-        )
+        val record = TopicUtils.oppfolgingAvsluttetMelding(bruker, ZonedDateTime.now())
 
         val result = processor.process(record)
 
@@ -62,37 +62,6 @@ class OppfolgingsHendelseProcessorTest {
         result.reason shouldBe """
             Kunne ikke behandle oppfolgingshendelse - <Ukjent hendelsetype>: Class discriminator was missing and no default serializers were registered in the polymorphic scope of 'OppfolgingsHendelseDto'.
             JSON input: {"lol":"lal"}
-        """.trimIndent()
-    }
-
-    fun oppfolgingStartetMelding(fnr: Fnr, periodeId: UUID = UUID.randomUUID()): String {
-        return """
-            {
-                "hendelseType": "OPPFOLGING_STARTET",
-                "oppfolgingsPeriodeId": "$periodeId",
-                "startetTidspunkt": "${ZonedDateTime.now()}",
-                "startetAv": "G151415",
-                "startetAvType": "VEILEDER",
-                "startetBegrunnelse": "ARBEIDSSOKER_REGISTRERING",
-                "foretrukketArbeidsoppfolgingskontor": null,
-                "arenaKontor": "4141",
-                "fnr": "${fnr.value}"
-            }
-        """.trimIndent()
-    }
-
-    fun oppfolgingAvsluttetMelding(fnr: Fnr, periodeId: UUID = UUID.randomUUID()): String {
-        return """
-            {
-                "fnr": "${fnr.value}",
-                "hendelseType": "OPPFOLGING_AVSLUTTET",
-                "oppfolgingsPeriodeId": "$periodeId",
-                "startetTidspunkt": "${ZonedDateTime.now()}",
-                "avsluttetTidspunkt": "${ZonedDateTime.now()}",
-                "avsluttetAv": "G151415",
-                "avsluttetAvType": "VEILEDER",
-                "avregistreringsType": "UtmeldtEtter28Dager"
-            }
         """.trimIndent()
     }
 }

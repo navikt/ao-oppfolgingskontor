@@ -12,7 +12,7 @@ object TopicUtils {
             {
                 "hendelseType": "OPPFOLGING_STARTET",
                 "oppfolgingsPeriodeId": "${bruker.oppfolgingsperiodeId.value}",
-                "startetTidspunkt": "${ZonedDateTime.now()}",
+                "startetTidspunkt": "${bruker.periodeStart}",
                 "startetAv": "G151415",
                 "startetAvType": "VEILEDER",
                 "startetBegrunnelse": "ARBEIDSSOKER_REGISTRERING",
