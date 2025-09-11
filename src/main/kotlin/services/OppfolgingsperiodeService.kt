@@ -1,24 +1,22 @@
 package services
 
 import no.nav.db.Ident
-import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.OppfolgingsperiodeDao
 import org.slf4j.LoggerFactory
 import utils.Outcome
-import java.util.UUID
 
 class OppfolgingsperiodeService {
     val log = LoggerFactory.getLogger(OppfolgingsperiodeService::class.java)
 
     fun handterPeriodeAvsluttet(oppfolgingsperiode: OppfolgingsperiodeAvsluttet): HandterPeriodeAvsluttetResultat {
-        val currentOppfolgingsperiode = getCurrentPeriode(oppfolgingsperiode.fnr)
+        val nåværendeOppfolgingsperiode = getNåværendePeriode(oppfolgingsperiode.fnr)
         val nåværendePeriodeBleAvsluttet = when {
-            currentOppfolgingsperiode != null -> {
-                if (currentOppfolgingsperiode.startDato.isBefore(oppfolgingsperiode.startDato.toOffsetDateTime())) {
-                    OppfolgingsperiodeDao.deleteOppfolgingsperiode(currentOppfolgingsperiode.periodeId) > 0
+            nåværendeOppfolgingsperiode != null -> {
+                if (nåværendeOppfolgingsperiode.startDato.isBefore(oppfolgingsperiode.startDato.toOffsetDateTime())) {
+                    OppfolgingsperiodeDao.deleteOppfolgingsperiode(nåværendeOppfolgingsperiode.periodeId) > 0
                 } else {
                     false
                 }
@@ -27,7 +25,7 @@ class OppfolgingsperiodeService {
         }
         val innkommendePeriodeBleAvsluttet = OppfolgingsperiodeDao.deleteOppfolgingsperiode(oppfolgingsperiode.periodeId) > 0
         return when {
-            nåværendePeriodeBleAvsluttet && innkommendePeriodeBleAvsluttet -> throw Exception("Dette skal aldri skje! Skal ikke være flere perioder på samme person samtidig ${oppfolgingsperiode.periodeId}, ${currentOppfolgingsperiode?.periodeId}")
+            nåværendePeriodeBleAvsluttet && innkommendePeriodeBleAvsluttet -> throw Exception("Dette skal aldri skje! Skal ikke være flere perioder på samme person samtidig ${oppfolgingsperiode.periodeId}, ${nåværendeOppfolgingsperiode?.periodeId}")
             nåværendePeriodeBleAvsluttet -> GammelPeriodeAvsluttet
             innkommendePeriodeBleAvsluttet -> InnkommendePeriodeAvsluttet
             else -> IngenPeriodeAvsluttet
@@ -57,7 +55,7 @@ class OppfolgingsperiodeService {
         return OppfølgingsperiodeLagret
     }
 
-    private fun getCurrentPeriode(ident: Ident): AktivOppfolgingsperiode? {
+    private fun getNåværendePeriode(ident: Ident): AktivOppfolgingsperiode? {
         val currentOppfolgingsperiodeResult = OppfolgingsperiodeDao.getCurrentOppfolgingsperiode(ident)
         return when (currentOppfolgingsperiodeResult) {
             is AktivOppfolgingsperiode -> currentOppfolgingsperiodeResult
