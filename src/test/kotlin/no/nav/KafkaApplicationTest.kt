@@ -94,67 +94,6 @@ class KafkaApplicationTest {
     }
 
     @Test
-    fun `skal tilordne kontor til brukere som har fått startet oppfølging`() = testApplication {
-        val fnr = Fnr("22325678901")
-        val kontor = KontorId("2228")
-        val topic = randomTopicName()
-
-        application {
-            flywayMigrationInTest()
-            val aktorId = AktorId("1234567890123")
-            val periodeStart = ZonedDateTime.now().minusDays(2)
-            val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
-
-            val oppfolgingshendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
-            val tilordningProcessor = KontortilordningsProcessor(AutomatiskKontorRutingService(
-                KontorTilordningService::tilordneKontor,
-                { _, a, b-> KontorForGtNrFantDefaultKontor(kontor, b, a, GeografiskTilknytningBydelNr("3131")) },
-                { AlderFunnet(40) },
-                { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
-                { SkjermingFunnet(HarSkjerming(false)) },
-                { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
-                { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, OffsetDateTime.now()) },
-                { _, _ -> Outcome.Success(false)  }),
-            )
-
-            val builder = StreamsBuilder()
-            val oppfolgingshendelseProcessorSupplier = wrapInRetryProcessor(
-                topic = topic,
-                keyInSerde = Serdes.String(),
-                valueInSerde = Serdes.String(),
-                processRecord = oppfolgingshendelseProcessor::process,
-            )
-            val tilordningProcessorSupplier = wrapInRetryProcessor(
-                topic = "Kontortilordning",
-                keyInSerde = KontortilordningsProcessor.identSerde,
-                valueInSerde = KontortilordningsProcessor.oppfolgingsperiodeStartetSerde,
-                processRecord = tilordningProcessor::process,
-                streamType = StreamType.INTERNAL
-            )
-            builder.stream(topic, Consumed.with(Serdes.String(), Serdes.String()))
-                .process(oppfolgingshendelseProcessorSupplier, Named.`as`(processorName(topic)))
-                .process(tilordningProcessorSupplier)
-            val topology = builder.build()
-
-            val kafkaMockTopic = setupKafkaMock(topology, topic)
-            kafkaMockTopic.pipeInput(
-                aktorId.value,
-                oppfolgingsperiodeMessage(oppfolgingsperiodeId, periodeStart, null, aktorId.value)
-            )
-            transaction {
-                ArbeidsOppfolgingKontorEntity.Companion.findById(fnr.value)?.kontorId shouldBe "4154"
-                KontorHistorikkEntity.Companion
-                    .find { KontorhistorikkTable.ident eq fnr.value }
-                    .count().let {
-                        withClue("Antall historikkinnslag skal være 1") {
-                            it shouldBe 1
-                        }
-                    }
-            }
-        }
-    }
-
-    @Test
     fun `skal kun lagre nyere data i arena-kontor tabell og historikk tabellen`() = testApplication {
         val fnr = "52345678901"
         val topic = randomTopicName()

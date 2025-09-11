@@ -2,6 +2,7 @@ package kafka.consumers
 
 import db.table.KafkaOffsetTable
 import io.kotest.assertions.withClue
+import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.ktor.server.config.ApplicationConfig
 import io.ktor.server.testing.testApplication
@@ -13,7 +14,9 @@ import kotlinx.coroutines.Dispatchers
 import no.nav.db.AktorId
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.ArenaKontorEntity
+import no.nav.db.entity.KontorHistorikkEntity
 import no.nav.db.entity.OppfolgingsperiodeEntity
+import no.nav.db.table.KontorhistorikkTable
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
@@ -39,6 +42,7 @@ import no.nav.services.KontorTilordningService
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.randomFnr
 import org.jetbrains.exposed.sql.deleteAll
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -117,22 +121,27 @@ class BigAppTest {
                 bruker = bruker,
             ).value())
 
-            withClue("Skal finnes Oppfolgingsperiode på bruker med fnr:${fnr.value}") {
+            withClue("Skal finnes Oppfolgingsperiode på bruker") {
                 transaction {
                     OppfolgingsperiodeEntity.findById(fnr.value)
                 } shouldNotBe null
             }
-            withClue("Skal finnes Arenakontor på bruker med fnr:${fnr.value}") {
+            withClue("Skal finnes Arenakontor på bruker") {
                 transaction {
                     ArenaKontorEntity.findById(fnr.value)
                 } shouldNotBe null
             }
-            withClue("Skal finnes AO kontor på bruker med fnr:${fnr.value}") {
+            withClue("Skal finnes AO kontor på bruker") {
                 transaction {
                     ArbeidsOppfolgingKontorEntity.findById(fnr.value)
                 } shouldNotBe null
             }
-
+            val antallHistorikkRader = transaction {
+                KontorHistorikkEntity.find { KontorhistorikkTable.ident eq fnr.value }.count()
+            }
+            withClue("Skal finnes 2 historikkinnslag på bruker men var $antallHistorikkRader") {
+                antallHistorikkRader shouldBe 2
+            }
         }
     }
 }
