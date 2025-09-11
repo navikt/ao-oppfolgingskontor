@@ -7,18 +7,6 @@ import java.time.ZonedDateTime
 
 object TopicUtils {
 
-    fun oppfolgingsperiodeMessage(
-        bruker: Bruker,
-        sluttDato: ZonedDateTime? = null,
-    ): Record<String, String> {
-        return Record(bruker.aktorId, """{
-            "uuid": "${bruker.oppfolgingsperiodeId.value}",
-            "startDato": "${bruker.periodeStart}",
-            "sluttDato": ${sluttDato?.let { "\"$it\"" } ?: "null"},
-            "aktorId": "${bruker.aktorId}"
-        }""", System.currentTimeMillis())
-    }
-
     fun oppfolgingStartetMelding(bruker: Bruker): Record<String, String> {
         return Record(bruker.fnr.value, """
             {

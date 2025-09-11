@@ -15,9 +15,6 @@ import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
-import no.nav.http.client.IdentFunnet
-import no.nav.http.client.IdentIkkeFunnet
-import no.nav.http.client.IdentOppslagFeil
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.Retry
@@ -79,25 +76,25 @@ class OppfolgingsperiodeProcessorTest {
 
             val result = oppfolgingshendelseProcessor.process(record)
 
-            result.shouldBeInstanceOf<Commit<*, *>>()
+            result.shouldBeInstanceOf<Forward<*, *>>()
             bruker.skalVæreUnderOppfølging()
             bruker.skalHaArenaKontor(defaultArenaKontor)
         }
     }
 
     @Test
-    fun `skal slette periode når avslutningsmelding (sluttDato != null) kommer `() = testApplication {
+    fun `skal slette periode når avslutningsmelding kommer `() = testApplication {
         val bruker = testBruker()
         application {
             flywayMigrationInTest()
             val oppfolgingshendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
             val hendelseStartResult = oppfolgingshendelseProcessor.process(oppfolgingStartetMelding(bruker))
-            hendelseStartResult.shouldBeInstanceOf<Commit<*, *>>()
+            hendelseStartResult.shouldBeInstanceOf<Forward<*, *>>()
 
             val sluttDato = ZonedDateTime.now()
             val hendelseResult = oppfolgingshendelseProcessor.process(oppfolgingAvsluttetMelding(bruker, sluttDato))
 
-            hendelseResult.shouldBeInstanceOf<Skip<*, *>>()
+            hendelseResult.shouldBeInstanceOf<Commit<*, *>>()
             bruker.skalIkkeVæreUnderOppfølging()
             bruker.skalHaArenaKontor(defaultArenaKontor)
         }
@@ -113,7 +110,7 @@ class OppfolgingsperiodeProcessorTest {
                 flywayMigrationInTest()
                 val consumer = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
 
-                consumer.process(oppfolgingsperiodeMessage(bruker, sluttDato = periodeSlutt))
+                consumer.process(oppfolgingAvsluttetMelding(bruker, sluttDato = periodeSlutt))
 
                 bruker.skalIkkeVæreUnderOppfølging()
             }
@@ -128,8 +125,8 @@ class OppfolgingsperiodeProcessorTest {
             flywayMigrationInTest()
             val consumer = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
 
-            val startPeriodeRecord = oppfolgingsperiodeMessage(bruker, sluttDato = null)
-            val avsluttetNyerePeriodeRecord = oppfolgingsperiodeMessage(
+            val startPeriodeRecord = oppfolgingStartetMelding(bruker)
+            val avsluttetNyerePeriodeRecord = oppfolgingAvsluttetMelding(
                 bruker.copy(periodeStart = bruker.periodeStart.plusSeconds(1)), sluttDato = periodeSlutt
             )
 
@@ -148,12 +145,12 @@ class OppfolgingsperiodeProcessorTest {
         application {
             flywayMigrationInTest()
             val consumer = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
-            val startPeriodeRecord = oppfolgingsperiodeMessage(bruker, sluttDato = null)
-            val startGammelPeriodeRecord = oppfolgingsperiodeMessage(
+            val startPeriodeRecord = oppfolgingStartetMelding(bruker)
+            val startGammelPeriodeRecord = oppfolgingStartetMelding(
                 bruker.copy(
                     oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
                     periodeStart = bruker.periodeStart.minusSeconds(1),
-                ), sluttDato = null
+                )
             )
 
             consumer.process(startPeriodeRecord)
@@ -173,12 +170,12 @@ class OppfolgingsperiodeProcessorTest {
         application {
             flywayMigrationInTest()
             val consumer = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
-            val startPeriodeRecord = oppfolgingsperiodeMessage(bruker, sluttDato = null)
-            val startNyerePeriodeRecord = oppfolgingsperiodeMessage(
+            val startPeriodeRecord = oppfolgingStartetMelding(bruker)
+            val startNyerePeriodeRecord = oppfolgingStartetMelding(
                 bruker.copy(
                     oppfolgingsperiodeId = OppfolgingsperiodeId(nyerePeriodeId),
                     periodeStart = nyereStartDato,
-                ), sluttDato = null
+                )
             )
 
             consumer.process(startPeriodeRecord)
@@ -215,8 +212,8 @@ class OppfolgingsperiodeProcessorTest {
         application {
             flywayMigrationInTest()
             val consumer = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
-            val startPeriodeRecord = oppfolgingsperiodeMessage(bruker, sluttDato = null)
-            val sluttNyerePeriodeRecord = oppfolgingsperiodeMessage(
+            val startPeriodeRecord = oppfolgingStartetMelding(bruker)
+            val sluttNyerePeriodeRecord = oppfolgingAvsluttetMelding(
                 bruker.copy(
                     oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
                     periodeStart = nyereStartDato,
@@ -226,7 +223,7 @@ class OppfolgingsperiodeProcessorTest {
             consumer.process(startPeriodeRecord)
             val processingResult = consumer.process(sluttNyerePeriodeRecord)
 
-            processingResult.shouldBeInstanceOf<Commit<*, *>>()
+            processingResult.shouldBeInstanceOf<Forward<*, *>>()
             bruker.skalIkkeVæreUnderOppfølging()
         }
     }
@@ -240,9 +237,8 @@ class OppfolgingsperiodeProcessorTest {
 
         result.shouldBeInstanceOf<Retry<*, *>>()
         result.reason shouldBe """
-            Klarte ikke behandle oppfolgingsperiode melding: Encountered an unknown key 'lol' at offset 3 at path: ${'$'}
-            Use 'ignoreUnknownKeys = true' in 'Json {}' builder or '@JsonIgnoreUnknownKeys' annotation to ignore unknown keys.
-            JSON input: { "lol": "lal" }
+            Kunne ikke behandle oppfolgingshendelse - <Ukjent hendelsetype>: Class discriminator was missing and no default serializers were registered in the polymorphic scope of 'OppfolgingsHendelseDto'.
+            JSON input: {"lol":"lal"}
         """.trimIndent()
     }
 
@@ -252,8 +248,8 @@ class OppfolgingsperiodeProcessorTest {
         flywayMigrationInTest()
         val oppfolgingshendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
         val sluttDato = ZonedDateTime.now().plusDays(1)
-        val startmelding = oppfolgingsperiodeMessage(bruker)
-        val stoppmelding = oppfolgingsperiodeMessage(bruker, sluttDato)
+        val startmelding = oppfolgingStartetMelding(bruker)
+        val stoppmelding = oppfolgingAvsluttetMelding(bruker, sluttDato)
         oppfolgingshendelseProcessor.process(startmelding).shouldBeInstanceOf<Forward<*, *>>()
         KontorTilordningService.tilordneKontor(
             OppfolgingsPeriodeStartetLokalKontorTilordning(
@@ -269,10 +265,14 @@ class OppfolgingsperiodeProcessorTest {
         resultStoppMeldingPåNytt.shouldBeInstanceOf<Skip<*, *>>()
     }
 
-    private fun oppfolgingsperiodeMessage(
+    private fun oppfolgingStartetMessage(
         bruker: Bruker,
-        sluttDato: ZonedDateTime? = null,
-    ) = TopicUtils.oppfolgingsperiodeMessage(bruker, sluttDato)
+    ) = TopicUtils.oppfolgingStartetMelding(bruker)
+
+    private fun oppfolgingAvsluttetMessage(
+        bruker: Bruker,
+        sluttDato: ZonedDateTime,
+    ) = TopicUtils.oppfolgingAvsluttetMelding(bruker, sluttDato)
 
     val defaultArenaKontor = KontorId("4141")
     fun oppfolgingStartetMelding(bruker: Bruker): Record<String, String> = TopicUtils.oppfolgingStartetMelding(bruker)
