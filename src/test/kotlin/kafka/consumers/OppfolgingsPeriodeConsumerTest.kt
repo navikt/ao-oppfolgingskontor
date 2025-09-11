@@ -40,7 +40,6 @@ class SisteOppfolgingsperiodeProcessorTest {
 
     fun Bruker.skalVæreUnderOppfølging(periodeId: OppfolgingsperiodeId? = null) {
         transaction {
-
             val entity = OppfolgingsperiodeEntity.findById(this@skalVæreUnderOppfølging.fnr.value)
             entity.shouldNotBeNull()
             entity.oppfolgingsperiodeId shouldBe (periodeId ?: this@skalVæreUnderOppfølging.oppfolgingsperiodeId.value)
@@ -49,7 +48,6 @@ class SisteOppfolgingsperiodeProcessorTest {
 
     fun Bruker.skalIkkeVæreUnderOppfølging() {
         transaction {
-
             val entity = OppfolgingsperiodeEntity.findById(this@skalIkkeVæreUnderOppfølging.fnr.value)
             entity.shouldBeNull()
         }
@@ -72,26 +70,17 @@ class SisteOppfolgingsperiodeProcessorTest {
         oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
     )
 
-    fun defaultConsumerSetup(bruker: Bruker): Pair<OppfolgingsHendelseProcessor, SisteOppfolgingsperiodeProcessor> {
-        return OppfolgingsHendelseProcessor(OppfolgingsperiodeService()) to SisteOppfolgingsperiodeProcessor(
-            OppfolgingsperiodeService()
-        ) { IdentFunnet(bruker.fnr) }
-    }
-
     @Test
     fun `skal lagre ny oppfolgingsperiode når oppfolgingsperiode-startet (sluttDato er null)`() = testApplication {
         val bruker = testBruker()
         application {
             flywayMigrationInTest()
-            val (oppfolgingshendelseProcessor, sisteOppfolgingsperiodeProcessor) = defaultConsumerSetup(bruker)
+            val oppfolgingshendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
 
             val oppfolgingshendelseRecord = oppfolgingStartetMelding(bruker)
-            val oppfolgingsperiodeRecord = oppfolgingsperiodeMessage(bruker)
 
-            val resultSisteOppfolgingsperiode = sisteOppfolgingsperiodeProcessor.process(oppfolgingsperiodeRecord)
             val resultOppfolgingshendelse = oppfolgingshendelseProcessor.process(oppfolgingshendelseRecord)
 
-            resultSisteOppfolgingsperiode.shouldBeInstanceOf<Forward<*, *>>()
             resultOppfolgingshendelse.shouldBeInstanceOf<Commit<*, *>>()
             bruker.skalVæreUnderOppfølging()
             bruker.skalHaArenaKontor(defaultArenaKontor)
