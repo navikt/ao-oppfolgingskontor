@@ -11,7 +11,6 @@ import kafka.retry.library.internal.setupKafkaMock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import no.nav.db.AktorId
-import no.nav.db.Fnr
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.OppfolgingsperiodeEntity
@@ -52,11 +51,6 @@ import java.time.ZonedDateTime
 import java.util.UUID
 
 class BigAppTest {
-
-    fun sisteOppfolgingsPeriodeProcessor(fnr: Fnr) = SisteOppfolgingsperiodeProcessor(
-        OppfolgingsperiodeService(),
-        false
-    ) { IdentFunnet(fnr) }
 
     @BeforeEach
     fun reset() {

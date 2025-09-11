@@ -1,6 +1,5 @@
 package services
 
-import kafka.consumers.OppfolgingsperiodeDTO
 import no.nav.db.Ident
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
@@ -56,11 +55,6 @@ class OppfolgingsperiodeService {
             oppfolgingsperiode.startDato,
             oppfolgingsperiode.periodeId)
         return OppfølgingsperiodeLagret
-    }
-
-    fun behandleOppfolgingsperiodeAvsluttetIdentNotFound(oppfolgingsperiodeDto: OppfolgingsperiodeDTO) {
-        val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.fromString(oppfolgingsperiodeDto.uuid))
-        OppfolgingsperiodeDao.deleteOppfolgingsperiode(oppfolgingsperiodeId)
     }
 
     private fun getCurrentPeriode(ident: Ident): AktivOppfolgingsperiode? {
