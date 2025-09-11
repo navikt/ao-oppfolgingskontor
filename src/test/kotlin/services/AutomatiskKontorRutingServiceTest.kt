@@ -8,6 +8,7 @@ import no.nav.db.Ident
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.INGEN_GT_KONTOR_FALLBACK
+import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
@@ -79,17 +80,20 @@ import java.util.UUID
 class AutomatiskKontorRutingServiceTest: DescribeSpec({
 
     describe("Endring i oppfolgingsperiode") {
-        val aktorId = "223456789"
-
         describe("start oppfolgingsperiode ") {
             it("skal sette AO kontor til lokalkontor for unge brukere (under 30)") {
+                val kontorTilordning = KontorTilordning(ungBrukerMedGodeMuligheter.fnr(),  ungBrukerMedGodeMuligheter.gtKontor(), ungBrukerMedGodeMuligheter.oppfolgingsperiodeId())
                 gitt(ungBrukerMedGodeMuligheter).tilordneKontorAutomatisk(
                     oppfolgingsperiodeStartet(ungBrukerMedGodeMuligheter)
                 ) shouldBe TilordningSuccessKontorEndret(
                     KontorEndringer(
                         aoKontorEndret = OppfolgingsPeriodeStartetLokalKontorTilordning(
-                            KontorTilordning(ungBrukerMedGodeMuligheter.fnr(),  ungBrukerMedGodeMuligheter.gtKontor(), ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()),
+                            kontorTilordning,
                             ingenSensitivitet
+                        ),
+                        gtKontorEndret = GTKontorEndret.oppfolgingStartetSync(
+                            kontorTilordning,
+                            ungBrukerMedGodeMuligheter.gtForBruker as GtForBrukerFunnet
                         )
                     )
                 )
@@ -100,10 +104,14 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                     oppfolgingsperiodeStartet(eldreBrukerMedGodeMuligheter)
                 ) shouldBe TilordningSuccessKontorEndret(
                     KontorEndringer(
-                    aoKontorEndret = OppfolgingsperiodeStartetNoeTilordning(
-                        eldreBrukerMedGodeMuligheter.fnr(),
-                        eldreBrukerMedGodeMuligheter.oppfolgingsperiodeId()
-                    )
+                        aoKontorEndret = OppfolgingsperiodeStartetNoeTilordning(
+                            eldreBrukerMedGodeMuligheter.fnr(),
+                            eldreBrukerMedGodeMuligheter.oppfolgingsperiodeId()
+                        ),
+                        gtKontorEndret = GTKontorEndret.oppfolgingStartetSync(
+                            KontorTilordning(eldreBrukerMedGodeMuligheter.fnr(), eldreBrukerMedGodeMuligheter.gtKontor(), eldreBrukerMedGodeMuligheter.oppfolgingsperiodeId()),
+                            ungBrukerMedGodeMuligheter.gtForBruker as GtForBrukerFunnet
+                        )
                     )
                 )
             }

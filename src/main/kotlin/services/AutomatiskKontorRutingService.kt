@@ -119,11 +119,21 @@ class AutomatiskKontorRutingService(
                 is ProfileringIkkeFunnet -> profileringResultat
                 is ProfileringOppslagFeil -> return TilordningFeil("Kunne ikke hente profilering: ${profileringResultat.error.message}")
             }
-            val kontorTilordning = when (val gtKontorResultat = gtKontorProvider(fnr, harStrengtFortroligAdresse, erSkjermet)) {
+            val gtKontorResultat = when (val gtKontorResultat = gtKontorProvider(fnr, harStrengtFortroligAdresse, erSkjermet)) {
+                is KontorForGtFinnesIkke -> gtKontorResultat
+                is KontorForGtFantLandEllerKontor -> gtKontorResultat
+                is KontorForGtFeil -> return TilordningFeil("Feil ved henting av gt-kontor: ${gtKontorResultat.melding}")
+            }
+            val aoKontor = when (gtKontorResultat) {
                 is KontorForGtFinnesIkke -> hentTilordningUtenGT(fnr, alder, profilering, oppfolgingsperiodeId, gtKontorResultat)
                 is KontorForGtFantLandEllerKontor -> hentTilordning(fnr, gtKontorResultat, alder, profilering, oppfolgingsperiodeId)
-                is KontorForGtFeil -> return TilordningFeil("Feil ved henting av gt-kontor: ${gtKontorResultat.melding}")
-            }.let { KontorEndringer(aoKontorEndret = it, arenaKontorEndret = arenaKontorEndring(oppfolgingsperiodeEndret, oppfolgingsperiodeId)) }
+            }
+            val kontorTilordning = KontorEndringer(
+                aoKontorEndret = aoKontor,
+                arenaKontorEndret = arenaKontorEndring(oppfolgingsperiodeEndret, oppfolgingsperiodeId),
+                gtKontorEndret = GTKontorEndret.oppfolgingStartetSync(fnr, oppfolgingsperiodeId, gtKontorResultat, gtKontorResultat.gt())
+            )
+
             tilordneKontor( kontorTilordning)
             return TilordningSuccessKontorEndret(kontorTilordning)
 

@@ -1,17 +1,20 @@
 package no.nav.domain.events
 
+import no.nav.db.Ident
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorHistorikkInnslag
 import no.nav.domain.KontorTilordning
 import no.nav.domain.KontorType
+import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.Registrant
 import no.nav.domain.System
 import no.nav.http.client.GtForBrukerIkkeFunnet
 import no.nav.http.client.GtForBrukerSuccess
 import no.nav.http.client.GtLandForBrukerFunnet
 import no.nav.http.client.GtNummerForBrukerFunnet
+import no.nav.services.KontorForGtSuccess
 import org.slf4j.LoggerFactory
 import java.time.OffsetDateTime
 
@@ -79,6 +82,15 @@ data class GTKontorEndret(val kontorTilordning: KontorTilordning, val kontorEndr
             tilordning,
                 KontorEndringsType.EndretBostedsadresse,
                 gt)
+
+        fun oppfolgingStartetSync(fnr: Ident, oppfolgingsperiodeId: OppfolgingsperiodeId, kontorForGtSuccess: KontorForGtSuccess, gt: GtForBrukerSuccess) = GTKontorEndret(
+            KontorTilordning(fnr, gtKontorFrom(kontorForGtSuccess), oppfolgingsperiodeId),
+            KontorEndringsType.GtKontorVedOppfolgingsStart,
+            gt)
+
+        private fun gtKontorFrom(kontorForGtSuccess: KontorForGtSuccess):  {
+
+        }
     }
 }
 sealed class AOKontorEndret(tilordning: KontorTilordning, val registrant: Registrant) : KontorEndretEvent(tilordning)

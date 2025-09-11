@@ -30,7 +30,6 @@ class EndringPaOppfolgingsBrukerProcessor(
     val oppfolgingsperiodeProvider: suspend (IdentResult) -> OppfolgingsperiodeOppslagResult,
 ) {
     val log = LoggerFactory.getLogger(EndringPaOppfolgingsBrukerProcessor::class.java)
-
     val json = Json { ignoreUnknownKeys = true }
 
     fun handleResult(result: EndringPaaOppfolgingsBrukerResult): RecordProcessingResult<String, String> {
@@ -39,32 +38,26 @@ class EndringPaOppfolgingsBrukerProcessor(
                 log.info("Endring på oppfolgingsbruker var fra før cutoff, hopper over")
                 Skip()
             }
-
             is Feil -> {
                 log.error("Klarte ikke behandle melding om endring på oppfølgingsbruker: ${result.retry.reason}")
                 result.retry
             }
-
             is HaddeNyereEndring -> {
                 log.warn("Sist endret kontor er eldre enn endring på oppfølgingsbruker")
                 Skip()
             }
-
             is MeldingManglerEnhet -> {
                 log.warn("Mottok endring på oppfølgingsbruker uten gyldig kontorId")
                 Skip()
             }
-
             is IkkeUnderOppfolging -> {
                 log.info("Bruker er ikke under oppfølging, hopper over melding om endring på oppfølgingsbruker")
                 Skip()
             }
-
             is IngenEndring -> {
                 log.info("Kontor har ikke blitt endret, hopper over melding om endring på oppfølgingsbruker")
                 Skip()
             }
-
             is SkalLagre -> {
                 KontorTilordningService.tilordneKontor(
                     EndringPaaOppfolgingsBrukerFraArena(
@@ -124,7 +117,6 @@ class EndringPaOppfolgingsBrukerProcessor(
                             false -> IngenEndring()
                         }
                     }
-
                     NotUnderOppfolging -> IkkeUnderOppfolging()
                     is OppfolgingperiodeOppslagFeil -> Feil(
                         Retry("Klarte ikke behandle melding om endring på oppfølgingsbruker, feil ved oppslag på oppfølgingsperiode: ${oppfolgingperiode.message}"),
