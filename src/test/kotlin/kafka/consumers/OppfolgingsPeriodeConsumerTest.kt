@@ -8,7 +8,6 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.server.testing.testApplication
 import java.time.ZonedDateTime
 import java.util.UUID
-import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.OppfolgingsperiodeEntity
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
@@ -203,7 +202,7 @@ class OppfolgingsperiodeProcessorTest {
 
         application {
             flywayMigrationInTest()
-            val consumer = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
+            val oppfolgingsHendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
             val startPeriodeRecord = oppfolgingStartetMelding(bruker)
             val sluttNyerePeriodeRecord = oppfolgingAvsluttetMelding(
                 bruker.copy(
@@ -212,8 +211,8 @@ class OppfolgingsperiodeProcessorTest {
                 ), sluttDato = periodeSlutt
             )
 
-            consumer.process(startPeriodeRecord)
-            val processingResult = consumer.process(sluttNyerePeriodeRecord)
+            oppfolgingsHendelseProcessor.process(startPeriodeRecord)
+            val processingResult = oppfolgingsHendelseProcessor.process(sluttNyerePeriodeRecord)
 
             processingResult.shouldBeInstanceOf<Forward<*, *>>()
             bruker.skalIkkeVæreUnderOppfølging()
