@@ -6,6 +6,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.server.testing.testApplication
+import no.nav.db.Ident
 import java.time.ZonedDateTime
 import java.util.UUID
 import no.nav.db.entity.OppfolgingsperiodeEntity
@@ -20,7 +21,6 @@ import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
 import no.nav.services.KontorTilordningService
 import no.nav.utils.flywayMigrationInTest
-import no.nav.utils.gittBrukerUnderOppfolging
 import no.nav.utils.randomFnr
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -31,7 +31,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
-class OppfolgingsperiodeProcessorTest {
+class OppfolgingshendelseProcessorTest {
 
     fun Bruker.skalVæreUnderOppfølging(periodeId: OppfolgingsperiodeId? = null) {
         transaction {
@@ -65,7 +65,7 @@ class OppfolgingsperiodeProcessorTest {
 
             val result = oppfolgingshendelseProcessor.process(record)
 
-            result.shouldBeInstanceOf<Forward<*, *>>()
+            result.shouldBeInstanceOf<Forward<Ident, OppfolgingsperiodeStartet>>()
             bruker.skalVæreUnderOppfølging()
         }
     }
@@ -250,6 +250,18 @@ class OppfolgingsperiodeProcessorTest {
 
         resultStartMeldingPåNytt.shouldBeInstanceOf<Skip<*, *>>()
         resultStoppMeldingPåNytt.shouldBeInstanceOf<Skip<*, *>>()
+    }
+
+    @Test
+    fun `skal håndtere oppfølging avsluttet for en periode vi ikke visste om`() {
+        val bruker = testBruker()
+        flywayMigrationInTest()
+        val processor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
+        val record = TopicUtils.oppfolgingAvsluttetMelding(bruker, ZonedDateTime.now())
+
+        val result = processor.process(record)
+
+        result.shouldBeInstanceOf<Skip<Ident, OppfolgingsperiodeStartet>>()
     }
 
     private fun oppfolgingStartetMessage(
