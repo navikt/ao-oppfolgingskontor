@@ -8,7 +8,6 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.server.testing.testApplication
 import java.time.ZonedDateTime
 import java.util.UUID
-import no.nav.db.Fnr
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.OppfolgingsperiodeEntity
 import no.nav.domain.KontorId
@@ -76,12 +75,11 @@ class SisteOppfolgingsperiodeProcessorTest {
         application {
             flywayMigrationInTest()
             val oppfolgingshendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
+            val record = oppfolgingStartetMelding(bruker)
 
-            val oppfolgingshendelseRecord = oppfolgingStartetMelding(bruker)
+            val result = oppfolgingshendelseProcessor.process(record)
 
-            val resultOppfolgingshendelse = oppfolgingshendelseProcessor.process(oppfolgingshendelseRecord)
-
-            resultOppfolgingshendelse.shouldBeInstanceOf<Commit<*, *>>()
+            result.shouldBeInstanceOf<Commit<*, *>>()
             bruker.skalVæreUnderOppfølging()
             bruker.skalHaArenaKontor(defaultArenaKontor)
         }
@@ -92,18 +90,13 @@ class SisteOppfolgingsperiodeProcessorTest {
         val bruker = testBruker()
         application {
             flywayMigrationInTest()
-            val (oppfolgingshendelseProcessor, sisteOppfolgingsperiodeProcessor) = defaultConsumerSetup(bruker)
-
-            val sisteResult = sisteOppfolgingsperiodeProcessor.process(oppfolgingsperiodeMessage(bruker))
+            val oppfolgingshendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
             val hendelseStartResult = oppfolgingshendelseProcessor.process(oppfolgingStartetMelding(bruker))
-            sisteResult.shouldBeInstanceOf<Forward<*, *>>()
             hendelseStartResult.shouldBeInstanceOf<Commit<*, *>>()
 
             val sluttDato = ZonedDateTime.now()
-            val sistOppResult = sisteOppfolgingsperiodeProcessor.process(oppfolgingsperiodeMessage(bruker, sluttDato))
             val hendelseResult = oppfolgingshendelseProcessor.process(oppfolgingAvsluttetMelding(bruker, sluttDato))
 
-            sistOppResult.shouldBeInstanceOf<Commit<*, *>>()
             hendelseResult.shouldBeInstanceOf<Skip<*, *>>()
             bruker.skalIkkeVæreUnderOppfølging()
             bruker.skalHaArenaKontor(defaultArenaKontor)
@@ -355,28 +348,26 @@ class SisteOppfolgingsperiodeProcessorTest {
     }
 
     @Test
-    fun `skal håndtere gamle meldinger på ny topic`() {
+    fun `skal hoppe over allerede prosesserte meldinger`() {
         val bruker = testBruker()
         flywayMigrationInTest()
-        val (hendelserProcessor, sistePeriodeProcessor) = defaultConsumerSetup(bruker)
+        val oppfolgingshendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
         val sluttDato = ZonedDateTime.now().plusDays(1)
-        val opprinneligStartMelding = oppfolgingsperiodeMessage(bruker)
-        val opprinneligStoppMelding = oppfolgingsperiodeMessage(bruker, sluttDato)
-        sistePeriodeProcessor.process(opprinneligStartMelding).shouldBeInstanceOf<Forward<*, *>>()
+        val startmelding = oppfolgingsperiodeMessage(bruker)
+        val stoppmelding = oppfolgingsperiodeMessage(bruker, sluttDato)
+        oppfolgingshendelseProcessor.process(startmelding).shouldBeInstanceOf<Forward<*, *>>()
         KontorTilordningService.tilordneKontor(
             OppfolgingsPeriodeStartetLokalKontorTilordning(
                 KontorTilordning(bruker.fnr, KontorId("1199"), bruker.oppfolgingsperiodeId), ingenSensitivitet
             )
         )
-        sistePeriodeProcessor.process(opprinneligStoppMelding).shouldBeInstanceOf<Commit<*, *>>()
+        oppfolgingshendelseProcessor.process(stoppmelding).shouldBeInstanceOf<Commit<*, *>>()
 
-        val startMeldingPåNyttTopic = oppfolgingStartetMelding(bruker)
-        val sluttMeldingPåNyttTopic = oppfolgingAvsluttetMelding(bruker, sluttDato)
-        val resultStartMeldingPåNyttTopic = hendelserProcessor.process(startMeldingPåNyttTopic)
-        val resultStoppMeldingPåNyttTopic = hendelserProcessor.process(sluttMeldingPåNyttTopic)
+        val resultStartMeldingPåNytt = oppfolgingshendelseProcessor.process(startmelding)
+        val resultStoppMeldingPåNytt = oppfolgingshendelseProcessor.process(stoppmelding)
 
-        resultStartMeldingPåNyttTopic.shouldBeInstanceOf<Skip<*, *>>()
-        resultStoppMeldingPåNyttTopic.shouldBeInstanceOf<Skip<*, *>>()
+        resultStartMeldingPåNytt.shouldBeInstanceOf<Skip<*, *>>()
+        resultStoppMeldingPåNytt.shouldBeInstanceOf<Skip<*, *>>()
     }
 
     private fun oppfolgingsperiodeMessage(

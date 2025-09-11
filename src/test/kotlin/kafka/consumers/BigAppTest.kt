@@ -128,7 +128,7 @@ class BigAppTest {
             )
 
             val (driver, inputTopics, _) = setupKafkaMock(topology,
-                listOf(topics.inn.sisteOppfolgingsperiodeV1.name), null
+                listOf(topics.inn.oppfolgingsHendelser.name), null
             )
 
             val bruker = Bruker(fnr, aktorId.value, oppfolgingsperiodeId, ZonedDateTime.now())
