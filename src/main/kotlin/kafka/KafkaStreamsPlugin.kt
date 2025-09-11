@@ -13,7 +13,6 @@ import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.binder.kafka.KafkaStreamsMetrics
 import kafka.consumers.IdentChangeProcessor
 import kafka.consumers.OppfolgingsHendelseProcessor
-import kafka.consumers.SisteOppfolgingsperiodeProcessor
 import java.time.Duration
 import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
 import no.nav.db.Ident
@@ -86,12 +85,6 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         { oppfolgingsperiodeDao.getCurrentOppfolgingsperiode(it) }
     )
 
-    val sisteOppfolgingsperiodeProcessor = SisteOppfolgingsperiodeProcessor(
-        oppfolgingsperiodeService,
-        skipPersonIkkeFunnet = !isProduction,
-        fnrProvider
-    )
-
     val kontorTilordningsProcessor = KontortilordningsProcessor(
         automatiskKontorRutingService,
         // Hopp over personer som ikke finnes alder på i nytt felt i dev
@@ -106,7 +99,6 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val topology = configureTopology(
         environment,
         ExposedLockProvider(database),
-        sisteOppfolgingsperiodeProcessor = sisteOppfolgingsperiodeProcessor,
         kontortilordningsProcessor = kontorTilordningsProcessor,
         leesahProcessor = leesahProcessor,
         skjermingProcessor = skjermingProcessor,

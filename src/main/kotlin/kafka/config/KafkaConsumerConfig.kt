@@ -5,7 +5,6 @@ import io.ktor.server.application.ApplicationEnvironment
 import io.ktor.server.config.*
 import kafka.consumers.IdentChangeProcessor
 import kafka.consumers.OppfolgingsHendelseProcessor
-import kafka.consumers.SisteOppfolgingsperiodeProcessor
 import kafka.retry.library.RetryProcessorWrapper
 import kafka.retry.library.StreamType
 import kotlinx.coroutines.CoroutineScope
@@ -67,7 +66,6 @@ fun configureTopology(
     environment: ApplicationEnvironment,
     lockProvider: LockProvider,
     punctuationCoroutineScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
-    sisteOppfolgingsperiodeProcessor: SisteOppfolgingsperiodeProcessor,
     kontortilordningsProcessor: KontortilordningsProcessor,
     leesahProcessor: LeesahProcessor,
     skjermingProcessor: SkjermingProcessor,
@@ -116,18 +114,6 @@ fun configureTopology(
     builder.stream(topics.inn.oppfolgingsHendelser.name, topics.inn.oppfolgingsHendelser.consumedWith())
         .process(oppfolgingHendelseProcessorSupplier, Named.`as`(processorName(topics.inn.oppfolgingsHendelser.name)))
         .process(kontortilordningProcessorSupplier, Named.`as`(KontortilordningsProcessor.processorName))
-
-    /*
-    * Siste oppfolgingsperiode
-    * */
-    val oppfolgingsperiodeProcessorSupplier = wrapInRetryProcessor(
-        topic = topics.inn.sisteOppfolgingsperiodeV1,
-        streamType = StreamType.SOURCE,
-        businessLogic = sisteOppfolgingsperiodeProcessor::process,
-    )
-    builder.stream(topics.inn.sisteOppfolgingsperiodeV1.name, topics.inn.sisteOppfolgingsperiodeV1.consumedWith())
-        .process(oppfolgingsperiodeProcessorSupplier, Named.`as`(processorName(topics.inn.sisteOppfolgingsperiodeV1.name)))
-        .process(kontortilordningProcessorSupplier, Named.`as`(KontortilordningsProcessor.processorName + "-fra-siste-oppfolgingsperiodeV1"))
 
     /*
     * Endring på oppfølgingsbruker (Arena)

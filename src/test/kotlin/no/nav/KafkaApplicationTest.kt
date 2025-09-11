@@ -3,7 +3,7 @@ package no.nav.no.nav
 import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
 import io.ktor.server.testing.testApplication
-import kafka.consumers.SisteOppfolgingsperiodeProcessor
+import kafka.consumers.OppfolgingsHendelseProcessor
 import kafka.retry.TestLockProvider
 import kafka.retry.library.StreamType
 import kotlinx.coroutines.CoroutineScope
@@ -20,7 +20,6 @@ import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.http.client.AlderFunnet
-import no.nav.http.client.IdentFunnet
 import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.SkjermingFunnet
@@ -86,74 +85,10 @@ class KafkaApplicationTest {
                 endringPaOppfolgingsBrukerMessage("4321", ZonedDateTime.parse("2025-08-14T13:01:14+02:00"))
             )
             transaction {
-                ArenaKontorEntity.Companion.findById(fnr)?.kontorId shouldBe "4321"
-                KontorHistorikkEntity.Companion
+                ArenaKontorEntity.findById(fnr)?.kontorId shouldBe "4321"
+                KontorHistorikkEntity
                     .find { KontorhistorikkTable.ident eq fnr }
                     .count() shouldBe 2
-            }
-        }
-    }
-
-    @Test
-    fun `skal tilordne kontor til brukere som har fått startet oppfølging`() = testApplication {
-        val fnr = Fnr("22325678901")
-        val kontor = KontorId("2228")
-        val topic = randomTopicName()
-
-        application {
-            flywayMigrationInTest()
-            val aktorId = AktorId("1234567890123")
-            val periodeStart = ZonedDateTime.now().minusDays(2)
-            val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
-
-            val sistePeriodeProcessor = SisteOppfolgingsperiodeProcessor(
-                OppfolgingsperiodeService(),
-                false
-            ) { IdentFunnet(fnr) }
-            val tilordningProcessor = KontortilordningsProcessor(AutomatiskKontorRutingService(
-                KontorTilordningService::tilordneKontor,
-                { _, a, b-> KontorForGtNrFantDefaultKontor(kontor, b, a, GeografiskTilknytningBydelNr("3131")) },
-                { AlderFunnet(40) },
-                { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
-                { SkjermingFunnet(HarSkjerming(false)) },
-                { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
-                { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, OffsetDateTime.now()) },
-                { _, _ -> Outcome.Success(false)  }),
-            )
-
-            val builder = StreamsBuilder()
-            val sistePeriodeProcessorSupplier = wrapInRetryProcessor(
-                topic = topic,
-                keyInSerde = Serdes.String(),
-                valueInSerde = Serdes.String(),
-                processRecord = sistePeriodeProcessor::process,
-            )
-            val tilordningProcessorSupplier = wrapInRetryProcessor(
-                topic = "Kontortilordning",
-                keyInSerde = KontortilordningsProcessor.identSerde,
-                valueInSerde = KontortilordningsProcessor.oppfolgingsperiodeStartetSerde,
-                processRecord = tilordningProcessor::process,
-                streamType = StreamType.INTERNAL
-            )
-            builder.stream(topic, Consumed.with(Serdes.String(), Serdes.String()))
-                .process(sistePeriodeProcessorSupplier, Named.`as`(processorName(topic)))
-                .process(tilordningProcessorSupplier)
-            val topology = builder.build()
-
-            val kafkaMockTopic = setupKafkaMock(topology, topic)
-            kafkaMockTopic.pipeInput(
-                aktorId.value,
-                oppfolgingsperiodeMessage(oppfolgingsperiodeId, periodeStart, null, aktorId.value)
-            )
-            transaction {
-                ArbeidsOppfolgingKontorEntity.Companion.findById(fnr.value)?.kontorId shouldBe "4154"
-                KontorHistorikkEntity.Companion
-                    .find { KontorhistorikkTable.ident eq fnr.value }
-                    .count().let {
-                        withClue("Antall historikkinnslag skal være 1") {
-                            it shouldBe 1
-                        }
-                    }
             }
         }
     }
