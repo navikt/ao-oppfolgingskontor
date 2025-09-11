@@ -172,9 +172,7 @@ class OppfolgingsperiodeProcessorTest {
 
         application {
             flywayMigrationInTest()
-            val consumer = SisteOppfolgingsperiodeProcessor(
-                OppfolgingsperiodeService(),
-            ) { IdentFunnet(bruker.fnr) }
+            val consumer = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
             val startPeriodeRecord = oppfolgingsperiodeMessage(bruker, sluttDato = null)
             val startNyerePeriodeRecord = oppfolgingsperiodeMessage(
                 bruker.copy(

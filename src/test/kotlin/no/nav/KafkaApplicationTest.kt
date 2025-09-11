@@ -3,7 +3,7 @@ package no.nav.no.nav
 import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
 import io.ktor.server.testing.testApplication
-import kafka.consumers.SisteOppfolgingsperiodeProcessor
+import kafka.consumers.OppfolgingsHendelseProcessor
 import kafka.retry.TestLockProvider
 import kafka.retry.library.StreamType
 import kotlinx.coroutines.CoroutineScope
@@ -20,7 +20,6 @@ import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.http.client.AlderFunnet
-import no.nav.http.client.IdentFunnet
 import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.SkjermingFunnet
@@ -106,10 +105,7 @@ class KafkaApplicationTest {
             val periodeStart = ZonedDateTime.now().minusDays(2)
             val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
 
-            val sistePeriodeProcessor = SisteOppfolgingsperiodeProcessor(
-                OppfolgingsperiodeService(),
-                false
-            ) { IdentFunnet(fnr) }
+            val oppfolgingshendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
             val tilordningProcessor = KontortilordningsProcessor(AutomatiskKontorRutingService(
                 KontorTilordningService::tilordneKontor,
                 { _, a, b-> KontorForGtNrFantDefaultKontor(kontor, b, a, GeografiskTilknytningBydelNr("3131")) },
@@ -122,11 +118,11 @@ class KafkaApplicationTest {
             )
 
             val builder = StreamsBuilder()
-            val sistePeriodeProcessorSupplier = wrapInRetryProcessor(
+            val oppfolgingshendelseProcessorSupplier = wrapInRetryProcessor(
                 topic = topic,
                 keyInSerde = Serdes.String(),
                 valueInSerde = Serdes.String(),
-                processRecord = sistePeriodeProcessor::process,
+                processRecord = oppfolgingshendelseProcessor::process,
             )
             val tilordningProcessorSupplier = wrapInRetryProcessor(
                 topic = "Kontortilordning",
@@ -136,7 +132,7 @@ class KafkaApplicationTest {
                 streamType = StreamType.INTERNAL
             )
             builder.stream(topic, Consumed.with(Serdes.String(), Serdes.String()))
-                .process(sistePeriodeProcessorSupplier, Named.`as`(processorName(topic)))
+                .process(oppfolgingshendelseProcessorSupplier, Named.`as`(processorName(topic)))
                 .process(tilordningProcessorSupplier)
             val topology = builder.build()
 
