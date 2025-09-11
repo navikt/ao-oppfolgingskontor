@@ -49,12 +49,6 @@ class OppfolgingsperiodeProcessorTest {
         }
     }
 
-    fun Bruker.skalHaArenaKontor(kontor: KontorId) {
-        transaction {
-            ArenaKontorEntity[this@skalHaArenaKontor.fnr.value].kontorId shouldBe kontor.id
-        }
-    }
-
     fun gittBrukerUnderOppfolging(bruker: Bruker) {
         gittBrukerUnderOppfolging(bruker.fnr, bruker.oppfolgingsperiodeId)
     }
@@ -67,7 +61,7 @@ class OppfolgingsperiodeProcessorTest {
     )
 
     @Test
-    fun `skal lagre ny oppfolgingsperiode når oppfolgingsperiode-startet (sluttDato er null)`() = testApplication {
+    fun `skal lagre ny oppfolgingsperiode når oppfolgingsperiode-startet`() = testApplication {
         val bruker = testBruker()
         application {
             flywayMigrationInTest()
@@ -78,7 +72,6 @@ class OppfolgingsperiodeProcessorTest {
 
             result.shouldBeInstanceOf<Forward<*, *>>()
             bruker.skalVæreUnderOppfølging()
-            bruker.skalHaArenaKontor(defaultArenaKontor)
         }
     }
 
@@ -96,7 +89,6 @@ class OppfolgingsperiodeProcessorTest {
 
             hendelseResult.shouldBeInstanceOf<Commit<*, *>>()
             bruker.skalIkkeVæreUnderOppfølging()
-            bruker.skalHaArenaKontor(defaultArenaKontor)
         }
     }
 

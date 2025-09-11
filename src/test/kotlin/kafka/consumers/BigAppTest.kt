@@ -144,4 +144,6 @@ class BigAppTest {
             }
         }
     }
+
+    // TODO: Test at vi ikke sletter kontorer når oppfolgingsperiodeAvsluttet-melding kommer
 }
