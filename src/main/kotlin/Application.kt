@@ -23,8 +23,9 @@ import no.nav.services.GTNorgService
 import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
 import no.nav.services.KontorTilordningService
-import no.nav.services.OppfolgingsperiodeService
+import no.nav.services.OppfolgingsperiodeDao
 import services.IdentService
+import services.OppfolgingsperiodeService
 
 fun main(args: Array<String>) {
     EngineMain.main(args)
@@ -67,7 +68,8 @@ fun Application.module() {
         { arbeidssokerregisterClient.hentProfilering(it) },
         { skjermingsClient.hentSkjerming(it) },
         { pdlClient.harStrengtFortroligAdresse(it) },
-        {  OppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) }
+        {  OppfolgingsperiodeDao.getCurrentOppfolgingsperiode(it) },
+        { ident, oppfolgingsperiodeId -> OppfolgingsperiodeDao.harBruktPeriodeTidligere(ident, oppfolgingsperiodeId) },
     )
 
     install(KafkaStreamsPlugin) {
@@ -75,7 +77,8 @@ fun Application.module() {
         this.fnrProvider = { ident ->  identService.hentForetrukketIdentFor(ident) }
         this.database = database
         this.meterRegistry = meterRegistry
-        this.oppfolgingsperiodeService = OppfolgingsperiodeService
+        this.oppfolgingsperiodeService = OppfolgingsperiodeService()
+        this.oppfolgingsperiodeDao = OppfolgingsperiodeDao
         this.identService = identService
     }
 

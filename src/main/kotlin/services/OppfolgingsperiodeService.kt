@@ -1,95 +1,84 @@
-package no.nav.services
+package services
 
-import java.time.ZonedDateTime
-import no.nav.db.Fnr
+import kafka.consumers.OppfolgingsperiodeDTO
 import no.nav.db.Ident
-import no.nav.db.entity.OppfolgingsperiodeEntity
-import no.nav.db.table.OppfolgingsperiodeTable
-import no.nav.db.table.OppfolgingsperiodeTable.oppfolgingsperiodeId
 import no.nav.domain.OppfolgingsperiodeId
+import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
-import no.nav.http.client.IdentFunnet
-import no.nav.http.client.IdentIkkeFunnet
-import no.nav.http.client.IdentOppslagFeil
-import no.nav.http.client.IdentResult
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.upsert
+import no.nav.services.AktivOppfolgingsperiode
+import no.nav.services.OppfolgingsperiodeDao
 import org.slf4j.LoggerFactory
-import java.time.OffsetDateTime
-import java.time.ZoneOffset
+import utils.Outcome
+import java.util.UUID
 
-sealed class OppfolgingsperiodeOppslagResult()
-data class AktivOppfolgingsperiode(val fnr: Ident, val periodeId: OppfolgingsperiodeId, val startDato: OffsetDateTime) : OppfolgingsperiodeOppslagResult()
-object NotUnderOppfolging : OppfolgingsperiodeOppslagResult()
-data class OppfolgingperiodeOppslagFeil(val message: String) : OppfolgingsperiodeOppslagResult()
+class OppfolgingsperiodeService {
+    val log = LoggerFactory.getLogger(OppfolgingsperiodeService::class.java)
 
-object OppfolgingsperiodeService {
-    private val log = LoggerFactory.getLogger(this::class.java)
-
-    fun saveOppfolgingsperiode(fnr: Ident, startDato: ZonedDateTime, oppfolgingsperiodeId: OppfolgingsperiodeId) {
-        transaction {
-            OppfolgingsperiodeTable.upsert {
-                it[id] = fnr.value
-                it[this.startDato] = startDato.toOffsetDateTime()
-                it[this.oppfolgingsperiodeId] = oppfolgingsperiodeId.value
-                it[this.updatedAt] = OffsetDateTime.now(ZoneOffset.systemDefault())
-            }
-        }
-    }
-
-    fun deleteOppfolgingsperiode(oppfolgingsperiodeId: OppfolgingsperiodeId): Int {
-        return transaction {
-            val deletedRows = OppfolgingsperiodeTable.deleteWhere { OppfolgingsperiodeTable.oppfolgingsperiodeId eq oppfolgingsperiodeId.value }
-            if (deletedRows > 0) {
-                log.info("Deleted oppfolgingsperiode")
-            } else {
-                log.info("Attempted to delete oppfolgingsperiode but no record was found")
-            }
-            return@transaction deletedRows
-        }
-    }
-
-    fun harNyerePeriodePåIdent(oppfolgingsperiode: OppfolgingsperiodeStartet): Boolean {
-        return transaction {
-            val eksisterendeStartDato = OppfolgingsperiodeTable.select(OppfolgingsperiodeTable.startDato)
-                .where { (OppfolgingsperiodeTable.id eq oppfolgingsperiode.fnr.value) and (oppfolgingsperiodeId neq oppfolgingsperiode.periodeId.value) }
-                .map { row -> row[OppfolgingsperiodeTable.startDato] }
-                .firstOrNull()
-            if (eksisterendeStartDato != null) {
-                return@transaction eksisterendeStartDato.isAfter(oppfolgingsperiode.startDato.toOffsetDateTime())
-            }
-            return@transaction false
-        }
-    }
-
-    fun hasActiveOppfolgingsperiode(fnr: Fnr): Boolean {
-        return transaction { OppfolgingsperiodeEntity.findById(fnr.value) != null }
-    }
-
-    fun getCurrentOppfolgingsperiode(fnr: Ident) = getCurrentOppfolgingsperiode(IdentFunnet(fnr))
-    fun getCurrentOppfolgingsperiode(fnr: IdentResult): OppfolgingsperiodeOppslagResult {
-        return try {
-            when (fnr) {
-                is IdentFunnet -> transaction {
-                    val entity = OppfolgingsperiodeEntity.findById(fnr.ident.value)
-                    when (entity != null) {
-                        true -> AktivOppfolgingsperiode(
-                            fnr.ident,
-                            OppfolgingsperiodeId(entity.oppfolgingsperiodeId),
-                            entity.startDato
-                        )
-                        else -> NotUnderOppfolging
-                    }
+    fun handterPeriodeAvsluttet(oppfolgingsperiode: OppfolgingsperiodeAvsluttet): HandterPeriodeAvsluttetResultat {
+        val currentOppfolgingsperiode = getCurrentPeriode(oppfolgingsperiode.fnr)
+        val nåværendePeriodeBleAvsluttet = when {
+            currentOppfolgingsperiode != null -> {
+                if (currentOppfolgingsperiode.startDato.isBefore(oppfolgingsperiode.startDato.toOffsetDateTime())) {
+                    OppfolgingsperiodeDao.deleteOppfolgingsperiode(currentOppfolgingsperiode.periodeId) > 0
+                } else {
+                    false
                 }
-                is IdentIkkeFunnet -> OppfolgingperiodeOppslagFeil("Kunne ikke finne oppfølgingsperiode: ${fnr.message}")
-                is IdentOppslagFeil -> OppfolgingperiodeOppslagFeil("Kunne ikke finne oppfølgingsperiode: ${fnr.message}")
             }
-        } catch (e: Exception) {
-            log.error("Error checking oppfolgingsperiode status", e)
-            OppfolgingperiodeOppslagFeil("Database error: ${e.message}")
+            else -> false
+        }
+        val innkommendePeriodeBleAvsluttet = OppfolgingsperiodeDao.deleteOppfolgingsperiode(oppfolgingsperiode.periodeId) > 0
+        return when {
+            nåværendePeriodeBleAvsluttet && innkommendePeriodeBleAvsluttet -> throw Exception("Dette skal aldri skje! Skal ikke være flere perioder på samme person samtidig ${oppfolgingsperiode.periodeId}, ${currentOppfolgingsperiode?.periodeId}")
+            nåværendePeriodeBleAvsluttet -> GammelPeriodeAvsluttet
+            innkommendePeriodeBleAvsluttet -> InnkommendePeriodeAvsluttet
+            else -> IngenPeriodeAvsluttet
+        }
+    }
+
+    fun handterPeriodeStartet(oppfolgingsperiode: OppfolgingsperiodeStartet): HandterPeriodeStartetResultat {
+        if (OppfolgingsperiodeDao.harNyerePeriodePåIdent(oppfolgingsperiode)) {
+            log.warn("Hadde nyere periode på ident, hopper over melding")
+            return HaddeNyerePeriodePåIdent
+        }
+        if (OppfolgingsperiodeDao.finnesPeriode(oppfolgingsperiode.periodeId)) {
+            return HaddePeriodeAllerede
+        }
+        val harBruktPeriodeTidligere = OppfolgingsperiodeDao.harBruktPeriodeTidligere(oppfolgingsperiode.fnr, oppfolgingsperiode.periodeId)
+        if (harBruktPeriodeTidligere is Outcome.Failure) {
+            throw harBruktPeriodeTidligere.exception
+        } else if (harBruktPeriodeTidligere is Outcome.Success && harBruktPeriodeTidligere.data) {
+            /* Hvis perioden ikke finnes i oppfolgingsperiode tabellen men har blitt brukt tidligere i historikken
+            * leser vi sannsynligvis inn en gammel melding som ikke skal behandles */
+            return HarSlettetPeriode
+        }
+        OppfolgingsperiodeDao.saveOppfolgingsperiode(
+            oppfolgingsperiode.fnr,
+            oppfolgingsperiode.startDato,
+            oppfolgingsperiode.periodeId)
+        return OppfølgingsperiodeLagret
+    }
+
+    fun behandleOppfolgingsperiodeAvsluttetIdentNotFound(oppfolgingsperiodeDto: OppfolgingsperiodeDTO) {
+        val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.fromString(oppfolgingsperiodeDto.uuid))
+        OppfolgingsperiodeDao.deleteOppfolgingsperiode(oppfolgingsperiodeId)
+    }
+
+    private fun getCurrentPeriode(ident: Ident): AktivOppfolgingsperiode? {
+        val currentOppfolgingsperiodeResult = OppfolgingsperiodeDao.getCurrentOppfolgingsperiode(ident)
+        return when (currentOppfolgingsperiodeResult) {
+            is AktivOppfolgingsperiode -> currentOppfolgingsperiodeResult
+            else -> null
         }
     }
 }
+
+sealed class HandterPeriodeStartetResultat
+object HaddeNyerePeriodePåIdent: HandterPeriodeStartetResultat()
+object HaddePeriodeAllerede: HandterPeriodeStartetResultat()
+object HarSlettetPeriode: HandterPeriodeStartetResultat()
+object OppfølgingsperiodeLagret: HandterPeriodeStartetResultat()
+
+sealed class HandterPeriodeAvsluttetResultat
+object IngenPeriodeAvsluttet: HandterPeriodeAvsluttetResultat()
+object GammelPeriodeAvsluttet: HandterPeriodeAvsluttetResultat()
+object InnkommendePeriodeAvsluttet: HandterPeriodeAvsluttetResultat()

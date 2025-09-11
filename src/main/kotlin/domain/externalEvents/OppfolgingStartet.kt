@@ -1,26 +1,20 @@
 package no.nav.domain.externalEvents
 
-import kotlinx.serialization.Contextual
-import kotlinx.serialization.Polymorphic
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 import no.nav.db.Ident
+import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
-import no.nav.utils.ZonedDateTimeSerializer
 import java.time.ZonedDateTime
 
-@Serializable
 sealed class OppfolgingsperiodeEndret {
     abstract val fnr: Ident
     abstract val periodeId: OppfolgingsperiodeId
 }
 
-@Serializable
 class OppfolgingsperiodeStartet(
     override val fnr: Ident,
-    @Serializable(with = ZonedDateTimeSerializer::class)
     val startDato: ZonedDateTime,
     override val periodeId: OppfolgingsperiodeId,
+    val startetArenaKontor: KontorId? = null
 ): OppfolgingsperiodeEndret() {
     override fun equals(other: Any?): Boolean {
         if (other !is OppfolgingsperiodeStartet) return false

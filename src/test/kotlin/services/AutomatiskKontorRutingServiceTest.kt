@@ -14,6 +14,7 @@ import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.Sensitivitet
 import no.nav.domain.events.AOKontorEndretPgaAdressebeskyttelseEndret
 import no.nav.domain.events.AOKontorEndretPgaSkjermingEndret
+import no.nav.domain.events.ArenaKontorVedOppfolgingsStart
 import no.nav.domain.events.GTKontorEndret
 import no.nav.domain.events.OppfolgingsPeriodeStartetFallbackKontorTilordning
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
@@ -21,7 +22,6 @@ import no.nav.domain.events.OppfolgingsPeriodeStartetSensitivKontorTilordning
 import no.nav.domain.events.OppfolgingsperiodeStartetNoeTilordning
 import no.nav.domain.externalEvents.AdressebeskyttelseEndret
 import no.nav.domain.externalEvents.BostedsadresseEndret
-import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.domain.externalEvents.SkjermetStatusEndret
 import no.nav.http.client.AlderFunnet
@@ -52,6 +52,7 @@ import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
 import no.nav.kafka.consumers.EndringISkjermingResult
 import no.nav.kafka.consumers.HåndterPersondataEndretFail
 import no.nav.kafka.consumers.HåndterPersondataEndretSuccess
+import no.nav.kafka.consumers.KontorEndringer
 import no.nav.person.pdl.leesah.adressebeskyttelse.Gradering
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
@@ -70,6 +71,7 @@ import no.nav.services.OppfolgingsperiodeOppslagResult
 import no.nav.services.TilordningFeil
 import no.nav.services.TilordningSuccessIngenEndring
 import no.nav.services.TilordningSuccessKontorEndret
+import utils.Outcome
 import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 import java.util.UUID
@@ -84,9 +86,11 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 gitt(ungBrukerMedGodeMuligheter).tilordneKontorAutomatisk(
                     oppfolgingsperiodeStartet(ungBrukerMedGodeMuligheter)
                 ) shouldBe TilordningSuccessKontorEndret(
-                    OppfolgingsPeriodeStartetLokalKontorTilordning(
-                        KontorTilordning(ungBrukerMedGodeMuligheter.fnr(),  ungBrukerMedGodeMuligheter.gtKontor(), ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()),
-                        ingenSensitivitet
+                    KontorEndringer(
+                        aoKontorEndret = OppfolgingsPeriodeStartetLokalKontorTilordning(
+                            KontorTilordning(ungBrukerMedGodeMuligheter.fnr(),  ungBrukerMedGodeMuligheter.gtKontor(), ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()),
+                            ingenSensitivitet
+                        )
                     )
                 )
             }
@@ -95,9 +99,11 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 gitt(eldreBrukerMedGodeMuligheter).tilordneKontorAutomatisk(
                     oppfolgingsperiodeStartet(eldreBrukerMedGodeMuligheter)
                 ) shouldBe TilordningSuccessKontorEndret(
-                    OppfolgingsperiodeStartetNoeTilordning(
+                    KontorEndringer(
+                    aoKontorEndret = OppfolgingsperiodeStartetNoeTilordning(
                         eldreBrukerMedGodeMuligheter.fnr(),
                         eldreBrukerMedGodeMuligheter.oppfolgingsperiodeId()
+                    )
                     )
                 )
             }
@@ -106,7 +112,8 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 gitt(brukerSomManglerGt).tilordneKontorAutomatisk(
                     oppfolgingsperiodeStartet(brukerSomManglerGt)
                 ) shouldBe TilordningSuccessKontorEndret(
-                    OppfolgingsPeriodeStartetFallbackKontorTilordning(
+                    KontorEndringer(
+                        aoKontorEndret = OppfolgingsPeriodeStartetFallbackKontorTilordning(
                         brukerSomManglerGt.fnr(),
                         brukerSomManglerGt.oppfolgingsperiodeId(),
                         Sensitivitet(
@@ -114,17 +121,19 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                             HarStrengtFortroligAdresse(false)
                         )
                     )
-                )
+                ))
             }
 
             it("skal sette AO kontor til adressebeskyttet kontor hvis adressebeskyttet bruker") {
                 gitt(adressebeskyttetBruker).tilordneKontorAutomatisk(
                     oppfolgingsperiodeStartet(adressebeskyttetBruker)
                 ) shouldBe TilordningSuccessKontorEndret(
-                    OppfolgingsPeriodeStartetSensitivKontorTilordning(
+                    KontorEndringer(
+                        aoKontorEndret = OppfolgingsPeriodeStartetSensitivKontorTilordning(
                         KontorTilordning(adressebeskyttetBruker.fnr(), adressebeskyttetBruker.gtKontor(), adressebeskyttetBruker.oppfolgingsperiodeId()),
                         Sensitivitet(HarSkjerming(false), HarStrengtFortroligAdresse(true)),
                         adressebeskyttetBruker.gtKontor as KontorForGtNrFantDefaultKontor
+                    )
                     )
                 )
             }
@@ -133,13 +142,15 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 gitt(skjermetBruker).tilordneKontorAutomatisk(
                     oppfolgingsperiodeStartet(skjermetBruker)
                 ) shouldBe TilordningSuccessKontorEndret(
-                    OppfolgingsPeriodeStartetSensitivKontorTilordning(
+                    KontorEndringer(
+                        aoKontorEndret = OppfolgingsPeriodeStartetSensitivKontorTilordning(
                         KontorTilordning(skjermetBruker.fnr(), skjermetBruker.gtKontor(), skjermetBruker.oppfolgingsperiodeId()),
                         Sensitivitet(
                             HarSkjerming(true),
                             HarStrengtFortroligAdresse(false)
                         ),
                         skjermetBruker.gtKontor as KontorForGtNrFantKontor
+                    )
                     )
                 )
             }
@@ -148,9 +159,11 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 gitt(ungBrukerMedbehovForVeiledning).tilordneKontorAutomatisk(
                     oppfolgingsperiodeStartet(ungBrukerMedbehovForVeiledning)
                 ) shouldBe TilordningSuccessKontorEndret(
-                    OppfolgingsPeriodeStartetLokalKontorTilordning(
+                    KontorEndringer(
+                        aoKontorEndret = OppfolgingsPeriodeStartetLokalKontorTilordning(
                         KontorTilordning(ungBrukerMedbehovForVeiledning.fnr(), ungBrukerMedbehovForVeiledning.gtKontor(), ungBrukerMedbehovForVeiledning.oppfolgingsperiodeId()),
                         ingenSensitivitet
+                    )
                     )
                 )
             }
@@ -159,13 +172,15 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 gitt(brukerMedFeilendeProfilering).tilordneKontorAutomatisk(
                     oppfolgingsperiodeStartet(brukerMedFeilendeProfilering)
                 ) shouldBe TilordningSuccessKontorEndret(
-                    OppfolgingsPeriodeStartetLokalKontorTilordning(
+                    KontorEndringer(
+                        aoKontorEndret = OppfolgingsPeriodeStartetLokalKontorTilordning(
                         KontorTilordning(
                             brukerMedFeilendeProfilering.fnr(),
                             brukerMedFeilendeProfilering.gtKontor(),
                             brukerMedFeilendeProfilering.oppfolgingsperiodeId()
                         ),
                         ingenSensitivitet
+                    )
                     )
                 )
             }
@@ -174,12 +189,14 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 gitt(brukerMedLandskodeOgFallback).tilordneKontorAutomatisk(
                     oppfolgingsperiodeStartet(brukerMedLandskodeOgFallback)
                 ) shouldBe TilordningSuccessKontorEndret(
-                    OppfolgingsPeriodeStartetLokalKontorTilordning(
+                    KontorEndringer(
+                        aoKontorEndret = OppfolgingsPeriodeStartetLokalKontorTilordning(
                         KontorTilordning(
                             brukerMedLandskodeOgFallback.fnr(),
                             brukerMedLandskodeOgFallback.gtKontor(),
                             brukerMedLandskodeOgFallback.oppfolgingsperiodeId()),
                         Sensitivitet(HarSkjerming(false), HarStrengtFortroligAdresse(false))
+                    )
                     )
                 )
             }
@@ -188,10 +205,12 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 gitt(brukerMedLandskodeUtenFallback).tilordneKontorAutomatisk(
                     oppfolgingsperiodeStartet(brukerMedLandskodeUtenFallback)
                 ) shouldBe TilordningSuccessKontorEndret(
-                    OppfolgingsPeriodeStartetFallbackKontorTilordning(
+                    KontorEndringer(
+                        aoKontorEndret = OppfolgingsPeriodeStartetFallbackKontorTilordning(
                             brukerMedLandskodeUtenFallback.fnr(),
                         brukerMedLandskodeUtenFallback.oppfolgingsperiodeId(),
                         Sensitivitet(HarSkjerming(false), HarStrengtFortroligAdresse(false))
+                    )
                     )
                 )
             }
@@ -200,10 +219,12 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 gitt(brukerMedAdressebeskyttelseOgLandskode).tilordneKontorAutomatisk(
                     oppfolgingsperiodeStartet(brukerMedAdressebeskyttelseOgLandskode)
                 ) shouldBe TilordningSuccessKontorEndret(
-                    OppfolgingsPeriodeStartetSensitivKontorTilordning(
+                    KontorEndringer(
+                        aoKontorEndret = OppfolgingsPeriodeStartetSensitivKontorTilordning(
                         KontorTilordning(brukerMedAdressebeskyttelseOgLandskode.fnr(), VIKAFOSSEN, brukerMedAdressebeskyttelseOgLandskode.oppfolgingsperiodeId()),
                         Sensitivitet(HarSkjerming(false), HarStrengtFortroligAdresse(true)),
                         brukerMedAdressebeskyttelseOgLandskode.gtKontor as KontorForGtFantLand
+                    )
                     )
                 )
             }
@@ -212,10 +233,12 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 gitt(brukerMedAdressebeskyttelseSomManglerGt).tilordneKontorAutomatisk(
                     oppfolgingsperiodeStartet(brukerMedAdressebeskyttelseSomManglerGt)
                 ) shouldBe TilordningSuccessKontorEndret(
-                    OppfolgingsPeriodeStartetSensitivKontorTilordning(
+                    KontorEndringer(
+                        aoKontorEndret = OppfolgingsPeriodeStartetSensitivKontorTilordning(
                         KontorTilordning(brukerMedAdressebeskyttelseSomManglerGt.fnr(), VIKAFOSSEN, brukerMedAdressebeskyttelseSomManglerGt.oppfolgingsperiodeId()),
                         Sensitivitet(HarSkjerming(false), HarStrengtFortroligAdresse(true)),
                         brukerMedAdressebeskyttelseSomManglerGt.gtKontor as KontorForGtSuccess
+                    )
                     )
                 )
             }
@@ -226,12 +249,36 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 ) shouldBe TilordningFeil("Feil ved tilordning av kontor: Vi håndterer ikke skjermede brukere uten geografisk tilknytning")
             }
 
-        }
+            it("skal ikke sette AO kontor hvis bruker allerede har fått satt kontor pga. oppfolgingsperiode startet") {
+                gitt(brukerMedTilordnetKontorForOppfolgingStartet).tilordneKontorAutomatisk(
+                    oppfolgingsperiodeStartet(brukerMedTilordnetKontorForOppfolgingStartet)
+                ) shouldBe TilordningSuccessIngenEndring
+            }
 
-        it("avsluttet oppfolgingsperiode skal ikke sette ao kontor") {
-            gitt(ungBrukerMedGodeMuligheter).tilordneKontorAutomatisk(
-                OppfolgingsperiodeAvsluttet(ungBrukerMedGodeMuligheter.fnr(), ZonedDateTime.now(), OppfolgingsperiodeId(UUID.randomUUID()))
-            ) shouldBe TilordningSuccessIngenEndring
+            it("skal sette Arenakontor hvis det kommer med i startmelding") {
+                val arenaKontor = KontorId("3311")
+                gitt(ungBrukerMedGodeMuligheter).tilordneKontorAutomatisk(
+                    oppfolgingsperiodeStartet(ungBrukerMedGodeMuligheter, arenaKontor)
+                ) shouldBe TilordningSuccessKontorEndret(
+                    KontorEndringer(
+                        aoKontorEndret = OppfolgingsPeriodeStartetLokalKontorTilordning(
+                            KontorTilordning(
+                                ungBrukerMedGodeMuligheter.fnr(),
+                                ungBrukerMedGodeMuligheter.gtKontor(),
+                                ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()
+                            ),
+                            ingenSensitivitet
+                        ),
+                        arenaKontorEndret = ArenaKontorVedOppfolgingsStart(
+                            KontorTilordning(
+                                ungBrukerMedGodeMuligheter.fnr(),
+                                arenaKontor,
+                                ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()
+                            )
+                        )
+                    )
+                )
+            }
         }
     }
 
@@ -240,8 +287,8 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
             gitt(ungBrukerMedGodeMuligheter)
                 .handterEndringForAdressebeskyttelse(
                     AdressebeskyttelseEndret(ungBrukerMedGodeMuligheter.fnr(), Gradering.FORTROLIG)
-                ) shouldBe HåndterPersondataEndretSuccess(listOf(
-                    GTKontorEndret.endretPgaAdressebeskyttelseEndret(
+                ) shouldBe HåndterPersondataEndretSuccess(KontorEndringer(
+                    gtKontorEndret = GTKontorEndret.endretPgaAdressebeskyttelseEndret(
                         KontorTilordning(
                             ungBrukerMedGodeMuligheter.fnr(),
                             ungBrukerMedGodeMuligheter.gtKontor(),
@@ -259,8 +306,8 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                     /* Setter med vilje en "utdatert" verdi (UGRADERT) i kafka meldingen. Vi må hente ferske
                     data på nytt fra PDL når vi behandler endring i adressebeskyttelse */
                 AdressebeskyttelseEndret(adressebeskyttetBruker.fnr(), Gradering.UGRADERT)
-            ) shouldBe HåndterPersondataEndretSuccess(listOf(
-                GTKontorEndret.endretPgaAdressebeskyttelseEndret(
+            ) shouldBe HåndterPersondataEndretSuccess(KontorEndringer(
+                gtKontorEndret = GTKontorEndret.endretPgaAdressebeskyttelseEndret(
                     KontorTilordning(
                         adressebeskyttetBruker.fnr(),
                         adressebeskyttetBruker.gtKontor(),
@@ -269,7 +316,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                     HarStrengtFortroligAdresse(true),
                     adressebeskyttetBruker.gtForBruker as GtForBrukerFunnet
                 ),
-                AOKontorEndretPgaAdressebeskyttelseEndret(
+                aoKontorEndret = AOKontorEndretPgaAdressebeskyttelseEndret(
                     KontorTilordning(
                         adressebeskyttetBruker.fnr(),
                         adressebeskyttetBruker.gtKontor(),
@@ -283,8 +330,8 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
             gitt(brukerMedAdressebeskyttelseOgLandskode)
                 .handterEndringForAdressebeskyttelse(
                     AdressebeskyttelseEndret(brukerMedAdressebeskyttelseOgLandskode.fnr(), Gradering.STRENGT_FORTROLIG)
-                ) shouldBe HåndterPersondataEndretSuccess(listOf(
-                GTKontorEndret.endretPgaAdressebeskyttelseEndret(
+                ) shouldBe HåndterPersondataEndretSuccess(KontorEndringer(
+                gtKontorEndret = GTKontorEndret.endretPgaAdressebeskyttelseEndret(
                     KontorTilordning(
                         brukerMedAdressebeskyttelseOgLandskode.fnr(),
                         VIKAFOSSEN,
@@ -293,7 +340,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                     HarStrengtFortroligAdresse(true),
                     brukerMedAdressebeskyttelseOgLandskode.gtForBruker as GtForBrukerFunnet
                 ),
-                AOKontorEndretPgaAdressebeskyttelseEndret(
+                aoKontorEndret = AOKontorEndretPgaAdressebeskyttelseEndret(
                     KontorTilordning(
                         brukerMedAdressebeskyttelseOgLandskode.fnr(),
                         VIKAFOSSEN,
@@ -307,15 +354,15 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
             gitt(brukerIkkeUnderOppfolging)
                 .handterEndringForAdressebeskyttelse(
                     AdressebeskyttelseEndret(brukerIkkeUnderOppfolging.fnr(), Gradering.STRENGT_FORTROLIG)
-                ) shouldBe HåndterPersondataEndretSuccess(emptyList())
+                ) shouldBe HåndterPersondataEndretSuccess(KontorEndringer())
         }
 
         it("skal sette ao-kotor og gt-kontor på brukere som mangler GT og har adressebeskyttelse") {
             gitt(brukerMedAdressebeskyttelseSomManglerGt)
                 .handterEndringForAdressebeskyttelse(
                     AdressebeskyttelseEndret(brukerMedAdressebeskyttelseSomManglerGt.fnr(), Gradering.STRENGT_FORTROLIG)
-                ) shouldBe HåndterPersondataEndretSuccess(listOf(
-                GTKontorEndret.endretPgaAdressebeskyttelseEndret(
+                ) shouldBe HåndterPersondataEndretSuccess(KontorEndringer(
+                gtKontorEndret = GTKontorEndret.endretPgaAdressebeskyttelseEndret(
                     KontorTilordning(
                         brukerMedAdressebeskyttelseSomManglerGt.fnr(),
                         VIKAFOSSEN,
@@ -324,7 +371,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                     HarStrengtFortroligAdresse(true),
                     brukerMedAdressebeskyttelseSomManglerGt.gtForBruker as GtForBrukerIkkeFunnet
                 ),
-                AOKontorEndretPgaAdressebeskyttelseEndret(
+                aoKontorEndret = AOKontorEndretPgaAdressebeskyttelseEndret(
                     KontorTilordning(
                         brukerMedAdressebeskyttelseSomManglerGt.fnr(),
                         VIKAFOSSEN,
@@ -344,8 +391,8 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                     HarSkjerming(true)
                 )
             ) shouldBe  Result.success(EndringISkjermingResult(
-                listOf(
-                    GTKontorEndret.endretPgaSkjermingEndret(
+                KontorEndringer(
+                    gtKontorEndret = GTKontorEndret.endretPgaSkjermingEndret(
                         KontorTilordning(
                             ungBrukerMedGodeMuligheter.fnr(),
                             ungBrukerMedGodeMuligheter.gtKontor(),
@@ -354,7 +401,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                         HarSkjerming(true),
                         ungBrukerMedGodeMuligheter.gtForBruker as GtForBrukerFunnet
                     ),
-                    AOKontorEndretPgaSkjermingEndret(
+                    aoKontorEndret = AOKontorEndretPgaSkjermingEndret(
                         KontorTilordning(
                             ungBrukerMedGodeMuligheter.fnr(),
                             ungBrukerMedGodeMuligheter.gtKontor(),
@@ -362,7 +409,8 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                         )
                     ),
                 )
-            ))
+                )
+            )
         }
 
         it("skal sette AO og GT kontor til skjermet kontor når bruker blir skjermet også når bruker har landskode") {
@@ -372,8 +420,8 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                     HarSkjerming(true)
                 )
             ) shouldBe  Result.success(EndringISkjermingResult(
-                listOf(
-                    GTKontorEndret.endretPgaSkjermingEndret(
+                KontorEndringer(
+                    gtKontorEndret = GTKontorEndret.endretPgaSkjermingEndret(
                         KontorTilordning(
                             brukerMedLandskodeOgFallback.fnr(),
                             brukerMedLandskodeOgFallback.gtKontor(),
@@ -382,7 +430,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                         HarSkjerming(true),
                         brukerMedLandskodeOgFallback.gtForBruker as GtLandForBrukerFunnet
                     ),
-                    AOKontorEndretPgaSkjermingEndret(
+                    aoKontorEndret = AOKontorEndretPgaSkjermingEndret(
                         KontorTilordning(
                             brukerMedLandskodeOgFallback.fnr(),
                             brukerMedLandskodeOgFallback.gtKontor(),
@@ -400,8 +448,8 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                     HarSkjerming(true)
                 )
             ) shouldBe  Result.success(EndringISkjermingResult(
-                listOf(
-                    GTKontorEndret.endretPgaSkjermingEndret(
+                KontorEndringer(
+                    gtKontorEndret = GTKontorEndret.endretPgaSkjermingEndret(
                         KontorTilordning(
                             brukerMedLandskodeUtenFallback.fnr(),
                             INGEN_GT_KONTOR_FALLBACK,
@@ -410,7 +458,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                         HarSkjerming(true),
                         brukerMedLandskodeUtenFallback.gtForBruker as GtLandForBrukerFunnet
                     ),
-                    AOKontorEndretPgaSkjermingEndret(
+                    aoKontorEndret = AOKontorEndretPgaSkjermingEndret(
                         KontorTilordning(
                             brukerMedLandskodeUtenFallback.fnr(),
                             INGEN_GT_KONTOR_FALLBACK,
@@ -428,8 +476,8 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                     HarSkjerming(false)
                 )
             ) shouldBe  Result.success(EndringISkjermingResult(
-                listOf(
-                    GTKontorEndret.endretPgaSkjermingEndret(
+                KontorEndringer(
+                    gtKontorEndret = GTKontorEndret.endretPgaSkjermingEndret(
                         KontorTilordning(
                             ungBrukerMedGodeMuligheter.fnr(),
                             ungBrukerMedGodeMuligheter.gtKontor(),
@@ -438,21 +486,22 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                         HarSkjerming(false),
                         ungBrukerMedGodeMuligheter.gtForBruker as GtForBrukerFunnet
                     )
+                    )
                 )
-            ))
+            )
         }
 
         it("skal ikke behandle brukere som ikke er under oppfølging") {
             gitt(brukerIkkeUnderOppfolging).handterEndringISkjermingStatus(
                 SkjermetStatusEndret(brukerIkkeUnderOppfolging.fnr(), HarSkjerming(true))
-            ) shouldBe Result.success(EndringISkjermingResult(emptyList()))
+            ) shouldBe Result.success(EndringISkjermingResult(KontorEndringer()))
         }
 
         it("skal sette hardkodet-fallback kontor (navit) på ao-kontor og gt-kontor hvis gt ikke finnes og fallback til arbeidsforedeling heller ikke finner kontor og skjerming er true") {
             gitt(brukerSomManglerGt).handterEndringISkjermingStatus(
                 SkjermetStatusEndret(brukerSomManglerGt.fnr(), HarSkjerming(true))
-            ) shouldBe Result.success(EndringISkjermingResult(listOf(
-                GTKontorEndret.endretPgaSkjermingEndret(
+            ) shouldBe Result.success(EndringISkjermingResult(KontorEndringer(
+                gtKontorEndret = GTKontorEndret.endretPgaSkjermingEndret(
                     KontorTilordning(
                         brukerSomManglerGt.fnr(),
                         INGEN_GT_KONTOR_FALLBACK,
@@ -461,7 +510,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                     HarSkjerming(true),
                     brukerSomManglerGt.gtForBruker as GtForBrukerIkkeFunnet
                 ),
-                AOKontorEndretPgaSkjermingEndret(
+                aoKontorEndret = AOKontorEndretPgaSkjermingEndret(
                     KontorTilordning(
                         brukerSomManglerGt.fnr(),
                         INGEN_GT_KONTOR_FALLBACK,
@@ -476,8 +525,8 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
         it("skal bare sette gt kontor ved adresseendring for bruker uten sensitivitet") {
             gitt(ungBrukerMedGodeMuligheter).handterEndringForBostedsadresse(
                 BostedsadresseEndret(ungBrukerMedGodeMuligheter.fnr())
-            ) shouldBe HåndterPersondataEndretSuccess(listOf(
-                GTKontorEndret.endretPgaBostedsadresseEndret(
+            ) shouldBe HåndterPersondataEndretSuccess(KontorEndringer(
+                gtKontorEndret = GTKontorEndret.endretPgaBostedsadresseEndret(
                     KontorTilordning(
                         ungBrukerMedGodeMuligheter.fnr(),
                         ungBrukerMedGodeMuligheter.gtKontor(),
@@ -491,8 +540,8 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
         it("skal bare sette gt kontor ved adresseendring for bruker med strengt fortrolig adresse") {
             gitt(adressebeskyttetBruker).handterEndringForBostedsadresse(
                 BostedsadresseEndret(adressebeskyttetBruker.fnr())
-            ) shouldBe HåndterPersondataEndretSuccess(listOf(
-                GTKontorEndret.endretPgaBostedsadresseEndret(
+            ) shouldBe HåndterPersondataEndretSuccess(KontorEndringer(
+                gtKontorEndret = GTKontorEndret.endretPgaBostedsadresseEndret(
                     KontorTilordning(
                         adressebeskyttetBruker.fnr(),
                         adressebeskyttetBruker.gtKontor(),
@@ -506,8 +555,8 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
         it("skal bare sette gt kontor ved adresseendring for bruker med skjerming") {
             gitt(skjermetBruker).handterEndringForBostedsadresse(
                 BostedsadresseEndret(skjermetBruker.fnr())
-            ) shouldBe HåndterPersondataEndretSuccess(listOf(
-                GTKontorEndret.endretPgaBostedsadresseEndret(
+            ) shouldBe HåndterPersondataEndretSuccess(KontorEndringer(
+                gtKontorEndret = GTKontorEndret.endretPgaBostedsadresseEndret(
                     KontorTilordning(
                         skjermetBruker.fnr(),
                         skjermetBruker.gtKontor(),
@@ -521,8 +570,8 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
         it("skal synce gt kontor med norg for brukere med gt-landskode (med arbeidsfordeling fallback)") {
             gitt(brukerMedLandskodeOgFallback).handterEndringForBostedsadresse(
                 BostedsadresseEndret(brukerMedLandskodeOgFallback.fnr())
-            ) shouldBe HåndterPersondataEndretSuccess(listOf(
-                GTKontorEndret.endretPgaBostedsadresseEndret(
+            ) shouldBe HåndterPersondataEndretSuccess(KontorEndringer(
+                gtKontorEndret = GTKontorEndret.endretPgaBostedsadresseEndret(
                     KontorTilordning(
                         brukerMedLandskodeOgFallback.fnr(),
                         brukerMedLandskodeOgFallback.gtKontor(),
@@ -536,8 +585,8 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
         it("skal synce gt kontor med norg for brukere med gt-landskode uten arbeidsfordeling fallback") {
             gitt(brukerMedLandskodeUtenFallback).handterEndringForBostedsadresse(
                 BostedsadresseEndret(brukerMedLandskodeUtenFallback.fnr())
-            ) shouldBe HåndterPersondataEndretSuccess(listOf(
-                GTKontorEndret.endretPgaBostedsadresseEndret(
+            ) shouldBe HåndterPersondataEndretSuccess(KontorEndringer(
+                gtKontorEndret = GTKontorEndret.endretPgaBostedsadresseEndret(
                     KontorTilordning(
                         brukerMedLandskodeUtenFallback.fnr(),
                         INGEN_GT_KONTOR_FALLBACK,
@@ -551,22 +600,22 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
         it("skal ikke behandle brukere som ikke er under oppfølging") {
             gitt(brukerIkkeUnderOppfolging).handterEndringForBostedsadresse(
                 BostedsadresseEndret(brukerIkkeUnderOppfolging.fnr())
-            ) shouldBe HåndterPersondataEndretSuccess(emptyList())
+            ) shouldBe HåndterPersondataEndretSuccess(KontorEndringer())
         }
 
         it("skal sette hardkodet-fallback kontor hvis gt ikke finner og fallback til arbeidsforedeling også feiler") {
             gitt(brukerSomManglerGt).handterEndringForBostedsadresse(
                 BostedsadresseEndret(brukerSomManglerGt.fnr())
-            ) shouldBe HåndterPersondataEndretSuccess(listOf(
-                GTKontorEndret.endretPgaBostedsadresseEndret(
+            ) shouldBe HåndterPersondataEndretSuccess(KontorEndringer(
+                gtKontorEndret = GTKontorEndret.endretPgaBostedsadresseEndret(
                     KontorTilordning(
                         brukerSomManglerGt.fnr(),
                         INGEN_GT_KONTOR_FALLBACK,
                         brukerSomManglerGt.oppfolgingsperiodeId()
                     ),
                     brukerSomManglerGt.gtForBruker as GtForBrukerIkkeFunnet
-                ))
-            )
+                )
+            ))
         }
     }
 
@@ -579,13 +628,15 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 TilordningFeil("Feil ved oppslag på oppfolgingsperiode: feil i fnr"),
                 TilordningFeil("Kunne ikke hente alder: feil i alder"),
                 TilordningSuccessKontorEndret(
-                    OppfolgingsPeriodeStartetLokalKontorTilordning(
+                    KontorEndringer(
+                        aoKontorEndret = OppfolgingsPeriodeStartetLokalKontorTilordning(
                         KontorTilordning(
                             brukerMedFeilendeProfilering.fnr(),
                             brukerMedFeilendeProfilering.gtKontor(),
                             brukerMedFeilendeProfilering.oppfolgingsperiodeId()
                         ),
                         ingenSensitivitet
+                    )
                     )
                 ),
                 TilordningFeil("Kunne ikke hente skjerming ved kontortilordning: feil i skjerming"),
@@ -641,13 +692,14 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
     }
 })
 
-fun oppfolgingsperiodeStartet(bruker: Bruker) = oppfolgingsperiodeStartet(bruker.fnr())
+fun oppfolgingsperiodeStartet(bruker: Bruker, arenaKontor: KontorId? = null) = oppfolgingsperiodeStartet(bruker.fnr(), arenaKontor)
 
-fun oppfolgingsperiodeStartet(fnr: Ident): OppfolgingsperiodeStartet {
+fun oppfolgingsperiodeStartet(fnr: Ident, arenaKontor: KontorId? = null): OppfolgingsperiodeStartet {
     return OppfolgingsperiodeStartet(
         fnr,
         ZonedDateTime.now(),
-        OppfolgingsperiodeId(UUID.randomUUID())
+        OppfolgingsperiodeId(UUID.randomUUID()),
+            arenaKontor
     )
 }
 
@@ -659,7 +711,8 @@ fun gitt(bruker: Bruker): AutomatiskKontorRutingService {
         { bruker.profilering },
         { bruker.skjerming },
         { bruker.strengtFortroligAdresse },
-        { bruker.oppfolgingsPeriodeResult }
+        { bruker.oppfolgingsPeriodeResult },
+        { _, _ -> bruker.harTilordnetKontorForOppfolgingsperiodeStartet }
     )
 }
 
@@ -679,7 +732,8 @@ data class Bruker(
     val gtForBruker: GtForBrukerResult,
     val skjerming: SkjermingResult,
     val strengtFortroligAdresse: HarStrengtFortroligAdresseResult,
-    val oppfolgingsPeriodeResult: OppfolgingsperiodeOppslagResult = defaultOppfolgingsperiodeOppslagResult(fnr)
+    val oppfolgingsPeriodeResult: OppfolgingsperiodeOppslagResult = defaultOppfolgingsperiodeOppslagResult(fnr),
+    val harTilordnetKontorForOppfolgingsperiodeStartet: Outcome<Boolean> = Outcome.Success(false)
 ) {
     fun fnr(): Ident {
         if (fnr is IdentFunnet) {
@@ -702,6 +756,15 @@ data class Bruker(
 }
 
 val ungBrukerMedGodeMuligheter = Bruker(
+    IdentFunnet(Fnr("12345678901")),
+    AlderFunnet(20),
+    ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
+    KontorForGtNrFantDefaultKontor(KontorId("1234"), HarSkjerming(false), HarStrengtFortroligAdresse(false), GeografiskTilknytningBydelNr("1111")),
+    GtNummerForBrukerFunnet(GeografiskTilknytningBydelNr("1111")),
+    SkjermingFunnet(HarSkjerming(false)),
+    HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
+)
+val brukerMedArenaKontorIStartOppfolging = Bruker(
     IdentFunnet(Fnr("12345678901")),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
@@ -811,6 +874,17 @@ val brukerIkkeUnderOppfolging = Bruker(
     SkjermingFunnet(HarSkjerming(false)),
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)),
     NotUnderOppfolging
+)
+val brukerMedTilordnetKontorForOppfolgingStartet = Bruker(
+    IdentFunnet(Fnr("94345678901")),
+    AlderFunnet(20),
+    ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
+    KontorForGtNrFantDefaultKontor(KontorId("4141"), HarSkjerming(false), HarStrengtFortroligAdresse(false), GeografiskTilknytningBydelNr("1111")),
+    GtNummerForBrukerFunnet(GeografiskTilknytningBydelNr("1111")),
+    SkjermingFunnet(HarSkjerming(false)),
+    HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)),
+    AktivOppfolgingsperiode(Fnr("94345678901"), OppfolgingsperiodeId(UUID.randomUUID()), OffsetDateTime.now()),
+    Outcome.Success(true)
 )
 
 /* Brukere med feil */

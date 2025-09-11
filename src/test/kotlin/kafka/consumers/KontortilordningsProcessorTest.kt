@@ -26,6 +26,7 @@ import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.KontorForGtNrFantDefaultKontor
 import org.apache.kafka.streams.processor.api.Record
 import org.junit.jupiter.api.Test
+import utils.Outcome
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
@@ -111,6 +112,7 @@ class KontortilordningsProcessorTest {
                 oppfolging.periodeId,
                 oppfolging.startDato.toOffsetDateTime()
             ) },
+            { _, _ -> Outcome.Success(false)  }
         )
     }
 
@@ -128,6 +130,7 @@ class KontortilordningsProcessorTest {
                 oppfolging.periodeId,
                 oppfolging.startDato.toOffsetDateTime()
             ) },
+            { _, _ -> Outcome.Success(false)  }
         )
     }
 
@@ -140,6 +143,7 @@ class KontortilordningsProcessorTest {
             { throw NotImplementedError("Feilet") },
             { throw NotImplementedError("Feilet") },
             {  throw NotImplementedError("Feilet") },
+            { _, _ -> Outcome.Success(false)  }
         )
     }
 

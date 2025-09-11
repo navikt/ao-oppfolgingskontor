@@ -39,7 +39,7 @@ import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.KontorForGtNrFantDefaultKontor
 import no.nav.services.KontorTilordningService
-import no.nav.services.OppfolgingsperiodeService
+import no.nav.services.OppfolgingsperiodeDao
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.gittBrukerUnderOppfolging
 import no.nav.utils.randomTopicName
@@ -55,6 +55,8 @@ import org.apache.kafka.streams.kstream.Named
 import org.apache.kafka.streams.processor.api.ProcessorSupplier
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
+import services.OppfolgingsperiodeService
+import utils.Outcome
 import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 import java.util.Properties
@@ -63,7 +65,7 @@ import java.util.UUID
 class KafkaApplicationTest {
     val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
         ArenaKontorEntity::sisteLagreKontorArenaKontor
-    ) { OppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) }
+    ) { OppfolgingsperiodeDao.getCurrentOppfolgingsperiode(it) }
 
     @Test
     fun `skal lagre alle nye endringer på arena-kontor i historikk tabellen`() = testApplication {
@@ -105,7 +107,7 @@ class KafkaApplicationTest {
             val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
 
             val sistePeriodeProcessor = SisteOppfolgingsperiodeProcessor(
-                OppfolgingsperiodeService,
+                OppfolgingsperiodeService(),
                 false
             ) { IdentFunnet(fnr) }
             val tilordningProcessor = KontortilordningsProcessor(AutomatiskKontorRutingService(
@@ -115,7 +117,8 @@ class KafkaApplicationTest {
                 { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
                 { SkjermingFunnet(HarSkjerming(false)) },
                 { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
-                { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, OffsetDateTime.now()) }),
+                { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, OffsetDateTime.now()) },
+                { _, _ -> Outcome.Success(false)  }),
             )
 
             val builder = StreamsBuilder()
@@ -194,7 +197,8 @@ class KafkaApplicationTest {
             { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
             { SkjermingFunnet(HarSkjerming(false)) },
             { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
-            { AktivOppfolgingsperiode(fnr, OppfolgingsperiodeId(UUID.randomUUID()), OffsetDateTime.now()) }
+            { AktivOppfolgingsperiode(fnr, OppfolgingsperiodeId(UUID.randomUUID()), OffsetDateTime.now()) },
+            { _, _ -> Outcome.Success(false)  }
         )
         val skjermingProcessor = SkjermingProcessor(automatiskKontorRutingService)
 

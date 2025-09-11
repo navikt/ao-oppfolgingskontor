@@ -8,15 +8,19 @@ import no.nav.domain.events.AOKontorEndret
 import no.nav.domain.events.ArenaKontorEndret
 import no.nav.domain.events.GTKontorEndret
 import no.nav.domain.events.KontorEndretEvent
+import no.nav.kafka.consumers.KontorEndringer
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.insertReturning
-import org.jetbrains.exposed.sql.statements.InsertStatement
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.upsert
 import java.time.ZonedDateTime
 
 object KontorTilordningService {
+    fun tilordneKontor(kontorEndringer: KontorEndringer) {
+        kontorEndringer.aoKontorEndret?.let { tilordneKontor(it) }
+        kontorEndringer.arenaKontorEndret?.let { tilordneKontor(it) }
+        kontorEndringer.gtKontorEndret?.let { tilordneKontor(it) }
+    }
     fun tilordneKontor(kontorEndring: KontorEndretEvent) {
         val kontorTilhorighet = kontorEndring.tilordning
         transaction {

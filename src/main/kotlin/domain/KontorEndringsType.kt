@@ -11,6 +11,7 @@ enum class KontorEndringsType {
     FikkAddressebeskyttelse,
     AddressebeskyttelseMistet,
     EndretIArena,
+    ArenaKontorVedOppfolgingsStart,
     EndretBostedsadresse,
     ArenaMigrering
 }
