@@ -85,8 +85,8 @@ class KafkaApplicationTest {
                 endringPaOppfolgingsBrukerMessage("4321", ZonedDateTime.parse("2025-08-14T13:01:14+02:00"))
             )
             transaction {
-                ArenaKontorEntity.Companion.findById(fnr)?.kontorId shouldBe "4321"
-                KontorHistorikkEntity.Companion
+                ArenaKontorEntity.findById(fnr)?.kontorId shouldBe "4321"
+                KontorHistorikkEntity
                     .find { KontorhistorikkTable.ident eq fnr }
                     .count() shouldBe 2
             }
