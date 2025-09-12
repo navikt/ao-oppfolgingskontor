@@ -11,21 +11,13 @@ sealed class OppfolgingsperiodeEndret {
     abstract val periodeId: OppfolgingsperiodeId
 }
 
-class OppfolgingsperiodeStartet(
+data class OppfolgingsperiodeStartet(
     override val fnr: Ident,
     val startDato: ZonedDateTime,
     override val periodeId: OppfolgingsperiodeId,
     val startetArenaKontor: KontorId? = null,
     val arenaKontorFraOppfolgingsbrukerTopic: TidligArenaKontorEntity?
-): OppfolgingsperiodeEndret() {
-    override fun equals(other: Any?): Boolean {
-        if (other !is OppfolgingsperiodeStartet) return false
-        if (fnr != other.fnr) return false
-        if (startDato != other.startDato) return false
-        if (periodeId != other.periodeId) return false
-        return true
-    }
-}
+): OppfolgingsperiodeEndret()
 
 class OppfolgingsperiodeAvsluttet(
     override val fnr: Ident,

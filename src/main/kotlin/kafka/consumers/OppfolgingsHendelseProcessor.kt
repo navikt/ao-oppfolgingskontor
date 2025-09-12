@@ -72,10 +72,13 @@ class OppfolgingsHendelseProcessor(
                         HaddeNyerePeriodePåIdent, HarSlettetPeriode -> Skip()
                         OppfølgingsperiodeLagret -> {
                             val forhåndslagretArenaKontor = TidligArenaKontorEntity.findById(ident.value)
+                            val oppdatertOppfolgingStartetInternalEvent = oppfolgingStartetInternalEvent.copy(
+                                arenaKontorFraOppfolgingsbrukerTopic = forhåndslagretArenaKontor
+                            )
                             Forward(
                                 Record(
                                     ident,
-                                    oppfolgingStartetInternalEvent,
+                                    oppdatertOppfolgingStartetInternalEvent,
                                     Instant.now().toEpochMilli()
                                 ), null
                             )
@@ -105,10 +108,11 @@ class OppfolgingsHendelseProcessor(
 }
 
 fun OppfolgingStartetHendelseDto.toDomainObject() = OppfolgingsperiodeStartet(
-    Ident.of(this.fnr),
-    this.startetTidspunkt,
-    OppfolgingsperiodeId(UUID.fromString(this.oppfolgingsPeriodeId)),
-    this.arenaKontor?.let { KontorId(it) }
+    fnr = Ident.of(this.fnr),
+    startDato = this.startetTidspunkt,
+    periodeId = OppfolgingsperiodeId(UUID.fromString(this.oppfolgingsPeriodeId)),
+    startetArenaKontor =this.arenaKontor?.let { KontorId(it) },
+    arenaKontorFraOppfolgingsbrukerTopic = null
 )
 fun OppfolgingsAvsluttetHendelseDto.toDomainObject() = OppfolgingsperiodeAvsluttet(
     Ident.of(this.fnr),
