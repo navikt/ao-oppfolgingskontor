@@ -1,9 +1,11 @@
 package no.nav.kafka.consumers
 
+import db.table.TidligArenaKontorTable
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import no.nav.db.Fnr
+import no.nav.db.Ident
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
@@ -21,9 +23,11 @@ import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingperiodeOppslagFeil
 import no.nav.services.OppfolgingsperiodeOppslagResult
 import org.apache.kafka.streams.processor.api.Record
+import org.jetbrains.exposed.sql.upsert
 import org.slf4j.LoggerFactory
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
+import java.time.ZonedDateTime
 
 class EndringPaOppfolgingsBrukerProcessor(
     val sistLagretArenaKontorProvider: (Fnr) -> ArenaKontorEntity?,
@@ -39,32 +43,26 @@ class EndringPaOppfolgingsBrukerProcessor(
                 log.info("Endring på oppfolgingsbruker var fra før cutoff, hopper over")
                 Skip()
             }
-
             is Feil -> {
                 log.error("Klarte ikke behandle melding om endring på oppfølgingsbruker: ${result.retry.reason}")
                 result.retry
             }
-
             is HaddeNyereEndring -> {
                 log.warn("Sist endret kontor er eldre enn endring på oppfølgingsbruker")
                 Skip()
             }
-
             is MeldingManglerEnhet -> {
                 log.warn("Mottok endring på oppfølgingsbruker uten gyldig kontorId")
                 Skip()
             }
-
             is IkkeUnderOppfolging -> {
                 log.info("Bruker er ikke under oppfølging, hopper over melding om endring på oppfølgingsbruker")
                 Skip()
             }
-
             is IngenEndring -> {
                 log.info("Kontor har ikke blitt endret, hopper over melding om endring på oppfølgingsbruker")
                 Skip()
             }
-
             is SkalLagre -> {
                 KontorTilordningService.tilordneKontor(
                     EndringPaaOppfolgingsBrukerFraArena(
@@ -78,6 +76,20 @@ class EndringPaOppfolgingsBrukerProcessor(
                 )
                 Commit()
             }
+            is UnderOppfolgingIArenaMenIkkeLokalt -> {
+                log.info("Lagrer kontor fra arena før? melding om oppfølging startet")
+                lagreTidligArenaKontor(result)
+                Commit()
+            }
+        }
+    }
+
+    fun lagreTidligArenaKontor(result: UnderOppfolgingIArenaMenIkkeLokalt) {
+        TidligArenaKontorTable.upsert {
+            it[id] = result.ident.value
+            it[kontorId] = result.kontorId.id
+            it[sisteEndretDato] = result.sistEndretDatoArena
+            it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
         }
     }
 
@@ -93,10 +105,11 @@ class EndringPaOppfolgingsBrukerProcessor(
         val endretTidspunktInnkommendeMelding = endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime()
 
         val sistLagretArenaKontor by lazy { sistLagretArenaKontorProvider(fnr) }
+        val oppfolgingperiode by lazy { runBlocking { oppfolgingsperiodeProvider(IdentFunnet(fnr)) } }
 
         fun harNyereLagretEndring(): Boolean {
-            val sistEndretDatoArena = sistLagretArenaKontor?.sistEndretDatoArena
-            return (sistEndretDatoArena != null && sistEndretDatoArena > endretTidspunktInnkommendeMelding)
+            val sistEndretDatoArena = sistLagretArenaKontor?.sistEndretDatoArena ?: return false
+            return sistEndretDatoArena > endretTidspunktInnkommendeMelding
         }
 
         fun harKontorBlittEndret(): Boolean {
@@ -112,25 +125,42 @@ class EndringPaOppfolgingsBrukerProcessor(
             endretTidspunktInnkommendeMelding.isBefore(ENDRING_PA_OPPFOLGINGSBRUKER_CUTOFF) -> BeforeCutoff()
             harNyereLagretEndring() -> HaddeNyereEndring()
             else -> {
-                when (val oppfolgingperiode = runBlocking { oppfolgingsperiodeProvider(IdentFunnet(fnr)) }) {
+                when (val periode = oppfolgingperiode) {
                     is AktivOppfolgingsperiode -> {
                         return when (harKontorBlittEndret()) {
                             true -> SkalLagre(
                                 oppfolgingsenhet,
                                 endretTidspunktInnkommendeMelding,
                                 fnr,
-                                oppfolgingperiode.periodeId
+                                periode.periodeId
                             )
                             false -> IngenEndring()
                         }
                     }
-
-                    NotUnderOppfolging -> IkkeUnderOppfolging()
+                    NotUnderOppfolging -> {
+                        if (endringPaOppfolgingsBruker.erUnderOppfolgingIArena()) {
+                            UnderOppfolgingIArenaMenIkkeLokalt(
+                                KontorId(endringPaOppfolgingsBruker.oppfolgingsenhet),
+                                endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime(),
+                                fnr
+                            )
+                        } else {
+                            IkkeUnderOppfolging()
+                        }
+                    }
                     is OppfolgingperiodeOppslagFeil -> Feil(
-                        Retry("Klarte ikke behandle melding om endring på oppfølgingsbruker, feil ved oppslag på oppfølgingsperiode: ${oppfolgingperiode.message}"),
+                        Retry("Klarte ikke behandle melding om endring på oppfølgingsbruker, feil ved oppslag på oppfølgingsperiode: ${periode.message}"),
                     )
                 }
             }
+        }
+    }
+
+    fun EndringPaOppfolgingsBrukerDto.erUnderOppfolgingIArena(): Boolean {
+        return when (this.formidlingsgruppe) {
+            FormidlingsGruppe.ISERV -> false
+            FormidlingsGruppe.ARBS -> true
+            FormidlingsGruppe.IARBS -> kvalifiseringsgrupperUnderOppfolging.contains(this.kvalifiseringsgruppe)
         }
     }
 }
@@ -139,6 +169,11 @@ sealed class EndringPaaOppfolgingsBrukerResult
 class BeforeCutoff : EndringPaaOppfolgingsBrukerResult()
 class HaddeNyereEndring : EndringPaaOppfolgingsBrukerResult()
 class IkkeUnderOppfolging : EndringPaaOppfolgingsBrukerResult()
+class UnderOppfolgingIArenaMenIkkeLokalt(
+    val kontorId: KontorId,
+    val sistEndretDatoArena: OffsetDateTime,
+    val ident: Ident,
+) : EndringPaaOppfolgingsBrukerResult()
 class MeldingManglerEnhet : EndringPaaOppfolgingsBrukerResult()
 class SkalLagre(
     val oppfolgingsenhet: String,
@@ -171,8 +206,33 @@ fun String.convertToOffsetDatetime(): OffsetDateTime {
     return OffsetDateTime.parse(this)
 }
 
+enum class FormidlingsGruppe {
+    ISERV,
+    ARBS,
+    IARBS
+}
+
+enum class Kvalifiseringsgruppe {
+    BATT,   // Spesielt tilpasset innsats:	                Personen har nedsatt arbeidsevne og har et identifisert behov for kvalifisering og/eller tilrettelegging.  Aktivitetsplan skal utformes.
+    BFORM, // Situasjonsbestemt innsats:	                    Personen har moderat bistandsbehov
+    BKART, // Behov for arbeidsevnevurdering:	            Personen har behov for arbeidsevnevurdering
+    IKVAL, // Standardinnsats:	                            Personen har behov for ordinær bistand
+    IVURD, // Ikke vurdert:	                                Ikke vurdert
+    KAP11, // Rettigheter etter Ftrl. Kapittel 11:	        Rettigheter etter Ftrl. Kapittel 11
+    OPPFI, // Helserelatert arbeidsrettet oppfølging i NAV:	Helserelatert arbeidsrettet oppfølging i NAV
+    VARIG, // Varig tilpasset innsats:	                    Personen har varig nedsatt arbeidsevne
+    VURDI, // Sykmeldt, oppfølging på arbeidsplassen:	    Sykmeldt, oppfølging på arbeidsplassen
+    VURDU; // Sykmeldt uten arbeidsgiver:	                Sykmeldt uten arbeidsgiver
+}
+
+val kvalifiseringsgrupperUnderOppfolging = listOf(
+    Kvalifiseringsgruppe.BATT, Kvalifiseringsgruppe.BFORM, Kvalifiseringsgruppe.IKVAL, Kvalifiseringsgruppe.VURDU, Kvalifiseringsgruppe.OPPFI, Kvalifiseringsgruppe.VARIG
+)
+
 @Serializable
 data class EndringPaOppfolgingsBrukerDto(
     val oppfolgingsenhet: String?,
-    val sistEndretDato: String
+    val sistEndretDato: String,
+    val formidlingsgruppe: FormidlingsGruppe,
+    val kvalifiseringsgruppe: Kvalifiseringsgruppe
 )
