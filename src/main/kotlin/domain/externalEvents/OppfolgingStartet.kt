@@ -1,5 +1,6 @@
 package no.nav.domain.externalEvents
 
+import db.entity.TidligArenaKontorEntity
 import no.nav.db.Ident
 import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
@@ -14,7 +15,8 @@ class OppfolgingsperiodeStartet(
     override val fnr: Ident,
     val startDato: ZonedDateTime,
     override val periodeId: OppfolgingsperiodeId,
-    val startetArenaKontor: KontorId? = null
+    val startetArenaKontor: KontorId? = null,
+    val arenaKontorFraOppfolgingsbrukerTopic: TidligArenaKontorEntity?
 ): OppfolgingsperiodeEndret() {
     override fun equals(other: Any?): Boolean {
         if (other !is OppfolgingsperiodeStartet) return false

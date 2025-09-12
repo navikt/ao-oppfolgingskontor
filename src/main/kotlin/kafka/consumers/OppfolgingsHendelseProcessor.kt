@@ -1,5 +1,7 @@
 package kafka.consumers
 
+import db.entity.TidligArenaKontorEntity
+import db.table.TidligArenaKontorTable
 import kafka.consumers.oppfolgingsHendelser.OppfolgingStartetHendelseDto
 import kafka.consumers.oppfolgingsHendelser.OppfolgingsAvsluttetHendelseDto
 import kafka.consumers.oppfolgingsHendelser.OppfolgingsHendelseDto
@@ -42,6 +44,7 @@ class OppfolgingsHendelseProcessor(
         record: Record<String, String>
     ): RecordProcessingResult<Ident, OppfolgingsperiodeStartet> {
         var hendelseType = "<Ukjent hendelsetype>"
+        val ident = Ident.of(record.key())
         return runCatching {
             val oppfolgingsperiodeEvent = oppfolgingsHendelseJson
                 .decodeFromString<OppfolgingsHendelseDto>(record.value())
@@ -67,13 +70,16 @@ class OppfolgingsHendelseProcessor(
                             Commit()
                         }
                         HaddeNyerePeriodePåIdent, HarSlettetPeriode -> Skip()
-                        OppfølgingsperiodeLagret -> Forward(
-                            Record(
-                                Ident.of(record.key()),
-                                oppfolgingStartetInternalEvent,
-                            Instant.now().toEpochMilli()
-                            ), null
-                        )
+                        OppfølgingsperiodeLagret -> {
+                            val forhåndslagretArenaKontor = TidligArenaKontorEntity.findById(ident.value)
+                            Forward(
+                                Record(
+                                    ident,
+                                    oppfolgingStartetInternalEvent,
+                                    Instant.now().toEpochMilli()
+                                ), null
+                            )
+                        }
                     }
                 }
                 is OppfolgingsAvsluttetHendelseDto -> {
