@@ -24,7 +24,6 @@ import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
-import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.KontorTilordningService
 import no.nav.services.NotUnderOppfolging
 import no.nav.utils.flywayMigrationInTest
