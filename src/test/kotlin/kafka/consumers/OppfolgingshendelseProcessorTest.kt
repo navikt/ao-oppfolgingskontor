@@ -26,6 +26,7 @@ import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.KontorTilordningService
+import no.nav.services.NotUnderOppfolging
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.randomFnr
 import org.apache.kafka.streams.processor.api.Record
@@ -285,13 +286,7 @@ class OppfolgingshendelseProcessorTest {
         }
         val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
             { arenaKontorFraVeilarboppfolging },
-            {
-                AktivOppfolgingsperiode(
-                    bruker.fnr,
-                    bruker.oppfolgingsperiodeId,
-                    bruker.periodeStart.toOffsetDateTime()
-                )
-            })
+            { NotUnderOppfolging })
         val hendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
         endringPaOppfolgingsBrukerProcessor.process(
             TopicUtils.endringPaaOppfolgingsBrukerMessage(

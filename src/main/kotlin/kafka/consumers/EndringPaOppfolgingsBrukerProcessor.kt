@@ -23,6 +23,7 @@ import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingperiodeOppslagFeil
 import no.nav.services.OppfolgingsperiodeOppslagResult
 import org.apache.kafka.streams.processor.api.Record
+import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.upsert
 import org.slf4j.LoggerFactory
 import java.time.OffsetDateTime
@@ -85,11 +86,13 @@ class EndringPaOppfolgingsBrukerProcessor(
     }
 
     fun lagreTidligArenaKontor(result: UnderOppfolgingIArenaMenIkkeLokalt) {
-        TidligArenaKontorTable.upsert {
-            it[id] = result.ident.value
-            it[kontorId] = result.kontorId.id
-            it[sisteEndretDato] = result.sistEndretDatoArena
-            it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
+        transaction {
+            TidligArenaKontorTable.upsert {
+                it[id] = result.ident.value
+                it[kontorId] = result.kontorId.id
+                it[sisteEndretDato] = result.sistEndretDatoArena
+                it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
+            }
         }
     }
 
