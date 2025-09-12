@@ -14,6 +14,7 @@ import no.nav.domain.events.AOKontorEndret
 import no.nav.domain.events.AOKontorEndretPgaAdressebeskyttelseEndret
 import no.nav.domain.events.AOKontorEndretPgaSkjermingEndret
 import no.nav.domain.events.ArenaKontorEndret
+import no.nav.domain.events.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart
 import no.nav.domain.events.ArenaKontorVedOppfolgingStart
 import no.nav.domain.events.GTKontorEndret
 import no.nav.domain.events.OppfolgingsPeriodeStartetFallbackKontorTilordning
@@ -133,14 +134,31 @@ class AutomatiskKontorRutingService(
     }
 
     private fun arenaKontorEndring(periodeStartetEvent: OppfolgingsperiodeStartet, oppfolgingsperiodeId: OppfolgingsperiodeId): ArenaKontorEndret? {
-        if (periodeStartetEvent.startetArenaKontor == null) return null
-        return ArenaKontorVedOppfolgingStart(
-            KontorTilordning(
-                periodeStartetEvent.fnr,
-                periodeStartetEvent.startetArenaKontor,
-                oppfolgingsperiodeId,
-            )
-        )
+        val arenaKontorFraVeilarboppfolging = periodeStartetEvent.startetArenaKontor
+        val arenaKontorFraOppfolgingsbruker = periodeStartetEvent.arenaKontorFraOppfolgingsbrukerTopic
+
+        return when {
+            arenaKontorFraOppfolgingsbruker != null -> {
+                ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart(
+                    KontorTilordning(
+                        periodeStartetEvent.fnr,
+                        KontorId(arenaKontorFraOppfolgingsbruker.kontorId),
+                        oppfolgingsperiodeId,
+                    ),
+                    arenaKontorFraOppfolgingsbruker.sistEndretDato
+                )
+            }
+            arenaKontorFraVeilarboppfolging != null -> {
+                ArenaKontorVedOppfolgingStart(
+                    KontorTilordning(
+                        periodeStartetEvent.fnr,
+                        arenaKontorFraVeilarboppfolging,
+                        oppfolgingsperiodeId,
+                    )
+                )
+            }
+            else -> null
+        }
     }
 
     private fun skalTilNasjonalOppfølgingsEnhet(

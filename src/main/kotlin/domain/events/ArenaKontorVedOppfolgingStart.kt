@@ -9,28 +9,18 @@ import no.nav.http.logger
 import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 
-data class ArenaKontorVedOppfolgingsbrukerEndret(
+data class ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart(
     private val kontortilordning: KontorTilordning,
     private val sistEndretIArena: OffsetDateTime
 ) : ArenaKontorEndret(kontortilordning, sistEndretIArena) {
-    override fun toHistorikkInnslag(): KontorHistorikkInnslag = lagKontorHistorikkInnslag(
-        KontorEndringsType.ArenaKontorFraEndringPaaOppfolgingsbrukerVedOppfolgingsstart
+    override fun toHistorikkInnslag() = lagKontorHistorikkInnslag(
+        KontorEndringsType.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart
     )
-    override fun logg() {
-        TODO("Not yet implemented")
-    }
 }
 
 data class ArenaKontorVedOppfolgingStart(private val kontorTilordning: KontorTilordning) :
     ArenaKontorEndret(kontorTilordning, ZonedDateTime.now().toOffsetDateTime()) {
     override fun toHistorikkInnslag() = lagKontorHistorikkInnslag(KontorEndringsType.ArenaKontorVedOppfolgingsStart)
-    override fun logg() {
-        logger.info(
-            "ArenaKontorTilordning: kontorId={}, oppfolginsperiode={}",
-            tilordning.kontorId,
-            tilordning.oppfolgingsperiodeId
-        )
-    }
 }
 
 data class EndringPaaOppfolgingsBrukerFraArena(
@@ -41,7 +31,6 @@ data class EndringPaaOppfolgingsBrukerFraArena(
     sistEndretDatoArena = sistEndretIArena
 ) {
     override fun toHistorikkInnslag() = lagKontorHistorikkInnslag(KontorEndringsType.EndretIArena)
-
 }
 
 private fun ArenaKontorEndret.lagKontorHistorikkInnslag(kontorEndringsType: KontorEndringsType) =
@@ -53,7 +42,3 @@ private fun ArenaKontorEndret.lagKontorHistorikkInnslag(kontorEndringsType: Kont
         kontorType = KontorType.ARENA,
         oppfolgingId = tilordning.oppfolgingsperiodeId
     )
-
-private fun ArenaKontorEndret.logg(kontorEndringsType: KontorEndringsType) {
-    logger.info("${this::class.simpleName}: kontorId=${tilordning.kontorId}, oppfolginsperiode=${tilordning.oppfolgingsperiodeId}")
-}

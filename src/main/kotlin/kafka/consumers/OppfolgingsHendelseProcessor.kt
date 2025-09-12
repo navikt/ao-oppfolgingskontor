@@ -70,7 +70,9 @@ class OppfolgingsHendelseProcessor(
                         }
                         HaddeNyerePeriodePåIdent, HarSlettetPeriode -> Skip()
                         OppfølgingsperiodeLagret -> {
-                            val forhåndslagretArenaKontor = TidligArenaKontorEntity.findById(ident.value)
+                            val forhåndslagretArenaKontor = transaction {
+                                TidligArenaKontorEntity.findById(ident.value)
+                            }
                             val oppdatertOppfolgingStartetInternalEvent = oppfolgingStartetInternalEvent.copy(
                                 arenaKontorFraOppfolgingsbrukerTopic = forhåndslagretArenaKontor
                             )

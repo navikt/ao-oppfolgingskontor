@@ -699,7 +699,8 @@ fun oppfolgingsperiodeStartet(fnr: Ident, arenaKontor: KontorId? = null): Oppfol
         fnr,
         ZonedDateTime.now(),
         OppfolgingsperiodeId(UUID.randomUUID()),
-            arenaKontor
+            arenaKontor,
+        null,
     )
 }
 
