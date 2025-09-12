@@ -4,6 +4,7 @@ import db.entity.TidligArenaKontorEntity
 import no.nav.db.Ident
 import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
+import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 
 sealed class OppfolgingsperiodeEndret {
@@ -16,7 +17,7 @@ data class OppfolgingsperiodeStartet(
     val startDato: ZonedDateTime,
     override val periodeId: OppfolgingsperiodeId,
     val startetArenaKontor: KontorId? = null,
-    val arenaKontorFraOppfolgingsbrukerTopic: TidligArenaKontorEntity?
+    val arenaKontorFraOppfolgingsbrukerTopic: TidligArenaKontor?
 ): OppfolgingsperiodeEndret()
 
 class OppfolgingsperiodeAvsluttet(
@@ -32,3 +33,8 @@ class OppfolgingsperiodeAvsluttet(
         return true
     }
 }
+
+data class TidligArenaKontor(
+    val sistEndDato: OffsetDateTime,
+    val kontor: KontorId,
+)

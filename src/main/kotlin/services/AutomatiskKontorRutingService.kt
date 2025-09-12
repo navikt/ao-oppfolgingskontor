@@ -142,10 +142,10 @@ class AutomatiskKontorRutingService(
                 ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart(
                     KontorTilordning(
                         periodeStartetEvent.fnr,
-                        KontorId(arenaKontorFraOppfolgingsbruker.kontorId),
+                        arenaKontorFraOppfolgingsbruker.kontor,
                         oppfolgingsperiodeId,
                     ),
-                    arenaKontorFraOppfolgingsbruker.sistEndretDato
+                    arenaKontorFraOppfolgingsbruker.sistEndDato
                 )
             }
             arenaKontorFraVeilarboppfolging != null -> {

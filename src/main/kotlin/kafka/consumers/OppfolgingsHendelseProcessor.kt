@@ -13,6 +13,7 @@ import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.events.ArenaKontorVedOppfolgingStart
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
+import no.nav.domain.externalEvents.TidligArenaKontor
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.RecordProcessingResult
@@ -74,7 +75,12 @@ class OppfolgingsHendelseProcessor(
                                 TidligArenaKontorEntity.findById(ident.value)
                             }
                             val oppdatertOppfolgingStartetInternalEvent = oppfolgingStartetInternalEvent.copy(
-                                arenaKontorFraOppfolgingsbrukerTopic = forhåndslagretArenaKontor
+                                arenaKontorFraOppfolgingsbrukerTopic = forhåndslagretArenaKontor?.let {
+                                    TidligArenaKontor(
+                                        it.sistEndretDato,
+                                        KontorId(it.kontorId)
+                                    )
+                                }
                             )
                             Forward(
                                 Record(
