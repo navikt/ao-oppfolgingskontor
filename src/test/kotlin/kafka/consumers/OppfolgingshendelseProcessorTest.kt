@@ -1,11 +1,13 @@
 package kafka.consumers
 
+import db.entity.TidligArenaKontorEntity
 import io.kotest.assertions.withClue
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.server.testing.testApplication
+import io.mockk.every
 import io.mockk.mockk
 import no.nav.db.Ident
 import no.nav.db.entity.ArenaKontorEntity
@@ -32,6 +34,7 @@ import org.junit.jupiter.api.Test
 import services.OppfolgingsperiodeService
 import services.ingenSensitivitet
 import java.time.Instant
+import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
@@ -271,32 +274,44 @@ class OppfolgingshendelseProcessorTest {
     }
 
     @Test
-    fun `skal rydd opp i tidlig-arena-kontor hvis de blir brukt`() {
+    fun `skal rydde opp i tidlig-arena-kontor hvis de blir brukt`() {
         val bruker = testBruker()
         flywayMigrationInTest()
-
-        val arenaKontorFraVeilarboppfolging = mockk<ArenaKontorEntity>()
+        val arenaKontor = "4141"
+        val arenaKontorFraVeilarboppfolging = mockk<ArenaKontorEntity> {
+            every { sistEndretDatoArena } returns OffsetDateTime.now()
+            every { kontorId } returns arenaKontor
+        }
         val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
             { arenaKontorFraVeilarboppfolging },
-            { AktivOppfolgingsperiode(bruker.fnr,  bruker.oppfolgingsperiodeId, bruker.periodeStart.toOffsetDateTime()) })
+            {
+                AktivOppfolgingsperiode(
+                    bruker.fnr,
+                    bruker.oppfolgingsperiodeId,
+                    bruker.periodeStart.toOffsetDateTime()
+                )
+            })
         val hendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
+        endringPaOppfolgingsBrukerProcessor.process(
+            TopicUtils.endringPaaOppfolgingsBrukerMessage(
+                bruker.fnr,
+                arenaKontor,
+                Instant.now().atZone(ZoneId.of("Europe/Oslo")).toOffsetDateTime(),
+                no.nav.kafka.consumers.FormidlingsGruppe.ARBS,
+                no.nav.kafka.consumers.Kvalifiseringsgruppe.IKVAL
+            )
+        )
+        transaction {
+            TidligArenaKontorEntity.findById(bruker.fnr.value)?.kontorId shouldBe arenaKontor
+        }
 
-        // FØrst melding om arena kontor
-        // Så melding om oppfølging startet
+        hendelseProcessor.process(TopicUtils.oppfolgingStartetMelding(bruker))
 
-        // Sjekk at slettet
+        transaction {
+            TidligArenaKontorEntity.findById(bruker.fnr.value) shouldBe null
+        }
     }
 
-    private fun oppfolgingStartetMessage(
-        bruker: Bruker,
-    ) = TopicUtils.oppfolgingStartetMelding(bruker)
-
-    private fun oppfolgingAvsluttetMessage(
-        bruker: Bruker,
-        sluttDato: ZonedDateTime,
-    ) = TopicUtils.oppfolgingAvsluttetMelding(bruker, sluttDato)
-
-    val defaultArenaKontor = KontorId("4141")
     fun oppfolgingStartetMelding(bruker: Bruker): Record<String, String> = TopicUtils.oppfolgingStartetMelding(bruker)
 
     fun oppfolgingAvsluttetMelding(bruker: Bruker, sluttDato: ZonedDateTime): Record<String, String> =
