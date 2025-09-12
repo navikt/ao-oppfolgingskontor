@@ -1,7 +1,6 @@
 package kafka.consumers
 
 import db.entity.TidligArenaKontorEntity
-import db.table.TidligArenaKontorTable
 import kafka.consumers.oppfolgingsHendelser.OppfolgingStartetHendelseDto
 import kafka.consumers.oppfolgingsHendelser.OppfolgingsAvsluttetHendelseDto
 import kafka.consumers.oppfolgingsHendelser.OppfolgingsHendelseDto
@@ -11,7 +10,7 @@ import no.nav.db.entity.ArenaKontorEntity
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
-import no.nav.domain.events.ArenaKontorVedOppfolgingsStart
+import no.nav.domain.events.ArenaKontorVedOppfolgingStart
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.kafka.processor.Commit
@@ -59,7 +58,7 @@ class OppfolgingsHendelseProcessor(
                             val innkommendeArenaKontor = oppfolgingStartetInternalEvent.startetArenaKontor
                             val kontor = sisteArenaKontor(oppfolgingStartetInternalEvent)
                             if (innkommendeArenaKontor != null && kontor?.id != oppfolgingStartetInternalEvent.startetArenaKontor?.id) {
-                                KontorTilordningService.tilordneKontor(ArenaKontorVedOppfolgingsStart(
+                                KontorTilordningService.tilordneKontor(ArenaKontorVedOppfolgingStart(
                                     KontorTilordning(
                                         fnr = oppfolgingStartetInternalEvent.fnr,
                                         kontorId = innkommendeArenaKontor,

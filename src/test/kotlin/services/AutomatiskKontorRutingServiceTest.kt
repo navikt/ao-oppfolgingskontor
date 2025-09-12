@@ -14,7 +14,7 @@ import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.Sensitivitet
 import no.nav.domain.events.AOKontorEndretPgaAdressebeskyttelseEndret
 import no.nav.domain.events.AOKontorEndretPgaSkjermingEndret
-import no.nav.domain.events.ArenaKontorVedOppfolgingsStart
+import no.nav.domain.events.ArenaKontorVedOppfolgingStart
 import no.nav.domain.events.GTKontorEndret
 import no.nav.domain.events.OppfolgingsPeriodeStartetFallbackKontorTilordning
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
@@ -269,7 +269,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                             ),
                             ingenSensitivitet
                         ),
-                        arenaKontorEndret = ArenaKontorVedOppfolgingsStart(
+                        arenaKontorEndret = ArenaKontorVedOppfolgingStart(
                             KontorTilordning(
                                 ungBrukerMedGodeMuligheter.fnr(),
                                 arenaKontor,

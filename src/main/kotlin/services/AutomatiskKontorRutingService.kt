@@ -14,7 +14,7 @@ import no.nav.domain.events.AOKontorEndret
 import no.nav.domain.events.AOKontorEndretPgaAdressebeskyttelseEndret
 import no.nav.domain.events.AOKontorEndretPgaSkjermingEndret
 import no.nav.domain.events.ArenaKontorEndret
-import no.nav.domain.events.ArenaKontorVedOppfolgingsStart
+import no.nav.domain.events.ArenaKontorVedOppfolgingStart
 import no.nav.domain.events.GTKontorEndret
 import no.nav.domain.events.OppfolgingsPeriodeStartetFallbackKontorTilordning
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
@@ -134,7 +134,7 @@ class AutomatiskKontorRutingService(
 
     private fun arenaKontorEndring(periodeStartetEvent: OppfolgingsperiodeStartet, oppfolgingsperiodeId: OppfolgingsperiodeId): ArenaKontorEndret? {
         if (periodeStartetEvent.startetArenaKontor == null) return null
-        return ArenaKontorVedOppfolgingsStart(
+        return ArenaKontorVedOppfolgingStart(
             KontorTilordning(
                 periodeStartetEvent.fnr,
                 periodeStartetEvent.startetArenaKontor,
