@@ -5,7 +5,6 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import no.nav.db.Fnr
 import no.nav.db.Ident
-import no.nav.domain.ArenaKontor
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.INGEN_GT_KONTOR_FALLBACK
@@ -15,6 +14,7 @@ import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.Sensitivitet
 import no.nav.domain.events.AOKontorEndretPgaAdressebeskyttelseEndret
 import no.nav.domain.events.AOKontorEndretPgaSkjermingEndret
+import no.nav.domain.events.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart
 import no.nav.domain.events.ArenaKontorVedOppfolgingStart
 import no.nav.domain.events.GTKontorEndret
 import no.nav.domain.events.OppfolgingsPeriodeStartetFallbackKontorTilordning
@@ -283,16 +283,23 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
             }
             it("skal bruke Arena-kontor fra oppfolgingsbruker-endret ved oppfolgingsperiodeStart") {
                 val arenaKontorId = "ARENA1111"
+                val tidligArenaKontor = TidligArenaKontor(sistEndretDato = OffsetDateTime.now(), kontor = KontorId(arenaKontorId))
+                val aoKontorTilordning = KontorTilordning(ungBrukerMedGodeMuligheter.fnr(),  ungBrukerMedGodeMuligheter.gtKontor(), ungBrukerMedGodeMuligheter.oppfolgingsperiodeId())
+                val arenaKontorTilordning = KontorTilordning(ungBrukerMedGodeMuligheter.fnr(),  KontorId(arenaKontorId), ungBrukerMedGodeMuligheter.oppfolgingsperiodeId())
                 gitt(ungBrukerMedGodeMuligheter).tilordneKontorAutomatisk(
                     oppfolgingsperiodeStartet(
                         bruker = ungBrukerMedGodeMuligheter,
-                        tidligArenaKontor = TidligArenaKontor(sistEndretDato = OffsetDateTime.now(), kontor = KontorId(arenaKontorId))
+                        tidligArenaKontor = tidligArenaKontor
                     )
                 ) shouldBe TilordningSuccessKontorEndret(
                     KontorEndringer(
                         aoKontorEndret = OppfolgingsPeriodeStartetLokalKontorTilordning(
-                            KontorTilordning(ungBrukerMedGodeMuligheter.fnr(),  ungBrukerMedGodeMuligheter.gtKontor(), ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()),
+                            aoKontorTilordning,
                             ingenSensitivitet
+                        ),
+                        arenaKontorEndret = ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart(
+                            arenaKontorTilordning,
+                            tidligArenaKontor.sistEndretDato
                         )
                     )
                 )
