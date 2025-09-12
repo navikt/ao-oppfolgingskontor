@@ -145,7 +145,7 @@ class AutomatiskKontorRutingService(
                         arenaKontorFraOppfolgingsbruker.kontor,
                         oppfolgingsperiodeId,
                     ),
-                    arenaKontorFraOppfolgingsbruker.sistEndDato
+                    arenaKontorFraOppfolgingsbruker.sistEndretDato
                 )
             }
             arenaKontorFraVeilarboppfolging != null -> {

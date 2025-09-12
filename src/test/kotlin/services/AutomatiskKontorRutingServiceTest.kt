@@ -5,6 +5,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import no.nav.db.Fnr
 import no.nav.db.Ident
+import no.nav.domain.ArenaKontor
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.INGEN_GT_KONTOR_FALLBACK
@@ -24,6 +25,7 @@ import no.nav.domain.externalEvents.AdressebeskyttelseEndret
 import no.nav.domain.externalEvents.BostedsadresseEndret
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.domain.externalEvents.SkjermetStatusEndret
+import no.nav.domain.externalEvents.TidligArenaKontor
 import no.nav.http.client.AlderFunnet
 import no.nav.http.client.AlderIkkeFunnet
 import no.nav.http.client.AlderResult
@@ -275,6 +277,22 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                                 arenaKontor,
                                 ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()
                             )
+                        )
+                    )
+                )
+            }
+            it("skal bruke Arena-kontor fra oppfolgingsbruker-endret ved oppfolgingsperiodeStart") {
+                val arenaKontorId = "ARENA1111"
+                gitt(ungBrukerMedGodeMuligheter).tilordneKontorAutomatisk(
+                    oppfolgingsperiodeStartet(
+                        bruker = ungBrukerMedGodeMuligheter,
+                        tidligArenaKontor = TidligArenaKontor(sistEndretDato = OffsetDateTime.now(), kontor = KontorId(arenaKontorId))
+                    )
+                ) shouldBe TilordningSuccessKontorEndret(
+                    KontorEndringer(
+                        aoKontorEndret = OppfolgingsPeriodeStartetLokalKontorTilordning(
+                            KontorTilordning(ungBrukerMedGodeMuligheter.fnr(),  ungBrukerMedGodeMuligheter.gtKontor(), ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()),
+                            ingenSensitivitet
                         )
                     )
                 )
@@ -692,15 +710,15 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
     }
 })
 
-fun oppfolgingsperiodeStartet(bruker: Bruker, arenaKontor: KontorId? = null) = oppfolgingsperiodeStartet(bruker.fnr(), arenaKontor)
+fun oppfolgingsperiodeStartet(bruker: Bruker, arenaKontor: KontorId? = null, tidligArenaKontor: TidligArenaKontor? = null) = oppfolgingsperiodeStartet(bruker.fnr(), arenaKontor, tidligArenaKontor)
 
-fun oppfolgingsperiodeStartet(fnr: Ident, arenaKontor: KontorId? = null): OppfolgingsperiodeStartet {
+fun oppfolgingsperiodeStartet(fnr: Ident, arenaKontor: KontorId? = null, tidligArenaKontor: TidligArenaKontor? = null): OppfolgingsperiodeStartet {
     return OppfolgingsperiodeStartet(
         fnr,
         ZonedDateTime.now(),
         OppfolgingsperiodeId(UUID.randomUUID()),
             arenaKontor,
-        null,
+        tidligArenaKontor,
     )
 }
 

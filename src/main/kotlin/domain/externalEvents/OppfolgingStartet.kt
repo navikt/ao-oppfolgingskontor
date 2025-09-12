@@ -1,6 +1,5 @@
 package no.nav.domain.externalEvents
 
-import db.entity.TidligArenaKontorEntity
 import no.nav.db.Ident
 import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
@@ -35,6 +34,6 @@ class OppfolgingsperiodeAvsluttet(
 }
 
 data class TidligArenaKontor(
-    val sistEndDato: OffsetDateTime,
+    val sistEndretDato: OffsetDateTime,
     val kontor: KontorId,
 )
