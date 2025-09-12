@@ -6,8 +6,9 @@ import no.nav.domain.KontorTilordning
 import no.nav.domain.KontorType
 import no.nav.domain.System
 import no.nav.http.logger
+import java.time.ZonedDateTime
 
-class ArenaKontorVedOppfolgingsStart(tilordning: KontorTilordning): ArenaKontorEndret(tilordning, null) {
+class ArenaKontorVedOppfolgingsStart(tilordning: KontorTilordning): ArenaKontorEndret(tilordning, ZonedDateTime.now().toOffsetDateTime()) {
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         val registrant = System()
         return KontorHistorikkInnslag(

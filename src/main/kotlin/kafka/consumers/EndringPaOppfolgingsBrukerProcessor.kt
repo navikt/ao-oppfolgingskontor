@@ -1,9 +1,11 @@
 package no.nav.kafka.consumers
 
+import db.table.TidligArenaKontorTable
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import no.nav.db.Fnr
+import no.nav.db.Ident
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorId
@@ -25,6 +27,7 @@ import org.apache.kafka.streams.processor.api.Record
 import org.slf4j.LoggerFactory
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
+import java.time.ZonedDateTime
 
 class EndringPaOppfolgingsBrukerProcessor(
     val sistLagretArenaKontorProvider: (Fnr) -> ArenaKontorEntity?,
@@ -71,6 +74,11 @@ class EndringPaOppfolgingsBrukerProcessor(
                         sistEndretDatoArena = result.endretTidspunkt,
                     )
                 )
+                Commit()
+            }
+            is UnderOppfolgingIArenaMenIkkeLokalt -> {
+                TidligArenaKontorTable
+
                 Commit()
             }
         }
@@ -125,7 +133,17 @@ class EndringPaOppfolgingsBrukerProcessor(
                             false -> IngenEndring()
                         }
                     }
-                    NotUnderOppfolging -> IkkeUnderOppfolging()
+                    NotUnderOppfolging -> {
+                        if (endringPaOppfolgingsBruker.erUnderOppfolgingIArena()) {
+                            UnderOppfolgingIArenaMenIkkeLokalt(
+                                KontorId(endringPaOppfolgingsBruker.oppfolgingsenhet),
+                                endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime(),
+                                fnr
+                            )
+                        } else {
+                            IkkeUnderOppfolging()
+                        }
+                    }
                     is OppfolgingperiodeOppslagFeil -> Feil(
                         Retry("Klarte ikke behandle melding om endring på oppfølgingsbruker, feil ved oppslag på oppfølgingsperiode: ${periode.message}"),
                     )
@@ -147,6 +165,11 @@ sealed class EndringPaaOppfolgingsBrukerResult
 class BeforeCutoff : EndringPaaOppfolgingsBrukerResult()
 class HaddeNyereEndring : EndringPaaOppfolgingsBrukerResult()
 class IkkeUnderOppfolging : EndringPaaOppfolgingsBrukerResult()
+class UnderOppfolgingIArenaMenIkkeLokalt(
+    val kontorId: KontorId,
+    val sistEndretDatoArena: OffsetDateTime,
+    val ident: Ident,
+) : EndringPaaOppfolgingsBrukerResult()
 class MeldingManglerEnhet : EndringPaaOppfolgingsBrukerResult()
 class SkalLagre(
     val oppfolgingsenhet: String,

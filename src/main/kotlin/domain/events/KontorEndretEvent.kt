@@ -82,4 +82,4 @@ data class GTKontorEndret(val kontorTilordning: KontorTilordning, val kontorEndr
     }
 }
 sealed class AOKontorEndret(tilordning: KontorTilordning, val registrant: Registrant) : KontorEndretEvent(tilordning)
-sealed class ArenaKontorEndret(tilordning: KontorTilordning, val sistEndretDatoArena: OffsetDateTime?) : KontorEndretEvent(tilordning)
+sealed class ArenaKontorEndret(tilordning: KontorTilordning, val sistEndretDatoArena: OffsetDateTime) : KontorEndretEvent(tilordning)
