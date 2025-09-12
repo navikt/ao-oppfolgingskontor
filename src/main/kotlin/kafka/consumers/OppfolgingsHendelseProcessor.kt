@@ -1,6 +1,7 @@
 package kafka.consumers
 
 import db.entity.TidligArenaKontorEntity
+import db.table.TidligArenaKontorTable
 import kafka.consumers.oppfolgingsHendelser.OppfolgingStartetHendelseDto
 import kafka.consumers.oppfolgingsHendelser.OppfolgingsAvsluttetHendelseDto
 import kafka.consumers.oppfolgingsHendelser.OppfolgingsHendelseDto
@@ -21,6 +22,9 @@ import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
 import no.nav.services.KontorTilordningService
 import org.apache.kafka.streams.processor.api.Record
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.deleteAll
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import services.GammelPeriodeAvsluttet
@@ -71,9 +75,7 @@ class OppfolgingsHendelseProcessor(
                         }
                         HaddeNyerePeriodePåIdent, HarSlettetPeriode -> Skip()
                         OppfølgingsperiodeLagret -> {
-                            val forhåndslagretArenaKontor = transaction {
-                                TidligArenaKontorEntity.findById(ident.value)
-                            }
+                            val forhåndslagretArenaKontor = hentSisteArenaKontorFraOppfolgingsBrukerOgSlettHvisFunnet(ident)
                             val oppdatertOppfolgingStartetInternalEvent = oppfolgingStartetInternalEvent.copy(
                                 arenaKontorFraOppfolgingsbrukerTopic = forhåndslagretArenaKontor?.let {
                                     TidligArenaKontor(
@@ -104,6 +106,17 @@ class OppfolgingsHendelseProcessor(
                 log.error(feilmelding, error)
                 Retry<Ident, OppfolgingsperiodeStartet>(feilmelding)
             }
+    }
+
+    fun hentSisteArenaKontorFraOppfolgingsBrukerOgSlettHvisFunnet(ident: Ident): TidligArenaKontorEntity? {
+        return transaction {
+            TidligArenaKontorEntity.findById(ident.value)
+                ?.also {
+                    TidligArenaKontorTable.deleteWhere {
+                        id eq ident.value
+                    }
+                }
+        }
     }
 
     fun sisteArenaKontor(oppfolgingsperiode: OppfolgingsperiodeStartet): KontorId? {

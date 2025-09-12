@@ -6,7 +6,9 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.server.testing.testApplication
+import io.mockk.mockk
 import no.nav.db.Ident
+import no.nav.db.entity.ArenaKontorEntity
 import java.time.ZonedDateTime
 import java.util.UUID
 import no.nav.db.entity.OppfolgingsperiodeEntity
@@ -15,10 +17,12 @@ import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
+import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
+import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.KontorTilordningService
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.randomFnr
@@ -264,6 +268,23 @@ class OppfolgingshendelseProcessorTest {
         val result = processor.process(record)
 
         result.shouldBeInstanceOf<Skip<Ident, OppfolgingsperiodeStartet>>()
+    }
+
+    @Test
+    fun `skal rydd opp i tidlig-arena-kontor hvis de blir brukt`() {
+        val bruker = testBruker()
+        flywayMigrationInTest()
+
+        val arenaKontorFraVeilarboppfolging = mockk<ArenaKontorEntity>()
+        val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
+            { arenaKontorFraVeilarboppfolging },
+            { AktivOppfolgingsperiode(bruker.fnr,  bruker.oppfolgingsperiodeId, bruker.periodeStart.toOffsetDateTime()) })
+        val hendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
+
+        // FØrst melding om arena kontor
+        // Så melding om oppfølging startet
+
+        // Sjekk at slettet
     }
 
     private fun oppfolgingStartetMessage(
