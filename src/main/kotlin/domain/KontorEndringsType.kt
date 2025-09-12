@@ -12,6 +12,7 @@ enum class KontorEndringsType {
     AddressebeskyttelseMistet,
     EndretIArena,
     ArenaKontorVedOppfolgingsStart,
+    ArenaKontorFraEndringPaaOppfolgingsbrukerVedOppfolgingsstart,
     EndretBostedsadresse,
     ArenaMigrering
 }

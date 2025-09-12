@@ -66,12 +66,12 @@ class EndringPaOppfolgingsBrukerProcessor(
             is SkalLagre -> {
                 KontorTilordningService.tilordneKontor(
                     EndringPaaOppfolgingsBrukerFraArena(
-                        tilordning = KontorTilordning(
+                        kontorTilordning = KontorTilordning(
                             fnr = result.fnr,
                             kontorId = KontorId(result.oppfolgingsenhet),
                             result.oppfolgingsperiodeId
                         ),
-                        sistEndretDatoArena = result.endretTidspunkt,
+                        sistEndretIArena = result.endretTidspunkt,
                     )
                 )
                 Commit()
