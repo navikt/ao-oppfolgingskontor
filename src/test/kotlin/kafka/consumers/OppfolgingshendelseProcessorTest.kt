@@ -277,10 +277,11 @@ class OppfolgingshendelseProcessorTest {
     fun `skal rydde opp i tidlig-arena-kontor hvis de blir brukt`() {
         val bruker = testBruker()
         flywayMigrationInTest()
-        val arenaKontor = "4141"
+        val arenaKontorVeilarboppfolging = "4141"
+        val arenaKontor = "4142"
         val arenaKontorFraVeilarboppfolging = mockk<ArenaKontorEntity> {
-            every { sistEndretDatoArena } returns OffsetDateTime.now()
-            every { kontorId } returns arenaKontor
+            every { sistEndretDatoArena } returns OffsetDateTime.now().minusSeconds(1)
+            every { kontorId } returns arenaKontorVeilarboppfolging
         }
         val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
             { arenaKontorFraVeilarboppfolging },
