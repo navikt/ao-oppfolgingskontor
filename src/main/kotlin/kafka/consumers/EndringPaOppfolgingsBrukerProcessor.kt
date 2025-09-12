@@ -7,7 +7,6 @@ import kotlinx.serialization.json.Json
 import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.db.entity.ArenaKontorEntity
-import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
@@ -78,14 +77,19 @@ class EndringPaOppfolgingsBrukerProcessor(
                 Commit()
             }
             is UnderOppfolgingIArenaMenIkkeLokalt -> {
-                TidligArenaKontorTable.upsert {
-                    it[id] = result.ident.value
-                    it[kontorId] = result.kontorId.id
-                    it[sisteEndretDato] = result.sistEndretDatoArena
-                    it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
-                }
+                log.info("Lagrer kontor fra arena før? melding om oppfølging startet")
+                lagreTidligArenaKontor(result)
                 Commit()
             }
+        }
+    }
+
+    fun lagreTidligArenaKontor(result: UnderOppfolgingIArenaMenIkkeLokalt) {
+        TidligArenaKontorTable.upsert {
+            it[id] = result.ident.value
+            it[kontorId] = result.kontorId.id
+            it[sisteEndretDato] = result.sistEndretDatoArena
+            it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
         }
     }
 
@@ -105,12 +109,7 @@ class EndringPaOppfolgingsBrukerProcessor(
 
         fun harNyereLagretEndring(): Boolean {
             val sistEndretDatoArena = sistLagretArenaKontor?.sistEndretDatoArena ?: return false
-            val historikkEntryType = sistLagretArenaKontor?.historikkEntry?.kontorendringstype?.let { KontorEndringsType.valueOf(it) }
-            return if (historikkEntryType == KontorEndringsType.ArenaKontorVedOppfolgingsStart) {
-                false
-            } else {
-                (sistEndretDatoArena > endretTidspunktInnkommendeMelding)
-            }
+            return sistEndretDatoArena > endretTidspunktInnkommendeMelding
         }
 
         fun harKontorBlittEndret(): Boolean {

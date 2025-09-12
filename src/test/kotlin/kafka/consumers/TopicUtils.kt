@@ -1,8 +1,12 @@
 package kafka.consumers
 
 import no.nav.db.Fnr
+import no.nav.db.Ident
 import no.nav.domain.OppfolgingsperiodeId
+import no.nav.kafka.consumers.FormidlingsGruppe
+import no.nav.kafka.consumers.Kvalifiseringsgruppe
 import org.apache.kafka.streams.processor.api.Record
+import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 
 object TopicUtils {
@@ -36,6 +40,20 @@ object TopicUtils {
                 "avregistreringsType": "UtmeldtEtter28Dager"
             }
         """.trimIndent(), System.currentTimeMillis())
+    }
+
+    fun endringPaaOppfolgingsBrukerMessage(
+            ident: Ident,
+            kontorId: String,
+            sistEndretDato: OffsetDateTime,
+            formidlingsGruppe: FormidlingsGruppe,
+            kvalifiseringsgruppe: Kvalifiseringsgruppe): Record<String, String> {
+        return Record(ident.value, """{
+              "oppfolgingsenhet": "$kontorId",
+              "sistEndretDato": "$sistEndretDato",
+              "formidlingsgruppe": "${formidlingsGruppe.name}",
+              "kvalifiseringsgruppe": "${kvalifiseringsgruppe.name}"
+        }""".trimIndent(), System.currentTimeMillis())
     }
 
 }
