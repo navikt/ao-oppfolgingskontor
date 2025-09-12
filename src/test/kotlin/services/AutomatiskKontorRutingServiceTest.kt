@@ -14,7 +14,8 @@ import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.Sensitivitet
 import no.nav.domain.events.AOKontorEndretPgaAdressebeskyttelseEndret
 import no.nav.domain.events.AOKontorEndretPgaSkjermingEndret
-import no.nav.domain.events.ArenaKontorVedOppfolgingsStart
+import no.nav.domain.events.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart
+import no.nav.domain.events.ArenaKontorVedOppfolgingStart
 import no.nav.domain.events.GTKontorEndret
 import no.nav.domain.events.OppfolgingsPeriodeStartetFallbackKontorTilordning
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
@@ -24,6 +25,7 @@ import no.nav.domain.externalEvents.AdressebeskyttelseEndret
 import no.nav.domain.externalEvents.BostedsadresseEndret
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.domain.externalEvents.SkjermetStatusEndret
+import no.nav.domain.externalEvents.TidligArenaKontor
 import no.nav.http.client.AlderFunnet
 import no.nav.http.client.AlderIkkeFunnet
 import no.nav.http.client.AlderResult
@@ -269,12 +271,35 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                             ),
                             ingenSensitivitet
                         ),
-                        arenaKontorEndret = ArenaKontorVedOppfolgingsStart(
+                        arenaKontorEndret = ArenaKontorVedOppfolgingStart(
                             KontorTilordning(
                                 ungBrukerMedGodeMuligheter.fnr(),
                                 arenaKontor,
                                 ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()
                             )
+                        )
+                    )
+                )
+            }
+            it("skal bruke Arena-kontor fra oppfolgingsbruker-endret ved oppfolgingsperiodeStart") {
+                val arenaKontorId = "ARENA1111"
+                val tidligArenaKontor = TidligArenaKontor(sistEndretDato = OffsetDateTime.now(), kontor = KontorId(arenaKontorId))
+                val aoKontorTilordning = KontorTilordning(ungBrukerMedGodeMuligheter.fnr(),  ungBrukerMedGodeMuligheter.gtKontor(), ungBrukerMedGodeMuligheter.oppfolgingsperiodeId())
+                val arenaKontorTilordning = KontorTilordning(ungBrukerMedGodeMuligheter.fnr(),  KontorId(arenaKontorId), ungBrukerMedGodeMuligheter.oppfolgingsperiodeId())
+                gitt(ungBrukerMedGodeMuligheter).tilordneKontorAutomatisk(
+                    oppfolgingsperiodeStartet(
+                        bruker = ungBrukerMedGodeMuligheter,
+                        tidligArenaKontor = tidligArenaKontor
+                    )
+                ) shouldBe TilordningSuccessKontorEndret(
+                    KontorEndringer(
+                        aoKontorEndret = OppfolgingsPeriodeStartetLokalKontorTilordning(
+                            aoKontorTilordning,
+                            ingenSensitivitet
+                        ),
+                        arenaKontorEndret = ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart(
+                            arenaKontorTilordning,
+                            tidligArenaKontor.sistEndretDato
                         )
                     )
                 )
@@ -692,14 +717,15 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
     }
 })
 
-fun oppfolgingsperiodeStartet(bruker: Bruker, arenaKontor: KontorId? = null) = oppfolgingsperiodeStartet(bruker.fnr(), arenaKontor)
+fun oppfolgingsperiodeStartet(bruker: Bruker, arenaKontor: KontorId? = null, tidligArenaKontor: TidligArenaKontor? = null) = oppfolgingsperiodeStartet(bruker.fnr(), arenaKontor, tidligArenaKontor)
 
-fun oppfolgingsperiodeStartet(fnr: Ident, arenaKontor: KontorId? = null): OppfolgingsperiodeStartet {
+fun oppfolgingsperiodeStartet(fnr: Ident, arenaKontor: KontorId? = null, tidligArenaKontor: TidligArenaKontor? = null): OppfolgingsperiodeStartet {
     return OppfolgingsperiodeStartet(
         fnr,
         ZonedDateTime.now(),
         OppfolgingsperiodeId(UUID.randomUUID()),
-            arenaKontor
+            arenaKontor,
+        tidligArenaKontor,
     )
 }
 

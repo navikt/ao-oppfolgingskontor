@@ -8,7 +8,6 @@ import io.ktor.client.call.*
 import io.ktor.http.*
 import io.ktor.server.routing.*
 import io.ktor.server.testing.*
-import kotlinx.datetime.toInstant
 import no.nav.Authenticated
 import no.nav.SystemPrincipal
 import no.nav.db.Fnr
@@ -31,7 +30,6 @@ import no.nav.utils.KontorTilhorighet
 import org.junit.jupiter.api.Test
 import services.ingenSensitivitet
 import java.time.Instant
-import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.util.*
 import kotlin.time.Duration.Companion.milliseconds
@@ -161,8 +159,8 @@ class GraphqlApplicationTest {
     private fun gittBrukerMedKontorIArena(fnr: Fnr, kontorId: String, insertTime: ZonedDateTime = ZonedDateTime.now()) {
         KontorTilordningService.tilordneKontor(
             EndringPaaOppfolgingsBrukerFraArena(
-                tilordning = KontorTilordning(fnr, KontorId(kontorId), OppfolgingsperiodeId(UUID.randomUUID())),
-                sistEndretDatoArena = insertTime.toOffsetDateTime()
+                kontorTilordning = KontorTilordning(fnr, KontorId(kontorId), OppfolgingsperiodeId(UUID.randomUUID())),
+                sistEndretIArena = insertTime.toOffsetDateTime()
             )
         )
     }

@@ -12,6 +12,7 @@ import no.nav.http.client.GtForBrukerIkkeFunnet
 import no.nav.http.client.GtForBrukerSuccess
 import no.nav.http.client.GtLandForBrukerFunnet
 import no.nav.http.client.GtNummerForBrukerFunnet
+import no.nav.http.logger
 import org.slf4j.LoggerFactory
 import java.time.OffsetDateTime
 
@@ -82,4 +83,8 @@ data class GTKontorEndret(val kontorTilordning: KontorTilordning, val kontorEndr
     }
 }
 sealed class AOKontorEndret(tilordning: KontorTilordning, val registrant: Registrant) : KontorEndretEvent(tilordning)
-sealed class ArenaKontorEndret(tilordning: KontorTilordning, val sistEndretDatoArena: OffsetDateTime) : KontorEndretEvent(tilordning)
+sealed class ArenaKontorEndret(tilordning: KontorTilordning, val sistEndretDatoArena: OffsetDateTime) : KontorEndretEvent(tilordning) {
+    override fun logg() {
+        logger.info("${this::class.simpleName}: kontorId=${tilordning.kontorId}, oppfolginsperiode=${tilordning.oppfolgingsperiodeId}")
+    }
+}

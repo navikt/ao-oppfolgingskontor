@@ -14,7 +14,8 @@ import no.nav.domain.events.AOKontorEndret
 import no.nav.domain.events.AOKontorEndretPgaAdressebeskyttelseEndret
 import no.nav.domain.events.AOKontorEndretPgaSkjermingEndret
 import no.nav.domain.events.ArenaKontorEndret
-import no.nav.domain.events.ArenaKontorVedOppfolgingsStart
+import no.nav.domain.events.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart
+import no.nav.domain.events.ArenaKontorVedOppfolgingStart
 import no.nav.domain.events.GTKontorEndret
 import no.nav.domain.events.OppfolgingsPeriodeStartetFallbackKontorTilordning
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
@@ -80,10 +81,10 @@ class AutomatiskKontorRutingService(
     val log = LoggerFactory.getLogger(this::class.java)
 
     suspend fun tilordneKontorAutomatisk(
-        oppfolgingsperiodeEndret: OppfolgingsperiodeStartet
+        oppfolgingsperiodeStartet: OppfolgingsperiodeStartet
     ): TilordningResultat {
         try {
-            val underOppfolgingResult = isUnderOppfolgingProvider(IdentFunnet(oppfolgingsperiodeEndret.fnr))
+            val underOppfolgingResult = isUnderOppfolgingProvider(IdentFunnet(oppfolgingsperiodeStartet.fnr))
             val (fnr, oppfolgingsperiodeId) = when (underOppfolgingResult) {
                 is AktivOppfolgingsperiode -> underOppfolgingResult
                 NotUnderOppfolging -> return TilordningSuccessIngenEndring
@@ -123,7 +124,7 @@ class AutomatiskKontorRutingService(
                 is KontorForGtFinnesIkke -> hentTilordningUtenGT(fnr, alder, profilering, oppfolgingsperiodeId, gtKontorResultat)
                 is KontorForGtFantLandEllerKontor -> hentTilordning(fnr, gtKontorResultat, alder, profilering, oppfolgingsperiodeId)
                 is KontorForGtFeil -> return TilordningFeil("Feil ved henting av gt-kontor: ${gtKontorResultat.melding}")
-            }.let { KontorEndringer(aoKontorEndret = it, arenaKontorEndret = arenaKontorEndring(oppfolgingsperiodeEndret, oppfolgingsperiodeId)) }
+            }.let { KontorEndringer(aoKontorEndret = it, arenaKontorEndret = arenaKontorEndring(oppfolgingsperiodeStartet, oppfolgingsperiodeId)) }
             tilordneKontor( kontorTilordning)
             return TilordningSuccessKontorEndret(kontorTilordning)
 
@@ -133,14 +134,31 @@ class AutomatiskKontorRutingService(
     }
 
     private fun arenaKontorEndring(periodeStartetEvent: OppfolgingsperiodeStartet, oppfolgingsperiodeId: OppfolgingsperiodeId): ArenaKontorEndret? {
-        if (periodeStartetEvent.startetArenaKontor == null) return null
-        return ArenaKontorVedOppfolgingsStart(
-            KontorTilordning(
-                periodeStartetEvent.fnr,
-                periodeStartetEvent.startetArenaKontor,
-                oppfolgingsperiodeId,
-            )
-        )
+        val arenaKontorFraVeilarboppfolging = periodeStartetEvent.startetArenaKontor
+        val arenaKontorFraOppfolgingsbruker = periodeStartetEvent.arenaKontorFraOppfolgingsbrukerTopic
+
+        return when {
+            arenaKontorFraOppfolgingsbruker != null -> {
+                ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart(
+                    KontorTilordning(
+                        periodeStartetEvent.fnr,
+                        arenaKontorFraOppfolgingsbruker.kontor,
+                        oppfolgingsperiodeId,
+                    ),
+                    arenaKontorFraOppfolgingsbruker.sistEndretDato
+                )
+            }
+            arenaKontorFraVeilarboppfolging != null -> {
+                ArenaKontorVedOppfolgingStart(
+                    KontorTilordning(
+                        periodeStartetEvent.fnr,
+                        arenaKontorFraVeilarboppfolging,
+                        oppfolgingsperiodeId,
+                    )
+                )
+            }
+            else -> null
+        }
     }
 
     private fun skalTilNasjonalOppfølgingsEnhet(

@@ -3,6 +3,7 @@ package no.nav.domain.externalEvents
 import no.nav.db.Ident
 import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
+import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 
 sealed class OppfolgingsperiodeEndret {
@@ -10,20 +11,13 @@ sealed class OppfolgingsperiodeEndret {
     abstract val periodeId: OppfolgingsperiodeId
 }
 
-class OppfolgingsperiodeStartet(
+data class OppfolgingsperiodeStartet(
     override val fnr: Ident,
     val startDato: ZonedDateTime,
     override val periodeId: OppfolgingsperiodeId,
-    val startetArenaKontor: KontorId? = null
-): OppfolgingsperiodeEndret() {
-    override fun equals(other: Any?): Boolean {
-        if (other !is OppfolgingsperiodeStartet) return false
-        if (fnr != other.fnr) return false
-        if (startDato != other.startDato) return false
-        if (periodeId != other.periodeId) return false
-        return true
-    }
-}
+    val startetArenaKontor: KontorId? = null,
+    val arenaKontorFraOppfolgingsbrukerTopic: TidligArenaKontor?
+): OppfolgingsperiodeEndret()
 
 class OppfolgingsperiodeAvsluttet(
     override val fnr: Ident,
@@ -38,3 +32,8 @@ class OppfolgingsperiodeAvsluttet(
         return true
     }
 }
+
+data class TidligArenaKontor(
+    val sistEndretDato: OffsetDateTime,
+    val kontor: KontorId,
+)

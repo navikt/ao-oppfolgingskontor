@@ -10,7 +10,7 @@ import no.nav.db.table.KontorhistorikkTable
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
-import no.nav.domain.events.ArenaKontorVedOppfolgingsStart
+import no.nav.domain.events.ArenaKontorVedOppfolgingStart
 import no.nav.domain.events.OppfolgingsperiodeStartetNoeTilordning
 import no.nav.kafka.consumers.KontorEndringer
 import no.nav.services.KontorTilordningService
@@ -51,7 +51,7 @@ class KontorTilordningServiceTest {
         val fnr = "01078598765"
         val oppfolginsperiodeUuid = OppfolgingsperiodeId(UUID.randomUUID())
         val aoEndring =  OppfolgingsperiodeStartetNoeTilordning(Fnr(fnr), oppfolginsperiodeUuid)
-        val arenaEndring = ArenaKontorVedOppfolgingsStart(KontorTilordning(Fnr(fnr), KontorId("1122"), oppfolginsperiodeUuid))
+        val arenaEndring = ArenaKontorVedOppfolgingStart(KontorTilordning(Fnr(fnr), KontorId("1122"), oppfolginsperiodeUuid))
 
         KontorTilordningService.tilordneKontor(KontorEndringer(
             aoKontorEndret = aoEndring,
