@@ -3,7 +3,7 @@ package db.table
 import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.sql.javatime.timestampWithTimeZone
 
-class TidligArenaKontorTable: IdTable<String>("tidlig_arena_kontor") {
+object TidligArenaKontorTable: IdTable<String>("tidlig_arena_kontor") {
     override val id = char("ident", 11).entityId()
     override val primaryKey = PrimaryKey(id)
     val kontorId = varchar("kontor_id", 4)

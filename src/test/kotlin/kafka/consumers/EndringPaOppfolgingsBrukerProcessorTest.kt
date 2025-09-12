@@ -5,16 +5,22 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.mockk
 import no.nav.db.Fnr
+import no.nav.db.dto.EndretAvType
 import no.nav.db.entity.ArenaKontorEntity
+import no.nav.db.entity.KontorHistorikkEntity
 import no.nav.db.table.ArenaKontorTable
+import no.nav.domain.KontorEndringsType
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.kafka.consumers.BeforeCutoff
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
 import no.nav.kafka.consumers.Feil
+import no.nav.kafka.consumers.FormidlingsGruppe
 import no.nav.kafka.consumers.HaddeNyereEndring
 import no.nav.kafka.consumers.IkkeUnderOppfolging
 import no.nav.kafka.consumers.IngenEndring
+import no.nav.kafka.consumers.Kvalifiseringsgruppe
 import no.nav.kafka.consumers.SkalLagre
+import no.nav.person.pdl.leesah.Endringstype
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingperiodeOppslagFeil
@@ -80,7 +86,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { null },
             { NotUnderOppfolging })
-        val result = processor.internalProcess(testRecord(fnr, sistEndretDato = etterCutoffMenAnnenTidssone))
+        val result = processor.internalProcess(testRecord(fnr, sistEndretDato = etterCutoffMenAnnenTidssone, formidlingsGruppe = FormidlingsGruppe.ISERV))
         withClue("forventer IkkeUnderOppfolging men var ${result.javaClass.simpleName}") {
             result.shouldBeInstanceOf<IkkeUnderOppfolging>()
         }
@@ -149,18 +155,30 @@ class EndringPaOppfolgingsBrukerProcessorTest {
         }
     }
 
-    fun testRecord(fnr: Fnr, enhet: String = "4414", sistEndretDato: OffsetDateTime = OffsetDateTime.now()): Record<String, String> {
+    fun testRecord(
+        fnr: Fnr,
+        enhet: String = "4414",
+        sistEndretDato: OffsetDateTime = OffsetDateTime.now(),
+        formidlingsGruppe: FormidlingsGruppe = FormidlingsGruppe.ARBS,
+        kvalifiseringsgruppe: Kvalifiseringsgruppe = Kvalifiseringsgruppe.BATT
+    ): Record<String, String> {
         return Record(
             fnr.value,
             """{
               "oppfolgingsenhet": "$enhet",
-              "sistEndretDato": "$sistEndretDato"
+              "sistEndretDato": "$sistEndretDato",
+              "formidlingsgruppe": "${formidlingsGruppe.name}",
+              "kvalifiseringsgruppe": "${kvalifiseringsgruppe.name}"
             }""".trimMargin(),
             Instant.now().toEpochMilli()
         )
     }
 
-    fun arenaKontor(fnr: Fnr, endret: OffsetDateTime = OffsetDateTime.now(), kontor: String = "4111"): ArenaKontorEntity {
+    fun arenaKontor(
+        fnr: Fnr,
+        endret: OffsetDateTime = OffsetDateTime.now(),
+        kontor: String = "4111"
+    ): ArenaKontorEntity {
         val entityId = DaoEntityID(fnr.value, ArenaKontorTable)
         val arenaKontorEntity = mockk<ArenaKontorEntity> {
             every { id } returns entityId
@@ -168,6 +186,15 @@ class EndringPaOppfolgingsBrukerProcessorTest {
             every { updatedAt } returns OffsetDateTime.now()
             every { sistEndretDatoArena } returns endret
             every { kontorId } returns kontor
+            every { historikkEntry } returns mockk() {
+                every { ident } returns fnr.value
+                every { kontorId } returns kontor
+                every { createdAt } returns endret
+                every { endretAv } returns "Z123456"
+                every { endretAvType } returns EndretAvType.ARENA.name
+                every { kontorendringstype } returns KontorEndringsType.EndretIArena.name
+                every { kontorType } returns "ARENA"
+            }
         }
         return arenaKontorEntity
     }
