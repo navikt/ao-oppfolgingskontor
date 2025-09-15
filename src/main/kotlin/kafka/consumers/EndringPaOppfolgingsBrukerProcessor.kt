@@ -4,7 +4,6 @@ import db.table.TidligArenaKontorTable
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.domain.KontorId

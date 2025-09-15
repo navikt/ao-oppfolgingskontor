@@ -23,7 +23,6 @@ import no.nav.kafka.processor.Skip
 import no.nav.services.KontorTilordningService
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.deleteAll
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory

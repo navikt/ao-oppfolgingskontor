@@ -204,15 +204,16 @@ fun GraphQLClientResponse<HentGtQuery.Result>.toGeografiskTilknytning(): GtForBr
 
 fun IdenterResult.finnForetrukketIdent(): IdentResult {
     return when (this) {
-        is IdenterFunnet -> this.identer
-            .let { identInformasjoner ->
-                identInformasjoner.filter { !it.historisk }
-                    .map { Ident.of(it.ident) }
-                    .finnForetrukketIdent()
-            }
-            ?.let { IdentFunnet(it) }
-            ?: IdentIkkeFunnet("Fant ingen gyldig fnr for bruker, antall identer: ${this.identer.size}, indent-typer: ${this.identer.joinToString { it.gruppe.name }}")
-
+        is IdenterFunnet -> {
+            this.identer
+                .let { identInformasjoner ->
+                    identInformasjoner
+                        .map { Ident.of(it.ident, it.historisk) }
+                        .finnForetrukketIdent()
+                }
+                ?.let { IdentFunnet(it) }
+                ?: IdentIkkeFunnet("Fant ingen gyldig fnr for bruker, antall identer: ${this.identer.size}, indent-typer: ${this.identer.joinToString { it.gruppe.name }}")
+        }
         is IdenterIkkeFunnet -> IdentIkkeFunnet(this.message)
         is IdenterOppslagFeil -> IdentOppslagFeil(this.message)
     }

@@ -15,6 +15,7 @@ import no.nav.Authenticated
 import no.nav.NotAuthenticated
 import no.nav.authenticateCall
 import no.nav.db.Fnr
+import no.nav.db.Ident
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.events.KontorSattAvVeileder
@@ -66,7 +67,7 @@ fun Application.configureArbeidsoppfolgingskontorModule(
                         }
                     }
 
-                    val harTilgang = poaoTilgangClient.harLeseTilgang(principal, Fnr(kontorTilordning.fnr))
+                    val harTilgang = poaoTilgangClient.harLeseTilgang(principal, Fnr(kontorTilordning.fnr, Ident.HistoriskStatus.UKJENT))
                     when (harTilgang) {
                         is HarIkkeTilgang -> {
                             logger.warn("Bruker/system har ikke tilgang til å endre kontor for bruker")
@@ -80,10 +81,10 @@ fun Application.configureArbeidsoppfolgingskontorModule(
                             return@post
                         }
                     }
-                    val gammeltKontor = kontorTilhorighetService.getArbeidsoppfolgingKontorTilhorighet(Fnr(kontorTilordning.fnr), principal)
+                    val gammeltKontor = kontorTilhorighetService.getArbeidsoppfolgingKontorTilhorighet(Fnr(kontorTilordning.fnr, Ident.HistoriskStatus.UKJENT), principal)
                     val kontorId = KontorId(kontorTilordning.kontorId)
 
-                    val fnr = Fnr(kontorTilordning.fnr)
+                    val fnr = Fnr(kontorTilordning.fnr, Ident.HistoriskStatus.UKJENT)
                     val oppfolgingsperiode = oppfolgingsperiodeService.getCurrentOppfolgingsperiode(IdentFunnet(fnr))
                     val oppfolgingsperiodeId = when(oppfolgingsperiode) {
                         is AktivOppfolgingsperiode -> oppfolgingsperiode.periodeId

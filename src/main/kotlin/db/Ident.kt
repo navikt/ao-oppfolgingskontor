@@ -7,14 +7,6 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import no.nav.http.client.IdentFunnet
-import no.nav.http.client.IdentIkkeFunnet
-import no.nav.http.client.IdentOppslagFeil
-import no.nav.http.client.IdentResult
-import no.nav.http.client.IdenterFunnet
-import no.nav.http.client.IdenterIkkeFunnet
-import no.nav.http.client.IdenterOppslagFeil
-import no.nav.http.client.IdenterResult
 
 @Serializable(with = ValueSerializer::class)
 sealed class Ident {
@@ -121,7 +113,7 @@ object ValueSerializer : KSerializer<Ident> {
 
 fun List<Ident>.finnForetrukketIdent(): Ident? {
     return this
-        .filter { !it.historisk }
+        .filter { it.historisk == Ident.HistoriskStatus.AKTIV }
         .minByOrNull {
             when (it) {
                 is Fnr -> 1
