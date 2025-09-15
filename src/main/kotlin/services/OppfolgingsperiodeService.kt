@@ -1,10 +1,20 @@
 package services
 
 import no.nav.db.Ident
+import no.nav.db.entity.OppfolgingsperiodeEntity
+import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
+import no.nav.http.client.IdentFunnet
+import no.nav.http.client.IdentIkkeFunnet
+import no.nav.http.client.IdentOppslagFeil
+import no.nav.http.client.IdentResult
 import no.nav.services.AktivOppfolgingsperiode
+import no.nav.services.NotUnderOppfolging
+import no.nav.services.OppfolgingperiodeOppslagFeil
 import no.nav.services.OppfolgingsperiodeDao
+import no.nav.services.OppfolgingsperiodeOppslagResult
+import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import utils.Outcome
 
@@ -53,6 +63,29 @@ class OppfolgingsperiodeService {
             oppfolgingsperiode.startDato,
             oppfolgingsperiode.periodeId)
         return OppfølgingsperiodeLagret
+    }
+
+    fun getCurrentOppfolgingsperiode(ident: IdentResult): OppfolgingsperiodeOppslagResult {
+        return try {
+            when (ident) {
+                is IdentFunnet -> transaction {
+                    val entity = OppfolgingsperiodeEntity.findById(fnr.ident.value)
+                    when (entity != null) {
+                        true -> AktivOppfolgingsperiode(
+                            ident.ident,
+                            OppfolgingsperiodeId(entity.oppfolgingsperiodeId),
+                            entity.startDato
+                        )
+                        else -> NotUnderOppfolging
+                    }
+                }
+                is IdentIkkeFunnet -> OppfolgingperiodeOppslagFeil("Kunne ikke finne oppfølgingsperiode: ${fnr.message}")
+                is IdentOppslagFeil -> OppfolgingperiodeOppslagFeil("Kunne ikke finne oppfølgingsperiode: ${fnr.message}")
+            }
+        } catch (e: Exception) {
+            OppfolgingsperiodeDao.log.error("Error checking oppfolgingsperiode status", e)
+            OppfolgingperiodeOppslagFeil("Database error: ${e.message}")
+        }
     }
 
     private fun getNåværendePeriode(ident: Ident): AktivOppfolgingsperiode? {
