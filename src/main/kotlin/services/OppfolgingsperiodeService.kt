@@ -1,8 +1,6 @@
 package services
 
 import no.nav.db.Ident
-import no.nav.db.entity.OppfolgingsperiodeEntity
-import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.http.client.IdentFunnet
@@ -10,7 +8,6 @@ import no.nav.http.client.IdentIkkeFunnet
 import no.nav.http.client.IdentOppslagFeil
 import no.nav.http.client.IdentResult
 import no.nav.services.AktivOppfolgingsperiode
-import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingperiodeOppslagFeil
 import no.nav.services.OppfolgingsperiodeDao
 import no.nav.services.OppfolgingsperiodeOppslagResult

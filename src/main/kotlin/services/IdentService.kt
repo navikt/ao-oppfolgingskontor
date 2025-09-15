@@ -35,7 +35,7 @@ import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 
 class IdentService(
-    val alleIdenterProvider: suspend (aktorId: String) -> IdenterResult,
+    val hentAlleIdenterSynkrontFraPdl: suspend (aktorId: String) -> IdenterResult,
 ) {
     private val log = LoggerFactory.getLogger(IdentService::class.java)
 
@@ -61,13 +61,13 @@ class IdentService(
         val eksisterendeIdenter = hentIdentMappinger(aktorId, includeHistorisk = true)
             .let { eksisterende ->
                 eksisterende.ifEmpty {
-                    val alleIdenter = alleIdenterProvider(aktorId.value)
-                    when (alleIdenter) {
+                    val pdlIdenter = hentAlleIdenterSynkrontFraPdl(aktorId.value)
+                    when (pdlIdenter) {
                         is IdenterFunnet -> {
-                            hentEksisterendeIdenter(alleIdenter.identer.map { Ident.of(it.ident) })
+                            hentEksisterendeIdenter(pdlIdenter.identer.map { Ident.of(it.ident, it.historisk) })
                         }
                         is IdenterIkkeFunnet -> emptyList()
-                        is IdenterOppslagFeil -> throw Exception("Klarte ikke hente identer fra PDL: ${alleIdenter.message}")
+                        is IdenterOppslagFeil -> throw Exception("Klarte ikke hente identer fra PDL: ${pdlIdenter.message}")
                     }
                 }
             }
@@ -120,7 +120,7 @@ class IdentService(
     }
 
     private suspend fun hentAlleIdenterOgOppdaterMapping(ident: Ident): IdenterResult {
-        return when(val identer = alleIdenterProvider(ident.value)) {
+        return when(val identer = hentAlleIdenterSynkrontFraPdl(ident.value)) {
             is IdenterFunnet -> {
                 oppdaterAlleIdentMappinger(identer)
                 identer
