@@ -83,7 +83,7 @@ class OppfolgingsperiodeService {
     }
 
     private fun getNåværendePeriode(ident: Ident): AktivOppfolgingsperiode? {
-        val currentOppfolgingsperiodeResult = OppfolgingsperiodeDao.getCurrentOppfolgingsperiode(ident)
+        val currentOppfolgingsperiodeResult = getCurrentOppfolgingsperiode(IdentFunnet(ident))
         return when (currentOppfolgingsperiodeResult) {
             is AktivOppfolgingsperiode -> currentOppfolgingsperiodeResult
             else -> null

@@ -31,9 +31,9 @@ import no.nav.services.KontorTilhorighetService
 import no.nav.services.KontorTilordningService
 import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingperiodeOppslagFeil
-import no.nav.services.OppfolgingsperiodeDao
 import no.nav.toRegistrant
 import org.slf4j.LoggerFactory
+import services.OppfolgingsperiodeService
 
 val logger = LoggerFactory.getLogger("Application.configureArbeidsoppfolgingskontorModule")
 
@@ -41,6 +41,7 @@ fun Application.configureArbeidsoppfolgingskontorModule(
     kontorNavnService: KontorNavnService,
     kontorTilhorighetService: KontorTilhorighetService,
     poaoTilgangClient: PoaoTilgangKtorHttpClient,
+    oppfolgingsperiodeService: OppfolgingsperiodeService,
     authenticateRequest: AuthenticateRequest = { req -> req.call.authenticateCall(environment.getIssuer()) }
 ) {
     val log = LoggerFactory.getLogger("Application.configureArbeidsoppfolgingskontorModule")
@@ -83,7 +84,7 @@ fun Application.configureArbeidsoppfolgingskontorModule(
                     val kontorId = KontorId(kontorTilordning.kontorId)
 
                     val fnr = Fnr(kontorTilordning.fnr)
-                    val oppfolgingsperiode = OppfolgingsperiodeDao.getCurrentOppfolgingsperiode(IdentFunnet(fnr))
+                    val oppfolgingsperiode = oppfolgingsperiodeService.getCurrentOppfolgingsperiode(IdentFunnet(fnr))
                     val oppfolgingsperiodeId = when(oppfolgingsperiode) {
                         is AktivOppfolgingsperiode -> oppfolgingsperiode.periodeId
                         NotUnderOppfolging -> {

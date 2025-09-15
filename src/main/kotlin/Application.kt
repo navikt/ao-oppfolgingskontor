@@ -61,6 +61,7 @@ fun Application.module() {
     )
     val kontorNavnService = KontorNavnService(norg2Client)
     val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangHttpClient)
+    val oppfolgingsperiodeService = OppfolgingsperiodeService()
     val automatiskKontorRutingService = AutomatiskKontorRutingService(
         KontorTilordningService::tilordneKontor,
         { fnr, strengtFortroligAdresse, skjermet -> gtNorgService.hentGtKontorForBruker(fnr, strengtFortroligAdresse, skjermet) },
@@ -68,7 +69,7 @@ fun Application.module() {
         { arbeidssokerregisterClient.hentProfilering(it) },
         { skjermingsClient.hentSkjerming(it) },
         { pdlClient.harStrengtFortroligAdresse(it) },
-        {  OppfolgingsperiodeDao.getCurrentOppfolgingsperiode(it) },
+        { oppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) },
         { ident, oppfolgingsperiodeId -> OppfolgingsperiodeDao.harBruktPeriodeTidligere(ident, oppfolgingsperiodeId) },
     )
 
@@ -77,7 +78,7 @@ fun Application.module() {
         this.fnrProvider = { ident ->  identService.hentForetrukketIdentFor(ident) }
         this.database = database
         this.meterRegistry = meterRegistry
-        this.oppfolgingsperiodeService = OppfolgingsperiodeService()
+        this.oppfolgingsperiodeService = oppfolgingsperiodeService
         this.oppfolgingsperiodeDao = OppfolgingsperiodeDao
         this.identService = identService
     }
@@ -85,7 +86,7 @@ fun Application.module() {
     val issuer = environment.getIssuer()
     val authenticateRequest: AuthenticateRequest = { req -> req.call.authenticateCall(issuer) }
     configureGraphQlModule(norg2Client, kontorTilhorighetService, authenticateRequest)
-    configureArbeidsoppfolgingskontorModule(kontorNavnService, kontorTilhorighetService, poaoTilgangHttpClient)
+    configureArbeidsoppfolgingskontorModule(kontorNavnService, kontorTilhorighetService, poaoTilgangHttpClient, oppfolgingsperiodeService)
 }
 
 fun ApplicationEnvironment.getIssuer(): String {

@@ -30,6 +30,7 @@ import no.nav.utils.gittBrukerUnderOppfolging
 import no.nav.utils.issueToken
 import no.nav.utils.kontorTilhorighet
 import org.junit.jupiter.api.Test
+import services.OppfolgingsperiodeService
 
 class SettArbeidsoppfolgingsKontorTest {
 
@@ -45,6 +46,7 @@ class SettArbeidsoppfolgingsKontorTest {
         val poaoTilgangClient = mockPoaoTilgangHost(null)
         val kontorNavnService = KontorNavnService(norg2Client)
         val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangClient)
+        val oppfolgingsperiodeService = OppfolgingsperiodeService()
         application {
             flywayMigrationInTest()
             extraDatabaseSetup()
@@ -53,7 +55,8 @@ class SettArbeidsoppfolgingsKontorTest {
             configureArbeidsoppfolgingskontorModule(
                 kontorNavnService,
                 kontorTilhorighetService,
-                poaoTilgangClient
+                poaoTilgangClient,
+                oppfolgingsperiodeService
             )
             routing {
                 authenticate("EntraAD") {

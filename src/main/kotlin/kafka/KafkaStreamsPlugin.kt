@@ -17,6 +17,7 @@ import java.time.Duration
 import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
 import no.nav.db.Ident
 import no.nav.db.entity.ArenaKontorEntity
+import no.nav.http.client.IdentFunnet
 import no.nav.http.client.IdentResult
 import no.nav.isProduction
 import no.nav.kafka.config.kafkaStreamsProps
@@ -82,7 +83,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
 
     val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
         ArenaKontorEntity::sisteLagreKontorArenaKontor,
-        { oppfolgingsperiodeDao.getCurrentOppfolgingsperiode(it) }
+        { oppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) }
     )
 
     val kontorTilordningsProcessor = KontortilordningsProcessor(
