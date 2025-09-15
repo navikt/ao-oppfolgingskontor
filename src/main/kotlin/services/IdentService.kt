@@ -103,7 +103,7 @@ class IdentService(
                 identMappings.isNotEmpty() -> {
                     val foretrukketIdent = identMappings
                         .filter { it !is AktorId }
-                        .map { Ident.of(it.value) }
+                        .map { Ident.of(it.value, it.historisk) }
                         .minByOrNull {
                             when (it) {
                                 is Fnr -> 1
@@ -145,7 +145,7 @@ class IdentService(
             .where { IdentMappingTable.id inList(identer.map { it.value }) }
             .map {
                 IdentInfo(
-                    Ident.of(it[IdentMappingTable.id].value),
+                    Ident.of(it[IdentMappingTable.id].value, it[historisk]),
                     it[historisk],
                     it[internIdent]
                 )
@@ -154,7 +154,7 @@ class IdentService(
 
     private fun oppdaterAlleIdentMappinger(identer: IdenterFunnet) {
         try {
-            val eksitrerendeInternIder = hentEksisterendeIdenter(identer.identer.map { Ident.of(it.ident) })
+            val eksitrerendeInternIder = hentEksisterendeIdenter(identer.identer.map { Ident.of(it.ident, it.historisk) })
                 .map { it.internIdent }
 
             transaction {
@@ -201,10 +201,10 @@ class IdentService(
                 val historisk = it[identMappingAlias[historisk]]
                 val internIdent = it[identMappingAlias[internIdent]]
                 val ident = when (val identType = it[identMappingAlias[identType]]) {
-                    "FNR" -> Fnr(id.value)
-                    "NPID" -> Npid(id.value)
-                    "DNR" -> Dnr(id.value)
-                    "AKTOR_ID" -> AktorId(id.value)
+                    "FNR" -> Fnr(id.value, historisk)
+                    "NPID" -> Npid(id.value, historisk)
+                    "DNR" -> Dnr(id.value, historisk)
+                    "AKTOR_ID" -> AktorId(id.value, historisk)
                     else -> throw IllegalArgumentException("Ukjent identType: $identType")
                         .also { log.error(it.message, it) }
                 }
@@ -213,7 +213,7 @@ class IdentService(
     }
 }
 
-fun IdentInformasjon.toIdentType() = Ident.of(this.ident).toIdentType()
+fun IdentInformasjon.toIdentType() = Ident.of(this.ident, this.historisk).toIdentType()
 fun Ident.toIdentType(): String {
     return when (this) {
         is AktorId -> "AKTOR_ID"
