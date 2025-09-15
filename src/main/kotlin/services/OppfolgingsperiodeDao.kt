@@ -1,15 +1,14 @@
 package no.nav.services
 
 import java.time.ZonedDateTime
-import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.db.entity.OppfolgingsperiodeEntity
+import no.nav.db.finnForetrukketIdent
 import no.nav.db.table.KontorhistorikkTable
 import no.nav.db.table.OppfolgingsperiodeTable
 import no.nav.db.table.OppfolgingsperiodeTable.oppfolgingsperiodeId
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
-import no.nav.http.client.IdentFunnet
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
@@ -88,22 +87,17 @@ object OppfolgingsperiodeDao {
         }
     }
 
-    fun hasActiveOppfolgingsperiode(fnr: Fnr): Boolean {
-        return transaction { OppfolgingsperiodeEntity.findById(fnr.value) != null }
-    }
-
-    fun getCurrentOppfolgingsperiode(fnr: Ident) = getCurrentOppfolgingsperiode(IdentFunnet(fnr))
-
     fun getCurrentOppfolgingsperiode(identer: List<Ident>): OppfolgingsperiodeOppslagResult {
         val oppfolgingsperioder = OppfolgingsperiodeEntity.find { OppfolgingsperiodeTable.id inList identer.map { it.value } }.toList()
-        when (oppfolgingsperioder.size) {
-            0 -> return NotUnderOppfolging
+        return when (oppfolgingsperioder.size) {
+            0 -> NotUnderOppfolging
             1 -> AktivOppfolgingsperiode(
-                fnr.ident,
-                OppfolgingsperiodeId(oppfolgingsperioder.oppfolgingsperiodeId),
-                oppfolgingsperioder.startDato
+                identer.finnForetrukketIdent()
+                    ?: throw IllegalStateException("Kan ikke ha oppfølgingsperiode når det ikke finnes identer"),
+                OppfolgingsperiodeId(oppfolgingsperioder.first().oppfolgingsperiodeId),
+                oppfolgingsperioder.first().startDato
             )
-            else -> return OppfolgingperiodeOppslagFeil("Fant flere oppfølgingsperioder. Dnr til fnr?")
+            else -> OppfolgingperiodeOppslagFeil("Fant flere oppfølgingsperioder (${oppfolgingsperioder.size}). Dnr til fnr?")
         }
     }
 }

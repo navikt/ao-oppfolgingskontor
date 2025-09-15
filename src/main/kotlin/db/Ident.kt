@@ -7,15 +7,24 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import no.nav.http.client.IdentFunnet
+import no.nav.http.client.IdentIkkeFunnet
+import no.nav.http.client.IdentOppslagFeil
+import no.nav.http.client.IdentResult
+import no.nav.http.client.IdenterFunnet
+import no.nav.http.client.IdenterIkkeFunnet
+import no.nav.http.client.IdenterOppslagFeil
+import no.nav.http.client.IdenterResult
 
 @Serializable(with = ValueSerializer::class)
 sealed class Ident {
     abstract val value: String
+    abstract val historisk: Boolean
 
     companion object {
         val isDev = System.getenv("NAIS_CLUSTER_NAME")?.contains("dev") ?: false
 
-        fun of(value: String): Ident {
+        fun of(value: String, historisk: Boolean = false): Ident {
             require(value.isNotBlank())
             require(value.all { it.isDigit() }) { "Ident must contain only digits" }
 
@@ -56,7 +65,7 @@ sealed class Ident {
 /*
 * Kan innholde fnr, dnr eller npid
 * */
-class Fnr(override val value: String): Ident() {
+class Fnr(override val value: String, override val historisk: Boolean = false): Ident() {
     init {
         require(value.isNotBlank()) { "Fnr cannot be blank" }
         require(value.length == 11) { "Fnr $value must be 11 characters long but was ${value.length}" }
@@ -67,7 +76,7 @@ class Fnr(override val value: String): Ident() {
 }
 
 val gyldigeDnrStart = listOf(4,5,6,7)
-class Dnr(override val value: String): Ident() {
+class Dnr(override val value: String, override val historisk: Boolean = false): Ident() {
     init {
         require(value.isNotBlank()) { "Dnr cannot be blank" }
         require(value.length == 11) { "Dnr $value must be 11 characters long but was ${value.length}" }
@@ -78,7 +87,7 @@ class Dnr(override val value: String): Ident() {
     override fun toString(): String = value
 }
 
-class Npid(override val value: String): Ident() {
+class Npid(override val value: String, override val historisk: Boolean = false): Ident() {
     init {
         require(value.isNotBlank()) { "Npid cannot be blank" }
         require(value.length == 11) { "Npid must be 11 characters long but was ${value.length}" }
@@ -88,7 +97,7 @@ class Npid(override val value: String): Ident() {
     override fun toString(): String = value
 }
 
-class AktorId(override val value: String): Ident() {
+class AktorId(override val value: String, override val historisk: Boolean = false): Ident() {
     init {
         require(value.isNotBlank()) { "AktorId cannot be blank" }
         require(value.length == 13) { "AktorId must be 13 characters long but was ${value.length}" }
@@ -101,4 +110,17 @@ object ValueSerializer : KSerializer<Ident> {
         PrimitiveSerialDescriptor("Ident", PrimitiveKind.STRING)
     override fun serialize(encoder: Encoder, value: Ident) = encoder.encodeString(value.value)
     override fun deserialize(decoder: Decoder) = Ident.of(decoder.decodeString())
+}
+
+fun List<Ident>.finnForetrukketIdent(): Ident? {
+    return this
+        .filter { !it.historisk }
+        .minByOrNull {
+            when (it) {
+                is Fnr -> 1
+                is Dnr -> 2
+                is Npid -> 3
+                is AktorId -> 4
+            }
+        }
 }

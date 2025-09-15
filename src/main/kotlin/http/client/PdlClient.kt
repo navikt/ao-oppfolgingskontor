@@ -208,14 +208,7 @@ fun IdenterResult.finnForetrukketIdent(): IdentResult {
             .let { identInformasjoner ->
                 identInformasjoner.filter { !it.historisk }
                     .map { Ident.of(it.ident) }
-                    .minByOrNull {
-                        when (it) {
-                            is Fnr -> 1
-                            is Dnr -> 2
-                            is Npid -> 3
-                            is AktorId -> 4
-                        }
-                    }
+                    .finnForetrukketIdent()
             }
             ?.let { IdentFunnet(it) }
             ?: IdentIkkeFunnet("Fant ingen gyldig fnr for bruker, antall identer: ${this.identer.size}, indent-typer: ${this.identer.joinToString { it.gruppe.name }}")

@@ -69,21 +69,15 @@ class OppfolgingsperiodeService {
         return try {
             when (ident) {
                 is IdentFunnet -> transaction {
-                    val entity = OppfolgingsperiodeEntity.findById(fnr.ident.value)
-                    when (entity != null) {
-                        true -> AktivOppfolgingsperiode(
-                            ident.ident,
-                            OppfolgingsperiodeId(entity.oppfolgingsperiodeId),
-                            entity.startDato
-                        )
-                        else -> NotUnderOppfolging
-                    }
+                    val identer = listOf(ident.ident)
+                    // TODO: Hent alle identer her
+                    OppfolgingsperiodeDao.getCurrentOppfolgingsperiode(identer)
                 }
-                is IdentIkkeFunnet -> OppfolgingperiodeOppslagFeil("Kunne ikke finne oppfølgingsperiode: ${fnr.message}")
-                is IdentOppslagFeil -> OppfolgingperiodeOppslagFeil("Kunne ikke finne oppfølgingsperiode: ${fnr.message}")
+                is IdentIkkeFunnet -> OppfolgingperiodeOppslagFeil("Kunne ikke finne oppfølgingsperiode: ${ident.message}")
+                is IdentOppslagFeil -> OppfolgingperiodeOppslagFeil("Kunne ikke finne oppfølgingsperiode: ${ident.message}")
             }
         } catch (e: Exception) {
-            OppfolgingsperiodeDao.log.error("Error checking oppfolgingsperiode status", e)
+            log.error("Error checking oppfolgingsperiode status", e)
             OppfolgingperiodeOppslagFeil("Database error: ${e.message}")
         }
     }
