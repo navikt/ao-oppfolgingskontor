@@ -96,26 +96,15 @@ object OppfolgingsperiodeDao {
     }
 
     fun getCurrentOppfolgingsperiode(fnr: Ident) = getCurrentOppfolgingsperiode(IdentFunnet(fnr))
-    fun getCurrentOppfolgingsperiode(fnr: IdentResult): OppfolgingsperiodeOppslagResult {
-        return try {
-            when (fnr) {
-                is IdentFunnet -> transaction {
-                    val entity = OppfolgingsperiodeEntity.findById(fnr.ident.value)
-                    when (entity != null) {
-                        true -> AktivOppfolgingsperiode(
-                            fnr.ident,
-                            OppfolgingsperiodeId(entity.oppfolgingsperiodeId),
-                            entity.startDato
-                        )
-                        else -> NotUnderOppfolging
-                    }
-                }
-                is IdentIkkeFunnet -> OppfolgingperiodeOppslagFeil("Kunne ikke finne oppfølgingsperiode: ${fnr.message}")
-                is IdentOppslagFeil -> OppfolgingperiodeOppslagFeil("Kunne ikke finne oppfølgingsperiode: ${fnr.message}")
-            }
-        } catch (e: Exception) {
-            log.error("Error checking oppfolgingsperiode status", e)
-            OppfolgingperiodeOppslagFeil("Database error: ${e.message}")
+    fun getCurrentOppfolgingsperiode(identer: List<Ident>): OppfolgingsperiodeOppslagResult {
+        val entity = OppfolgingsperiodeEntity.find { OppfolgingsperiodeTable.id inList identer.map { it.value } }
+        when (entity != null) {
+            true -> AktivOppfolgingsperiode(
+                fnr.ident,
+                OppfolgingsperiodeId(entity.oppfolgingsperiodeId),
+                entity.startDato
+            )
+            else -> NotUnderOppfolging
         }
     }
 }

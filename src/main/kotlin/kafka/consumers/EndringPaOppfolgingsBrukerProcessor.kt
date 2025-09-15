@@ -181,7 +181,7 @@ class MeldingManglerEnhet : EndringPaaOppfolgingsBrukerResult()
 class SkalLagre(
     val oppfolgingsenhet: String,
     val endretTidspunkt: OffsetDateTime,
-    val fnr: Fnr,
+    val fnr: Ident,
     val oppfolgingsperiodeId: OppfolgingsperiodeId
 ) : EndringPaaOppfolgingsBrukerResult()
 
