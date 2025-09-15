@@ -21,6 +21,7 @@ import no.nav.http.graphql.generated.client.enums.AdressebeskyttelseGradering
 import no.nav.http.graphql.generated.client.enums.GtType
 import no.nav.http.graphql.generated.client.hentfnrquery.IdentInformasjon
 import org.slf4j.LoggerFactory
+import services.toKnownHistoriskStatus
 import java.net.URI
 import java.time.LocalDate
 import java.time.Period
@@ -38,7 +39,13 @@ data class IdentIkkeFunnet(val message: String) : IdentResult()
 data class IdentOppslagFeil(val message: String) : IdentResult()
 
 sealed class IdenterResult
-data class IdenterFunnet(val identer: List<IdentInformasjon>, val inputIdent: String) : IdenterResult()
+data class IdenterFunnet(val identer: List<Ident>, val inputIdent: Ident, val foretrukketIdent: Ident) : IdenterResult() {
+    constructor(identer: List<Ident>, inputIdent: Ident): this(
+        identer = identer,
+        inputIdent = inputIdent,
+        foretrukketIdent = identer.finnForetrukketIdent() ?: throw IllegalStateException("Fant ikke foretrukket ident, alle identer historiske?")
+    )
+}
 data class IdenterIkkeFunnet(val message: String) : IdenterResult()
 data class IdenterOppslagFeil(val message: String) : IdenterResult()
 
@@ -135,8 +142,11 @@ class PdlClient(
             if (result.errors != null && result.errors!!.isNotEmpty()) {
                 return IdenterOppslagFeil(result.errors!!.joinToString { "${it.message}: ${it.extensions?.get("code")}" })
             }
-            return result.data?.hentIdenter?.identer?.let {
-                IdenterFunnet(it, aktorId)
+            return result.data?.hentIdenter?.identer?.let { pdlIdenter ->
+                val identer = pdlIdenter.map { (ident, historisk) -> Ident.of(ident, historisk.toKnownHistoriskStatus()) }
+                val inputIdent = identer.first { it.value == aktorId }
+                val foretrukketIdent = identer.finnForetrukketIdent() ?: throw IllegalStateException("Fant ingen foretrukket ident på bruker, er alle identer historiske?")
+                IdenterFunnet(identer, inputIdent, foretrukketIdent)
             } ?: IdenterIkkeFunnet("Ingen identer funnet for aktorId")
 
         } catch (e: Throwable) {
@@ -205,14 +215,9 @@ fun GraphQLClientResponse<HentGtQuery.Result>.toGeografiskTilknytning(): GtForBr
 fun IdenterResult.finnForetrukketIdent(): IdentResult {
     return when (this) {
         is IdenterFunnet -> {
-            this.identer
-                .let { identInformasjoner ->
-                    identInformasjoner
-                        .map { Ident.of(it.ident, it.historisk) }
-                        .finnForetrukketIdent()
-                }
+            this.identer.finnForetrukketIdent()
                 ?.let { IdentFunnet(it) }
-                ?: IdentIkkeFunnet("Fant ingen gyldig fnr for bruker, antall identer: ${this.identer.size}, indent-typer: ${this.identer.joinToString { it.gruppe.name }}")
+                ?: IdentIkkeFunnet("Fant ingen gyldig fnr for bruker, antall identer: ${this.identer.size}, indent-typer: ${this.identer.joinToString { it::class.java.simpleName }}")
         }
         is IdenterIkkeFunnet -> IdentIkkeFunnet(this.message)
         is IdenterOppslagFeil -> IdentOppslagFeil(this.message)

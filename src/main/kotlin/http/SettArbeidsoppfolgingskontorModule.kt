@@ -66,8 +66,9 @@ fun Application.configureArbeidsoppfolgingskontorModule(
                             return@post
                         }
                     }
+                    val ident = Ident.of(kontorTilordning.fnr, Ident.HistoriskStatus.UKJENT)
 
-                    val harTilgang = poaoTilgangClient.harLeseTilgang(principal, Fnr(kontorTilordning.fnr, Ident.HistoriskStatus.UKJENT))
+                    val harTilgang = poaoTilgangClient.harLeseTilgang(principal, ident)
                     when (harTilgang) {
                         is HarIkkeTilgang -> {
                             logger.warn("Bruker/system har ikke tilgang til å endre kontor for bruker")
@@ -81,11 +82,10 @@ fun Application.configureArbeidsoppfolgingskontorModule(
                             return@post
                         }
                     }
-                    val gammeltKontor = kontorTilhorighetService.getArbeidsoppfolgingKontorTilhorighet(Fnr(kontorTilordning.fnr, Ident.HistoriskStatus.UKJENT), principal)
+                    val gammeltKontor = kontorTilhorighetService.getArbeidsoppfolgingKontorTilhorighet(ident, principal)
                     val kontorId = KontorId(kontorTilordning.kontorId)
 
-                    val fnr = Fnr(kontorTilordning.fnr, Ident.HistoriskStatus.UKJENT)
-                    val oppfolgingsperiode = oppfolgingsperiodeService.getCurrentOppfolgingsperiode(IdentFunnet(fnr))
+                    val oppfolgingsperiode = oppfolgingsperiodeService.getCurrentOppfolgingsperiode(IdentFunnet(ident))
                     val oppfolgingsperiodeId = when(oppfolgingsperiode) {
                         is AktivOppfolgingsperiode -> oppfolgingsperiode.periodeId
                         NotUnderOppfolging -> {
@@ -102,7 +102,7 @@ fun Application.configureArbeidsoppfolgingskontorModule(
                     KontorTilordningService.tilordneKontor(
                         KontorSattAvVeileder(
                             tilhorighet = KontorTilordning(
-                                fnr = fnr,
+                                fnr = ident,
                                 kontorId = kontorId,
                                 oppfolgingsperiodeId
                             ),

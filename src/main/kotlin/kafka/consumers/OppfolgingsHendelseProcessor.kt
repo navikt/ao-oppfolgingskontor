@@ -47,7 +47,7 @@ class OppfolgingsHendelseProcessor(
         record: Record<String, String>
     ): RecordProcessingResult<Ident, OppfolgingsperiodeStartet> {
         var hendelseType = "<Ukjent hendelsetype>"
-        val ident = Ident.of(record.key())
+        val ident = Ident.of(record.key(), Ident.HistoriskStatus.UKJENT)
         return runCatching {
             val oppfolgingsperiodeEvent = oppfolgingsHendelseJson
                 .decodeFromString<OppfolgingsHendelseDto>(record.value())
@@ -127,14 +127,14 @@ class OppfolgingsHendelseProcessor(
 }
 
 fun OppfolgingStartetHendelseDto.toDomainObject() = OppfolgingsperiodeStartet(
-    fnr = Ident.of(this.fnr),
+    fnr = Ident.of(this.fnr, Ident.HistoriskStatus.UKJENT),
     startDato = this.startetTidspunkt,
     periodeId = OppfolgingsperiodeId(UUID.fromString(this.oppfolgingsPeriodeId)),
     startetArenaKontor =this.arenaKontor?.let { KontorId(it) },
     arenaKontorFraOppfolgingsbrukerTopic = null
 )
 fun OppfolgingsAvsluttetHendelseDto.toDomainObject() = OppfolgingsperiodeAvsluttet(
-    Ident.of(this.fnr),
+    Ident.of(this.fnr, Ident.HistoriskStatus.UKJENT),
     this.startetTidspunkt,
     OppfolgingsperiodeId(UUID.fromString(this.oppfolgingsPeriodeId))
 )

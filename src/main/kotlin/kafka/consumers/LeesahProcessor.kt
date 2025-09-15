@@ -89,7 +89,7 @@ class LeesahProcessor(
             throw IllegalStateException("Personhendelse must have at least one personident")
         }
 
-        val ident: Ident = Ident.of(hendelse.personidenter.first())
+        val ident: Ident = Ident.of(hendelse.personidenter.first(), Ident.HistoriskStatus.UKJENT)
         return fnrProvider(ident)
     }
 }

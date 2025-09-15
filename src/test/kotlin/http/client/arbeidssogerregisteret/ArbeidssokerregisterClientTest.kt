@@ -11,6 +11,7 @@ import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.Json
 import no.nav.db.Fnr
+import no.nav.db.Ident
 import no.nav.http.client.arbeidssogerregisteret.ArbeidssokerregisterClient
 import no.nav.http.client.arbeidssogerregisteret.ProfileringFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringIkkeFunnet
@@ -176,7 +177,7 @@ class ArbeidssokerregisterClientTest {
         }
 
         val client = ArbeidssokerregisterClient(url, testClient)
-        val reponse = client.hentProfilering(Fnr("12345678901"))
+        val reponse = client.hentProfilering(Fnr("12345678901", Ident.HistoriskStatus.AKTIV))
 
         (reponse is ProfileringIkkeFunnet) shouldBe true
     }
@@ -326,7 +327,7 @@ class ArbeidssokerregisterClientTest {
         }
 
         val client = ArbeidssokerregisterClient(url, testClient)
-        val reponse = client.hentProfilering(Fnr("12345678901"))
+        val reponse = client.hentProfilering(Fnr("12345678901", Ident.HistoriskStatus.AKTIV))
 
         (reponse is ProfileringFunnet) shouldBe true
     }

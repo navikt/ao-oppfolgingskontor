@@ -28,7 +28,7 @@ class KontortilordningsProcessor(
             override fun serializer(): Serializer<Ident> =
                 Serializer<Ident> { topic, data -> data.toString().toByteArray() }
             override fun deserializer(): Deserializer<Ident> =
-                Deserializer<Ident> { topic, data -> Ident.of(data.decodeToString()) }
+                Deserializer<Ident> { topic, data -> Ident.of(data.decodeToString(), Ident.HistoriskStatus.UKJENT) }
         }
         val oppfolgingsperiodeStartetSerde = jsonSerde<OppfolgingsperiodeStartet>()
     }

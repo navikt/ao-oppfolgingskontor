@@ -60,7 +60,7 @@ fun Application.module() {
         { gt, strengtFortroligAdresse, skjermet -> norg2Client.hentKontorForBrukerMedMangelfullGT(gt, strengtFortroligAdresse, skjermet) },
     )
     val kontorNavnService = KontorNavnService(norg2Client)
-    val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangHttpClient)
+    val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangHttpClient, identService)
     val oppfolgingsperiodeService = OppfolgingsperiodeService()
     val automatiskKontorRutingService = AutomatiskKontorRutingService(
         KontorTilordningService::tilordneKontor,

@@ -14,6 +14,7 @@ import no.nav.db.Dnr
 import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.db.Npid
+import no.nav.db.finnForetrukketIdent
 import no.nav.http.client.IdentFunnet
 import no.nav.http.client.IdentOppslagFeil
 import no.nav.http.client.IdentResult
@@ -63,9 +64,7 @@ class IdentService(
                 eksisterende.ifEmpty {
                     val pdlIdenter = hentAlleIdenterSynkrontFraPdl(aktorId.value)
                     when (pdlIdenter) {
-                        is IdenterFunnet -> {
-                            hentEksisterendeIdenter(pdlIdenter.identer.map { Ident.of(it.ident, it.historisk) })
-                        }
+                        is IdenterFunnet -> hentEksisterendeIdenter(pdlIdenter.identer)
                         is IdenterIkkeFunnet -> emptyList()
                         is IdenterOppslagFeil -> throw Exception("Klarte ikke hente identer fra PDL: ${pdlIdenter.message}")
                     }
@@ -145,7 +144,7 @@ class IdentService(
             .where { IdentMappingTable.id inList(identer.map { it.value }) }
             .map {
                 IdentInfo(
-                    Ident.of(it[IdentMappingTable.id].value, it[historisk]),
+                    Ident.of(it[IdentMappingTable.id].value, it[historisk].toKnownHistoriskStatus()),
                     it[historisk],
                     it[internIdent]
                 )
@@ -154,16 +153,20 @@ class IdentService(
 
     private fun oppdaterAlleIdentMappinger(identer: IdenterFunnet) {
         try {
-            val eksitrerendeInternIder = hentEksisterendeIdenter(identer.identer.map { Ident.of(it.ident, it.historisk) })
+            val eksitrerendeInternIder = hentEksisterendeIdenter(identer.identer)
                 .map { it.internIdent }
 
             transaction {
                 val internId = getOrCreateInternId(eksitrerendeInternIder)
                 IdentMappingTable.batchUpsert(identer.identer) {
-                    this[IdentMappingTable.id] = it.ident
+                    this[IdentMappingTable.id] = it.value
                     this[identType] = it.toIdentType()
                     this[internIdent] = internId
-                    this[historisk] = it.historisk
+                    this[historisk] = when (it.historisk) {
+                        Ident.HistoriskStatus.HISTORISK -> true
+                        Ident.HistoriskStatus.AKTIV -> false
+                        Ident.HistoriskStatus.UKJENT -> throw IllegalStateException("Kan ikke lagre identer med ukjent historisk status")
+                    }
                     this[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
                 }
             }
@@ -171,6 +174,19 @@ class IdentService(
             // TODO: Ikke sluk denne feilen(?)
             log.error("Kunne ikke lagre ident-mapping ${e.message}", e)
         }
+    }
+
+    /**
+    * Henter alle tilhørende identer på en bruker, inkl historiske
+    */
+    public fun hentAlleIdenter(identInput: Ident): IdenterFunnet {
+        val alleIdenter = hentIdentMappinger(identInput, true)
+            .map { it.ident }
+        return IdenterFunnet(
+            identer = alleIdenter,
+            inputIdent = identInput,
+            foretrukketIdent = alleIdenter.finnForetrukketIdent() ?: throw IllegalStateException("Fant ikke foretrukket ident, alle identer historiske?")
+        )
     }
 
     /**
@@ -199,12 +215,13 @@ class IdentService(
             .map {
                 val id = it[identMappingAlias[IdentMappingTable.id]]
                 val historisk = it[identMappingAlias[historisk]]
+                val historiskStatus = historisk.toKnownHistoriskStatus()
                 val internIdent = it[identMappingAlias[internIdent]]
                 val ident = when (val identType = it[identMappingAlias[identType]]) {
-                    "FNR" -> Fnr(id.value, historisk)
-                    "NPID" -> Npid(id.value, historisk)
-                    "DNR" -> Dnr(id.value, historisk)
-                    "AKTOR_ID" -> AktorId(id.value, historisk)
+                    "FNR" -> Fnr(id.value, historiskStatus)
+                    "NPID" -> Npid(id.value, historiskStatus)
+                    "DNR" -> Dnr(id.value, historiskStatus)
+                    "AKTOR_ID" -> AktorId(id.value, historiskStatus)
                     else -> throw IllegalArgumentException("Ukjent identType: $identType")
                         .also { log.error(it.message, it) }
                 }
@@ -213,7 +230,10 @@ class IdentService(
     }
 }
 
-fun IdentInformasjon.toIdentType() = Ident.of(this.ident, this.historisk).toIdentType()
+fun Boolean.toKnownHistoriskStatus(): Ident.HistoriskStatus {
+    return if (this) Ident.HistoriskStatus.AKTIV else Ident.HistoriskStatus.HISTORISK
+}
+
 fun Ident.toIdentType(): String {
     return when (this) {
         is AktorId -> "AKTOR_ID"

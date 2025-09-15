@@ -39,6 +39,7 @@ import no.nav.services.KontorForGtFeil
 import no.nav.services.KontorForGtResultat
 import no.nav.services.KontorTilordningService
 import no.nav.utils.flywayMigrationInTest
+import no.nav.utils.randomFnr
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
@@ -51,7 +52,7 @@ class LeesahProcessorTest {
 
     @Test
     fun `skal sjekke gt kontor på nytt ved bostedsadresse endret`() = testApplication {
-        val fnr = Fnr("12345678901")
+        val fnr = randomFnr()
         val gammeltKontorId = "1234"
         val nyKontorId = "5678"
         application {
@@ -71,7 +72,7 @@ class LeesahProcessorTest {
 
     @Test
     fun `skal sette både gt-kontor og ao-kontor ved addressebeskyttelse endret hvis det er nytt kontor`() = testApplication {
-        val fnr = Fnr("12345678920")
+        val fnr = randomFnr()
         val gammeltKontorId = "1234"
         val nyKontorId = "5678"
         application {
@@ -97,7 +98,7 @@ class LeesahProcessorTest {
 
     @Test
     fun `skal ikke sette ao-kontor men gt-kontor ved addressebeskyttelse endret hvis det er nytt kontor`() = testApplication {
-        val fnr = Fnr("12345678940")
+        val fnr = randomFnr()
         val gammelKontorId = "1234"
         val nyKontorId = "5678"
         application {
@@ -121,7 +122,7 @@ class LeesahProcessorTest {
 
     @Test
     fun `skal håndtere at gt-provider returnerer GTKontorFeil`() = testApplication {
-        val fnr = Fnr("40445678901")
+        val fnr = randomFnr()
         val automatiskKontorRutingService = defaultAutomatiskKontorRutingService(
             { a, b, c -> KontorForGtFeil("Noe gikk galt") }
         )
@@ -135,7 +136,7 @@ class LeesahProcessorTest {
 
     @Test
     fun `skal håndtere at gt-provider kaster throwable`() = testApplication {
-        val fnr = Fnr("40445678901")
+        val fnr = randomFnr()
         val automatiskKontorRutingService = defaultAutomatiskKontorRutingService(
             { a, b, c -> throw Throwable("Noe gikk galt") }
         )
@@ -158,7 +159,7 @@ class LeesahProcessorTest {
             profileringProvider = { throw Throwable("Denne skal ikke brukes") },
             erSkjermetProvider = { SkjermingFunnet(HarSkjerming(false)) },
             harStrengtFortroligAdresseProvider = strengtFortroligAdresseProvider,
-            isUnderOppfolgingProvider = { AktivOppfolgingsperiode(Fnr("66666666666"), OppfolgingsperiodeId(UUID.randomUUID()), OffsetDateTime.now()) },
+            isUnderOppfolgingProvider = { AktivOppfolgingsperiode(Fnr("66666666666", Ident.HistoriskStatus.AKTIV), OppfolgingsperiodeId(UUID.randomUUID()), OffsetDateTime.now()) },
             harTilordnetKontorForOppfolgingsperiodeStartetProvider = { _, _ -> Outcome.Success(false)  }
         )
     }

@@ -7,6 +7,7 @@ import no.nav.AuthResult
 import no.nav.Authenticated
 import no.nav.NotAuthenticated
 import no.nav.db.Fnr
+import no.nav.db.Ident
 import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
 import no.nav.http.graphql.schemas.KontorTilhorigheterQueryDto
 import no.nav.http.graphql.schemas.toArbeidsoppfolgingKontorDto
@@ -20,15 +21,15 @@ class KontorQuery(
 ) : Query {
     val log = LoggerFactory.getLogger(KontorQuery::class.java)
 
-    suspend fun kontorTilhorighet(fnr: String, dataFetchingEnvironment: DataFetchingEnvironment): KontorTilhorighetQueryDto? {
+    suspend fun kontorTilhorighet(ident: String, dataFetchingEnvironment: DataFetchingEnvironment): KontorTilhorighetQueryDto? {
         val principal = dataFetchingEnvironment.graphQlContext.get<AOPrincipal>("principal")
-        return kontorTilhorighetService.getKontorTilhorighet(Fnr(fnr), principal)
+        return kontorTilhorighetService.getKontorTilhorighet(Ident.of(ident, Ident.HistoriskStatus.UKJENT), principal)
     }
 
     suspend fun kontorTilhorigheter(fnr: String, dataFetchingEnvironment: DataFetchingEnvironment): KontorTilhorigheterQueryDto {
         val principal = dataFetchingEnvironment.graphQlContext.get<AOPrincipal>("principal")
-        val fnr = Fnr(fnr)
-        val (arbeidsoppfolging, arena, gt) = kontorTilhorighetService.getKontorTilhorigheter(fnr, principal)
+        val ident = Ident.of(fnr, Ident.HistoriskStatus.UKJENT)
+        val (arbeidsoppfolging, arena, gt) = kontorTilhorighetService.getKontorTilhorigheter(ident, principal)
         return KontorTilhorigheterQueryDto(
             arena = arena?.toArenaKontorDto(),
             geografiskTilknytning = gt?.toGeografiskTilknyttetKontorDto(),

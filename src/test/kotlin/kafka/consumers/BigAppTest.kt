@@ -68,7 +68,7 @@ class BigAppTest {
     @Test
     fun `app should forward messages to KontorTilordning in prod`() = testApplication {
         val fnr = randomFnr()
-        val aktorId = AktorId("4444447890246")
+        val aktorId = AktorId("4444447890246", Ident.HistoriskStatus.AKTIV)
         val kontor = KontorId("2232")
         val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
         environment {
@@ -100,7 +100,7 @@ class BigAppTest {
                 ArenaKontorEntity::sisteLagreKontorArenaKontor,
                 oppfolgingsperiodeProvider
             )
-            val identService = IdentService { IdenterFunnet(emptyList(), "") }
+            val identService = IdentService { IdenterFunnet(emptyList(), fnr) }
             val identendringsProcessor = IdentChangeProcessor(identService)
             val topology = configureTopology(
                 this.environment,

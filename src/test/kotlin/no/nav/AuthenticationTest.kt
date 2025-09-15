@@ -31,6 +31,7 @@ import no.nav.utils.kontorTilhorighetQuery
 import io.ktor.server.routing.routing
 import no.nav.authenticateCall
 import org.junit.jupiter.api.Test
+import services.IdentService
 
 class AuthenticationTest {
 
@@ -38,6 +39,7 @@ class AuthenticationTest {
         environment {
             config = server.getMockOauth2ServerConfig()
         }
+        val identService = IdentService()
         val poaoTilgangKtorHttpClient = mockPoaoTilgangHost(null)
         val norg2Client = mockNorg2Host()
         val kontorNavnService = KontorNavnService(norg2Client)

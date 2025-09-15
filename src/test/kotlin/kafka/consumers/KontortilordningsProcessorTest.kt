@@ -4,6 +4,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import no.nav.db.Fnr
+import no.nav.db.Ident
 import no.nav.db.table.OppfolgingsperiodeTable.oppfolgingsperiodeId
 import no.nav.db.table.OppfolgingsperiodeTable.startDato
 import no.nav.domain.HarSkjerming
@@ -92,7 +93,7 @@ class KontortilordningsProcessorTest {
 
     fun oppfolgingsperiodeStartet(): OppfolgingsperiodeStartet {
         return OppfolgingsperiodeStartet(
-            Fnr("12211221333"),
+            Fnr("12211221333", Ident.HistoriskStatus.AKTIV),
             ZonedDateTime.now(),
             OppfolgingsperiodeId(UUID.randomUUID()),
             null,

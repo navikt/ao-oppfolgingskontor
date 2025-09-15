@@ -101,7 +101,7 @@ class EndringPaOppfolgingsBrukerProcessor(
     }
 
     fun internalProcess(record: Record<String, String>): EndringPaaOppfolgingsBrukerResult {
-        val fnr = Ident.of(record.key())
+        val fnr = Ident.of(record.key(), Ident.HistoriskStatus.UKJENT)
         val endringPaOppfolgingsBruker = json.decodeFromString<EndringPaOppfolgingsBrukerDto>(record.value())
         val oppfolgingsenhet = endringPaOppfolgingsBruker.oppfolgingsenhet
         val endretTidspunktInnkommendeMelding = endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime()
