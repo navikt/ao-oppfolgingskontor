@@ -93,7 +93,7 @@ object OppfolgingsperiodeDao {
             0 -> NotUnderOppfolging
             1 -> AktivOppfolgingsperiode(
                 identer.finnForetrukketIdent()
-                    ?: throw IllegalStateException("Kan ikke ha oppfølgingsperiode når det ikke finnes identer"),
+                    ?: throw IllegalStateException("Kan ikke ha oppfølgingsperiode når det ikke finnes noen foretrukken ident"),
                 OppfolgingsperiodeId(oppfolgingsperioder.first().oppfolgingsperiodeId),
                 oppfolgingsperioder.first().startDato
             )
