@@ -10,8 +10,11 @@ import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import no.nav.db.Fnr
+import no.nav.db.Ident
+import no.nav.db.Ident.HistoriskStatus.UKJENT
 import no.nav.domain.KontorType
 import no.nav.domain.NavIdent
+import no.nav.http.client.IdenterFunnet
 import no.nav.http.client.mockNorg2Host
 import no.nav.http.client.mockPoaoTilgangHost
 import no.nav.http.client.settKontor
@@ -30,13 +33,14 @@ import no.nav.utils.gittBrukerUnderOppfolging
 import no.nav.utils.issueToken
 import no.nav.utils.kontorTilhorighet
 import org.junit.jupiter.api.Test
+import services.IdentService
 import services.OppfolgingsperiodeService
 
 class SettArbeidsoppfolgingsKontorTest {
 
     /* application block seems to be run async so have to take block for extra db-setup as param */
     fun ApplicationTestBuilder.setupTestAppWithAuthAndGraphql(
-        fnr: Fnr,
+        ident: Ident,
         extraDatabaseSetup: Application.() -> Unit = {},
     ) {
         environment {
@@ -45,7 +49,10 @@ class SettArbeidsoppfolgingsKontorTest {
         val norg2Client = mockNorg2Host()
         val poaoTilgangClient = mockPoaoTilgangHost(null)
         val kontorNavnService = KontorNavnService(norg2Client)
-        val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangClient)
+        val identService = IdentService {
+            IdenterFunnet(listOf(ident), ident)
+        }
+        val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangClient, identService)
         val oppfolgingsperiodeService = OppfolgingsperiodeService()
         application {
             flywayMigrationInTest()
@@ -69,7 +76,7 @@ class SettArbeidsoppfolgingsKontorTest {
     @Test
     fun `skal kunne sette arbeidsoppfølgingskontor`() = testApplication {
         withMockOAuth2Server {
-            val fnr = Fnr("72345678901")
+            val fnr = Fnr("72345678901", UKJENT)
             val kontorId = "4444"
             val veilederIdent = NavIdent("Z990000")
             setupTestAppWithAuthAndGraphql(fnr) {
@@ -94,7 +101,7 @@ class SettArbeidsoppfolgingsKontorTest {
     @Test
     fun `skal svare med 409 når bruker ikke er under oppfølging`() = testApplication {
         withMockOAuth2Server {
-            val fnr = Fnr("72345678901")
+            val fnr = Fnr("72345678901", UKJENT)
             val kontorId = "4444"
             val veilederIdent = NavIdent("Z990000")
             setupTestAppWithAuthAndGraphql(fnr)

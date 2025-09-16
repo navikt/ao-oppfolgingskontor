@@ -10,6 +10,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import no.nav.db.Fnr
 import no.nav.db.Ident
+import no.nav.db.Ident.HistoriskStatus.UKJENT
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.GeografiskTilknyttetKontorEntity
@@ -140,7 +141,7 @@ class KafkaApplicationTest {
 
     @Test
     fun `skal behandle endring i skjerming sett kontor fra GT`() = testApplication {
-        val fnr = Fnr("55345678901")
+        val fnr = Fnr("55345678901", UKJENT)
         val skjermetKontor = "4555"
         val topic = randomTopicName()
 

@@ -12,6 +12,8 @@ import no.nav.Authenticated
 import no.nav.SystemPrincipal
 import no.nav.db.Fnr
 import no.nav.db.Ident
+import no.nav.db.Ident.HistoriskStatus.AKTIV
+import no.nav.db.Ident.HistoriskStatus.UKJENT
 import no.nav.domain.*
 import no.nav.domain.events.EndringPaaOppfolgingsBrukerFraArena
 import no.nav.domain.events.GTKontorEndret
@@ -40,8 +42,8 @@ import kotlin.time.Duration.Companion.milliseconds
 fun ApplicationTestBuilder.graphqlServerInTest(ident: Ident) {
     val norg2Client = mockNorg2Host()
     val poaoTilgangClient = mockPoaoTilgangHost(null)
-    val identService = IdentService() {
-        IdenterFunnet(listOf(ident), ident)
+    val identService = IdentService {
+        IdenterFunnet(listOf(ident).map { Ident.of(it.value, AKTIV) }, ident)
     }
     application {
         flywayMigrationInTest()
@@ -80,7 +82,7 @@ class GraphqlApplicationTest {
 
     @Test
     fun `skal kunne hente kontorhistorikk via graphql`() = testApplication {
-        val fnr = Fnr("32645671901")
+        val fnr = Fnr("32645671901", UKJENT)
         val kontorId = "4144"
         val client = getJsonHttpClient()
         graphqlServerInTest(fnr)
@@ -104,7 +106,7 @@ class GraphqlApplicationTest {
 
     @Test
     fun `skal kunne hente alle kontor via graphql`() = testApplication {
-        val fnr = Fnr("32345678901")
+        val fnr = Fnr("32345678901", UKJENT)
         val kontorId = "4142"
         val client = getJsonHttpClient()
         graphqlServerInTest(fnr)
@@ -122,7 +124,7 @@ class GraphqlApplicationTest {
 
     @Test
     fun `skal få GT kontor på tilhørighet hvis ingen andre kontor er satt via graphql`() = testApplication {
-        val fnr = Fnr("32345678901")
+        val fnr = Fnr("32345678901", UKJENT)
         val kontorId = "4142"
         val client = getJsonHttpClient()
         graphqlServerInTest(fnr)
@@ -140,7 +142,7 @@ class GraphqlApplicationTest {
 
     @Test
     fun `skal kunne hente ao-kontor, arena-kontor og gt-kontor samtidig`() = testApplication {
-        val fnr = Fnr("62345678901")
+        val fnr = Fnr("62345678901", UKJENT)
         val GTkontorId = "4151"
         val AOKontor = "4152"
         val arenaKontorId = "4150"
