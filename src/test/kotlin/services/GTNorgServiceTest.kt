@@ -3,6 +3,7 @@ package services
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.test.runTest
 import no.nav.db.Fnr
+import no.nav.db.Ident
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
@@ -23,7 +24,7 @@ import no.nav.services.KontorForGtNrFantFallbackKontorForManglendeGt
 import org.junit.jupiter.api.Test
 
 class GTNorgServiceTest {
-    val fnr = Fnr("12345678901")
+    val fnr = Fnr("12345678901", Ident.HistoriskStatus.UKJENT)
 
     @Test
     fun `skal svare KontorForGtFinnesIkke for bruker uten GT og uten fallback kontor`() = runTest {

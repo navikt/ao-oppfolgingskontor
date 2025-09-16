@@ -1,7 +1,6 @@
 package no.nav.services
 
 import no.nav.AOPrincipal
-import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.ArenaKontorEntity
