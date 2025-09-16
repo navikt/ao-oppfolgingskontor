@@ -234,7 +234,7 @@ class PdlClientTest {
 
     @Test
     fun `hentIdenter skal returnere fnr for aktorId`() = testApplication {
-        val aktorId = "12345678901"
+        val aktorId = "55555555555"
         val fnr = randomFnr()
         val client = mockPdl(
             """
@@ -243,12 +243,12 @@ class PdlClientTest {
                     "hentIdenter": {
                         "identer": [
                           {
-                            "ident": "44444444",
+                            "ident": "44444444444",
                             "historisk": false,
                             "gruppe": "${IdentGruppe.NPID}"
                           },
                           {
-                            "ident": "55555555",
+                            "ident": "55555555555",
                             "historisk": false,
                             "gruppe": "${IdentGruppe.AKTORID}"
                           },
