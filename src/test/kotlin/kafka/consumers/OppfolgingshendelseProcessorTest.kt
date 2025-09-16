@@ -10,6 +10,7 @@ import io.ktor.server.testing.*
 import io.mockk.every
 import io.mockk.mockk
 import no.nav.db.Ident
+import no.nav.db.Ident.HistoriskStatus.UKJENT
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.OppfolgingsperiodeEntity
 import no.nav.domain.KontorId
@@ -214,8 +215,9 @@ class OppfolgingshendelseProcessorTest {
 
         application {
             flywayMigrationInTest()
-            val identService = IdentService { IdenterFunnet(listOf(bruker.fnr), bruker.fnr) }
-            val oppfolgingsHendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService(identService))
+            val oppfolgingsHendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService({ input ->
+                IdenterFunnet(listOf(bruker.fnr), Ident.of(input, UKJENT))
+            }))
             val startPeriodeRecord = oppfolgingStartetMelding(bruker)
             val sluttNyerePeriodeRecord = oppfolgingAvsluttetMelding(
                 bruker.copy(

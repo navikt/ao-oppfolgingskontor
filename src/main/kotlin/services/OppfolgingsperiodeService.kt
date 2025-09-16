@@ -7,6 +7,10 @@ import no.nav.http.client.IdentFunnet
 import no.nav.http.client.IdentIkkeFunnet
 import no.nav.http.client.IdentOppslagFeil
 import no.nav.http.client.IdentResult
+import no.nav.http.client.IdenterFunnet
+import no.nav.http.client.IdenterIkkeFunnet
+import no.nav.http.client.IdenterOppslagFeil
+import no.nav.http.client.IdenterResult
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.OppfolgingperiodeOppslagFeil
 import no.nav.services.OppfolgingsperiodeDao
@@ -16,7 +20,7 @@ import org.slf4j.LoggerFactory
 import utils.Outcome
 
 class OppfolgingsperiodeService(
-    val identService: IdentService
+    val hentAlleIdenter: (Ident) -> IdenterResult
 ) {
     val log = LoggerFactory.getLogger(OppfolgingsperiodeService::class.java)
 
@@ -68,8 +72,11 @@ class OppfolgingsperiodeService(
         return try {
             when (ident) {
                 is IdentFunnet -> transaction {
-                    val alleIdenter = identService.hentAlleIdenter(ident.ident).identer
-                    OppfolgingsperiodeDao.getCurrentOppfolgingsperiode(alleIdenter)
+                    when (val result = hentAlleIdenter(ident.ident)) {
+                        is IdenterFunnet -> OppfolgingsperiodeDao.getCurrentOppfolgingsperiode(result.identer)
+                        is IdenterIkkeFunnet -> OppfolgingperiodeOppslagFeil("Kunne ikke hente nåværende oppfolgingsperiode, klarte ikke hente alle mappede identer: ${result.message}")
+                        is IdenterOppslagFeil -> OppfolgingperiodeOppslagFeil("Kunne ikke hente nåværende oppfolgingsperiode, klarte ikke hente alle mappede identer: ${result.message}")
+                    }
                 }
                 is IdentIkkeFunnet -> OppfolgingperiodeOppslagFeil("Kunne ikke finne oppfølgingsperiode: ${ident.message}")
                 is IdentOppslagFeil -> OppfolgingperiodeOppslagFeil("Kunne ikke finne oppfølgingsperiode: ${ident.message}")
