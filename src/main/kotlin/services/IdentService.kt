@@ -171,13 +171,21 @@ class IdentService(
     /**
     * Henter alle tilhørende identer på en bruker, inkl historiske
     */
-    public fun hentAlleIdenter(identInput: Ident): IdenterFunnet {
-        val alleIdenter = hentIdentMappinger(identInput, true)
-            .map { it.ident }
-        return IdenterFunnet(
-            identer = alleIdenter,
-            inputIdent = identInput,
-        )
+    public fun hentAlleIdenter(identInput: Ident): IdenterResult {
+        try {
+            val alleIdenter = hentIdentMappinger(identInput, true)
+                .map { it.ident }
+            return when (alleIdenter.size) {
+                0 -> IdenterIkkeFunnet("Fant ingen identer for input-ident")
+                else -> IdenterFunnet(
+                    identer = alleIdenter,
+                    inputIdent = identInput,
+                )
+            }
+        } catch (e: Throwable) {
+            log.error("Feil ved henting av alle identer for input-ident", e)
+            return IdenterOppslagFeil("Feil ved henting av alle identer for input-ident: ${e.message}")
+        }
     }
 
     /**

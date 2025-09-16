@@ -16,6 +16,9 @@ import no.nav.domain.KontorId
 import no.nav.domain.KontorType
 import no.nav.domain.KontorNavn
 import no.nav.http.client.IdenterFunnet
+import no.nav.http.client.IdenterIkkeFunnet
+import no.nav.http.client.IdenterOppslagFeil
+import no.nav.http.client.IdenterResult
 import no.nav.http.client.poaoTilgang.PoaoTilgangKtorHttpClient
 import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
 import no.nav.http.graphql.schemas.RegistrantTypeDto
@@ -32,7 +35,7 @@ class KontorTilhorighetService(
     val log = LoggerFactory.getLogger(KontorTilhorighetService::class.java)
 
     suspend fun getKontorTilhorigheter(ident: Ident, principal: AOPrincipal): Triple<ArbeidsoppfolgingsKontor?, ArenaKontor?, GeografiskTilknyttetKontor?> {
-        val alleIdenter = identService.hentAlleIdenter(ident)
+        val alleIdenter = identService.hentAlleIdenter(ident).getOrThrow()
         val aokontor = getArbeidsoppfolgingKontorTilhorighet(alleIdenter, principal)
         val arenakontor = getArenaKontorTilhorighet(alleIdenter)
         val gtkontor = getGeografiskTilknyttetKontorTilhorighet(alleIdenter)
@@ -40,7 +43,7 @@ class KontorTilhorighetService(
     }
 
     suspend fun getArbeidsoppfolgingKontorTilhorighet(ident: Ident, principal: AOPrincipal): ArbeidsoppfolgingsKontor? {
-        val alleIdenter = identService.hentAlleIdenter(ident)
+        val alleIdenter = identService.hentAlleIdenter(ident).getOrThrow()
         return getArbeidsoppfolgingKontorTilhorighet(alleIdenter, principal)
     }
     private suspend  fun getArbeidsoppfolgingKontorTilhorighet(ident: IdenterFunnet, principal: AOPrincipal): ArbeidsoppfolgingsKontor? {
@@ -93,7 +96,7 @@ class KontorTilhorighetService(
     suspend fun getKontorTilhorighet(ident: Ident, principal: AOPrincipal): KontorTilhorighetQueryDto? {
         poaoTilgangClient.harLeseTilgang(principal, ident)
         // TODO: Hent alle identer her og bruk dem i query
-        val identer = identService.hentAlleIdenter(ident)
+        val identer = identService.hentAlleIdenter(ident).getOrThrow()
 
         val kontorer = transaction {
             /* The ordering is important! */
@@ -144,4 +147,12 @@ fun GeografiskTilknyttetKontorEntity.toKontorTilhorighetQueryDto(navn: KontorNav
         registrantType = RegistrantTypeDto.SYSTEM,
         kontorNavn = navn.navn
     )
+}
+
+private fun IdenterResult.getOrThrow(): IdenterFunnet {
+    return when (this) {
+        is IdenterFunnet -> this
+        is IdenterIkkeFunnet -> throw Exception("Fikk ikke hentet identer for ident: ${this.message}")
+        is IdenterOppslagFeil -> throw Exception("Fikk ikke hentet identer for ident: ${this.message}")
+    }
 }
