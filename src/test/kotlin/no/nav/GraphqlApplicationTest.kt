@@ -11,12 +11,14 @@ import io.ktor.server.testing.*
 import no.nav.Authenticated
 import no.nav.SystemPrincipal
 import no.nav.db.Fnr
+import no.nav.db.Ident
 import no.nav.domain.*
 import no.nav.domain.events.EndringPaaOppfolgingsBrukerFraArena
 import no.nav.domain.events.GTKontorEndret
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.GtNummerForBrukerFunnet
+import no.nav.http.client.IdenterFunnet
 import no.nav.http.client.mockNorg2Host
 import no.nav.http.client.mockPoaoTilgangHost
 import no.nav.http.graphql.installGraphQl
@@ -28,20 +30,24 @@ import no.nav.services.KontorTilordningService
 import no.nav.utils.*
 import no.nav.utils.KontorTilhorighet
 import org.junit.jupiter.api.Test
+import services.IdentService
 import services.ingenSensitivitet
 import java.time.Instant
 import java.time.ZonedDateTime
 import java.util.*
 import kotlin.time.Duration.Companion.milliseconds
 
-fun ApplicationTestBuilder.graphqlServerInTest() {
+fun ApplicationTestBuilder.graphqlServerInTest(ident: Ident) {
     val norg2Client = mockNorg2Host()
     val poaoTilgangClient = mockPoaoTilgangHost(null)
+    val identService = IdentService() {
+        IdenterFunnet(listOf(ident), ident)
+    }
     application {
         flywayMigrationInTest()
         installGraphQl(
             norg2Client,
-            KontorTilhorighetService(KontorNavnService(norg2Client), poaoTilgangClient),
+            KontorTilhorighetService(KontorNavnService(norg2Client), poaoTilgangClient, identService),
             { Authenticated(SystemPrincipal("lol")) })
         routing {
             graphQLPostRoute()
@@ -56,7 +62,7 @@ class GraphqlApplicationTest {
         val fnr = randomFnr()
         val kontorId = "4142"
         val client = getJsonHttpClient()
-        graphqlServerInTest()
+        graphqlServerInTest(fnr)
         application {
             gittBrukerMedKontorIArena(fnr, kontorId)
         }
@@ -77,7 +83,7 @@ class GraphqlApplicationTest {
         val fnr = Fnr("32645671901")
         val kontorId = "4144"
         val client = getJsonHttpClient()
-        graphqlServerInTest()
+        graphqlServerInTest(fnr)
         application {
             gittBrukerMedKontorIArena(fnr, kontorId)
         }
@@ -101,7 +107,7 @@ class GraphqlApplicationTest {
         val fnr = Fnr("32345678901")
         val kontorId = "4142"
         val client = getJsonHttpClient()
-        graphqlServerInTest()
+        graphqlServerInTest(fnr)
         application {
             gittBrukerMedKontorIArena(fnr, kontorId)
         }
@@ -119,7 +125,7 @@ class GraphqlApplicationTest {
         val fnr = Fnr("32345678901")
         val kontorId = "4142"
         val client = getJsonHttpClient()
-        graphqlServerInTest()
+        graphqlServerInTest(fnr)
         application {
             gittBrukerMedGeografiskTilknyttetKontor(fnr, kontorId)
         }
@@ -138,7 +144,7 @@ class GraphqlApplicationTest {
         val GTkontorId = "4151"
         val AOKontor = "4152"
         val arenaKontorId = "4150"
-        graphqlServerInTest()
+        graphqlServerInTest(fnr)
         application {
             gittBrukerMedKontorIArena(fnr, arenaKontorId)
             gittBrukerMedGeografiskTilknyttetKontor(fnr, GTkontorId)
