@@ -19,6 +19,7 @@ import no.nav.http.graphql.generated.client.hentfnrquery.IdentInformasjon
 import no.nav.http.graphql.generated.client.hentgtquery.GeografiskTilknytning
 import no.nav.utils.randomFnr
 import org.junit.jupiter.api.Test
+import services.finnForetrukketIdent
 import java.time.LocalDate
 import java.time.Period
 import java.time.ZonedDateTime

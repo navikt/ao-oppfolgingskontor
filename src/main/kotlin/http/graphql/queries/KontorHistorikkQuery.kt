@@ -23,7 +23,7 @@ class KontorHistorikkQuery(
             transaction {
                 // TODO Flytt dette til en service??
                 val inputIdent = Ident.of(ident, Ident.HistoriskStatus.UKJENT)
-                val alleIdenter = identService.hentAlleIdenter(inputIdent)
+                val alleIdenter = identService.hentAlleIdenter(inputIdent).getOrThrow()
                 KontorHistorikkEntity
                     .find { KontorhistorikkTable.ident inList alleIdenter.identer.map { it.value } }
                     .orderBy(KontorhistorikkTable.id to SortOrder.ASC)

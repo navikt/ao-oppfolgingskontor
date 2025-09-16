@@ -38,7 +38,15 @@ data class IdentFunnet(val ident: Ident) : IdentResult()
 data class IdentIkkeFunnet(val message: String) : IdentResult()
 data class IdentOppslagFeil(val message: String) : IdentResult()
 
-sealed class IdenterResult
+sealed class IdenterResult {
+    fun getOrThrow(): IdenterFunnet {
+        return when (this) {
+            is IdenterFunnet -> this
+            is IdenterIkkeFunnet -> throw Exception("Fikk ikke hentet identer for ident: ${this.message}")
+            is IdenterOppslagFeil -> throw Exception("Fikk ikke hentet identer for ident: ${this.message}")
+        }
+    }
+}
 data class IdenterFunnet(val identer: List<Ident>, val inputIdent: Ident) : IdenterResult() {
     val foretrukketIdent: Ident
         get() = identer.finnForetrukketIdent()  ?: throw IllegalStateException("Fant ikke foretrukket ident, alle identer historiske?")
@@ -206,16 +214,4 @@ fun GraphQLClientResponse<HentGtQuery.Result>.toGeografiskTilknytning(): GtForBr
         }?.let { gt -> GtNummerForBrukerFunnet(gt) }
             ?: GtForBrukerIkkeFunnet("Ingen gyldige verider i GT repons fra PDL funnet for type ${it.gtType} bydel: ${it.gtBydel}, kommune: ${it.gtKommune}, land: ${it.gtLand}")
     } ?: GtForBrukerIkkeFunnet("Ingen geografisk tilknytning funnet for bruker $this")
-}
-
-fun IdenterResult.finnForetrukketIdent(): IdentResult {
-    return when (this) {
-        is IdenterFunnet -> {
-            this.identer.finnForetrukketIdent()
-                ?.let { IdentFunnet(it) }
-                ?: IdentIkkeFunnet("Fant ingen gyldig ident for bruker, antall identer: ${this.identer.size}, indent-typer: ${this.identer.joinToString { it::class.java.simpleName }}")
-        }
-        is IdenterIkkeFunnet -> IdentIkkeFunnet(this.message)
-        is IdenterOppslagFeil -> IdentOppslagFeil(this.message)
-    }
 }

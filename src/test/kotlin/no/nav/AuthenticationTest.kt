@@ -1,6 +1,7 @@
 package no.nav.no.nav
 
 import com.expediagroup.graphql.server.ktor.graphQLPostRoute
+import db.table.IdentMappingTable
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import io.ktor.client.request.bearerAuth
@@ -34,6 +35,7 @@ import no.nav.db.Ident
 import no.nav.http.client.IdenterFunnet
 import no.nav.http.client.IdenterIkkeFunnet
 import no.nav.utils.randomFnr
+import org.jetbrains.exposed.sql.insert
 import org.junit.jupiter.api.Test
 import services.IdentService
 
@@ -47,6 +49,11 @@ class AuthenticationTest {
             if (ident == null) IdenterIkkeFunnet("lol")
             else IdenterFunnet(listOf(ident), ident)
         })
+        IdentMappingTable.insert {
+            it[IdentMappingTable.identType] = false
+            it[IdentMappingTable.id] = false
+            it[IdentMappingTable.historisk] = false
+        }
         val poaoTilgangKtorHttpClient = mockPoaoTilgangHost(null)
         val norg2Client = mockNorg2Host()
         val kontorNavnService = KontorNavnService(norg2Client)

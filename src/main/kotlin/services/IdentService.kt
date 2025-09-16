@@ -16,14 +16,13 @@ import no.nav.db.Ident
 import no.nav.db.Npid
 import no.nav.db.finnForetrukketIdent
 import no.nav.http.client.IdentFunnet
+import no.nav.http.client.IdentIkkeFunnet
 import no.nav.http.client.IdentOppslagFeil
 import no.nav.http.client.IdentResult
 import no.nav.http.client.IdenterFunnet
 import no.nav.http.client.IdenterIkkeFunnet
 import no.nav.http.client.IdenterOppslagFeil
 import no.nav.http.client.IdenterResult
-import no.nav.http.client.finnForetrukketIdent
-import no.nav.http.graphql.generated.client.hentfnrquery.IdentInformasjon
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.alias
@@ -271,4 +270,13 @@ fun List<IdentInfo>.finnEndringer(oppdaterteIdenter: List<OppdatertIdent>): List
     val innkommendeIdenter = oppdaterteIdenter.toSet().map { IdentInfo(it.ident, it.historisk, internIdent) }
     val nyeIdenter = (innkommendeIdenter - this.toSet()).map { NyIdent(it.ident, it.historisk, internIdent) }
     return endringerPåEksiterendeIdenter + nyeIdenter
+}
+
+fun IdenterResult.finnForetrukketIdent(): IdentResult {
+    return when (this) {
+        is IdenterFunnet -> this.identer.finnForetrukketIdent()?.let { IdentFunnet(it) }
+            ?: IdentIkkeFunnet("Fant ingen foretrukket ident")
+        is IdenterIkkeFunnet -> IdentIkkeFunnet(this.message)
+        is IdenterOppslagFeil -> IdentOppslagFeil(this.message)
+    }
 }
