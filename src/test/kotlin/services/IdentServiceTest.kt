@@ -213,13 +213,13 @@ class IdentServiceTest {
     fun `aktor-v2 endring - skal ikke oppdatere identer når vi ikke har noe intern-ident på bruker`() = runTest {
         flywayMigrationInTest()
 
-        val aktorId = AktorId("2938764298763")
-        val fnr = Fnr("18111298763")
+        val aktorId = AktorId("2938764298763", AKTIV)
+        val fnr = Fnr("18111298763", AKTIV)
 
         val identProvider: suspend (String) -> IdenterFunnet = { innkommendeAktorId -> IdenterFunnet(listOf(
-            IdentInformasjon(aktorId.value, false) ,
-            IdentInformasjon(fnr.value, false),
-        ), innkommendeAktorId) }
+            aktorId,
+            fnr,
+        ), Ident.of(innkommendeAktorId, UKJENT)) }
         val identService = IdentService(identProvider)
 
         val innkommendeIdenter = listOf(
@@ -239,8 +239,8 @@ class IdentServiceTest {
         val identProvider: suspend (String) -> IdenterFunnet = { aktorId -> IdenterFunnet(emptyList(), aktorId) }
         val identService = IdentService(identProvider)
         val proccessor = IdentChangeProcessor(identService)
-        val aktorId = AktorId("2938764298763")
-        val fnr = Fnr("01010198765")
+        val aktorId = AktorId("2938764298763", AKTIV)
+        val fnr = Fnr("01010198765", AKTIV)
         val internId = 1231231231L
 
         transaction {
@@ -265,9 +265,9 @@ class IdentServiceTest {
 
         val identProvider: suspend (String) -> IdenterFunnet = { aktorId -> IdenterFunnet(emptyList(), aktorId) }
         val identService = IdentService(identProvider)
-        val aktorId = AktorId("2938764298793")
-        val dnr = Dnr("48764298868")
-        val fnr = Fnr("01010196769")
+        val aktorId = AktorId("2938764298793", AKTIV)
+        val dnr = Dnr("48764298868", AKTIV)
+        val fnr = Fnr("01010196769", AKTIV)
         val internId = 1231231291L
 
         transaction {
@@ -297,12 +297,12 @@ class IdentServiceTest {
     fun `skal finne internId på ny aktørId selvom gammel aktørId er opphørt hvis fnr finnes`() = runTest {
         flywayMigrationInTest()
 
-        val opphortAktorId = AktorId("4938764598763")
-        val nyAktorId = AktorId("2938764297763")
-        val fnr = Fnr("02010198765")
+        val opphortAktorId = AktorId("4938764598763", HISTORISK)
+        val nyAktorId = AktorId("2938764297763", AKTIV)
+        val fnr = Fnr("02010198765", AKTIV)
         val internId = 31231L
 
-        /* AktorId er slettet, men det finnes fortsatt FNR som ikke er slettet */
+        /* AktorId er slettet, men det finnes fortsatt FNR som ikke er slettet. Slettet ident dukker ikke opp i liste av identer på topicet */
         transaction {
             IdentMappingTable.batchInsert(listOf(opphortAktorId, fnr)) {
                 this[IdentMappingTable.internIdent] = internId
@@ -315,9 +315,8 @@ class IdentServiceTest {
 
         val identProvider: suspend (String) -> IdenterFunnet = { nyMenIkkeLagretEndaAktorId ->
             IdenterFunnet(listOf(
-                IdentInformasjon(fnr.value, false, IdentGruppe.FOLKEREGISTERIDENT),
-                IdentInformasjon(nyAktorId.value, false, IdentGruppe.AKTORID)
-            ), nyMenIkkeLagretEndaAktorId)
+                fnr, nyAktorId
+            ), Ident.of(nyMenIkkeLagretEndaAktorId, AKTIV))
         }
         val identService = IdentService(identProvider)
         val proccessor = IdentChangeProcessor(identService)
@@ -345,8 +344,8 @@ class IdentServiceTest {
         val identService = IdentService(identProvider)
         val proccessor = IdentChangeProcessor(identService)
 
-        val aktorId = AktorId("2593876429711")
-        val fnr = Fnr("02010198111")
+        val aktorId = AktorId("2593876429711", AKTIV)
+        val fnr = Fnr("02010198111", AKTIV)
         val payload = mockk<Aktor> {
             every { identifikatorer } returns listOf(
                 Identifikator(fnr.value, Type.FOLKEREGISTERIDENT, true),
@@ -367,8 +366,8 @@ class IdentServiceTest {
         val identService = IdentService(identProvider)
         val proccessor = IdentChangeProcessor(identService, skipPersonIkkeFunnet = true)
 
-        val aktorId = AktorId("2593876429722")
-        val fnr = Fnr("02010198122")
+        val aktorId = AktorId("2593876429722", AKTIV)
+        val fnr = Fnr("02010198122", AKTIV)
         val payload = mockk<Aktor> {
             every { identifikatorer } returns listOf(
                 Identifikator(fnr.value, Type.FOLKEREGISTERIDENT, true),
