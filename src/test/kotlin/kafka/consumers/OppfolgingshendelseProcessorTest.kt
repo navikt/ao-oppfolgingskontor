@@ -329,7 +329,7 @@ class OppfolgingshendelseProcessorTest {
     @Test
     fun `avslutt-melding med ny ident skal kunne avslutte periode`() = testApplication {
         val aktivtDnr = Dnr("52105678901", AKTIV)
-        val historiskDnr = Dnr("42345678901", HISTORISK)
+        val historiskDnr = Dnr(aktivtDnr.value, HISTORISK)
         val aktorId = AktorId("1234567890123", AKTIV)
         val fnr = randomFnr(UKJENT)
         val bruker = Bruker(
@@ -345,10 +345,12 @@ class OppfolgingshendelseProcessorTest {
             lagreIdentIIdentmappingTabell(aktivtDnr)
             val identService = IdentService { input ->
                 val inputIdent = Ident.of(input, UKJENT)
+                // I denne testen simulerer vi at vi får inn en melding med dnr først, derfor returneres ikke fnr når inputIdent er dnr
                 when (inputIdent) {
                     is Dnr -> IdenterFunnet(listOf(aktorId, aktivtDnr), inputIdent)
                     is Fnr -> IdenterFunnet(listOf(aktorId, historiskDnr, fnr), inputIdent)
-                    is Npid, is AktorId -> fail("LOL")
+                    is AktorId -> IdenterFunnet(listOf(aktorId, historiskDnr, fnr), inputIdent)
+                    is Npid -> fail("LOL")
                 }
             }
             val identChangeProcessor = IdentChangeProcessor(identService)
@@ -375,15 +377,15 @@ class OppfolgingshendelseProcessorTest {
                 .shouldBeInstanceOf<AktivOppfolgingsperiode>()
             oppfolgingsPeriodeService.getCurrentOppfolgingsperiode(IdentFunnet(brukerMedFnr.ident))
                 .shouldBeInstanceOf<AktivOppfolgingsperiode>()
-//
-//            val sluttDato = ZonedDateTime.now()
-//            val avsluttMedNyIdentResult = oppfolgingshendelseProcessor.process(
-//                oppfolgingAvsluttetMelding(brukerMedFnr, sluttDato)
-//            )
-//
-//            avsluttMedNyIdentResult.shouldBeInstanceOf<Commit<*, *>>()
-//            oppfolgingsPeriodeService.getCurrentOppfolgingsperiode(IdentFunnet(brukerMedDnr.ident))
-//                .shouldBeInstanceOf<AktivOppfolgingsperiode>()
+
+            val sluttDato = ZonedDateTime.now()
+            val avsluttMedNyIdentResult = oppfolgingshendelseProcessor.process(
+                oppfolgingAvsluttetMelding(brukerMedFnr, sluttDato)
+            )
+
+            avsluttMedNyIdentResult.shouldBeInstanceOf<Commit<*, *>>()
+            oppfolgingsPeriodeService.getCurrentOppfolgingsperiode(IdentFunnet(brukerMedDnr.ident))
+                .shouldBeInstanceOf<AktivOppfolgingsperiode>()
 //            oppfolgingsPeriodeService.getCurrentOppfolgingsperiode(IdentFunnet(brukerMedFnr.ident))
 //                .shouldBeInstanceOf<AktivOppfolgingsperiode>()
         }
