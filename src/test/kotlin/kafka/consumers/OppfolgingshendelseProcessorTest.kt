@@ -9,8 +9,12 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.server.testing.*
 import io.mockk.every
 import io.mockk.mockk
+import no.nav.db.AktorId
+import no.nav.db.Dnr
+import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.db.Ident.HistoriskStatus.UKJENT
+import no.nav.db.Npid
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.OppfolgingsperiodeEntity
 import no.nav.domain.KontorId
@@ -40,6 +44,7 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.temporal.ChronoUnit
 import java.util.*
+import kotlin.test.fail
 
 class OppfolgingshendelseProcessorTest {
 
@@ -328,15 +333,23 @@ class OppfolgingshendelseProcessorTest {
         application {
             flywayMigrationInTest()
             val identService = IdentService { input ->
-                if (input == bruker.fnr) IdenterFunnet(listOf(bruker.fnr, nyIdent), input)
-                else IdenterFunnet(listOf(nyIdent), input)
+                val inputIdent = Ident.of(input, UKJENT)
+                when (inputIdent) {
+                    is Dnr -> IdenterFunnet(listOf(bruker.fnr, nyIdent), input)
+                    is Fnr -> IdenterFunnet(listOf(bruker.fnr, nyIdent), input)
+                    is Npid, is AktorId -> fail("LOL")
+                }
             }
+            val identChangeProcessor = IdentChangeProcessor(identService)
             val oppfolgingshendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService(identService::hentAlleIdenter))
             val startResult = oppfolgingshendelseProcessor.process(oppfolgingStartetMelding(bruker))
             startResult.shouldBeInstanceOf<Forward<*, *>>()
+            identChangeProcessor.process(TopicUtils.aktorV2Message("",listOf()))
 
             val sluttDato = ZonedDateTime.now()
-            val avsluttMedNyIdentResult = oppfolgingshendelseProcessor.process(oppfolgingAvsluttetMelding(bruker.copy(fnr = Ident(nyIdent, UKJENT)), sluttDato))
+            val avsluttMedNyIdentResult = oppfolgingshendelseProcessor.process(
+                oppfolgingAvsluttetMelding(bruker.copy(fnr = Ident(nyIdent, UKJENT)), sluttDato)
+            )
 
             avsluttMedNyIdentResult.shouldBeInstanceOf<Commit<*, *>>()
             bruker.skalIkkeVæreUnderOppfølging()

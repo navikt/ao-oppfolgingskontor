@@ -1,10 +1,14 @@
 package kafka.consumers
 
+import io.mockk.every
+import io.mockk.mockk
 import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.kafka.consumers.FormidlingsGruppe
 import no.nav.kafka.consumers.Kvalifiseringsgruppe
+import no.nav.person.pdl.aktor.v2.Aktor
+import no.nav.person.pdl.aktor.v2.Identifikator
 import org.apache.kafka.streams.processor.api.Record
 import java.time.OffsetDateTime
 import java.time.ZonedDateTime
@@ -54,6 +58,18 @@ object TopicUtils {
               "formidlingsgruppe": "${formidlingsGruppe.name}",
               "kvalifiseringsgruppe": "${kvalifiseringsgruppe.name}"
         }""".trimIndent(), System.currentTimeMillis())
+    }
+
+    fun aktorV2Message(aktorId: String, identer: List<Ident>): Record<String, Aktor> {
+        val value = mockk<Aktor> {
+            every { identifikatorer } returns identer.map { ident ->
+              mockk<Identifikator> {
+                every { gjeldende } returns (ident.historisk == Ident.HistoriskStatus.AKTIV)
+                every { idnummer } returns ident.value
+              }
+            }
+        }
+        return Record(aktorId, value, System.currentTimeMillis())
     }
 
 }
