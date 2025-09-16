@@ -11,6 +11,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import kotlinx.serialization.Serializable
 import no.nav.db.Fnr
+import no.nav.db.Ident
 import no.nav.http.client.logger
 import no.nav.http.graphql.schemas.AlleKontorQueryDto
 import no.nav.http.graphql.schemas.ArbeidsoppfolgingKontorDto
@@ -104,19 +105,19 @@ suspend fun HttpClient.alleKontor(bearerToken: String? = null): HttpResponse {
 val pesos = "$"
 val fnrArg = "${pesos}fnr"
 
-private fun kontorHistorikkQuery(fnr: Fnr): String {
-    return graphqlPayload(fnr, """
-            { kontorHistorikk (fnr: \"$fnr\") { kontorId , kontorType, endretAv, endretAvType, endretTidspunkt, endringsType } }
+private fun kontorHistorikkQuery(ident: Ident): String {
+    return graphqlPayload(ident, """
+            { kontorHistorikk (ident: \"$ident\") { kontorId , kontorType, endretAv, endretAvType, endretTidspunkt, endringsType } }
         """.trimIndent())
 }
-fun kontorTilhorighetQuery(fnr: Fnr): String {
-    return graphqlPayload(fnr, """
-             { kontorTilhorighet (fnr: \"$fnr\") { kontorId , kontorType, registrant, registrantType, kontorNavn } }
+fun kontorTilhorighetQuery(ident: Ident): String {
+    return graphqlPayload(ident, """
+             { kontorTilhorighet (ident: \"$ident\") { kontorId , kontorType, registrant, registrantType, kontorNavn } }
         """.trimIndent())
 }
 
-fun alleKontorTilhorigheterQuery(fnr: Fnr): String {
-    return graphqlPayload(fnr, """
+fun alleKontorTilhorigheterQuery(ident: Ident): String {
+    return graphqlPayload(ident, """
              query kontorTilhorigheterQuery($fnrArg: String!) {
                 kontorTilhorigheter (fnr: $fnrArg) {
                      arena { kontorId, kontorNavn }
@@ -131,15 +132,15 @@ private fun alleKontorQuery(): String {
             { alleKontor { kontorId , kontorNavn } }
         """.trimIndent())
 }
-private fun graphqlPayload(fnr: Fnr?, query: String): String {
-    fun variablesClause(fnr: Fnr): String {
+private fun graphqlPayload(ident: Ident?, query: String): String {
+    fun variablesClause(ident: Ident): String {
         return """
-            "variables": { "fnr": "$fnr" },
+            "variables": { "ident": "$ident" },
         """.trimIndent()
     }
     return """
             {
-                ${fnr?.let(::variablesClause) ?: ""}
+                ${ident?.let(::variablesClause) ?: ""}
                 "query": "$query"
             }
         """.trimIndent()

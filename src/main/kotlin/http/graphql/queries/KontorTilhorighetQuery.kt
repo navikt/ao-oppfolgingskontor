@@ -26,9 +26,9 @@ class KontorQuery(
         return kontorTilhorighetService.getKontorTilhorighet(Ident.of(ident, Ident.HistoriskStatus.UKJENT), principal)
     }
 
-    suspend fun kontorTilhorigheter(fnr: String, dataFetchingEnvironment: DataFetchingEnvironment): KontorTilhorigheterQueryDto {
+    suspend fun kontorTilhorigheter(ident: String, dataFetchingEnvironment: DataFetchingEnvironment): KontorTilhorigheterQueryDto {
         val principal = dataFetchingEnvironment.graphQlContext.get<AOPrincipal>("principal")
-        val ident = Ident.of(fnr, Ident.HistoriskStatus.UKJENT)
+        val ident = Ident.of(ident, Ident.HistoriskStatus.UKJENT)
         val (arbeidsoppfolging, arena, gt) = kontorTilhorighetService.getKontorTilhorigheter(ident, principal)
         return KontorTilhorigheterQueryDto(
             arena = arena?.toArenaKontorDto(),

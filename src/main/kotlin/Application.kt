@@ -85,7 +85,7 @@ fun Application.module() {
 
     val issuer = environment.getIssuer()
     val authenticateRequest: AuthenticateRequest = { req -> req.call.authenticateCall(issuer) }
-    configureGraphQlModule(norg2Client, kontorTilhorighetService, authenticateRequest)
+    configureGraphQlModule(norg2Client, kontorTilhorighetService, authenticateRequest, identService)
     configureArbeidsoppfolgingskontorModule(kontorNavnService, kontorTilhorighetService, poaoTilgangHttpClient, oppfolgingsperiodeService)
 }
 

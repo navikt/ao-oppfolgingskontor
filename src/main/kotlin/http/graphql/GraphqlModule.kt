@@ -24,6 +24,7 @@ import no.nav.http.graphql.queries.KontorHistorikkQuery
 import no.nav.http.graphql.queries.KontorQuery
 import no.nav.services.KontorTilhorighetService
 import org.slf4j.LoggerFactory
+import services.IdentService
 
 typealias AuthenticateRequest = (request: ApplicationRequest) -> AuthResult
 
@@ -47,7 +48,7 @@ class AppContextFactory(val authenticateRequest: AuthenticateRequest) : KtorGrap
     }
 }
 
-fun Application.installGraphQl(norg2Client: Norg2Client, kontorTilhorighetService: KontorTilhorighetService, authenticateRequest: AuthenticateRequest) {
+fun Application.installGraphQl(norg2Client: Norg2Client, kontorTilhorighetService: KontorTilhorighetService, authenticateRequest: AuthenticateRequest, identService: IdentService) {
     install(GraphQL) {
         schema {
             packages = listOf(
@@ -56,7 +57,7 @@ fun Application.installGraphQl(norg2Client: Norg2Client, kontorTilhorighetServic
             )
             queries = listOf(
                 KontorQuery(kontorTilhorighetService),
-                KontorHistorikkQuery(),
+                KontorHistorikkQuery(identService),
                 AlleKontorQuery(norg2Client)
             )
             federation {
@@ -83,8 +84,8 @@ fun ApplicationEnvironment.getPDLUrl(): String {
     return config.property("apis.pdl.url").getString()
 }
 
-fun Application.configureGraphQlModule(norg2Client: Norg2Client, kontorTilhorighetService: KontorTilhorighetService, authenticateCall: AuthenticateRequest) {
-    installGraphQl(norg2Client, kontorTilhorighetService, authenticateCall)
+fun Application.configureGraphQlModule(norg2Client: Norg2Client, kontorTilhorighetService: KontorTilhorighetService, authenticateCall: AuthenticateRequest, identService: IdentService) {
+    installGraphQl(norg2Client, kontorTilhorighetService, authenticateCall, identService)
 
     routing {
         authenticate("EntraAD") {

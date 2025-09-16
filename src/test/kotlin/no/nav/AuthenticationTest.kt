@@ -54,7 +54,7 @@ class AuthenticationTest {
         application {
             flywayMigrationInTest()
             configureSecurity()
-            installGraphQl(norg2Client, kontorTilhorighetService) { req -> req.call.authenticateCall(environment.getIssuer()) }
+            installGraphQl(norg2Client, kontorTilhorighetService, { req -> req.call.authenticateCall(environment.getIssuer()) }, identService)
             routing {
                 authenticate("EntraAD") {
                     graphQLPostRoute()

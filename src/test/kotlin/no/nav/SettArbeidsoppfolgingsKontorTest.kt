@@ -58,7 +58,7 @@ class SettArbeidsoppfolgingsKontorTest {
             flywayMigrationInTest()
             extraDatabaseSetup()
             configureSecurity()
-            installGraphQl(norg2Client, kontorTilhorighetService, { req -> req.call.authenticateCall(environment.getIssuer()) })
+            installGraphQl(norg2Client, kontorTilhorighetService, { req -> req.call.authenticateCall(environment.getIssuer()) }, identService)
             configureArbeidsoppfolgingskontorModule(
                 kontorNavnService,
                 kontorTilhorighetService,

@@ -50,7 +50,7 @@ fun ApplicationTestBuilder.graphqlServerInTest(ident: Ident) {
         installGraphQl(
             norg2Client,
             KontorTilhorighetService(KontorNavnService(norg2Client), poaoTilgangClient, identService),
-            { Authenticated(SystemPrincipal("lol")) })
+            { Authenticated(SystemPrincipal("lol")) }, identService)
         routing {
             graphQLPostRoute()
         }
@@ -82,7 +82,7 @@ class GraphqlApplicationTest {
 
     @Test
     fun `skal kunne hente kontorhistorikk via graphql`() = testApplication {
-        val fnr = Fnr("32645671901", UKJENT)
+        val fnr = randomFnr(UKJENT)
         val kontorId = "4144"
         val client = getJsonHttpClient()
         graphqlServerInTest(fnr)
