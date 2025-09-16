@@ -185,7 +185,6 @@ class IdentService(
         return IdenterFunnet(
             identer = alleIdenter,
             inputIdent = identInput,
-            foretrukketIdent = alleIdenter.finnForetrukketIdent() ?: throw IllegalStateException("Fant ikke foretrukket ident, alle identer historiske?")
         )
     }
 

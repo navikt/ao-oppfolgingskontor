@@ -6,6 +6,7 @@ import no.nav.db.Ident
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.GeografiskTilknyttetKontorEntity
+import no.nav.db.finnForetrukketIdent
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.db.table.ArenaKontorTable
 import no.nav.db.table.GeografiskTilknytningKontorTable
@@ -21,6 +22,7 @@ import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
 import no.nav.http.graphql.schemas.RegistrantTypeDto
 import org.jetbrains.exposed.sql.SizedIterable
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.slf4j.LoggerFactory
 import services.IdentService
 
 class KontorTilhorighetService(
@@ -28,6 +30,8 @@ class KontorTilhorighetService(
     val poaoTilgangClient: PoaoTilgangKtorHttpClient,
     val identService: IdentService,
 ) {
+    val log = LoggerFactory.getLogger(KontorTilhorighetService::class.java)
+
     suspend fun getKontorTilhorigheter(ident: Ident, principal: AOPrincipal): Triple<ArbeidsoppfolgingsKontor?, ArenaKontor?, GeografiskTilknyttetKontor?> {
         val alleIdenter = identService.hentAlleIdenter(ident)
         val aokontor = getArbeidsoppfolgingKontorTilhorighet(alleIdenter, principal)
@@ -62,13 +66,18 @@ class KontorTilhorighetService(
             ?.let { (kontor, kontorNavn) -> GeografiskTilknyttetKontor(kontorNavn,kontor.getKontorId()) }
     }
 
-    fun <T> SizedIterable<T>.firstOrNullOrThrow(identer: List<Ident>, identProvider: (T) -> String): T? {
+    inline fun <reified T> SizedIterable<T>.firstOrNullOrThrow(identer: List<Ident>, identProvider: (T) -> String): T? {
         val historiskeIdenter = identer.filter { it.historisk == Ident.HistoriskStatus.HISTORISK }.map { it.value }
         val withoutHistorisk = this.filter { !historiskeIdenter.contains(identProvider(it)) }
         return when (withoutHistorisk.size) {
             0 -> null
             1 ->  this.first()
-            else -> throw IllegalStateException("")
+            else -> { // Har flere nåværende kontor på en person
+                log.error("Fant flere ressurser på en person, ressurstype ${T::class.simpleName}")
+                return identer.finnForetrukketIdent()
+                    ?.let { foretrukketIdent -> this.firstOrNull { identProvider(it) == foretrukketIdent.value } }
+                    ?: throw IllegalStateException("Fant flere ressurser på 1 person men ingen av dem bruker foretrukket ident, ressurstype:${T::class.simpleName}")
+            }
         }
     }
 

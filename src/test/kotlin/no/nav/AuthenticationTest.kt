@@ -30,20 +30,27 @@ import no.nav.utils.kontorTilhorighet
 import no.nav.utils.kontorTilhorighetQuery
 import io.ktor.server.routing.routing
 import no.nav.authenticateCall
+import no.nav.db.Ident
+import no.nav.http.client.IdenterFunnet
+import no.nav.http.client.IdenterIkkeFunnet
+import no.nav.utils.randomFnr
 import org.junit.jupiter.api.Test
 import services.IdentService
 
 class AuthenticationTest {
 
-    fun ApplicationTestBuilder.setupTestAppWithAuthAndGraphql() {
+    fun ApplicationTestBuilder.setupTestAppWithAuthAndGraphql(ident: Ident? = null) {
         environment {
             config = server.getMockOauth2ServerConfig()
         }
-        val identService = IdentService()
+        val identService = IdentService({
+            if (ident == null) IdenterIkkeFunnet("lol")
+            else IdenterFunnet(listOf(ident), ident)
+        })
         val poaoTilgangKtorHttpClient = mockPoaoTilgangHost(null)
         val norg2Client = mockNorg2Host()
         val kontorNavnService = KontorNavnService(norg2Client)
-        val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangKtorHttpClient)
+        val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangKtorHttpClient, identService)
         application {
             flywayMigrationInTest()
             configureSecurity()
@@ -59,9 +66,10 @@ class AuthenticationTest {
     @Test
     fun `graphql endepunkter skal godta gyldig token`() = testApplication {
         withMockOAuth2Server {
-            setupTestAppWithAuthAndGraphql()
+            val fnr = randomFnr()
+            setupTestAppWithAuthAndGraphql(fnr)
             val client = getJsonHttpClient()
-            val fnr = Fnr("89898898980")
+
             val token = server.issueToken(NavIdent("Hei"))
 
             val response = client.kontorTilhorighet(fnr, token)
@@ -80,7 +88,7 @@ class AuthenticationTest {
 
             val response = client.post("/graphql") {
                 header("Content-Type", "application/json")
-                setBody(kontorTilhorighetQuery(Fnr("89898898980")))
+                setBody(kontorTilhorighetQuery(Fnr("89898898980", Ident.HistoriskStatus.AKTIV)))
             }
 
             response.status shouldBe HttpStatusCode.Companion.Unauthorized
@@ -101,7 +109,7 @@ class AuthenticationTest {
                         "azp_name" to "cluster:namespace:app",
                     )
                 ).serialize())
-                setBody(kontorTilhorighetQuery(Fnr("89898898980")))
+                setBody(kontorTilhorighetQuery(Fnr("89898898980", Ident.HistoriskStatus.AKTIV)))
             }
 
             response.status shouldBe HttpStatusCode.Companion.OK

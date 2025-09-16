@@ -1,6 +1,7 @@
 package no.nav.utils
 
 import no.nav.db.Fnr
+import no.nav.db.Ident
 import kotlin.random.Random
 
 fun randomFnr(): Fnr {
@@ -8,7 +9,7 @@ fun randomFnr(): Fnr {
     val month = (1..12).random().toString().padStart(2, '0')
     val year = (1..99).random().toString().padStart(2, '0')
     val randomDigits = (1..5).map { (0..9).random() }.joinToString("")
-    return Fnr("${date}${month}${year}${randomDigits}")
+    return Fnr("${date}${month}${year}${randomDigits}", Ident.HistoriskStatus.AKTIV)
 }
 
 fun randomTopicName(): String {

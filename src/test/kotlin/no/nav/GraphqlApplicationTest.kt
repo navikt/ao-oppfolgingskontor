@@ -53,7 +53,7 @@ class GraphqlApplicationTest {
 
     @Test
     fun `skal kunne hente kontor via graphql`() = testApplication {
-        val fnr = Fnr("22345678901")
+        val fnr = randomFnr()
         val kontorId = "4142"
         val client = getJsonHttpClient()
         graphqlServerInTest()

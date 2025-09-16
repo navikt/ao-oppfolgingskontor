@@ -39,12 +39,9 @@ data class IdentIkkeFunnet(val message: String) : IdentResult()
 data class IdentOppslagFeil(val message: String) : IdentResult()
 
 sealed class IdenterResult
-data class IdenterFunnet(val identer: List<Ident>, val inputIdent: Ident, val foretrukketIdent: Ident) : IdenterResult() {
-    constructor(identer: List<Ident>, inputIdent: Ident): this(
-        identer = identer,
-        inputIdent = inputIdent,
-        foretrukketIdent = identer.finnForetrukketIdent() ?: throw IllegalStateException("Fant ikke foretrukket ident, alle identer historiske?")
-    )
+data class IdenterFunnet(val identer: List<Ident>, val inputIdent: Ident) : IdenterResult() {
+    val foretrukketIdent: Ident
+        get() = identer.finnForetrukketIdent()  ?: throw IllegalStateException("Fant ikke foretrukket ident, alle identer historiske?")
 }
 data class IdenterIkkeFunnet(val message: String) : IdenterResult()
 data class IdenterOppslagFeil(val message: String) : IdenterResult()
@@ -145,8 +142,7 @@ class PdlClient(
             return result.data?.hentIdenter?.identer?.let { pdlIdenter ->
                 val identer = pdlIdenter.map { (ident, historisk) -> Ident.of(ident, historisk.toKnownHistoriskStatus()) }
                 val inputIdent = identer.first { it.value == aktorId }
-                val foretrukketIdent = identer.finnForetrukketIdent() ?: throw IllegalStateException("Fant ingen foretrukket ident på bruker, er alle identer historiske?")
-                IdenterFunnet(identer, inputIdent, foretrukketIdent)
+                IdenterFunnet(identer, inputIdent)
             } ?: IdenterIkkeFunnet("Ingen identer funnet for aktorId")
 
         } catch (e: Throwable) {
