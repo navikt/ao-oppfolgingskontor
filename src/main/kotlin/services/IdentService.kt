@@ -101,8 +101,8 @@ class IdentService(
                 identMappings.isNotEmpty() -> {
                     val foretrukketIdent = identMappings
                         .filter { it !is AktorId }
-                        .finnForetrukketIdent()
-                    return Result.success(IdentFunnet(foretrukketIdent!!))
+                        .finnForetrukketIdent() ?: throw Exception("Fant ingen 'ikke-aktorid'-identer i databasen")
+                    return Result.success(IdentFunnet(foretrukketIdent))
                 }
                 else -> return Result.success(null)
             }

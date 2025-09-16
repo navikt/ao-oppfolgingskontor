@@ -2,7 +2,6 @@ package kafka.consumers
 
 import io.mockk.every
 import io.mockk.mockk
-import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.kafka.consumers.FormidlingsGruppe
@@ -16,7 +15,7 @@ import java.time.ZonedDateTime
 object TopicUtils {
 
     fun oppfolgingStartetMelding(bruker: Bruker): Record<String, String> {
-        return Record(bruker.fnr.value, """
+        return Record(bruker.ident.value, """
             {
                 "hendelseType": "OPPFOLGING_STARTET",
                 "oppfolgingsPeriodeId": "${bruker.oppfolgingsperiodeId.value}",
@@ -26,15 +25,15 @@ object TopicUtils {
                 "startetBegrunnelse": "ARBEIDSSOKER_REGISTRERING",
                 "arenaKontor": "4141",
                 "foretrukketArbeidsoppfolgingskontor": null,
-                "fnr": "${bruker.fnr.value}"
+                "fnr": "${bruker.ident.value}"
             }
         """, System.currentTimeMillis())
     }
 
     fun oppfolgingAvsluttetMelding(bruker: Bruker, sluttDato: ZonedDateTime): Record<String, String> {
-        return Record(bruker.fnr.value, """
+        return Record(bruker.ident.value, """
             {
-                "fnr": "${bruker.fnr.value}",
+                "fnr": "${bruker.ident.value}",
                 "hendelseType": "OPPFOLGING_AVSLUTTET",
                 "oppfolgingsPeriodeId": "${bruker.oppfolgingsperiodeId.value}",
                 "startetTidspunkt": "${bruker.periodeStart}",
@@ -75,7 +74,7 @@ object TopicUtils {
 }
 
 data class Bruker(
-    val fnr: Fnr,
+    val ident: Ident,
     val aktorId: String,
     val oppfolgingsperiodeId: OppfolgingsperiodeId,
     val periodeStart: ZonedDateTime
