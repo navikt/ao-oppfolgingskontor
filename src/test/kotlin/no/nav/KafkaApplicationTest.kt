@@ -146,7 +146,7 @@ class KafkaApplicationTest {
 
     @Test
     fun `skal behandle endring i skjerming sett kontor fra GT`() = testApplication {
-        val fnr = Fnr("55345678901", UKJENT)
+        val fnr =  randomFnr(UKJENT)
         val skjermetKontor = "4555"
         val topic = randomTopicName()
 

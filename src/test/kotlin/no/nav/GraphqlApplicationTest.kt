@@ -42,15 +42,13 @@ import kotlin.time.Duration.Companion.milliseconds
 fun ApplicationTestBuilder.graphqlServerInTest(ident: Ident) {
     val norg2Client = mockNorg2Host()
     val poaoTilgangClient = mockPoaoTilgangHost(null)
-    val identService = IdentService {
-        IdenterFunnet(listOf(ident).map { Ident.of(it.value, AKTIV) }, ident)
-    }
+    val identer = IdenterFunnet(listOf(ident).map { Ident.of(it.value, AKTIV) }, ident)
     application {
         flywayMigrationInTest()
         installGraphQl(
             norg2Client,
-            KontorTilhorighetService(KontorNavnService(norg2Client), poaoTilgangClient, identService),
-            { Authenticated(SystemPrincipal("lol")) }, identService)
+            KontorTilhorighetService(KontorNavnService(norg2Client), poaoTilgangClient, { identer }),
+            { Authenticated(SystemPrincipal("lol")) }, { identer })
         routing {
             graphQLPostRoute()
         }
@@ -106,7 +104,7 @@ class GraphqlApplicationTest {
 
     @Test
     fun `skal kunne hente alle kontor via graphql`() = testApplication {
-        val fnr = Fnr("32345678901", UKJENT)
+        val fnr = randomFnr(UKJENT)
         val kontorId = "4142"
         val client = getJsonHttpClient()
         graphqlServerInTest(fnr)
@@ -124,7 +122,7 @@ class GraphqlApplicationTest {
 
     @Test
     fun `skal få GT kontor på tilhørighet hvis ingen andre kontor er satt via graphql`() = testApplication {
-        val fnr = Fnr("32345678901", UKJENT)
+        val fnr = randomFnr(UKJENT)
         val kontorId = "4142"
         val client = getJsonHttpClient()
         graphqlServerInTest(fnr)
@@ -142,7 +140,7 @@ class GraphqlApplicationTest {
 
     @Test
     fun `skal kunne hente ao-kontor, arena-kontor og gt-kontor samtidig`() = testApplication {
-        val fnr = Fnr("62345678901", UKJENT)
+        val fnr = randomFnr(UKJENT)
         val GTkontorId = "4151"
         val AOKontor = "4152"
         val arenaKontorId = "4150"

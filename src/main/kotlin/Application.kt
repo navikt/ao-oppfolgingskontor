@@ -60,7 +60,7 @@ fun Application.module() {
         { gt, strengtFortroligAdresse, skjermet -> norg2Client.hentKontorForBrukerMedMangelfullGT(gt, strengtFortroligAdresse, skjermet) },
     )
     val kontorNavnService = KontorNavnService(norg2Client)
-    val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangHttpClient, identService)
+    val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangHttpClient, identService::hentAlleIdenter)
     val oppfolgingsperiodeService = OppfolgingsperiodeService(identService::hentAlleIdenter)
     val automatiskKontorRutingService = AutomatiskKontorRutingService(
         KontorTilordningService::tilordneKontor,
@@ -85,7 +85,7 @@ fun Application.module() {
 
     val issuer = environment.getIssuer()
     val authenticateRequest: AuthenticateRequest = { req -> req.call.authenticateCall(issuer) }
-    configureGraphQlModule(norg2Client, kontorTilhorighetService, authenticateRequest, identService)
+    configureGraphQlModule(norg2Client, kontorTilhorighetService, authenticateRequest, identService::hentAlleIdenter)
     configureArbeidsoppfolgingskontorModule(kontorNavnService, kontorTilhorighetService, poaoTilgangHttpClient, oppfolgingsperiodeService)
 }
 

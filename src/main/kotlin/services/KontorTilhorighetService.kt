@@ -30,12 +30,12 @@ import services.IdentService
 class KontorTilhorighetService(
     val kontorNavnService: KontorNavnService,
     val poaoTilgangClient: PoaoTilgangKtorHttpClient,
-    val identService: IdentService,
+    val hentAlleIdenter: (Ident) -> IdenterResult,
 ) {
     val log = LoggerFactory.getLogger(KontorTilhorighetService::class.java)
 
     suspend fun getKontorTilhorigheter(ident: Ident, principal: AOPrincipal): Triple<ArbeidsoppfolgingsKontor?, ArenaKontor?, GeografiskTilknyttetKontor?> {
-        val alleIdenter = identService.hentAlleIdenter(ident).getOrThrow()
+        val alleIdenter = hentAlleIdenter(ident).getOrThrow()
         val aokontor = getArbeidsoppfolgingKontorTilhorighet(alleIdenter, principal)
         val arenakontor = getArenaKontorTilhorighet(alleIdenter)
         val gtkontor = getGeografiskTilknyttetKontorTilhorighet(alleIdenter)
@@ -43,7 +43,7 @@ class KontorTilhorighetService(
     }
 
     suspend fun getArbeidsoppfolgingKontorTilhorighet(ident: Ident, principal: AOPrincipal): ArbeidsoppfolgingsKontor? {
-        val alleIdenter = identService.hentAlleIdenter(ident).getOrThrow()
+        val alleIdenter = hentAlleIdenter(ident).getOrThrow()
         return getArbeidsoppfolgingKontorTilhorighet(alleIdenter, principal)
     }
     private suspend  fun getArbeidsoppfolgingKontorTilhorighet(ident: IdenterFunnet, principal: AOPrincipal): ArbeidsoppfolgingsKontor? {
@@ -96,7 +96,7 @@ class KontorTilhorighetService(
     suspend fun getKontorTilhorighet(ident: Ident, principal: AOPrincipal): KontorTilhorighetQueryDto? {
         poaoTilgangClient.harLeseTilgang(principal, ident)
         // TODO: Hent alle identer her og bruk dem i query
-        val identer = identService.hentAlleIdenter(ident).getOrThrow()
+        val identer = hentAlleIdenter(ident).getOrThrow()
 
         val kontorer = transaction {
             /* The ordering is important! */

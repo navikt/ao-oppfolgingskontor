@@ -48,15 +48,15 @@ class AuthenticationTest {
             if (ident == null) IdenterIkkeFunnet("lol")
             else IdenterFunnet(listOf(ident), ident)
         })
-        ident?.let { lagreIdentIIdentmappingTabell(it) }
         val poaoTilgangKtorHttpClient = mockPoaoTilgangHost(null)
         val norg2Client = mockNorg2Host()
         val kontorNavnService = KontorNavnService(norg2Client)
-        val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangKtorHttpClient, identService)
+        val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangKtorHttpClient, identService::hentAlleIdenter)
         application {
             flywayMigrationInTest()
+            ident?.let { lagreIdentIIdentmappingTabell(it) }
             configureSecurity()
-            installGraphQl(norg2Client, kontorTilhorighetService, { req -> req.call.authenticateCall(environment.getIssuer()) }, identService)
+            installGraphQl(norg2Client, kontorTilhorighetService, { req -> req.call.authenticateCall(environment.getIssuer()) }, identService::hentAlleIdenter)
             routing {
                 authenticate("EntraAD") {
                     graphQLPostRoute()

@@ -3,7 +3,6 @@ package no.nav.utils
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.bearerAuth
-import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
@@ -103,7 +102,7 @@ suspend fun HttpClient.alleKontor(bearerToken: String? = null): HttpResponse {
 }
 
 val pesos = "$"
-val fnrArg = "${pesos}fnr"
+val identArg = "${pesos}ident"
 
 private fun kontorHistorikkQuery(ident: Ident): String {
     return graphqlPayload(ident, """
@@ -118,8 +117,8 @@ fun kontorTilhorighetQuery(ident: Ident): String {
 
 fun alleKontorTilhorigheterQuery(ident: Ident): String {
     return graphqlPayload(ident, """
-             query kontorTilhorigheterQuery($fnrArg: String!) {
-                kontorTilhorigheter (fnr: $fnrArg) {
+             query kontorTilhorigheterQuery($identArg: String!) {
+                kontorTilhorigheter (ident: $identArg) {
                      arena { kontorId, kontorNavn }
                      arbeidsoppfolging { kontorId, kontorNavn }
                      geografiskTilknytning { kontorId, kontorNavn }

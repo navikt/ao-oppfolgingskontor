@@ -53,13 +53,13 @@ class SettArbeidsoppfolgingsKontorTest {
         val identService = IdentService {
             IdenterFunnet(listOf(ident), ident)
         }
-        val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangClient, identService)
+        val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangClient, identService::hentAlleIdenter)
         val oppfolgingsperiodeService = OppfolgingsperiodeService(identService::hentAlleIdenter)
         application {
             flywayMigrationInTest()
             extraDatabaseSetup()
             configureSecurity()
-            installGraphQl(norg2Client, kontorTilhorighetService, { req -> req.call.authenticateCall(environment.getIssuer()) }, identService)
+            installGraphQl(norg2Client, kontorTilhorighetService, { req -> req.call.authenticateCall(environment.getIssuer()) }, identService::hentAlleIdenter)
             configureArbeidsoppfolgingskontorModule(
                 kontorNavnService,
                 kontorTilhorighetService,

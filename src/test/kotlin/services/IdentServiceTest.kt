@@ -39,8 +39,8 @@ class IdentServiceTest {
     @Test
     fun `skal cache påfølgende kall til hentFnrFraAktorId`() = runTest {
         flywayMigrationInTest()
-        val aktorId = AktorId("4141112121313", UKJENT)
-        val fnr = Fnr("01020304052", UKJENT)
+        val aktorId = AktorId("4141112121313", AKTIV)
+        val fnr = Fnr("01020304052", AKTIV)
         var invocations = 0
         val identProvider = { oppslagId: String ->
             invocations++

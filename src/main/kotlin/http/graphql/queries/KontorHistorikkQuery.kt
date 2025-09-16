@@ -7,6 +7,7 @@ import no.nav.db.entity.KontorHistorikkEntity
 import no.nav.db.table.KontorhistorikkTable
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorType
+import no.nav.http.client.IdenterResult
 import no.nav.http.graphql.schemas.KontorHistorikkQueryDto
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -14,7 +15,7 @@ import org.slf4j.LoggerFactory
 import services.IdentService
 
 class KontorHistorikkQuery(
-    val identService: IdentService
+    val hentAlleIdenter: (Ident) -> IdenterResult
 ) : Query {
     val logger = LoggerFactory.getLogger(KontorHistorikkQuery::class.java)
 
@@ -23,7 +24,7 @@ class KontorHistorikkQuery(
             transaction {
                 // TODO Flytt dette til en service??
                 val inputIdent = Ident.of(ident, Ident.HistoriskStatus.UKJENT)
-                val alleIdenter = identService.hentAlleIdenter(inputIdent).getOrThrow()
+                val alleIdenter = hentAlleIdenter(inputIdent).getOrThrow()
                 KontorHistorikkEntity
                     .find { KontorhistorikkTable.ident inList alleIdenter.identer.map { it.value } }
                     .orderBy(KontorhistorikkTable.id to SortOrder.ASC)

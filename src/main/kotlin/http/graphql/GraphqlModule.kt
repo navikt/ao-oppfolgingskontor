@@ -18,6 +18,8 @@ import io.ktor.server.routing.routing
 import no.nav.AuthResult
 import no.nav.Authenticated
 import no.nav.NotAuthenticated
+import no.nav.db.Ident
+import no.nav.http.client.IdenterResult
 import no.nav.http.client.Norg2Client
 import no.nav.http.graphql.queries.AlleKontorQuery
 import no.nav.http.graphql.queries.KontorHistorikkQuery
@@ -48,7 +50,7 @@ class AppContextFactory(val authenticateRequest: AuthenticateRequest) : KtorGrap
     }
 }
 
-fun Application.installGraphQl(norg2Client: Norg2Client, kontorTilhorighetService: KontorTilhorighetService, authenticateRequest: AuthenticateRequest, identService: IdentService) {
+fun Application.installGraphQl(norg2Client: Norg2Client, kontorTilhorighetService: KontorTilhorighetService, authenticateRequest: AuthenticateRequest, hentAlleIdenter: (Ident) -> IdenterResult) {
     install(GraphQL) {
         schema {
             packages = listOf(
@@ -57,7 +59,7 @@ fun Application.installGraphQl(norg2Client: Norg2Client, kontorTilhorighetServic
             )
             queries = listOf(
                 KontorQuery(kontorTilhorighetService),
-                KontorHistorikkQuery(identService),
+                KontorHistorikkQuery(hentAlleIdenter),
                 AlleKontorQuery(norg2Client)
             )
             federation {
@@ -84,8 +86,8 @@ fun ApplicationEnvironment.getPDLUrl(): String {
     return config.property("apis.pdl.url").getString()
 }
 
-fun Application.configureGraphQlModule(norg2Client: Norg2Client, kontorTilhorighetService: KontorTilhorighetService, authenticateCall: AuthenticateRequest, identService: IdentService) {
-    installGraphQl(norg2Client, kontorTilhorighetService, authenticateCall, identService)
+fun Application.configureGraphQlModule(norg2Client: Norg2Client, kontorTilhorighetService: KontorTilhorighetService, authenticateCall: AuthenticateRequest, hentAlleIdenter: (Ident) -> IdenterResult) {
+    installGraphQl(norg2Client, kontorTilhorighetService, authenticateCall, hentAlleIdenter)
 
     routing {
         authenticate("EntraAD") {
