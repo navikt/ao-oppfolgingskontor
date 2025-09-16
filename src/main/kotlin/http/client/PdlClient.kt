@@ -9,7 +9,8 @@ import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.logging.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
-import no.nav.db.*
+import no.nav.db.Ident
+import no.nav.db.finnForetrukketIdent
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.http.client.tokenexchange.SystemTokenPlugin
 import no.nav.http.client.tokenexchange.TexasTokenResponse
@@ -19,7 +20,6 @@ import no.nav.http.graphql.generated.client.HentFnrQuery
 import no.nav.http.graphql.generated.client.HentGtQuery
 import no.nav.http.graphql.generated.client.enums.AdressebeskyttelseGradering
 import no.nav.http.graphql.generated.client.enums.GtType
-import no.nav.http.graphql.generated.client.hentfnrquery.IdentInformasjon
 import org.slf4j.LoggerFactory
 import services.toKnownHistoriskStatus
 import java.net.URI
@@ -213,7 +213,7 @@ fun IdenterResult.finnForetrukketIdent(): IdentResult {
         is IdenterFunnet -> {
             this.identer.finnForetrukketIdent()
                 ?.let { IdentFunnet(it) }
-                ?: IdentIkkeFunnet("Fant ingen gyldig fnr for bruker, antall identer: ${this.identer.size}, indent-typer: ${this.identer.joinToString { it::class.java.simpleName }}")
+                ?: IdentIkkeFunnet("Fant ingen gyldig ident for bruker, antall identer: ${this.identer.size}, indent-typer: ${this.identer.joinToString { it::class.java.simpleName }}")
         }
         is IdenterIkkeFunnet -> IdentIkkeFunnet(this.message)
         is IdenterOppslagFeil -> IdentOppslagFeil(this.message)

@@ -230,7 +230,7 @@ class IdentService(
 }
 
 fun Boolean.toKnownHistoriskStatus(): Ident.HistoriskStatus {
-    return if (this) Ident.HistoriskStatus.AKTIV else Ident.HistoriskStatus.HISTORISK
+    return if (this) Ident.HistoriskStatus.HISTORISK else Ident.HistoriskStatus.AKTIV // Hvis historisk er den boolske verdien "this" true
 }
 
 fun Ident.toIdentType(): String {

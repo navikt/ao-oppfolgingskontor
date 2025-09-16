@@ -274,7 +274,7 @@ class PdlClientTest {
 
     @Test
     fun `hentFnrFraAktorId skal returnere npid for aktorId hvis ikke fnr finnes`() = testApplication {
-        val aktorId = "12345678901"
+        val aktorId = "5555555555555"
         val npid = Npid("41254141414", Ident.HistoriskStatus.AKTIV)
         val client = mockPdl(
             """
@@ -283,12 +283,12 @@ class PdlClientTest {
                     "hentIdenter": {
                         "identer": [
                           {
-                            "ident": "${npid}",
+                            "ident": "$npid",
                             "historisk": false,
                             "gruppe": "${IdentGruppe.NPID}"
                           },
                           {
-                            "ident": "5555555555555",
+                            "ident": "$aktorId",
                             "historisk": false,
                             "gruppe": "${IdentGruppe.AKTORID}"
                           }
