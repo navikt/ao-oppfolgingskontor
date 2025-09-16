@@ -6,19 +6,18 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.ktor.server.testing.testApplication
+import io.ktor.server.testing.*
 import io.mockk.every
 import io.mockk.mockk
 import no.nav.db.Ident
 import no.nav.db.entity.ArenaKontorEntity
-import java.time.ZonedDateTime
-import java.util.UUID
 import no.nav.db.entity.OppfolgingsperiodeEntity
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
+import no.nav.http.client.IdenterFunnet
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Forward
@@ -31,12 +30,15 @@ import no.nav.utils.randomFnr
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
+import services.IdentService
 import services.OppfolgingsperiodeService
 import services.ingenSensitivitet
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.time.temporal.ChronoUnit
+import java.util.*
 
 class OppfolgingshendelseProcessorTest {
 
@@ -67,7 +69,8 @@ class OppfolgingshendelseProcessorTest {
         val bruker = testBruker()
         application {
             flywayMigrationInTest()
-            val oppfolgingshendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
+            val identService = IdentService { IdenterFunnet(listOf(bruker.fnr), bruker.fnr) }
+            val oppfolgingshendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService(identService))
             val record = oppfolgingStartetMelding(bruker)
 
             val result = oppfolgingshendelseProcessor.process(record)
@@ -82,7 +85,8 @@ class OppfolgingshendelseProcessorTest {
         val bruker = testBruker()
         application {
             flywayMigrationInTest()
-            val oppfolgingshendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
+            val identService = IdentService { IdenterFunnet(listOf(bruker.fnr), bruker.fnr) }
+            val oppfolgingshendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService(identService))
             val hendelseStartResult = oppfolgingshendelseProcessor.process(oppfolgingStartetMelding(bruker))
             hendelseStartResult.shouldBeInstanceOf<Forward<*, *>>()
 
@@ -102,7 +106,8 @@ class OppfolgingshendelseProcessorTest {
 
             application {
                 flywayMigrationInTest()
-                val consumer = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
+                val identService = IdentService { IdenterFunnet(listOf(bruker.fnr), bruker.fnr) }
+                val consumer = OppfolgingsHendelseProcessor(OppfolgingsperiodeService(identService))
 
                 consumer.process(oppfolgingAvsluttetMelding(bruker, sluttDato = periodeSlutt))
 
@@ -117,8 +122,8 @@ class OppfolgingshendelseProcessorTest {
 
         application {
             flywayMigrationInTest()
-            val consumer = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
-
+            val identService = IdentService { IdenterFunnet(listOf(bruker.fnr), bruker.fnr) }
+            val consumer = OppfolgingsHendelseProcessor(OppfolgingsperiodeService(identService))
             val startPeriodeRecord = oppfolgingStartetMelding(bruker)
             val avsluttetNyerePeriodeRecord = oppfolgingAvsluttetMelding(
                 bruker.copy(periodeStart = bruker.periodeStart.plusSeconds(1)), sluttDato = periodeSlutt
@@ -138,7 +143,8 @@ class OppfolgingshendelseProcessorTest {
 
         application {
             flywayMigrationInTest()
-            val consumer = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
+            val identService = IdentService { IdenterFunnet(listOf(bruker.fnr), bruker.fnr) }
+            val consumer = OppfolgingsHendelseProcessor(OppfolgingsperiodeService(identService))
             val startPeriodeRecord = oppfolgingStartetMelding(bruker)
             val startGammelPeriodeRecord = oppfolgingStartetMelding(
                 bruker.copy(
@@ -163,7 +169,8 @@ class OppfolgingshendelseProcessorTest {
 
         application {
             flywayMigrationInTest()
-            val consumer = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
+            val identService = IdentService { IdenterFunnet(listOf(bruker.fnr), bruker.fnr) }
+            val consumer = OppfolgingsHendelseProcessor(OppfolgingsperiodeService(identService))
             val startPeriodeRecord = oppfolgingStartetMelding(bruker)
             val startNyerePeriodeRecord = oppfolgingStartetMelding(
                 bruker.copy(
@@ -207,7 +214,8 @@ class OppfolgingshendelseProcessorTest {
 
         application {
             flywayMigrationInTest()
-            val oppfolgingsHendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
+            val identService = IdentService { IdenterFunnet(listOf(bruker.fnr), bruker.fnr) }
+            val oppfolgingsHendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService(identService))
             val startPeriodeRecord = oppfolgingStartetMelding(bruker)
             val sluttNyerePeriodeRecord = oppfolgingAvsluttetMelding(
                 bruker.copy(
@@ -227,9 +235,10 @@ class OppfolgingshendelseProcessorTest {
     @Test
     fun `skal håndtere deserialiseringsfeil`() {
         val bruker = testBruker()
-        val consumer = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
+        val identService = IdentService { IdenterFunnet(listOf(bruker.fnr), bruker.fnr) }
+        val oppfolgingsHendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService(identService))
 
-        val result = consumer.process(Record(bruker.aktorId, """{ "lol": "lal" }""", Instant.now().toEpochMilli()))
+        val result = oppfolgingsHendelseProcessor.process(Record(bruker.aktorId, """{ "lol": "lal" }""", Instant.now().toEpochMilli()))
 
         result.shouldBeInstanceOf<Retry<*, *>>()
         result.reason shouldBe """
@@ -242,7 +251,8 @@ class OppfolgingshendelseProcessorTest {
     fun `skal hoppe over allerede prosesserte meldinger`() {
         val bruker = testBruker()
         flywayMigrationInTest()
-        val oppfolgingshendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
+        val identService = IdentService { IdenterFunnet(listOf(bruker.fnr), bruker.fnr) }
+        val oppfolgingshendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService(identService))
         val sluttDato = ZonedDateTime.now().plusDays(1)
         val startmelding = oppfolgingStartetMelding(bruker)
         val stoppmelding = oppfolgingAvsluttetMelding(bruker, sluttDato)
@@ -265,10 +275,11 @@ class OppfolgingshendelseProcessorTest {
     fun `skal håndtere oppfølging avsluttet for en periode vi ikke visste om`() {
         val bruker = testBruker()
         flywayMigrationInTest()
-        val processor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
+        val identService = IdentService { IdenterFunnet(listOf(bruker.fnr), bruker.fnr) }
+        val oppfolgingshendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService(identService))
         val record = TopicUtils.oppfolgingAvsluttetMelding(bruker, ZonedDateTime.now())
 
-        val result = processor.process(record)
+        val result = oppfolgingshendelseProcessor.process(record)
 
         result.shouldBeInstanceOf<Skip<Ident, OppfolgingsperiodeStartet>>()
     }
@@ -286,7 +297,8 @@ class OppfolgingshendelseProcessorTest {
         val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
             { arenaKontorFraVeilarboppfolging },
             { NotUnderOppfolging })
-        val hendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
+        val identService = IdentService { IdenterFunnet(listOf(bruker.fnr), bruker.fnr) }
+        val hendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService(identService))
         endringPaOppfolgingsBrukerProcessor.process(
             TopicUtils.endringPaaOppfolgingsBrukerMessage(
                 bruker.fnr,

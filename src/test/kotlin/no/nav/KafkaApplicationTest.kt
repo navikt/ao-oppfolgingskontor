@@ -23,6 +23,7 @@ import no.nav.domain.OppfolgingsperiodeId
 import no.nav.http.client.AlderFunnet
 import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
+import no.nav.http.client.IdenterFunnet
 import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
@@ -40,7 +41,6 @@ import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.KontorForGtNrFantDefaultKontor
 import no.nav.services.KontorTilordningService
-import no.nav.services.OppfolgingsperiodeDao
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.gittBrukerUnderOppfolging
 import no.nav.utils.randomFnr
@@ -58,6 +58,7 @@ import org.apache.kafka.streams.processor.api.ProcessorSupplier
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
+import services.IdentService
 import services.OppfolgingsperiodeService
 import utils.Outcome
 import java.time.OffsetDateTime
@@ -66,17 +67,16 @@ import java.util.Properties
 import java.util.UUID
 
 class KafkaApplicationTest {
-    val oppfolgingsperiodeService = OppfolgingsperiodeService()
-    val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
-        ArenaKontorEntity::sisteLagreKontorArenaKontor
-    ) {
-        oppfolgingsperiodeService.getCurrentOppfolgingsperiode(it)
-    }
 
     @Test
     fun `skal lagre alle nye endringer på arena-kontor i historikk tabellen`() = testApplication {
         val topic = randomTopicName()
         val fnr = randomFnr()
+        val oppfolgingsperiodeService = OppfolgingsperiodeService(IdentService { IdenterFunnet(listOf(fnr), fnr) })
+        val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
+            ArenaKontorEntity::sisteLagreKontorArenaKontor,
+            oppfolgingsperiodeService::getCurrentOppfolgingsperiode
+        )
 
         application {
             flywayMigrationInTest()
@@ -107,6 +107,11 @@ class KafkaApplicationTest {
     fun `skal kun lagre nyere data i arena-kontor tabell og historikk tabellen`() = testApplication {
         val fnr = randomFnr()
         val topic = randomTopicName()
+        val oppfolgingsperiodeService = OppfolgingsperiodeService(IdentService { IdenterFunnet(listOf(fnr), fnr) })
+        val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
+            ArenaKontorEntity::sisteLagreKontorArenaKontor,
+            oppfolgingsperiodeService::getCurrentOppfolgingsperiode
+        )
 
         application {
             flywayMigrationInTest()
