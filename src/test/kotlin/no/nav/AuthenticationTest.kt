@@ -1,10 +1,6 @@
 package no.nav.no.nav
 
 import com.expediagroup.graphql.server.ktor.graphQLPostRoute
-import db.table.IdentMappingTable
-import db.table.IdentMappingTable.internIdent
-import db.table.InternIdentSequence
-import db.table.nextValueOf
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import io.ktor.client.request.bearerAuth
@@ -37,12 +33,10 @@ import no.nav.authenticateCall
 import no.nav.db.Ident
 import no.nav.http.client.IdenterFunnet
 import no.nav.http.client.IdenterIkkeFunnet
+import no.nav.utils.lagreIdentIIdentmappingTabell
 import no.nav.utils.randomFnr
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
 import services.IdentService
-import services.toIdentType
 
 class AuthenticationTest {
 
@@ -54,14 +48,7 @@ class AuthenticationTest {
             if (ident == null) IdenterIkkeFunnet("lol")
             else IdenterFunnet(listOf(ident), ident)
         })
-        ident?.let { transaction {
-            IdentMappingTable.insert {
-                it[IdentMappingTable.identType] = ident.toIdentType()
-                it[IdentMappingTable.id] = ident.value
-                it[IdentMappingTable.internIdent] = nextValueOf(InternIdentSequence)
-                it[IdentMappingTable.historisk] = ident.historisk
-            }
-        }}
+        ident?.let { lagreIdentIIdentmappingTabell(it) }
         val poaoTilgangKtorHttpClient = mockPoaoTilgangHost(null)
         val norg2Client = mockNorg2Host()
         val kontorNavnService = KontorNavnService(norg2Client)

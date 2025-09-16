@@ -9,7 +9,6 @@ import io.ktor.server.auth.authenticate
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
-import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.db.Ident.HistoriskStatus.UKJENT
 import no.nav.domain.KontorType
@@ -32,6 +31,8 @@ import no.nav.utils.getMockOauth2ServerConfig
 import no.nav.utils.gittBrukerUnderOppfolging
 import no.nav.utils.issueToken
 import no.nav.utils.kontorTilhorighet
+import no.nav.utils.lagreIdentIIdentmappingTabell
+import no.nav.utils.randomFnr
 import org.junit.jupiter.api.Test
 import services.IdentService
 import services.OppfolgingsperiodeService
@@ -76,11 +77,12 @@ class SettArbeidsoppfolgingsKontorTest {
     @Test
     fun `skal kunne sette arbeidsoppfølgingskontor`() = testApplication {
         withMockOAuth2Server {
-            val fnr = Fnr("72345678901", UKJENT)
+            val fnr = randomFnr(UKJENT)
             val kontorId = "4444"
             val veilederIdent = NavIdent("Z990000")
             setupTestAppWithAuthAndGraphql(fnr) {
                 gittBrukerUnderOppfolging(fnr)
+                lagreIdentIIdentmappingTabell(fnr)
             }
             val httpClient = getJsonHttpClient()
 
@@ -101,10 +103,12 @@ class SettArbeidsoppfolgingsKontorTest {
     @Test
     fun `skal svare med 409 når bruker ikke er under oppfølging`() = testApplication {
         withMockOAuth2Server {
-            val fnr = Fnr("72345678901", UKJENT)
+            val fnr = randomFnr(UKJENT)
             val kontorId = "4444"
             val veilederIdent = NavIdent("Z990000")
-            setupTestAppWithAuthAndGraphql(fnr)
+            setupTestAppWithAuthAndGraphql(fnr) {
+                lagreIdentIIdentmappingTabell(fnr)
+            }
             val httpClient = getJsonHttpClient()
 
             val response = httpClient.settKontor(server, fnr = fnr, kontorId = kontorId, navIdent = veilederIdent)
