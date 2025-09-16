@@ -223,8 +223,8 @@ class OppfolgingshendelseProcessorTest {
                     periodeStart = nyereStartDato,
                 ), sluttDato = periodeSlutt
             )
-
             oppfolgingsHendelseProcessor.process(startPeriodeRecord)
+
             val processingResult = oppfolgingsHendelseProcessor.process(sluttNyerePeriodeRecord)
 
             processingResult.shouldBeInstanceOf<Commit<*, *>>()
