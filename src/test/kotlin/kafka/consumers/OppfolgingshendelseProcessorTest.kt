@@ -326,12 +326,21 @@ class OppfolgingshendelseProcessorTest {
         }
     }
 
+
+    class Asserts(val service: OppfolgingsperiodeService, val bruker: Bruker) {
+        fun skalVæreUnderOppfolging() = service.getCurrentOppfolgingsperiode(IdentFunnet(bruker.ident))
+            .shouldBeInstanceOf<AktivOppfolgingsperiode>()
+        fun skalIkkeVæreUnderOppfolging() = service.getCurrentOppfolgingsperiode(IdentFunnet(bruker.ident))
+            .shouldBeInstanceOf<NotUnderOppfolging>()
+        fun skalKrasjeVedQueryPåNåværendePeriode() = service.getCurrentOppfolgingsperiode(IdentFunnet(bruker.ident))
+            .shouldBeInstanceOf<OppfolgingperiodeOppslagFeil>()
+    }
     @Test
     fun `avslutt-melding med ny ident skal kunne avslutte periode`() = testApplication {
         val aktivtDnr = Dnr("52105678901", AKTIV)
         val historiskDnr = Dnr(aktivtDnr.value, HISTORISK)
         val aktorId = AktorId("1234567890123", AKTIV)
-        val fnr = randomFnr(UKJENT)
+        val fnr = randomFnr()
         val bruker = Bruker(
             ident = fnr,
             aktorId = aktorId.value,
@@ -359,11 +368,11 @@ class OppfolgingshendelseProcessorTest {
             val startResult = oppfolgingshendelseProcessor
                 .process(oppfolgingStartetMelding(brukerMedDnr))
             startResult.shouldBeInstanceOf<Forward<*, *>>()
+            val brukerMedDnrAsserts = Asserts(oppfolgingsPeriodeService, brukerMedDnr)
+            val brukerMedFnrAsserts = Asserts(oppfolgingsPeriodeService, brukerMedFnr)
 
-            oppfolgingsPeriodeService.getCurrentOppfolgingsperiode(IdentFunnet(brukerMedDnr.ident))
-                .shouldBeInstanceOf<AktivOppfolgingsperiode>()
-            oppfolgingsPeriodeService.getCurrentOppfolgingsperiode(IdentFunnet(brukerMedFnr.ident))
-                .shouldBeInstanceOf<OppfolgingperiodeOppslagFeil>()
+            brukerMedDnrAsserts.skalVæreUnderOppfolging()
+            brukerMedFnrAsserts.skalKrasjeVedQueryPåNåværendePeriode()
 
             /* Marker dnr som historisk */
             identChangeProcessor.process(TopicUtils.aktorV2Message(
@@ -373,10 +382,8 @@ class OppfolgingshendelseProcessorTest {
 
             /* Når man har mottatt ident-endring skal begge identene
             * svare at bruker er under oppfølging */
-            oppfolgingsPeriodeService.getCurrentOppfolgingsperiode(IdentFunnet(brukerMedDnr.ident))
-                .shouldBeInstanceOf<AktivOppfolgingsperiode>()
-            oppfolgingsPeriodeService.getCurrentOppfolgingsperiode(IdentFunnet(brukerMedFnr.ident))
-                .shouldBeInstanceOf<AktivOppfolgingsperiode>()
+            brukerMedDnrAsserts.skalVæreUnderOppfolging()
+            brukerMedFnrAsserts.skalVæreUnderOppfolging()
 
             val sluttDato = ZonedDateTime.now()
             val avsluttMedNyIdentResult = oppfolgingshendelseProcessor.process(
@@ -384,10 +391,8 @@ class OppfolgingshendelseProcessorTest {
             )
 
             avsluttMedNyIdentResult.shouldBeInstanceOf<Commit<*, *>>()
-            oppfolgingsPeriodeService.getCurrentOppfolgingsperiode(IdentFunnet(brukerMedDnr.ident))
-                .shouldBeInstanceOf<AktivOppfolgingsperiode>()
-//            oppfolgingsPeriodeService.getCurrentOppfolgingsperiode(IdentFunnet(brukerMedFnr.ident))
-//                .shouldBeInstanceOf<AktivOppfolgingsperiode>()
+            brukerMedDnrAsserts.skalIkkeVæreUnderOppfolging()
+            brukerMedFnrAsserts.skalIkkeVæreUnderOppfolging()
         }
     }
 
