@@ -321,6 +321,28 @@ class OppfolgingshendelseProcessorTest {
         }
     }
 
+    @Test
+    fun `avslutt-melding med ny ident skal kunne avslutte periode`() = testApplication {
+        val bruker = testBruker()
+        val nyIdent = randomFnr()
+        application {
+            flywayMigrationInTest()
+            val identService = IdentService { input ->
+                if (input == bruker.fnr) IdenterFunnet(listOf(bruker.fnr, nyIdent), input)
+                else IdenterFunnet(listOf(nyIdent), input)
+            }
+            val oppfolgingshendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService(identService::hentAlleIdenter))
+            val startResult = oppfolgingshendelseProcessor.process(oppfolgingStartetMelding(bruker))
+            startResult.shouldBeInstanceOf<Forward<*, *>>()
+
+            val sluttDato = ZonedDateTime.now()
+            val avsluttMedNyIdentResult = oppfolgingshendelseProcessor.process(oppfolgingAvsluttetMelding(bruker.copy(fnr = Ident(nyIdent, UKJENT)), sluttDato))
+
+            avsluttMedNyIdentResult.shouldBeInstanceOf<Commit<*, *>>()
+            bruker.skalIkkeVæreUnderOppfølging()
+        }
+    }
+
     fun oppfolgingStartetMelding(bruker: Bruker): Record<String, String> = TopicUtils.oppfolgingStartetMelding(bruker)
 
     fun oppfolgingAvsluttetMelding(bruker: Bruker, sluttDato: ZonedDateTime): Record<String, String> =

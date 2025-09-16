@@ -95,7 +95,6 @@ class KontorTilhorighetService(
 
     suspend fun getKontorTilhorighet(ident: Ident, principal: AOPrincipal): KontorTilhorighetQueryDto? {
         poaoTilgangClient.harLeseTilgang(principal, ident)
-        // TODO: Hent alle identer her og bruk dem i query
         val identer = hentAlleIdenter(ident).getOrThrow()
 
         val kontorer = transaction {
