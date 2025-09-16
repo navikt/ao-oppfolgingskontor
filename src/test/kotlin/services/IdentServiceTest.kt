@@ -236,7 +236,7 @@ class IdentServiceTest {
     fun `aktor-v2 endring - skal kun sette aktørId i key som slettet når det kommer en tombstone`() = runTest {
         flywayMigrationInTest()
 
-        val identProvider: suspend (String) -> IdenterFunnet = { aktorId -> IdenterFunnet(emptyList(), aktorId) }
+        val identProvider: suspend (String) -> IdenterFunnet = { aktorId -> IdenterFunnet(emptyList(), Ident.of(aktorId, AKTIV)) }
         val identService = IdentService(identProvider)
         val proccessor = IdentChangeProcessor(identService)
         val aktorId = AktorId("2938764298763", AKTIV)
@@ -263,7 +263,7 @@ class IdentServiceTest {
     fun `aktor-v2 endring - skal slette identer som ikke er med i endringssettet`() = runTest {
         flywayMigrationInTest()
 
-        val identProvider: suspend (String) -> IdenterFunnet = { aktorId -> IdenterFunnet(emptyList(), aktorId) }
+        val identProvider: suspend (String) -> IdenterFunnet = { aktorId -> IdenterFunnet(emptyList(), Ident.of(aktorId, AKTIV)) }
         val identService = IdentService(identProvider)
         val aktorId = AktorId("2938764298793", AKTIV)
         val dnr = Dnr("48764298868", AKTIV)
