@@ -53,7 +53,7 @@ class SettArbeidsoppfolgingsKontorTest {
             IdenterFunnet(listOf(ident), ident)
         }
         val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangClient, identService)
-        val oppfolgingsperiodeService = OppfolgingsperiodeService()
+        val oppfolgingsperiodeService = OppfolgingsperiodeService(identService)
         application {
             flywayMigrationInTest()
             extraDatabaseSetup()

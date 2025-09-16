@@ -15,7 +15,9 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import utils.Outcome
 
-class OppfolgingsperiodeService {
+class OppfolgingsperiodeService(
+    val identService: IdentService
+) {
     val log = LoggerFactory.getLogger(OppfolgingsperiodeService::class.java)
 
     fun handterPeriodeAvsluttet(oppfolgingsperiode: OppfolgingsperiodeAvsluttet): HandterPeriodeAvsluttetResultat {
@@ -66,9 +68,8 @@ class OppfolgingsperiodeService {
         return try {
             when (ident) {
                 is IdentFunnet -> transaction {
-                    val identer = listOf(ident.ident)
-                    // TODO: Hent alle identer her
-                    OppfolgingsperiodeDao.getCurrentOppfolgingsperiode(identer)
+                    val alleIdenter = identService.hentAlleIdenter(ident.ident).identer
+                    OppfolgingsperiodeDao.getCurrentOppfolgingsperiode(alleIdenter)
                 }
                 is IdentIkkeFunnet -> OppfolgingperiodeOppslagFeil("Kunne ikke finne oppfølgingsperiode: ${ident.message}")
                 is IdentOppslagFeil -> OppfolgingperiodeOppslagFeil("Kunne ikke finne oppfølgingsperiode: ${ident.message}")

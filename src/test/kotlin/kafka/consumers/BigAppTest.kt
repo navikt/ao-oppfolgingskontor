@@ -111,7 +111,7 @@ class BigAppTest {
                 skjermingProcessor,
                 endringPaaOppfolgingsBrukerProcessor,
                 identendringsProcessor,
-                OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
+                OppfolgingsHendelseProcessor(OppfolgingsperiodeService(identService))
             )
             val (driver, inputTopics, _) = setupKafkaMock(topology,
                 listOf(topics.inn.oppfolgingsHendelser.name), null

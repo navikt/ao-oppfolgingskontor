@@ -102,15 +102,7 @@ class IdentService(
                 identMappings.isNotEmpty() -> {
                     val foretrukketIdent = identMappings
                         .filter { it !is AktorId }
-                        .map { Ident.of(it.value, it.historisk) }
-                        .minByOrNull {
-                            when (it) {
-                                is Fnr -> 1
-                                is Dnr -> 2
-                                is Npid -> 3
-                                else -> 5 // Aktørid eller annen ukjent ident
-                            }
-                        }
+                        .finnForetrukketIdent()
                     return Result.success(IdentFunnet(foretrukketIdent!!))
                 }
                 else -> return Result.success(null)
