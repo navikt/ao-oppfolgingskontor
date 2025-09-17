@@ -4,6 +4,7 @@ import kafka.out.toRecord
 import kotlinx.coroutines.runBlocking
 import no.nav.db.AktorId
 import no.nav.db.Ident
+import no.nav.db.IdentSomKanLagres
 import no.nav.db.finnForetrukketIdent
 import no.nav.domain.events.AOKontorEndret
 import no.nav.domain.events.ArenaKontorEndret
@@ -98,7 +99,7 @@ class LeesahProcessor(
     }
 }
 
-fun Pair<Ident, Personhendelse>.toHendelse(): PersondataEndret {
+fun Pair<IdentSomKanLagres, Personhendelse>.toHendelse(): PersondataEndret {
     if (this.second.bostedsadresse != null) return BostedsadresseEndret(this.first)
     if (this.second.adressebeskyttelse != null)
             return AdressebeskyttelseEndret(this.first, this.second.adressebeskyttelse.gradering)

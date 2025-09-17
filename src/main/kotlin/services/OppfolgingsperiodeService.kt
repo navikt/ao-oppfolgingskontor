@@ -1,6 +1,7 @@
 package services
 
 import no.nav.db.Ident
+import no.nav.db.IdentSomKanLagres
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.http.client.IdentFunnet
@@ -71,12 +72,11 @@ class OppfolgingsperiodeService(
     fun getCurrentOppfolgingsperiode(ident: IdentResult): OppfolgingsperiodeOppslagResult {
         return try {
             when (ident) {
-                is IdentFunnet -> transaction {
+                is IdentFunnet ->
                     when (val result = hentAlleIdenter(ident.ident)) {
                         is IdenterFunnet -> OppfolgingsperiodeDao.getCurrentOppfolgingsperiode(result.identer)
                         is IdenterIkkeFunnet -> OppfolgingperiodeOppslagFeil("Kunne ikke hente nåværende oppfolgingsperiode, klarte ikke hente alle mappede identer: ${result.message}")
                         is IdenterOppslagFeil -> OppfolgingperiodeOppslagFeil("Kunne ikke hente nåværende oppfolgingsperiode, klarte ikke hente alle mappede identer: ${result.message}")
-                    }
                 }
                 is IdentIkkeFunnet -> OppfolgingperiodeOppslagFeil("Kunne ikke finne oppfølgingsperiode: ${ident.message}")
                 is IdentOppslagFeil -> OppfolgingperiodeOppslagFeil("Kunne ikke finne oppfølgingsperiode: ${ident.message}")
@@ -87,7 +87,7 @@ class OppfolgingsperiodeService(
         }
     }
 
-    private fun getNåværendePeriode(ident: Ident): AktivOppfolgingsperiode? {
+    private fun getNåværendePeriode(ident: IdentSomKanLagres): AktivOppfolgingsperiode? {
         val currentOppfolgingsperiodeResult = getCurrentOppfolgingsperiode(IdentFunnet(ident))
         return when (currentOppfolgingsperiodeResult) {
             is AktivOppfolgingsperiode -> currentOppfolgingsperiodeResult

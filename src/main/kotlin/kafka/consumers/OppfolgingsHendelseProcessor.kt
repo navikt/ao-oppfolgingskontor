@@ -7,6 +7,7 @@ import kafka.consumers.oppfolgingsHendelser.OppfolgingsAvsluttetHendelseDto
 import kafka.consumers.oppfolgingsHendelser.OppfolgingsHendelseDto
 import kafka.consumers.oppfolgingsHendelser.oppfolgingsHendelseJson
 import no.nav.db.Ident
+import no.nav.db.IdentSomKanLagres
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
@@ -129,14 +130,16 @@ class OppfolgingsHendelseProcessor(
 }
 
 fun OppfolgingStartetHendelseDto.toDomainObject() = OppfolgingsperiodeStartet(
-    fnr = Ident.of(this.fnr, Ident.HistoriskStatus.UKJENT),
+    fnr = Ident.of(this.fnr, Ident.HistoriskStatus.UKJENT) as? IdentSomKanLagres
+        ?: throw IllegalStateException("Ident i oppfolgingshendelse-topic kan ikke være aktorId"),
     startDato = this.startetTidspunkt,
     periodeId = OppfolgingsperiodeId(UUID.fromString(this.oppfolgingsPeriodeId)),
     startetArenaKontor =this.arenaKontor?.let { KontorId(it) },
     arenaKontorFraOppfolgingsbrukerTopic = null
 )
 fun OppfolgingsAvsluttetHendelseDto.toDomainObject() = OppfolgingsperiodeAvsluttet(
-    Ident.of(this.fnr, Ident.HistoriskStatus.UKJENT),
+    Ident.of(this.fnr, Ident.HistoriskStatus.UKJENT) as? IdentSomKanLagres
+        ?: throw IllegalStateException("Ident i oppfolgingshendelse-topic kan ikke være aktorId"),
     this.startetTidspunkt,
     OppfolgingsperiodeId(UUID.fromString(this.oppfolgingsPeriodeId))
 )

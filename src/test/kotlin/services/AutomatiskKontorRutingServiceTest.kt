@@ -7,6 +7,7 @@ import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.db.Ident.HistoriskStatus.AKTIV
 import no.nav.db.Ident.HistoriskStatus.UKJENT
+import no.nav.db.IdentSomKanLagres
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.INGEN_GT_KONTOR_FALLBACK
@@ -721,7 +722,7 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
 
 fun oppfolgingsperiodeStartet(bruker: Bruker, arenaKontor: KontorId? = null, tidligArenaKontor: TidligArenaKontor? = null) = oppfolgingsperiodeStartet(bruker.fnr(), arenaKontor, tidligArenaKontor)
 
-fun oppfolgingsperiodeStartet(fnr: Ident, arenaKontor: KontorId? = null, tidligArenaKontor: TidligArenaKontor? = null): OppfolgingsperiodeStartet {
+fun oppfolgingsperiodeStartet(fnr: IdentSomKanLagres, arenaKontor: KontorId? = null, tidligArenaKontor: TidligArenaKontor? = null): OppfolgingsperiodeStartet {
     return OppfolgingsperiodeStartet(
         fnr,
         ZonedDateTime.now(),
@@ -763,7 +764,7 @@ data class Bruker(
     val oppfolgingsPeriodeResult: OppfolgingsperiodeOppslagResult = defaultOppfolgingsperiodeOppslagResult(fnr),
     val harTilordnetKontorForOppfolgingsperiodeStartet: Outcome<Boolean> = Outcome.Success(false)
 ) {
-    fun fnr(): Ident {
+    fun fnr(): IdentSomKanLagres {
         if (fnr is IdentFunnet) {
             return fnr.ident
         }

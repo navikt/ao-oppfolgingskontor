@@ -4,7 +4,9 @@ import db.table.TidligArenaKontorTable
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import no.nav.db.AktorId
 import no.nav.db.Ident
+import no.nav.db.IdentSomKanLagres
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
@@ -101,7 +103,7 @@ class EndringPaOppfolgingsBrukerProcessor(
     }
 
     fun internalProcess(record: Record<String, String>): EndringPaaOppfolgingsBrukerResult {
-        val fnr = Ident.of(record.key(), Ident.HistoriskStatus.UKJENT)
+        val fnr = Ident.of(record.key(), Ident.HistoriskStatus.UKJENT) as IdentSomKanLagres
         val endringPaOppfolgingsBruker = json.decodeFromString<EndringPaOppfolgingsBrukerDto>(record.value())
         val oppfolgingsenhet = endringPaOppfolgingsBruker.oppfolgingsenhet
         val endretTidspunktInnkommendeMelding = endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime()

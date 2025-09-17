@@ -3,6 +3,7 @@ package no.nav.kafka.consumers
 import kafka.consumers.jsonSerde
 import kotlinx.coroutines.runBlocking
 import no.nav.db.Ident
+import no.nav.db.IdentSomKanLagres
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.RecordProcessingResult

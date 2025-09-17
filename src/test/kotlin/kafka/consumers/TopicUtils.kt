@@ -3,6 +3,7 @@ package kafka.consumers
 import io.mockk.every
 import io.mockk.mockk
 import no.nav.db.Ident
+import no.nav.db.IdentSomKanLagres
 import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.kafka.consumers.FormidlingsGruppe
@@ -75,7 +76,7 @@ object TopicUtils {
 }
 
 data class Bruker(
-    val ident: Ident,
+    val ident: IdentSomKanLagres,
     val aktorId: String,
     val oppfolgingsperiodeId: OppfolgingsperiodeId,
     val periodeStart: ZonedDateTime

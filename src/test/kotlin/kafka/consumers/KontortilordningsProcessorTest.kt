@@ -44,7 +44,7 @@ class KontortilordningsProcessorTest {
             false
         )
         val record = Record(
-            oppfolgingsperiode.fnr,
+            oppfolgingsperiode.fnr as Ident,
             oppfolgingsperiode,
             Instant.now().toEpochMilli(),
         )
@@ -63,7 +63,7 @@ class KontortilordningsProcessorTest {
             false
         )
         val record = Record(
-            oppfolgingsperiode.fnr,
+            oppfolgingsperiode.fnr as Ident,
             oppfolgingsperiode,
             Instant.now().toEpochMilli(),
         )
@@ -81,7 +81,7 @@ class KontortilordningsProcessorTest {
             true
         )
         val record = Record(
-            oppfolgingsperiode.fnr,
+            oppfolgingsperiode.fnr as Ident,
             oppfolgingsperiode,
             Instant.now().toEpochMilli(),
         )

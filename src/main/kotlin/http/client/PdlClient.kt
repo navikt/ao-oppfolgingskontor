@@ -10,6 +10,7 @@ import io.ktor.client.plugins.logging.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import no.nav.db.Ident
+import no.nav.db.IdentSomKanLagres
 import no.nav.db.finnForetrukketIdent
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.http.client.tokenexchange.SystemTokenPlugin
@@ -34,7 +35,7 @@ data class AlderIkkeFunnet(val message: String) : AlderResult()
 data class AlderOppslagFeil(val message: String) : AlderResult()
 
 sealed class IdentResult
-data class IdentFunnet(val ident: Ident) : IdentResult()
+data class IdentFunnet(val ident: IdentSomKanLagres) : IdentResult()
 data class IdentIkkeFunnet(val message: String) : IdentResult()
 data class IdentOppslagFeil(val message: String) : IdentResult()
 

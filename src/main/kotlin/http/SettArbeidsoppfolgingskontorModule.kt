@@ -14,8 +14,12 @@ import kotlinx.serialization.json.Json
 import no.nav.Authenticated
 import no.nav.NotAuthenticated
 import no.nav.authenticateCall
+import no.nav.db.AktorId
+import no.nav.db.Dnr
 import no.nav.db.Fnr
 import no.nav.db.Ident
+import no.nav.db.IdentSomKanLagres
+import no.nav.db.Npid
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.events.KontorSattAvVeileder
@@ -66,7 +70,13 @@ fun Application.configureArbeidsoppfolgingskontorModule(
                             return@post
                         }
                     }
-                    val ident = Ident.of(kontorTilordning.fnr, Ident.HistoriskStatus.UKJENT)
+                    val muligLagrebarIdent = Ident.of(kontorTilordning.fnr, Ident.HistoriskStatus.UKJENT)
+                    val ident: IdentSomKanLagres = when (muligLagrebarIdent) {
+                        is AktorId -> {
+                            throw Exception("/api/kontor støtter ikke endring via aktorId, bruk dnr/fnr istedet")
+                        }
+                        is Dnr, is Fnr, is Npid -> muligLagrebarIdent
+                    }
 
                     val harTilgang = poaoTilgangClient.harLeseTilgang(principal, ident)
                     when (harTilgang) {

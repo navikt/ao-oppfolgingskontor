@@ -10,6 +10,8 @@ import kafka.retry.library.StreamType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import net.javacrumbs.shedlock.core.LockProvider
+import no.nav.db.IdentSomKanLagres
+import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
 import no.nav.kafka.consumers.KontortilordningsProcessor
 import no.nav.kafka.consumers.LeesahProcessor

@@ -61,10 +61,14 @@ sealed class Ident {
     }
 }
 
+/* Identer som kan lagres data på, feks oppfolgingsperiode, kontor etc.
+* Alle identer utenom AKtorId støttes */
+sealed class IdentSomKanLagres(): Ident()
+
 /*
 * Kan innholde fnr, dnr eller npid
 * */
-class Fnr(override val value: String, override val historisk: HistoriskStatus): Ident() {
+class Fnr(override val value: String, override val historisk: HistoriskStatus): IdentSomKanLagres() {
     init {
         require(value.isNotBlank()) { "Fnr cannot be blank" }
         require(value.length == 11) { "Fnr $value must be 11 characters long but was ${value.length}" }
@@ -75,7 +79,7 @@ class Fnr(override val value: String, override val historisk: HistoriskStatus): 
 }
 
 val gyldigeDnrStart = listOf(4,5,6,7)
-class Dnr(override val value: String, override val historisk: HistoriskStatus): Ident() {
+class Dnr(override val value: String, override val historisk: HistoriskStatus): IdentSomKanLagres() {
     init {
         require(value.isNotBlank()) { "Dnr cannot be blank" }
         require(value.length == 11) { "Dnr $value must be 11 characters long but was ${value.length}" }
@@ -86,7 +90,7 @@ class Dnr(override val value: String, override val historisk: HistoriskStatus): 
     override fun toString(): String = value
 }
 
-class Npid(override val value: String, override val historisk: HistoriskStatus): Ident() {
+class Npid(override val value: String, override val historisk: HistoriskStatus): IdentSomKanLagres() {
     init {
         require(value.isNotBlank()) { "Npid cannot be blank" }
         require(value.length == 11) { "Npid must be 11 characters long but was ${value.length}" }
@@ -111,15 +115,15 @@ object ValueSerializer : KSerializer<Ident> {
     override fun deserialize(decoder: Decoder) = Ident.of(decoder.decodeString(), Ident.HistoriskStatus.UKJENT)
 }
 
-fun List<Ident>.finnForetrukketIdent(): Ident? {
+fun List<Ident>.finnForetrukketIdent(): IdentSomKanLagres? {
     return this
         .filter { it.historisk == Ident.HistoriskStatus.AKTIV }
+        .mapNotNull { ident -> ident as? IdentSomKanLagres }
         .minByOrNull {
             when (it) {
                 is Fnr -> 1
                 is Dnr -> 2
                 is Npid -> 3
-                is AktorId -> 4
             }
         }
 }
