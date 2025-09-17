@@ -70,13 +70,19 @@ class OppfolgingshendelseProcessorTest {
         oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
     )
 
+    /* Mock at oppslag for å hente alle mappede identer bare returnerer 1 ident (happu path)  */
+    fun Bruker.defaultOppfolgingsHendelseProcessor(): OppfolgingsHendelseProcessor {
+        return OppfolgingsHendelseProcessor(
+            OppfolgingsperiodeService { IdenterFunnet(listOf(this.ident, AktorId(this.aktorId, AKTIV)), this.ident) }
+        )
+    }
+
     @Test
     fun `skal lagre ny oppfolgingsperiode når oppfolgingsperiode-startet`() = testApplication {
         val bruker = testBruker()
         application {
             flywayMigrationInTest()
-            val identService = IdentService { IdenterFunnet(listOf(bruker.ident), bruker.ident) }
-            val oppfolgingshendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService(identService::hentAlleIdenter))
+            val oppfolgingshendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
             val record = oppfolgingStartetMelding(bruker)
 
             val result = oppfolgingshendelseProcessor.process(record)
@@ -91,8 +97,7 @@ class OppfolgingshendelseProcessorTest {
         val bruker = testBruker()
         application {
             flywayMigrationInTest()
-            val identService = IdentService { IdenterFunnet(listOf(bruker.ident), bruker.ident) }
-            val oppfolgingshendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService(identService::hentAlleIdenter))
+            val oppfolgingshendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
             val hendelseStartResult = oppfolgingshendelseProcessor.process(oppfolgingStartetMelding(bruker))
             hendelseStartResult.shouldBeInstanceOf<Forward<*, *>>()
 
@@ -112,8 +117,7 @@ class OppfolgingshendelseProcessorTest {
 
             application {
                 flywayMigrationInTest()
-                val identService = IdentService { IdenterFunnet(listOf(bruker.ident), bruker.ident) }
-                val consumer = OppfolgingsHendelseProcessor(OppfolgingsperiodeService(identService::hentAlleIdenter))
+                val consumer = bruker.defaultOppfolgingsHendelseProcessor()
 
                 consumer.process(oppfolgingAvsluttetMelding(bruker, sluttDato = periodeSlutt))
 
@@ -128,8 +132,7 @@ class OppfolgingshendelseProcessorTest {
 
         application {
             flywayMigrationInTest()
-            val identService = IdentService { IdenterFunnet(listOf(bruker.ident), bruker.ident) }
-            val consumer = OppfolgingsHendelseProcessor(OppfolgingsperiodeService(identService::hentAlleIdenter))
+            val consumer = bruker.defaultOppfolgingsHendelseProcessor()
             val startPeriodeRecord = oppfolgingStartetMelding(bruker)
             val avsluttetNyerePeriodeRecord = oppfolgingAvsluttetMelding(
                 bruker.copy(periodeStart = bruker.periodeStart.plusSeconds(1)), sluttDato = periodeSlutt
@@ -149,8 +152,7 @@ class OppfolgingshendelseProcessorTest {
 
         application {
             flywayMigrationInTest()
-            val identService = IdentService { IdenterFunnet(listOf(bruker.ident), bruker.ident) }
-            val consumer = OppfolgingsHendelseProcessor(OppfolgingsperiodeService(identService::hentAlleIdenter))
+            val consumer = bruker.defaultOppfolgingsHendelseProcessor()
             val startPeriodeRecord = oppfolgingStartetMelding(bruker)
             val startGammelPeriodeRecord = oppfolgingStartetMelding(
                 bruker.copy(
@@ -175,8 +177,7 @@ class OppfolgingshendelseProcessorTest {
 
         application {
             flywayMigrationInTest()
-            val identService = IdentService { IdenterFunnet(listOf(bruker.ident), bruker.ident) }
-            val consumer = OppfolgingsHendelseProcessor(OppfolgingsperiodeService(identService::hentAlleIdenter))
+            val consumer = bruker.defaultOppfolgingsHendelseProcessor()
             val startPeriodeRecord = oppfolgingStartetMelding(bruker)
             val startNyerePeriodeRecord = oppfolgingStartetMelding(
                 bruker.copy(
@@ -220,9 +221,7 @@ class OppfolgingshendelseProcessorTest {
 
         application {
             flywayMigrationInTest()
-            val oppfolgingsHendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService({ input ->
-                IdenterFunnet(listOf(bruker.ident), input)
-            }))
+            val oppfolgingsHendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
             val startPeriodeRecord = oppfolgingStartetMelding(bruker)
             val sluttNyerePeriodeRecord = oppfolgingAvsluttetMelding(
                 bruker.copy(
@@ -242,8 +241,7 @@ class OppfolgingshendelseProcessorTest {
     @Test
     fun `skal håndtere deserialiseringsfeil`() {
         val bruker = testBruker()
-        val identService = IdentService { IdenterFunnet(listOf(bruker.ident), bruker.ident) }
-        val oppfolgingsHendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService(identService::hentAlleIdenter))
+        val oppfolgingsHendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
 
         val result = oppfolgingsHendelseProcessor.process(Record(bruker.aktorId, """{ "lol": "lal" }""", Instant.now().toEpochMilli()))
 
@@ -258,8 +256,7 @@ class OppfolgingshendelseProcessorTest {
     fun `skal hoppe over allerede prosesserte meldinger`() {
         val bruker = testBruker()
         flywayMigrationInTest()
-        val identService = IdentService { IdenterFunnet(listOf(bruker.ident), bruker.ident) }
-        val oppfolgingshendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService(identService::hentAlleIdenter))
+        val oppfolgingshendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
         val sluttDato = ZonedDateTime.now().plusDays(1)
         val startmelding = oppfolgingStartetMelding(bruker)
         val stoppmelding = oppfolgingAvsluttetMelding(bruker, sluttDato)
@@ -282,8 +279,7 @@ class OppfolgingshendelseProcessorTest {
     fun `skal håndtere oppfølging avsluttet for en periode vi ikke visste om`() {
         val bruker = testBruker()
         flywayMigrationInTest()
-        val identService = IdentService { IdenterFunnet(listOf(bruker.ident), bruker.ident) }
-        val oppfolgingshendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService(identService::hentAlleIdenter))
+        val oppfolgingshendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
         val record = TopicUtils.oppfolgingAvsluttetMelding(bruker, ZonedDateTime.now())
 
         val result = oppfolgingshendelseProcessor.process(record)
@@ -291,12 +287,7 @@ class OppfolgingshendelseProcessorTest {
         result.shouldBeInstanceOf<Skip<Ident, OppfolgingsperiodeStartet>>()
     }
 
-    @Test
-    fun `skal rydde opp i tidlig-arena-kontor hvis de blir brukt`() {
-        val bruker = testBruker()
-        flywayMigrationInTest()
-        val arenaKontorVeilarboppfolging = "4141"
-        val arenaKontor = "4142"
+    fun gittBrukerMedTidligArenaKontor(bruker: Bruker, arenaKontorVeilarboppfolging: String, arenaKontor: String) {
         val arenaKontorFraVeilarboppfolging = mockk<ArenaKontorEntity> {
             every { sistEndretDatoArena } returns OffsetDateTime.now().minusSeconds(1)
             every { kontorId } returns arenaKontorVeilarboppfolging
@@ -304,8 +295,6 @@ class OppfolgingshendelseProcessorTest {
         val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
             { arenaKontorFraVeilarboppfolging },
             { NotUnderOppfolging })
-        val identService = IdentService { IdenterFunnet(listOf(bruker.ident), bruker.ident) }
-        val hendelseProcessor = OppfolgingsHendelseProcessor(OppfolgingsperiodeService(identService::hentAlleIdenter))
         endringPaOppfolgingsBrukerProcessor.process(
             TopicUtils.endringPaaOppfolgingsBrukerMessage(
                 bruker.ident,
@@ -315,15 +304,30 @@ class OppfolgingshendelseProcessorTest {
                 no.nav.kafka.consumers.Kvalifiseringsgruppe.IKVAL
             )
         )
-        transaction {
-            TidligArenaKontorEntity.findById(bruker.ident.value)?.kontorId shouldBe arenaKontor
+    }
+
+    fun Bruker.skalHaTidligArenaKontor(foreventetKontor: String?) {
+        val arenaKontor = transaction {
+            TidligArenaKontorEntity.findById(this@skalHaTidligArenaKontor.ident.value)?.kontorId
         }
+        withClue("Forventet bruker skulle ha forhåndslagret arenakontor for oppfølging-start: $foreventetKontor men hadde $arenaKontor") {
+            arenaKontor shouldBe foreventetKontor
+        }
+    }
+
+    @Test
+    fun `skal rydde opp i tidlig-arena-kontor hvis det blir brukt`() {
+        val bruker = testBruker()
+        flywayMigrationInTest()
+        val arenaKontorVeilarboppfolging = "4141"
+        val arenaKontor = "4142"
+        val hendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
+        gittBrukerMedTidligArenaKontor(bruker, arenaKontorVeilarboppfolging, arenaKontor)
+        bruker.skalHaTidligArenaKontor(arenaKontor)
 
         hendelseProcessor.process(TopicUtils.oppfolgingStartetMelding(bruker))
 
-        transaction {
-            TidligArenaKontorEntity.findById(bruker.ident.value) shouldBe null
-        }
+        bruker.skalHaTidligArenaKontor(null)
     }
 
 
