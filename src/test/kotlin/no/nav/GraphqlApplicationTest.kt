@@ -6,6 +6,7 @@ import io.kotest.matchers.date.shouldBeCloseTo
 import io.kotest.matchers.shouldBe
 import io.ktor.client.call.*
 import io.ktor.http.*
+import io.ktor.http.HttpStatusCode.Companion.OK
 import io.ktor.server.routing.*
 import io.ktor.server.testing.*
 import no.nav.Authenticated
@@ -32,7 +33,6 @@ import no.nav.services.KontorTilordningService
 import no.nav.utils.*
 import no.nav.utils.KontorTilhorighet
 import org.junit.jupiter.api.Test
-import services.IdentService
 import services.ingenSensitivitet
 import java.time.Instant
 import java.time.ZonedDateTime
@@ -69,7 +69,7 @@ class GraphqlApplicationTest {
 
         val response = client.kontorTilhorighet(fnr)
 
-        response.status shouldBe HttpStatusCode.Companion.OK
+        response.status shouldBe OK
         val payload = response.body<GraphqlResponse<KontorTilhorighet>>()
         payload shouldBe GraphqlResponse(
             KontorTilhorighet(
@@ -90,7 +90,7 @@ class GraphqlApplicationTest {
 
         val response = client.kontorHistorikk(fnr)
 
-        response.status shouldBe HttpStatusCode.Companion.OK
+        response.status shouldBe OK
         val payload = response.body<GraphqlResponse<KontorHistorikk>>()
         payload.errors shouldBe null
         payload.data!!.kontorHistorikk shouldHaveSize 1
@@ -114,7 +114,7 @@ class GraphqlApplicationTest {
 
         val response = client.alleKontor()
 
-        response.status shouldBe HttpStatusCode.Companion.OK
+        response.status shouldBe OK
         val payload = response.body<GraphqlResponse<AlleKontor>>()
         payload.errors shouldBe null
         payload.data!!.alleKontor shouldHaveSize (248 + 3)
@@ -132,7 +132,7 @@ class GraphqlApplicationTest {
 
         val response = client.kontorTilhorighet(fnr)
 
-        response.status shouldBe HttpStatusCode.Companion.OK
+        response.status shouldBe OK
         val payload = response.body<GraphqlResponse<KontorTilhorighet>>()
         payload.errors shouldBe null
         payload.data!!.kontorTilhorighet?.kontorId shouldBe kontorId
@@ -154,12 +154,28 @@ class GraphqlApplicationTest {
 
         val response = client.alleKontorTilhorigheter(fnr)
 
-        response.status shouldBe HttpStatusCode.Companion.OK
+        response.status shouldBe OK
         val payload = response.body<GraphqlResponse<KontorTilhorigheter>>()
         payload.errors shouldBe null
         payload.data!!.kontorTilhorigheter.arbeidsoppfolging?.kontorId shouldBe AOKontor
         payload.data.kontorTilhorigheter.arena?.kontorId shouldBe arenaKontorId
         payload.data.kontorTilhorigheter.geografiskTilknytning?.kontorId shouldBe GTkontorId
+    }
+
+    @Test
+    fun `skal kunne hente ao-kontor, arena-kontor og gt-kontor samtidig selvom alle er null`() = testApplication {
+        val fnr = randomFnr(UKJENT)
+        graphqlServerInTest(fnr)
+        val client = getJsonHttpClient()
+
+        val response = client.alleKontorTilhorigheter(fnr)
+
+        response.status shouldBe OK
+        val payload = response.body<GraphqlResponse<KontorTilhorigheter>>()
+        payload.errors shouldBe null
+        payload.data!!.kontorTilhorigheter.arbeidsoppfolging?.kontorId shouldBe null
+        payload.data.kontorTilhorigheter.arena?.kontorId shouldBe null
+        payload.data.kontorTilhorigheter.geografiskTilknytning?.kontorId shouldBe null
     }
 
     private fun gittBrukerMedKontorIArena(fnr: Fnr, kontorId: String, insertTime: ZonedDateTime = ZonedDateTime.now()) {
