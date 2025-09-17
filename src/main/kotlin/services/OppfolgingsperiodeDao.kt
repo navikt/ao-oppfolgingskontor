@@ -88,7 +88,9 @@ object OppfolgingsperiodeDao {
     }
 
     fun getCurrentOppfolgingsperiode(identer: List<Ident>): OppfolgingsperiodeOppslagResult {
-        val oppfolgingsperioder = OppfolgingsperiodeEntity.find { OppfolgingsperiodeTable.id inList identer.map { it.value } }.toList()
+        val oppfolgingsperioder = transaction {
+            OppfolgingsperiodeEntity.find { OppfolgingsperiodeTable.id inList identer.map { it.value } }.toList()
+        }
         return when (oppfolgingsperioder.size) {
             0 -> NotUnderOppfolging
             1 -> AktivOppfolgingsperiode(
