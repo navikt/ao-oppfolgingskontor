@@ -380,8 +380,6 @@ class OppfolgingshendelseProcessorTest {
             .shouldBeInstanceOf<AktivOppfolgingsperiode>()
         fun skalIkkeVæreUnderOppfolging() = service.getCurrentOppfolgingsperiode(IdentFunnet(bruker.ident))
             .shouldBeInstanceOf<NotUnderOppfolging>()
-        fun skalKrasjeVedQueryPåNåværendePeriode() = service.getCurrentOppfolgingsperiode(IdentFunnet(bruker.ident))
-            .shouldBeInstanceOf<OppfolgingperiodeOppslagFeil>()
     }
     @Test
     fun `avslutt-melding med ny ident skal kunne avslutte periode`() = testApplication {
@@ -420,7 +418,6 @@ class OppfolgingshendelseProcessorTest {
             val brukerMedFnrAsserts = Asserts(oppfolgingsPeriodeService, brukerMedFnr)
 
             brukerMedDnrAsserts.skalVæreUnderOppfolging()
-            brukerMedFnrAsserts.skalKrasjeVedQueryPåNåværendePeriode()
 
             /* Marker dnr som historisk */
             identChangeProcessor.process(TopicUtils.aktorV2Message(

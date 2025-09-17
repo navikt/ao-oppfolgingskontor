@@ -171,12 +171,13 @@ class IdentService(
     /**
     * Henter alle tilhørende identer på en bruker, inkl historiske
     */
-    public fun hentAlleIdenter(identInput: Ident): IdenterResult {
+    public suspend fun hentAlleIdenter(identInput: Ident): IdenterResult {
         try {
             val alleIdenter = hentIdentMappinger(identInput, true)
                 .map { it.ident }
             return when (alleIdenter.size) {
-                0 -> IdenterIkkeFunnet("Fant ingen identer for input-ident")
+                // Fallback til å hente synkront fra PDL
+                0 -> hentAlleIdenterOgOppdaterMapping(identInput)
                 else -> IdenterFunnet(
                     identer = alleIdenter,
                     inputIdent = identInput,

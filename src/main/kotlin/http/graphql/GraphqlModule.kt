@@ -50,7 +50,7 @@ class AppContextFactory(val authenticateRequest: AuthenticateRequest) : KtorGrap
     }
 }
 
-fun Application.installGraphQl(norg2Client: Norg2Client, kontorTilhorighetService: KontorTilhorighetService, authenticateRequest: AuthenticateRequest, hentAlleIdenter: (Ident) -> IdenterResult) {
+fun Application.installGraphQl(norg2Client: Norg2Client, kontorTilhorighetService: KontorTilhorighetService, authenticateRequest: AuthenticateRequest, hentAlleIdenter: suspend (Ident) -> IdenterResult) {
     install(GraphQL) {
         schema {
             packages = listOf(
@@ -86,7 +86,7 @@ fun ApplicationEnvironment.getPDLUrl(): String {
     return config.property("apis.pdl.url").getString()
 }
 
-fun Application.configureGraphQlModule(norg2Client: Norg2Client, kontorTilhorighetService: KontorTilhorighetService, authenticateCall: AuthenticateRequest, hentAlleIdenter: (Ident) -> IdenterResult) {
+fun Application.configureGraphQlModule(norg2Client: Norg2Client, kontorTilhorighetService: KontorTilhorighetService, authenticateCall: AuthenticateRequest, hentAlleIdenter: suspend (Ident) -> IdenterResult) {
     installGraphQl(norg2Client, kontorTilhorighetService, authenticateCall, hentAlleIdenter)
 
     routing {

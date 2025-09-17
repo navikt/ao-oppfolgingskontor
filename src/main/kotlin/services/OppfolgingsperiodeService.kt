@@ -1,5 +1,6 @@
 package services
 
+import kotlinx.coroutines.runBlocking
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
@@ -21,7 +22,7 @@ import org.slf4j.LoggerFactory
 import utils.Outcome
 
 class OppfolgingsperiodeService(
-    val hentAlleIdenter: (Ident) -> IdenterResult
+    val hentAlleIdenter: suspend (Ident) -> IdenterResult
 ) {
     val log = LoggerFactory.getLogger(OppfolgingsperiodeService::class.java)
 
@@ -74,7 +75,7 @@ class OppfolgingsperiodeService(
             when (ident) {
                 is IdentFunnet ->
                     transaction {
-                        when (val result = hentAlleIdenter(ident.ident)) {
+                        when (val result = runBlocking { hentAlleIdenter(ident.ident) }) {
                             is IdenterFunnet -> OppfolgingsperiodeDao.getCurrentOppfolgingsperiode(result.identer)
                             is IdenterIkkeFunnet -> OppfolgingperiodeOppslagFeil("Kunne ikke hente nåværende oppfolgingsperiode, klarte ikke hente alle mappede identer: ${result.message}")
                             is IdenterOppslagFeil -> OppfolgingperiodeOppslagFeil("Kunne ikke hente nåværende oppfolgingsperiode, klarte ikke hente alle mappede identer: ${result.message}")

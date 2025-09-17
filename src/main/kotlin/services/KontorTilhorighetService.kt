@@ -30,7 +30,7 @@ import services.IdentService
 class KontorTilhorighetService(
     val kontorNavnService: KontorNavnService,
     val poaoTilgangClient: PoaoTilgangKtorHttpClient,
-    val hentAlleIdenter: (Ident) -> IdenterResult,
+    val hentAlleIdenter: suspend (Ident) -> IdenterResult,
 ) {
     val log = LoggerFactory.getLogger(KontorTilhorighetService::class.java)
 
