@@ -39,14 +39,15 @@ class IdentService(
 ) {
     private val log = LoggerFactory.getLogger(IdentService::class.java)
 
-    suspend fun hentForetrukketIdentFor(ident: Ident): IdentResult {
+    suspend fun veksleAktorIdIForetrukketIdent(ident: AktorId): IdentResult {
         val lokalIdentResult = hentLokalIdent(ident)
         val lokaltLagretIdent = when {
             lokalIdentResult.isSuccess -> lokalIdentResult.getOrNull()
             else -> {
                 val error = lokalIdentResult.exceptionOrNull()
-                log.error("Feil ved oppslag på lokalt lagret ident: ${error?.message}", error)
-                IdentOppslagFeil("Feil ved oppslag på lokalt lagret ident: ${error?.message}")
+                log.warn("Feil ved oppslag på lokalt lagret ident: ${error?.message}", error)
+                hentAlleIdenterOgOppdaterMapping(ident)
+                    .finnForetrukketIdent()
             }
         }
         if (lokaltLagretIdent != null) return lokaltLagretIdent

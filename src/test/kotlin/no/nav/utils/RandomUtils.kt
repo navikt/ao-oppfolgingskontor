@@ -1,5 +1,6 @@
 package no.nav.utils
 
+import no.nav.db.AktorId
 import no.nav.db.Fnr
 import no.nav.db.Ident
 import kotlin.random.Random
@@ -10,6 +11,11 @@ fun randomFnr(identStatus: Ident.HistoriskStatus = Ident.HistoriskStatus.AKTIV):
     val year = (1..99).random().toString().padStart(2, '0')
     val randomDigits = (1..5).map { (0..9).random() }.joinToString("")
     return Fnr("${date}${month}${year}${randomDigits}", identStatus)
+}
+
+fun randomAktorId(identStatus: Ident.HistoriskStatus = Ident.HistoriskStatus.AKTIV): AktorId {
+    val randomDigits = (1..13).map { (0..9).random() }.joinToString("")
+    return AktorId("$randomDigits", identStatus)
 }
 
 fun randomTopicName(): String {

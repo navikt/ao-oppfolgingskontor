@@ -2,7 +2,9 @@ package no.nav.kafka.consumers
 
 import kafka.out.toRecord
 import kotlinx.coroutines.runBlocking
+import no.nav.db.AktorId
 import no.nav.db.Ident
+import no.nav.db.finnForetrukketIdent
 import no.nav.domain.events.AOKontorEndret
 import no.nav.domain.events.ArenaKontorEndret
 import no.nav.domain.events.GTKontorEndret
@@ -26,7 +28,7 @@ import org.slf4j.LoggerFactory
 
 class LeesahProcessor(
     private val automatiskKontorRutingService: AutomatiskKontorRutingService,
-    private val fnrProvider: suspend (ident: Ident) -> IdentResult,
+    private val fnrProvider: suspend (ident: AktorId) -> IdentResult,
     private val isProduction: Boolean,
 ) {
     val log = LoggerFactory.getLogger(this::class.java)
@@ -89,8 +91,10 @@ class LeesahProcessor(
             throw IllegalStateException("Personhendelse must have at least one personident")
         }
 
-        val ident: Ident = Ident.of(hendelse.personidenter.first(), Ident.HistoriskStatus.UKJENT)
-        return fnrProvider(ident)
+        // Antar alle identer i en Leesah hendelse AKTIV / ikke historiske
+        val personIdenter = hendelse.personidenter.map { Ident.of(it, Ident.HistoriskStatus.AKTIV) }
+        return personIdenter.finnForetrukketIdent()?.let { IdentFunnet(it) }
+            ?: IdentIkkeFunnet("Fant ingen foretrukket ident i Leesah melding sitt 'personidenter' felt, ${personIdenter.joinToString(",") { it.javaClass.simpleName }}")
     }
 }
 

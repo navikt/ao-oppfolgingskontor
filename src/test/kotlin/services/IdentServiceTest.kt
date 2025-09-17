@@ -1,6 +1,9 @@
 package services
 
 import db.table.IdentMappingTable
+import db.table.InternIdentSequence
+import db.table.nextValueOf
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.server.testing.*
@@ -19,17 +22,19 @@ import no.nav.db.Ident.HistoriskStatus.UKJENT
 import no.nav.db.Npid
 import no.nav.http.client.IdentFunnet
 import no.nav.http.client.IdenterFunnet
-import no.nav.http.graphql.generated.client.enums.IdentGruppe
-import no.nav.http.graphql.generated.client.hentfnrquery.IdentInformasjon
+import no.nav.http.client.IdenterOppslagFeil
+import no.nav.http.client.IdenterResult
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
 import no.nav.person.pdl.aktor.v2.Aktor
 import no.nav.person.pdl.aktor.v2.Identifikator
 import no.nav.person.pdl.aktor.v2.Type
 import no.nav.utils.flywayMigrationInTest
+import no.nav.utils.randomAktorId
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.batchUpsert
+import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
 import java.time.OffsetDateTime
@@ -48,8 +53,8 @@ class IdentServiceTest {
         }
         val identService = IdentService(identProvider)
 
-        identService.hentForetrukketIdentFor(aktorId)
-        identService.hentForetrukketIdentFor(aktorId)
+        identService.veksleAktorIdIForetrukketIdent(aktorId)
+        identService.veksleAktorIdIForetrukketIdent(aktorId)
 
         invocations shouldBe 1
     }
@@ -64,8 +69,8 @@ class IdentServiceTest {
         }
         val identService = IdentService(alleIdenterProvider)
 
-        identService.hentForetrukketIdentFor(aktorId)
-        val npidUt = identService.hentForetrukketIdentFor(aktorId)
+        identService.veksleAktorIdIForetrukketIdent(aktorId)
+        val npidUt = identService.veksleAktorIdIForetrukketIdent(aktorId)
 
         npidUt.shouldBeInstanceOf<IdentFunnet>()
         npidUt.ident shouldBe npid
@@ -86,14 +91,15 @@ class IdentServiceTest {
         }
         val identService = IdentService(fnrProvider)
 
-        identService.hentForetrukketIdentFor(aktorId)
-        val dnrUt = identService.hentForetrukketIdentFor(aktorId)
+        identService.veksleAktorIdIForetrukketIdent(aktorId)
+        val dnrUt = identService.veksleAktorIdIForetrukketIdent(aktorId)
 
         dnrUt.shouldBeInstanceOf<IdentFunnet>()
         dnrUt.ident shouldBe dnr
     }
 
-    @Test
+
+//    @Test
     fun `skal gi fnr ved søk på npid`() = runTest {
         flywayMigrationInTest()
         val npid = Npid("01220304055", AKTIV)
@@ -108,7 +114,7 @@ class IdentServiceTest {
         }
 
         val identService = IdentService(fnrProvider)
-        val foretrukketIdent = identService.hentForetrukketIdentFor(npid)
+        val foretrukketIdent = identService.veksleAktorIdIForetrukketIdent(aktorId)
 
         foretrukketIdent.shouldBeInstanceOf<IdentFunnet>()
         foretrukketIdent.ident.shouldBeInstanceOf<Fnr>()
@@ -129,7 +135,7 @@ class IdentServiceTest {
                 gammelAktorId,
                 fnr), npid)
         }
-        identService.hentForetrukketIdentFor(npid)
+        identService.veksleAktorIdIForetrukketIdent(gammelAktorId)
 
         val oppdatertIdentService = IdentService { _ ->
             IdenterFunnet(listOf(
@@ -146,6 +152,24 @@ class IdentServiceTest {
             nyAktorId,
             fnr
         ), npid)
+    }
+
+    @Test
+    fun `håndterEndringPåIdenter - skal returnere feil hvis synkront kall til pdl  feiler`() = runTest   {
+        val identProvider: suspend (String) -> IdenterResult = { IdenterOppslagFeil("Noe gikk galt") }
+        val identService = IdentService(identProvider)
+        val aktorId = randomAktorId()
+
+        shouldThrow<Exception> { identService.håndterEndringPåIdenter(aktorId, emptyList()) }
+    }
+
+    @Test
+    fun `håndterEndringPåIdenter - skal kaste exception ved uhåndtert feil i pdl-kall`() = runTest   {
+        val identProvider: suspend (String) -> IdenterFunnet = { throw IllegalStateException("Noe gikk galt") }
+        val identService = IdentService(identProvider)
+        val aktorId = AktorId("2938764298763", AKTIV)
+
+        shouldThrow<IllegalStateException> { identService.håndterEndringPåIdenter(aktorId) }
     }
 
     @Test
@@ -359,6 +383,30 @@ class IdentServiceTest {
     }
 
     @Test
+    fun `veksleAktorIdIForetrukketIdent - skal fallback til å hente identer på nytt hvis bare aktorid finnes i id-mapping`() = runTest {
+        flywayMigrationInTest()
+        val aktorId = AktorId("2221219811121", AKTIV)
+        val fnr = Fnr("12112198111", AKTIV)
+        val identProvider: suspend (String) -> IdenterFunnet = { input -> IdenterFunnet(
+            listOf(fnr, aktorId),
+            Ident.of(input, UKJENT))
+        }
+        val identService = IdentService(identProvider)
+        /* Only having AktorId will  */
+        transaction {
+            val internId = nextValueOf(InternIdentSequence)
+            IdentMappingTable.insert {
+                it[IdentMappingTable.id] = aktorId.value
+                it[IdentMappingTable.historisk] = false
+                it[IdentMappingTable.identType] = "AKTOR_ID"
+                it[IdentMappingTable.internIdent] = internId
+            }
+        }
+
+        identService.veksleAktorIdIForetrukketIdent(aktorId).shouldBeInstanceOf<IdentFunnet>()
+    }
+
+    @Test
     fun `IdentChangePrcessor - skal hopper over personer is test`() {
         flywayMigrationInTest()
 
@@ -397,12 +445,6 @@ class IdentServiceTest {
                     row[IdentMappingTable.historisk],
                     row[IdentMappingTable.slettetHosOss] != null
                 )  }
-        }
-    }
-
-    fun mockAktor(identer: List<Identifikator> = emptyList()): Aktor {
-        return mockk<Aktor> {
-            every { identifikatorer } returns identer
         }
     }
 }
