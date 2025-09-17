@@ -16,6 +16,8 @@ import no.nav.db.entity.OppfolgingsperiodeEntity
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
+import no.nav.domain.events.ArenaKontorEndret
+import no.nav.domain.events.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.http.client.IdentFunnet
@@ -61,6 +63,23 @@ class OppfolgingshendelseProcessorTest {
             val entity = OppfolgingsperiodeEntity.findById(this@skalIkkeVæreUnderOppfølging.ident.value)
             entity.shouldBeNull()
         }
+    }
+
+    fun Bruker.gittAOKontorTilordning(kontorId: KontorId) {
+        KontorTilordningService.tilordneKontor(
+            OppfolgingsPeriodeStartetLokalKontorTilordning(
+                KontorTilordning(this.ident, kontorId, this.oppfolgingsperiodeId), ingenSensitivitet
+            )
+        )
+    }
+
+    fun Bruker.gittArenaKontorTilordning(kontorId: KontorId) {
+        KontorTilordningService.tilordneKontor(
+            ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart(
+                KontorTilordning(this.ident, kontorId, this.oppfolgingsperiodeId),
+                OffsetDateTime.now()
+            )
+        )
     }
 
     fun testBruker() = Bruker(
@@ -253,7 +272,7 @@ class OppfolgingshendelseProcessorTest {
     }
 
     @Test
-    fun `skal hoppe over allerede prosesserte meldinger`() {
+    fun `skal hoppe over start-melding når perioden er slettet`() {
         val bruker = testBruker()
         flywayMigrationInTest()
         val oppfolgingshendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
@@ -261,11 +280,7 @@ class OppfolgingshendelseProcessorTest {
         val startmelding = oppfolgingStartetMelding(bruker)
         val stoppmelding = oppfolgingAvsluttetMelding(bruker, sluttDato)
         oppfolgingshendelseProcessor.process(startmelding).shouldBeInstanceOf<Forward<*, *>>()
-        KontorTilordningService.tilordneKontor(
-            OppfolgingsPeriodeStartetLokalKontorTilordning(
-                KontorTilordning(bruker.ident, KontorId("1199"), bruker.oppfolgingsperiodeId), ingenSensitivitet
-            )
-        )
+        bruker.gittAOKontorTilordning(KontorId("1199"))
         oppfolgingshendelseProcessor.process(stoppmelding).shouldBeInstanceOf<Commit<*, *>>()
 
         val resultStartMeldingPåNytt = oppfolgingshendelseProcessor.process(startmelding)
@@ -273,6 +288,26 @@ class OppfolgingshendelseProcessorTest {
 
         resultStartMeldingPåNytt.shouldBeInstanceOf<Skip<*, *>>()
         resultStoppMeldingPåNytt.shouldBeInstanceOf<Skip<*, *>>()
+    }
+
+    @Test
+    fun `skal hoppe over start-melding men oppdatere kontor når perioden er allerede er startet (men ikke avsluttet)`() {
+        val bruker = testBruker()
+        flywayMigrationInTest()
+        val arenaKontor = KontorId("1122")
+        val oppfolgingshendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
+        val startmelding = oppfolgingStartetMelding(bruker, arenaKontor)
+        oppfolgingshendelseProcessor.process(startmelding).shouldBeInstanceOf<Forward<*, *>>()
+        bruker.gittAOKontorTilordning(KontorId("1199"))
+
+        /* Hvis arenakontor ikke allerede er satt skal det settes */
+        oppfolgingshendelseProcessor.process(startmelding).shouldBeInstanceOf<Commit<*, *>>()
+
+        bruker.gittArenaKontorTilordning(KontorId("1122"))
+        /* Når arena-kontoret er satt kan man skippe melding */
+        oppfolgingshendelseProcessor.process(startmelding).shouldBeInstanceOf<Skip<*, *>>()
+
+        bruker.skalHaArenaKontor(arenaKontor.id)
     }
 
     @Test
@@ -311,6 +346,15 @@ class OppfolgingshendelseProcessorTest {
             TidligArenaKontorEntity.findById(this@skalHaTidligArenaKontor.ident.value)?.kontorId
         }
         withClue("Forventet bruker skulle ha forhåndslagret arenakontor for oppfølging-start: $foreventetKontor men hadde $arenaKontor") {
+            arenaKontor shouldBe foreventetKontor
+        }
+    }
+
+    fun Bruker.skalHaArenaKontor(foreventetKontor: String?) {
+        val arenaKontor = transaction {
+            ArenaKontorEntity.findById(this@skalHaArenaKontor.ident.value)?.kontorId
+        }
+        withClue("Forventet bruker skulle arenakontor: $foreventetKontor men hadde $arenaKontor") {
             arenaKontor shouldBe foreventetKontor
         }
     }
@@ -400,7 +444,8 @@ class OppfolgingshendelseProcessorTest {
         }
     }
 
-    fun oppfolgingStartetMelding(bruker: Bruker): Record<String, String> = TopicUtils.oppfolgingStartetMelding(bruker)
+    fun oppfolgingStartetMelding(bruker: Bruker, arenaKontor: KontorId = KontorId("4141")): Record<String, String> =
+        TopicUtils.oppfolgingStartetMelding(bruker, arenaKontor)
 
     fun oppfolgingAvsluttetMelding(bruker: Bruker, sluttDato: ZonedDateTime): Record<String, String> =
         TopicUtils.oppfolgingAvsluttetMelding(bruker, sluttDato)

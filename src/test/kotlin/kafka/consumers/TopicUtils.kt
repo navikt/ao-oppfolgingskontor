@@ -3,6 +3,7 @@ package kafka.consumers
 import io.mockk.every
 import io.mockk.mockk
 import no.nav.db.Ident
+import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.kafka.consumers.FormidlingsGruppe
 import no.nav.kafka.consumers.Kvalifiseringsgruppe
@@ -14,7 +15,7 @@ import java.time.ZonedDateTime
 
 object TopicUtils {
 
-    fun oppfolgingStartetMelding(bruker: Bruker): Record<String, String> {
+    fun oppfolgingStartetMelding(bruker: Bruker, arenaKontor: KontorId? = KontorId("4141")): Record<String, String> {
         return Record(bruker.ident.value, """
             {
                 "hendelseType": "OPPFOLGING_STARTET",
@@ -23,7 +24,7 @@ object TopicUtils {
                 "startetAv": "G151415",
                 "startetAvType": "VEILEDER",
                 "startetBegrunnelse": "ARBEIDSSOKER_REGISTRERING",
-                "arenaKontor": "4141",
+                "arenaKontor": ${arenaKontor?.id?.let { "\"$it\"" } ?: "null" },
                 "foretrukketArbeidsoppfolgingskontor": null,
                 "fnr": "${bruker.ident.value}"
             }

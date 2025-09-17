@@ -69,8 +69,10 @@ class OppfolgingsHendelseProcessor(
                                         oppfolgingsperiodeId = oppfolgingStartetInternalEvent.periodeId
                                     )
                                 ))
+                                Commit()
+                            } else {
+                                Skip()
                             }
-                            Commit()
                         }
                         HaddeNyerePeriodePåIdent, HarSlettetPeriode -> Skip()
                         OppfølgingsperiodeLagret -> {
