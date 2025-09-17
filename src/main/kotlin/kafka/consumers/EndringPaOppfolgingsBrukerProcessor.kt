@@ -153,7 +153,7 @@ class EndringPaOppfolgingsBrukerProcessor(
                         }
                     }
                     is OppfolgingperiodeOppslagFeil -> Feil(
-                        Retry("Klarte ikke behandle melding om endring på oppfølgingsbruker, feil ved oppslag på oppfølgingsperiode: ${periode.message}"),
+                        Retry("Feil ved oppslag på oppfølgingsperiode: ${periode.message}"),
                     )
                 }
             }
