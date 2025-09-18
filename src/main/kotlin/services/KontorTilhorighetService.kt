@@ -16,8 +16,6 @@ import no.nav.domain.KontorId
 import no.nav.domain.KontorType
 import no.nav.domain.KontorNavn
 import no.nav.http.client.IdenterFunnet
-import no.nav.http.client.IdenterIkkeFunnet
-import no.nav.http.client.IdenterOppslagFeil
 import no.nav.http.client.IdenterResult
 import no.nav.http.client.poaoTilgang.PoaoTilgangKtorHttpClient
 import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
