@@ -16,7 +16,6 @@ import no.nav.db.entity.OppfolgingsperiodeEntity
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
-import no.nav.domain.events.ArenaKontorEndret
 import no.nav.domain.events.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
@@ -30,7 +29,6 @@ import no.nav.kafka.processor.Skip
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.KontorTilordningService
 import no.nav.services.NotUnderOppfolging
-import no.nav.services.OppfolgingperiodeOppslagFeil
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.lagreIdentIIdentmappingTabell
 import no.nav.utils.randomFnr

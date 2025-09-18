@@ -25,7 +25,6 @@ import no.nav.http.graphql.schemas.RegistrantTypeDto
 import org.jetbrains.exposed.sql.SizedIterable
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
-import services.IdentService
 
 class KontorTilhorighetService(
     val kontorNavnService: KontorNavnService,
@@ -146,12 +145,4 @@ fun GeografiskTilknyttetKontorEntity.toKontorTilhorighetQueryDto(navn: KontorNav
         registrantType = RegistrantTypeDto.SYSTEM,
         kontorNavn = navn.navn
     )
-}
-
-private fun IdenterResult.getOrThrow(): IdenterFunnet {
-    return when (this) {
-        is IdenterFunnet -> this
-        is IdenterIkkeFunnet -> throw Exception("Fikk ikke hentet identer for ident: ${this.message}")
-        is IdenterOppslagFeil -> throw Exception("Fikk ikke hentet identer for ident: ${this.message}")
-    }
 }
