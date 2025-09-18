@@ -70,24 +70,35 @@ class OppfolgingsperiodeService(
         return OppfølgingsperiodeLagret
     }
 
-    fun getCurrentOppfolgingsperiode(ident: IdentResult): OppfolgingsperiodeOppslagResult {
-        return try {
-            when (ident) {
-                is IdentFunnet ->
-                    transaction {
-                        when (val result = runBlocking { hentAlleIdenter(ident.ident) }) {
-                            is IdenterFunnet -> OppfolgingsperiodeDao.getCurrentOppfolgingsperiode(result.identer)
-                            is IdenterIkkeFunnet -> OppfolgingperiodeOppslagFeil("Kunne ikke hente nåværende oppfolgingsperiode, klarte ikke hente alle mappede identer: ${result.message}")
-                            is IdenterOppslagFeil -> OppfolgingperiodeOppslagFeil("Kunne ikke hente nåværende oppfolgingsperiode, klarte ikke hente alle mappede identer: ${result.message}")
-                    }
+    private fun catchAsOppslagFeil(block: () -> OppfolgingsperiodeOppslagResult): OppfolgingsperiodeOppslagResult {
+        try {
+            return block()
+        }
+        catch (e: Exception) {
+            log.error("Error checking oppfolgingsperiode status", e)
+            return OppfolgingperiodeOppslagFeil("Database error: ${e.message}")
+        }
+    }
 
+    fun getCurrentOppfolgingsperiode(ident: IdentSomKanLagres): OppfolgingsperiodeOppslagResult {
+        return catchAsOppslagFeil {
+            transaction {
+                // hentAlleIdenter har fallback til PDL og oppdaterer ident-mapping hvis det er kommet nye identer, derfor er dette i en transaksjon
+                when (val result = runBlocking { hentAlleIdenter(ident) }) {
+                    is IdenterFunnet -> OppfolgingsperiodeDao.getCurrentOppfolgingsperiode(result.identer)
+                    is IdenterIkkeFunnet -> OppfolgingperiodeOppslagFeil("Kunne ikke hente nåværende oppfolgingsperiode, klarte ikke hente alle mappede identer: ${result.message}")
+                    is IdenterOppslagFeil -> OppfolgingperiodeOppslagFeil("Kunne ikke hente nåværende oppfolgingsperiode, klarte ikke hente alle mappede identer: ${result.message}")
                 }
+            }
+        }
+    }
+    fun getCurrentOppfolgingsperiode(ident: IdentResult): OppfolgingsperiodeOppslagResult {
+        return catchAsOppslagFeil {
+            when (ident) {
+                is IdentFunnet -> getCurrentOppfolgingsperiode(ident.ident)
                 is IdentIkkeFunnet -> OppfolgingperiodeOppslagFeil("Kunne ikke finne oppfølgingsperiode: ${ident.message}")
                 is IdentOppslagFeil -> OppfolgingperiodeOppslagFeil("Kunne ikke finne oppfølgingsperiode: ${ident.message}")
             }
-        } catch (e: Exception) {
-            log.error("Error checking oppfolgingsperiode status", e)
-            OppfolgingperiodeOppslagFeil("Database error: ${e.message}")
         }
     }
 

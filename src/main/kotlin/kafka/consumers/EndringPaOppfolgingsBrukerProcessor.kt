@@ -32,8 +32,8 @@ import java.time.ZoneOffset
 import java.time.ZonedDateTime
 
 class EndringPaOppfolgingsBrukerProcessor(
-    val sistLagretArenaKontorProvider: (Ident) -> ArenaKontorEntity?,
-    val oppfolgingsperiodeProvider: suspend (IdentResult) -> OppfolgingsperiodeOppslagResult,
+    val sistLagretArenaKontorProvider: (IdentSomKanLagres) -> ArenaKontorEntity?,
+    val oppfolgingsperiodeProvider: suspend (IdentSomKanLagres) -> OppfolgingsperiodeOppslagResult,
 ) {
     val log = LoggerFactory.getLogger(EndringPaOppfolgingsBrukerProcessor::class.java)
 
@@ -109,7 +109,7 @@ class EndringPaOppfolgingsBrukerProcessor(
         val endretTidspunktInnkommendeMelding = endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime()
 
         val sistLagretArenaKontor by lazy { sistLagretArenaKontorProvider(fnr) }
-        val oppfolgingperiode by lazy { runBlocking { oppfolgingsperiodeProvider(IdentFunnet(fnr)) } }
+        val oppfolgingperiode by lazy { runBlocking { oppfolgingsperiodeProvider(fnr) } }
 
         fun harNyereLagretEndring(): Boolean {
             val sistEndretDatoArena = sistLagretArenaKontor?.sistEndretDatoArena ?: return false

@@ -16,9 +16,7 @@ import kafka.consumers.OppfolgingsHendelseProcessor
 import java.time.Duration
 import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
 import no.nav.db.AktorId
-import no.nav.db.Ident
 import no.nav.db.entity.ArenaKontorEntity
-import no.nav.http.client.IdentFunnet
 import no.nav.http.client.IdentResult
 import no.nav.isProduction
 import no.nav.kafka.config.kafkaStreamsProps
