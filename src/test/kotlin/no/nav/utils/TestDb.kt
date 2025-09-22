@@ -1,16 +1,22 @@
 package no.nav.utils
 
+import db.table.IdentMappingTable
+import db.table.InternIdentSequence
+import db.table.nextValueOf
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import io.zonky.test.db.postgres.embedded.EmbeddedPostgres
 import no.nav.db.FlywayPlugin
 import no.nav.db.Fnr
+import no.nav.db.Ident
+import no.nav.db.Ident.HistoriskStatus.HISTORISK
 import no.nav.db.flywayMigrate
 import no.nav.db.table.OppfolgingsperiodeTable
 import no.nav.domain.OppfolgingsperiodeId
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
+import services.toIdentType
 import java.time.ZonedDateTime
 import java.util.UUID
 import javax.sql.DataSource
@@ -43,4 +49,15 @@ fun gittBrukerUnderOppfolging(
         }
     }
     return oppfolgingsperiodeId
+}
+
+fun lagreIdentIIdentmappingTabell(ident: Ident) {
+    transaction {
+        IdentMappingTable.insert {
+            it[IdentMappingTable.identType] = ident.toIdentType()
+            it[IdentMappingTable.id] = ident.value
+            it[IdentMappingTable.internIdent] = nextValueOf(InternIdentSequence)
+            it[IdentMappingTable.historisk] = ident.historisk == HISTORISK
+        }
+    }
 }

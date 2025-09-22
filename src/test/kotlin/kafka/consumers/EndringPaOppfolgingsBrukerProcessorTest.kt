@@ -23,6 +23,7 @@ import no.nav.kafka.consumers.UnderOppfolgingIArenaMenIkkeLokalt
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingperiodeOppslagFeil
+import no.nav.utils.randomFnr
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.dao.DaoEntityID
 import org.junit.jupiter.api.Test
@@ -55,7 +56,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
 
     @Test
     fun `skal cutte off når tidspunkt er før 13 aug 2025 (i annen tidssone)`() {
-        val fnr = Fnr("12081344844")
+        val fnr = randomFnr()
         val oppfolgingsperiode = OppfolgingsperiodeId(UUID.randomUUID())
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { null },
@@ -68,7 +69,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
 
     @Test
     fun `skal ikke cutte off når tidspunkt er for 13 aug 2025`() {
-        val fnr = Fnr("12081344844")
+        val fnr = randomFnr()
         val oppfolgingsperiode = OppfolgingsperiodeId(UUID.randomUUID())
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { null },
@@ -81,7 +82,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
 
     @Test
     fun `skal ikke behandle melding hvis bruker ikke er under oppfølging`() {
-        val fnr = Fnr("12081344844")
+        val fnr = randomFnr()
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { null },
             { NotUnderOppfolging })
@@ -93,7 +94,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
 
     @Test
     fun `skal behandle melding selvom bruker ikke har oppfølgingsperiode hvis hen er under oppfølging i arena`() {
-        val fnr = Fnr("12081344844")
+        val fnr = randomFnr()
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { null },
             { NotUnderOppfolging })
@@ -109,7 +110,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
         val innkommendeMeldingEndretTidspunkt = sisteLagreMeldingTidspunkt.plusSeconds(1)
         val oppfolgingsStartet = sisteLagreMeldingTidspunkt.minusDays(1)
         val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
-        val fnr = Fnr("12081344844")
+        val fnr = randomFnr()
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { arenaKontor(fnr, sisteLagreMeldingTidspunkt) },
             { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, oppfolgingsStartet) })
@@ -133,7 +134,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
         val innkommendeMeldingEndretTidspunkt = sisteLagreMeldingTidspunkt.minusSeconds(1)
         val oppfolgingsStartet = sisteLagreMeldingTidspunkt.minusDays(1)
         val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
-        val fnr = Fnr("12081344844")
+        val fnr = randomFnr()
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { arenaKontor(fnr, sisteLagreMeldingTidspunkt) },
             { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, oppfolgingsStartet) })
@@ -149,7 +150,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
     fun `skal ikke behandle melding hvis arenakontor ikke har endret seg`() {
         val oppfolgingsStartet = OffsetDateTime.now().minusDays(1)
         val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
-        val fnr = Fnr("12081344844")
+        val fnr = randomFnr()
         val kontorId = "3333"
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { arenaKontor(fnr, kontor = kontorId, endret = oppfolgingsStartet) },
@@ -162,7 +163,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
 
     @Test
     fun `skal håndtere feil med perioder`() {
-        val fnr = Fnr("12081344844")
+        val fnr = randomFnr()
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { null },
             { OppfolgingperiodeOppslagFeil("Feil med perioder!?") })

@@ -1,18 +1,14 @@
 package no.nav.services
 
 import java.time.ZonedDateTime
-import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.db.entity.OppfolgingsperiodeEntity
+import no.nav.db.finnForetrukketIdent
 import no.nav.db.table.KontorhistorikkTable
 import no.nav.db.table.OppfolgingsperiodeTable
 import no.nav.db.table.OppfolgingsperiodeTable.oppfolgingsperiodeId
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
-import no.nav.http.client.IdentFunnet
-import no.nav.http.client.IdentIkkeFunnet
-import no.nav.http.client.IdentOppslagFeil
-import no.nav.http.client.IdentResult
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
@@ -91,31 +87,19 @@ object OppfolgingsperiodeDao {
         }
     }
 
-    fun hasActiveOppfolgingsperiode(fnr: Fnr): Boolean {
-        return transaction { OppfolgingsperiodeEntity.findById(fnr.value) != null }
-    }
-
-    fun getCurrentOppfolgingsperiode(fnr: Ident) = getCurrentOppfolgingsperiode(IdentFunnet(fnr))
-    fun getCurrentOppfolgingsperiode(fnr: IdentResult): OppfolgingsperiodeOppslagResult {
-        return try {
-            when (fnr) {
-                is IdentFunnet -> transaction {
-                    val entity = OppfolgingsperiodeEntity.findById(fnr.ident.value)
-                    when (entity != null) {
-                        true -> AktivOppfolgingsperiode(
-                            fnr.ident,
-                            OppfolgingsperiodeId(entity.oppfolgingsperiodeId),
-                            entity.startDato
-                        )
-                        else -> NotUnderOppfolging
-                    }
-                }
-                is IdentIkkeFunnet -> OppfolgingperiodeOppslagFeil("Kunne ikke finne oppfølgingsperiode: ${fnr.message}")
-                is IdentOppslagFeil -> OppfolgingperiodeOppslagFeil("Kunne ikke finne oppfølgingsperiode: ${fnr.message}")
-            }
-        } catch (e: Exception) {
-            log.error("Error checking oppfolgingsperiode status", e)
-            OppfolgingperiodeOppslagFeil("Database error: ${e.message}")
+    fun getCurrentOppfolgingsperiode(identer: List<Ident>): OppfolgingsperiodeOppslagResult {
+        val oppfolgingsperioder = transaction {
+            OppfolgingsperiodeEntity.find { OppfolgingsperiodeTable.id inList identer.map { it.value } }.toList()
+        }
+        return when (oppfolgingsperioder.size) {
+            0 -> NotUnderOppfolging
+            1 -> AktivOppfolgingsperiode(
+                identer.finnForetrukketIdent()
+                    ?: throw IllegalStateException("Kan ikke ha oppfølgingsperiode når det ikke finnes noen foretrukken ident"),
+                OppfolgingsperiodeId(oppfolgingsperioder.first().oppfolgingsperiodeId),
+                oppfolgingsperioder.first().startDato
+            )
+            else -> OppfolgingperiodeOppslagFeil("Fant flere oppfølgingsperioder (${oppfolgingsperioder.size}). Dnr til fnr?")
         }
     }
 }

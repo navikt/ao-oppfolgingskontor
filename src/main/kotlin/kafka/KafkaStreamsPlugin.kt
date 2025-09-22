@@ -15,7 +15,7 @@ import kafka.consumers.IdentChangeProcessor
 import kafka.consumers.OppfolgingsHendelseProcessor
 import java.time.Duration
 import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
-import no.nav.db.Ident
+import no.nav.db.AktorId
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.http.client.IdentResult
 import no.nav.isProduction
@@ -45,7 +45,7 @@ val logger = LoggerFactory.getLogger("no.nav.kafka.KafkaStreamsPlugin")
 
 class KafkaStreamsPluginConfig(
     var automatiskKontorRutingService: AutomatiskKontorRutingService? = null,
-    var fnrProvider: (suspend (ident: Ident) -> IdentResult)? = null,
+    var fnrProvider: (suspend (ident: AktorId) -> IdentResult)? = null,
     var database: Database? = null,
     var meterRegistry: MeterRegistry? = null,
     var oppfolgingsperiodeService: OppfolgingsperiodeService? = null,
@@ -82,7 +82,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
 
     val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
         ArenaKontorEntity::sisteLagreKontorArenaKontor,
-        { oppfolgingsperiodeDao.getCurrentOppfolgingsperiode(it) }
+        { oppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) }
     )
 
     val kontorTilordningsProcessor = KontortilordningsProcessor(

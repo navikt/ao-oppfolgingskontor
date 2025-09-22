@@ -14,15 +14,15 @@ import no.nav.db.Dnr
 import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.db.Npid
+import no.nav.db.finnForetrukketIdent
 import no.nav.http.client.IdentFunnet
+import no.nav.http.client.IdentIkkeFunnet
 import no.nav.http.client.IdentOppslagFeil
 import no.nav.http.client.IdentResult
 import no.nav.http.client.IdenterFunnet
 import no.nav.http.client.IdenterIkkeFunnet
 import no.nav.http.client.IdenterOppslagFeil
 import no.nav.http.client.IdenterResult
-import no.nav.http.client.finnForetrukketIdent
-import no.nav.http.graphql.generated.client.hentfnrquery.IdentInformasjon
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.alias
@@ -35,18 +35,19 @@ import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 
 class IdentService(
-    val alleIdenterProvider: suspend (aktorId: String) -> IdenterResult,
+    val hentAlleIdenterSynkrontFraPdl: suspend (aktorId: String) -> IdenterResult,
 ) {
     private val log = LoggerFactory.getLogger(IdentService::class.java)
 
-    suspend fun hentForetrukketIdentFor(ident: Ident): IdentResult {
+    suspend fun veksleAktorIdIForetrukketIdent(ident: AktorId): IdentResult {
         val lokalIdentResult = hentLokalIdent(ident)
         val lokaltLagretIdent = when {
             lokalIdentResult.isSuccess -> lokalIdentResult.getOrNull()
             else -> {
                 val error = lokalIdentResult.exceptionOrNull()
-                log.error("Feil ved oppslag på lokalt lagret ident: ${error?.message}", error)
-                IdentOppslagFeil("Feil ved oppslag på lokalt lagret ident: ${error?.message}")
+                log.warn("Feil ved oppslag på lokalt lagret ident: ${error?.message}", error)
+                hentAlleIdenterOgOppdaterMapping(ident)
+                    .finnForetrukketIdent()
             }
         }
         if (lokaltLagretIdent != null) return lokaltLagretIdent
@@ -61,13 +62,11 @@ class IdentService(
         val eksisterendeIdenter = hentIdentMappinger(aktorId, includeHistorisk = true)
             .let { eksisterende ->
                 eksisterende.ifEmpty {
-                    val alleIdenter = alleIdenterProvider(aktorId.value)
-                    when (alleIdenter) {
-                        is IdenterFunnet -> {
-                            hentEksisterendeIdenter(alleIdenter.identer.map { Ident.of(it.ident) })
-                        }
+                    val pdlIdenter = hentAlleIdenterSynkrontFraPdl(aktorId.value)
+                    when (pdlIdenter) {
+                        is IdenterFunnet -> hentEksisterendeIdenter(pdlIdenter.identer)
                         is IdenterIkkeFunnet -> emptyList()
-                        is IdenterOppslagFeil -> throw Exception("Klarte ikke hente identer fra PDL: ${alleIdenter.message}")
+                        is IdenterOppslagFeil -> throw Exception("Klarte ikke hente identer fra PDL: ${pdlIdenter.message}")
                     }
                 }
             }
@@ -103,16 +102,8 @@ class IdentService(
                 identMappings.isNotEmpty() -> {
                     val foretrukketIdent = identMappings
                         .filter { it !is AktorId }
-                        .map { Ident.of(it.value) }
-                        .minByOrNull {
-                            when (it) {
-                                is Fnr -> 1
-                                is Dnr -> 2
-                                is Npid -> 3
-                                else -> 5 // Aktørid eller annen ukjent ident
-                            }
-                        }
-                    return Result.success(IdentFunnet(foretrukketIdent!!))
+                        .finnForetrukketIdent() ?: throw Exception("Fant ingen 'ikke-aktorid'-identer i databasen")
+                    return Result.success(IdentFunnet(foretrukketIdent))
                 }
                 else -> return Result.success(null)
             }
@@ -120,7 +111,7 @@ class IdentService(
     }
 
     private suspend fun hentAlleIdenterOgOppdaterMapping(ident: Ident): IdenterResult {
-        return when(val identer = alleIdenterProvider(ident.value)) {
+        return when(val identer = hentAlleIdenterSynkrontFraPdl(ident.value)) {
             is IdenterFunnet -> {
                 oppdaterAlleIdentMappinger(identer)
                 identer
@@ -145,7 +136,7 @@ class IdentService(
             .where { IdentMappingTable.id inList(identer.map { it.value }) }
             .map {
                 IdentInfo(
-                    Ident.of(it[IdentMappingTable.id].value),
+                    Ident.of(it[IdentMappingTable.id].value, it[historisk].toKnownHistoriskStatus()),
                     it[historisk],
                     it[internIdent]
                 )
@@ -154,22 +145,47 @@ class IdentService(
 
     private fun oppdaterAlleIdentMappinger(identer: IdenterFunnet) {
         try {
-            val eksitrerendeInternIder = hentEksisterendeIdenter(identer.identer.map { Ident.of(it.ident) })
+            val eksitrerendeInternIder = hentEksisterendeIdenter(identer.identer)
                 .map { it.internIdent }
 
             transaction {
                 val internId = getOrCreateInternId(eksitrerendeInternIder)
                 IdentMappingTable.batchUpsert(identer.identer) {
-                    this[IdentMappingTable.id] = it.ident
+                    this[IdentMappingTable.id] = it.value
                     this[identType] = it.toIdentType()
                     this[internIdent] = internId
-                    this[historisk] = it.historisk
+                    this[historisk] = when (it.historisk) {
+                        Ident.HistoriskStatus.HISTORISK -> true
+                        Ident.HistoriskStatus.AKTIV -> false
+                        Ident.HistoriskStatus.UKJENT -> throw IllegalStateException("Kan ikke lagre identer med ukjent historisk status")
+                    }
                     this[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
                 }
             }
         } catch (e: Throwable) {
             // TODO: Ikke sluk denne feilen(?)
             log.error("Kunne ikke lagre ident-mapping ${e.message}", e)
+        }
+    }
+
+    /**
+    * Henter alle tilhørende identer på en bruker, inkl historiske
+    */
+    public suspend fun hentAlleIdenter(identInput: Ident): IdenterResult {
+        try {
+            val alleIdenter = hentIdentMappinger(identInput, true)
+                .map { it.ident }
+            return when (alleIdenter.size) {
+                // Fallback til å hente synkront fra PDL
+                0 -> hentAlleIdenterOgOppdaterMapping(identInput)
+                else -> IdenterFunnet(
+                    identer = alleIdenter,
+                    inputIdent = identInput,
+                )
+            }
+        } catch (e: Throwable) {
+            log.error("Feil ved henting av alle identer for input-ident", e)
+            return IdenterOppslagFeil("Feil ved henting av alle identer for input-ident: ${e.message}")
         }
     }
 
@@ -199,12 +215,13 @@ class IdentService(
             .map {
                 val id = it[identMappingAlias[IdentMappingTable.id]]
                 val historisk = it[identMappingAlias[historisk]]
+                val historiskStatus = historisk.toKnownHistoriskStatus()
                 val internIdent = it[identMappingAlias[internIdent]]
                 val ident = when (val identType = it[identMappingAlias[identType]]) {
-                    "FNR" -> Fnr(id.value)
-                    "NPID" -> Npid(id.value)
-                    "DNR" -> Dnr(id.value)
-                    "AKTOR_ID" -> AktorId(id.value)
+                    "FNR" -> Fnr(id.value, historiskStatus)
+                    "NPID" -> Npid(id.value, historiskStatus)
+                    "DNR" -> Dnr(id.value, historiskStatus)
+                    "AKTOR_ID" -> AktorId(id.value, historiskStatus)
                     else -> throw IllegalArgumentException("Ukjent identType: $identType")
                         .also { log.error(it.message, it) }
                 }
@@ -213,7 +230,10 @@ class IdentService(
     }
 }
 
-fun IdentInformasjon.toIdentType() = Ident.of(this.ident).toIdentType()
+fun Boolean.toKnownHistoriskStatus(): Ident.HistoriskStatus {
+    return if (this) Ident.HistoriskStatus.HISTORISK else Ident.HistoriskStatus.AKTIV // Hvis historisk er den boolske verdien "this" true
+}
+
 fun Ident.toIdentType(): String {
     return when (this) {
         is AktorId -> "AKTOR_ID"
@@ -252,4 +272,13 @@ fun List<IdentInfo>.finnEndringer(oppdaterteIdenter: List<OppdatertIdent>): List
     val innkommendeIdenter = oppdaterteIdenter.toSet().map { IdentInfo(it.ident, it.historisk, internIdent) }
     val nyeIdenter = (innkommendeIdenter - this.toSet()).map { NyIdent(it.ident, it.historisk, internIdent) }
     return endringerPåEksiterendeIdenter + nyeIdenter
+}
+
+fun IdenterResult.finnForetrukketIdent(): IdentResult {
+    return when (this) {
+        is IdenterFunnet -> this.identer.finnForetrukketIdent()?.let { IdentFunnet(it) }
+            ?: IdentIkkeFunnet("Fant ingen foretrukket ident")
+        is IdenterIkkeFunnet -> IdentIkkeFunnet(this.message)
+        is IdenterOppslagFeil -> IdentOppslagFeil(this.message)
+    }
 }

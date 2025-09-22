@@ -4,8 +4,9 @@ import db.table.TidligArenaKontorTable
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import no.nav.db.Fnr
+import no.nav.db.AktorId
 import no.nav.db.Ident
+import no.nav.db.IdentSomKanLagres
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
@@ -31,8 +32,8 @@ import java.time.ZoneOffset
 import java.time.ZonedDateTime
 
 class EndringPaOppfolgingsBrukerProcessor(
-    val sistLagretArenaKontorProvider: (Fnr) -> ArenaKontorEntity?,
-    val oppfolgingsperiodeProvider: suspend (IdentResult) -> OppfolgingsperiodeOppslagResult,
+    val sistLagretArenaKontorProvider: (IdentSomKanLagres) -> ArenaKontorEntity?,
+    val oppfolgingsperiodeProvider: suspend (IdentSomKanLagres) -> OppfolgingsperiodeOppslagResult,
 ) {
     val log = LoggerFactory.getLogger(EndringPaOppfolgingsBrukerProcessor::class.java)
 
@@ -102,13 +103,13 @@ class EndringPaOppfolgingsBrukerProcessor(
     }
 
     fun internalProcess(record: Record<String, String>): EndringPaaOppfolgingsBrukerResult {
-        val fnr = Fnr(record.key())
+        val fnr = Ident.of(record.key(), Ident.HistoriskStatus.UKJENT) as IdentSomKanLagres
         val endringPaOppfolgingsBruker = json.decodeFromString<EndringPaOppfolgingsBrukerDto>(record.value())
         val oppfolgingsenhet = endringPaOppfolgingsBruker.oppfolgingsenhet
         val endretTidspunktInnkommendeMelding = endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime()
 
         val sistLagretArenaKontor by lazy { sistLagretArenaKontorProvider(fnr) }
-        val oppfolgingperiode by lazy { runBlocking { oppfolgingsperiodeProvider(IdentFunnet(fnr)) } }
+        val oppfolgingperiode by lazy { runBlocking { oppfolgingsperiodeProvider(fnr) } }
 
         fun harNyereLagretEndring(): Boolean {
             val sistEndretDatoArena = sistLagretArenaKontor?.sistEndretDatoArena ?: return false
@@ -152,7 +153,7 @@ class EndringPaOppfolgingsBrukerProcessor(
                         }
                     }
                     is OppfolgingperiodeOppslagFeil -> Feil(
-                        Retry("Klarte ikke behandle melding om endring på oppfølgingsbruker, feil ved oppslag på oppfølgingsperiode: ${periode.message}"),
+                        Retry("Feil ved oppslag på oppfølgingsperiode: ${periode.message}"),
                     )
                 }
             }
@@ -181,7 +182,7 @@ class MeldingManglerEnhet : EndringPaaOppfolgingsBrukerResult()
 class SkalLagre(
     val oppfolgingsenhet: String,
     val endretTidspunkt: OffsetDateTime,
-    val fnr: Fnr,
+    val fnr: Ident,
     val oppfolgingsperiodeId: OppfolgingsperiodeId
 ) : EndringPaaOppfolgingsBrukerResult()
 

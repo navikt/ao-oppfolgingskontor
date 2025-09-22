@@ -14,7 +14,12 @@ import kotlinx.serialization.json.Json
 import no.nav.Authenticated
 import no.nav.NotAuthenticated
 import no.nav.authenticateCall
+import no.nav.db.AktorId
+import no.nav.db.Dnr
 import no.nav.db.Fnr
+import no.nav.db.Ident
+import no.nav.db.IdentSomKanLagres
+import no.nav.db.Npid
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.events.KontorSattAvVeileder
@@ -31,9 +36,9 @@ import no.nav.services.KontorTilhorighetService
 import no.nav.services.KontorTilordningService
 import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingperiodeOppslagFeil
-import no.nav.services.OppfolgingsperiodeDao
 import no.nav.toRegistrant
 import org.slf4j.LoggerFactory
+import services.OppfolgingsperiodeService
 
 val logger = LoggerFactory.getLogger("Application.configureArbeidsoppfolgingskontorModule")
 
@@ -41,6 +46,7 @@ fun Application.configureArbeidsoppfolgingskontorModule(
     kontorNavnService: KontorNavnService,
     kontorTilhorighetService: KontorTilhorighetService,
     poaoTilgangClient: PoaoTilgangKtorHttpClient,
+    oppfolgingsperiodeService: OppfolgingsperiodeService,
     authenticateRequest: AuthenticateRequest = { req -> req.call.authenticateCall(environment.getIssuer()) }
 ) {
     val log = LoggerFactory.getLogger("Application.configureArbeidsoppfolgingskontorModule")
@@ -64,8 +70,15 @@ fun Application.configureArbeidsoppfolgingskontorModule(
                             return@post
                         }
                     }
+                    val muligLagrebarIdent = Ident.of(kontorTilordning.fnr, Ident.HistoriskStatus.UKJENT)
+                    val ident: IdentSomKanLagres = when (muligLagrebarIdent) {
+                        is AktorId -> {
+                            throw Exception("/api/kontor støtter ikke endring via aktorId, bruk dnr/fnr istedet")
+                        }
+                        is Dnr, is Fnr, is Npid -> muligLagrebarIdent
+                    }
 
-                    val harTilgang = poaoTilgangClient.harLeseTilgang(principal, Fnr(kontorTilordning.fnr))
+                    val harTilgang = poaoTilgangClient.harLeseTilgang(principal, ident)
                     when (harTilgang) {
                         is HarIkkeTilgang -> {
                             logger.warn("Bruker/system har ikke tilgang til å endre kontor for bruker")
@@ -79,11 +92,10 @@ fun Application.configureArbeidsoppfolgingskontorModule(
                             return@post
                         }
                     }
-                    val gammeltKontor = kontorTilhorighetService.getArbeidsoppfolgingKontorTilhorighet(Fnr(kontorTilordning.fnr), principal)
+                    val gammeltKontor = kontorTilhorighetService.getArbeidsoppfolgingKontorTilhorighet(ident, principal)
                     val kontorId = KontorId(kontorTilordning.kontorId)
 
-                    val fnr = Fnr(kontorTilordning.fnr)
-                    val oppfolgingsperiode = OppfolgingsperiodeDao.getCurrentOppfolgingsperiode(IdentFunnet(fnr))
+                    val oppfolgingsperiode = oppfolgingsperiodeService.getCurrentOppfolgingsperiode(IdentFunnet(ident))
                     val oppfolgingsperiodeId = when(oppfolgingsperiode) {
                         is AktivOppfolgingsperiode -> oppfolgingsperiode.periodeId
                         NotUnderOppfolging -> {
@@ -100,7 +112,7 @@ fun Application.configureArbeidsoppfolgingskontorModule(
                     KontorTilordningService.tilordneKontor(
                         KontorSattAvVeileder(
                             tilhorighet = KontorTilordning(
-                                fnr = fnr,
+                                fnr = ident,
                                 kontorId = kontorId,
                                 oppfolgingsperiodeId
                             ),

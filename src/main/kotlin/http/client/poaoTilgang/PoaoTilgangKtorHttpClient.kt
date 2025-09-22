@@ -16,6 +16,7 @@ import no.nav.AOPrincipal
 import no.nav.NavAnsatt
 import no.nav.SystemPrincipal
 import no.nav.db.Fnr
+import no.nav.db.Ident
 import no.nav.http.client.tokenexchange.SystemTokenPlugin
 import no.nav.http.client.tokenexchange.TexasTokenResponse
 import no.nav.poao_tilgang.api.dto.request.TilgangType
@@ -70,11 +71,11 @@ class PoaoTilgangKtorHttpClient(
 //        }
     }
 
-    private suspend fun harLeseTilgangTilBruker(navAnsatt: NavAnsatt, fnr: Fnr): TilgangResult {
+    private suspend fun harLeseTilgangTilBruker(navAnsatt: NavAnsatt, fnr: Ident): TilgangResult {
         return evaluatePolicy(evaluatePoliciesUrl, fnr, navAnsatt)
     }
 
-    suspend fun harLeseTilgang(principal: AOPrincipal, fnr: Fnr): TilgangResult {
+    suspend fun harLeseTilgang(principal: AOPrincipal, fnr: Ident): TilgangResult {
         return when (principal) {
             is NavAnsatt ->  harLeseTilgangTilBruker(principal, fnr)
             is SystemPrincipal -> HarTilgang
@@ -83,7 +84,7 @@ class PoaoTilgangKtorHttpClient(
 
     private suspend fun evaluatePolicy(
         fullUrl: String,
-        fnr: Fnr,
+        fnr: Ident,
         navAnsatt: NavAnsatt
     ): TilgangResult {
         return try {

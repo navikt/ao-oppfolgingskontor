@@ -1,14 +1,29 @@
 package services
 
+import kotlinx.coroutines.runBlocking
 import no.nav.db.Ident
+import no.nav.db.IdentSomKanLagres
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
+import no.nav.http.client.IdentFunnet
+import no.nav.http.client.IdentIkkeFunnet
+import no.nav.http.client.IdentOppslagFeil
+import no.nav.http.client.IdentResult
+import no.nav.http.client.IdenterFunnet
+import no.nav.http.client.IdenterIkkeFunnet
+import no.nav.http.client.IdenterOppslagFeil
+import no.nav.http.client.IdenterResult
 import no.nav.services.AktivOppfolgingsperiode
+import no.nav.services.OppfolgingperiodeOppslagFeil
 import no.nav.services.OppfolgingsperiodeDao
+import no.nav.services.OppfolgingsperiodeOppslagResult
+import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import utils.Outcome
 
-class OppfolgingsperiodeService {
+class OppfolgingsperiodeService(
+    val hentAlleIdenter: suspend (Ident) -> IdenterResult
+) {
     val log = LoggerFactory.getLogger(OppfolgingsperiodeService::class.java)
 
     fun handterPeriodeAvsluttet(oppfolgingsperiode: OppfolgingsperiodeAvsluttet): HandterPeriodeAvsluttetResultat {
@@ -55,8 +70,40 @@ class OppfolgingsperiodeService {
         return OppfølgingsperiodeLagret
     }
 
-    private fun getNåværendePeriode(ident: Ident): AktivOppfolgingsperiode? {
-        val currentOppfolgingsperiodeResult = OppfolgingsperiodeDao.getCurrentOppfolgingsperiode(ident)
+    private fun catchAsOppslagFeil(block: () -> OppfolgingsperiodeOppslagResult): OppfolgingsperiodeOppslagResult {
+        try {
+            return block()
+        }
+        catch (e: Exception) {
+            log.error("Error checking oppfolgingsperiode status", e)
+            return OppfolgingperiodeOppslagFeil("Database error: ${e.message}")
+        }
+    }
+
+    fun getCurrentOppfolgingsperiode(ident: IdentSomKanLagres): OppfolgingsperiodeOppslagResult {
+        return catchAsOppslagFeil {
+            transaction {
+                // hentAlleIdenter har fallback til PDL og oppdaterer ident-mapping hvis det er kommet nye identer, derfor er dette i en transaksjon
+                when (val result = runBlocking { hentAlleIdenter(ident) }) {
+                    is IdenterFunnet -> OppfolgingsperiodeDao.getCurrentOppfolgingsperiode(result.identer)
+                    is IdenterIkkeFunnet -> OppfolgingperiodeOppslagFeil("Kunne ikke hente nåværende oppfolgingsperiode, klarte ikke hente alle mappede identer: ${result.message}")
+                    is IdenterOppslagFeil -> OppfolgingperiodeOppslagFeil("Kunne ikke hente nåværende oppfolgingsperiode, klarte ikke hente alle mappede identer: ${result.message}")
+                }
+            }
+        }
+    }
+    fun getCurrentOppfolgingsperiode(ident: IdentResult): OppfolgingsperiodeOppslagResult {
+        return catchAsOppslagFeil {
+            when (ident) {
+                is IdentFunnet -> getCurrentOppfolgingsperiode(ident.ident)
+                is IdentIkkeFunnet -> OppfolgingperiodeOppslagFeil("Kunne ikke finne oppfølgingsperiode: ${ident.message}")
+                is IdentOppslagFeil -> OppfolgingperiodeOppslagFeil("Kunne ikke finne oppfølgingsperiode: ${ident.message}")
+            }
+        }
+    }
+
+    private fun getNåværendePeriode(ident: IdentSomKanLagres): AktivOppfolgingsperiode? {
+        val currentOppfolgingsperiodeResult = getCurrentOppfolgingsperiode(IdentFunnet(ident))
         return when (currentOppfolgingsperiodeResult) {
             is AktivOppfolgingsperiode -> currentOppfolgingsperiodeResult
             else -> null

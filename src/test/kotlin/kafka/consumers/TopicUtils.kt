@@ -1,18 +1,23 @@
 package kafka.consumers
 
-import no.nav.db.Fnr
+import io.mockk.every
+import io.mockk.mockk
 import no.nav.db.Ident
+import no.nav.db.IdentSomKanLagres
+import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.kafka.consumers.FormidlingsGruppe
 import no.nav.kafka.consumers.Kvalifiseringsgruppe
+import no.nav.person.pdl.aktor.v2.Aktor
+import no.nav.person.pdl.aktor.v2.Identifikator
 import org.apache.kafka.streams.processor.api.Record
 import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 
 object TopicUtils {
 
-    fun oppfolgingStartetMelding(bruker: Bruker): Record<String, String> {
-        return Record(bruker.fnr.value, """
+    fun oppfolgingStartetMelding(bruker: Bruker, arenaKontor: KontorId? = KontorId("4141")): Record<String, String> {
+        return Record(bruker.ident.value, """
             {
                 "hendelseType": "OPPFOLGING_STARTET",
                 "oppfolgingsPeriodeId": "${bruker.oppfolgingsperiodeId.value}",
@@ -20,17 +25,17 @@ object TopicUtils {
                 "startetAv": "G151415",
                 "startetAvType": "VEILEDER",
                 "startetBegrunnelse": "ARBEIDSSOKER_REGISTRERING",
-                "arenaKontor": "4141",
+                "arenaKontor": ${arenaKontor?.id?.let { "\"$it\"" } ?: "null" },
                 "foretrukketArbeidsoppfolgingskontor": null,
-                "fnr": "${bruker.fnr.value}"
+                "fnr": "${bruker.ident.value}"
             }
         """, System.currentTimeMillis())
     }
 
     fun oppfolgingAvsluttetMelding(bruker: Bruker, sluttDato: ZonedDateTime): Record<String, String> {
-        return Record(bruker.fnr.value, """
+        return Record(bruker.ident.value, """
             {
-                "fnr": "${bruker.fnr.value}",
+                "fnr": "${bruker.ident.value}",
                 "hendelseType": "OPPFOLGING_AVSLUTTET",
                 "oppfolgingsPeriodeId": "${bruker.oppfolgingsperiodeId.value}",
                 "startetTidspunkt": "${bruker.periodeStart}",
@@ -56,10 +61,22 @@ object TopicUtils {
         }""".trimIndent(), System.currentTimeMillis())
     }
 
+    fun aktorV2Message(aktorId: String, identer: List<Ident>): Record<String, Aktor> {
+        val value = mockk<Aktor> {
+            every { identifikatorer } returns identer.map { ident ->
+              mockk<Identifikator> {
+                every { gjeldende } returns (ident.historisk == Ident.HistoriskStatus.AKTIV)
+                every { idnummer } returns ident.value
+              }
+            }
+        }
+        return Record(aktorId, value, System.currentTimeMillis())
+    }
+
 }
 
 data class Bruker(
-    val fnr: Fnr,
+    val ident: IdentSomKanLagres,
     val aktorId: String,
     val oppfolgingsperiodeId: OppfolgingsperiodeId,
     val periodeStart: ZonedDateTime

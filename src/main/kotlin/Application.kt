@@ -60,7 +60,8 @@ fun Application.module() {
         { gt, strengtFortroligAdresse, skjermet -> norg2Client.hentKontorForBrukerMedMangelfullGT(gt, strengtFortroligAdresse, skjermet) },
     )
     val kontorNavnService = KontorNavnService(norg2Client)
-    val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangHttpClient)
+    val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangHttpClient, identService::hentAlleIdenter)
+    val oppfolgingsperiodeService = OppfolgingsperiodeService(identService::hentAlleIdenter)
     val automatiskKontorRutingService = AutomatiskKontorRutingService(
         KontorTilordningService::tilordneKontor,
         { fnr, strengtFortroligAdresse, skjermet -> gtNorgService.hentGtKontorForBruker(fnr, strengtFortroligAdresse, skjermet) },
@@ -68,24 +69,24 @@ fun Application.module() {
         { arbeidssokerregisterClient.hentProfilering(it) },
         { skjermingsClient.hentSkjerming(it) },
         { pdlClient.harStrengtFortroligAdresse(it) },
-        {  OppfolgingsperiodeDao.getCurrentOppfolgingsperiode(it) },
+        { oppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) },
         { ident, oppfolgingsperiodeId -> OppfolgingsperiodeDao.harBruktPeriodeTidligere(ident, oppfolgingsperiodeId) },
     )
 
     install(KafkaStreamsPlugin) {
         this.automatiskKontorRutingService = automatiskKontorRutingService
-        this.fnrProvider = { ident ->  identService.hentForetrukketIdentFor(ident) }
+        this.fnrProvider = { ident ->  identService.veksleAktorIdIForetrukketIdent(ident) }
         this.database = database
         this.meterRegistry = meterRegistry
-        this.oppfolgingsperiodeService = OppfolgingsperiodeService()
+        this.oppfolgingsperiodeService = oppfolgingsperiodeService
         this.oppfolgingsperiodeDao = OppfolgingsperiodeDao
         this.identService = identService
     }
 
     val issuer = environment.getIssuer()
     val authenticateRequest: AuthenticateRequest = { req -> req.call.authenticateCall(issuer) }
-    configureGraphQlModule(norg2Client, kontorTilhorighetService, authenticateRequest)
-    configureArbeidsoppfolgingskontorModule(kontorNavnService, kontorTilhorighetService, poaoTilgangHttpClient)
+    configureGraphQlModule(norg2Client, kontorTilhorighetService, authenticateRequest, identService::hentAlleIdenter)
+    configureArbeidsoppfolgingskontorModule(kontorNavnService, kontorTilhorighetService, poaoTilgangHttpClient, oppfolgingsperiodeService)
 }
 
 fun ApplicationEnvironment.getIssuer(): String {

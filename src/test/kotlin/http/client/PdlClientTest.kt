@@ -9,6 +9,7 @@ import io.ktor.http.*
 import io.ktor.server.testing.*
 import no.nav.db.Dnr
 import no.nav.db.Fnr
+import no.nav.db.Ident
 import no.nav.db.Npid
 import no.nav.http.client.*
 import no.nav.http.graphql.generated.client.HentGtQuery
@@ -16,7 +17,9 @@ import no.nav.http.graphql.generated.client.enums.GtType
 import no.nav.http.graphql.generated.client.enums.IdentGruppe
 import no.nav.http.graphql.generated.client.hentfnrquery.IdentInformasjon
 import no.nav.http.graphql.generated.client.hentgtquery.GeografiskTilknytning
+import no.nav.utils.randomFnr
 import org.junit.jupiter.api.Test
+import services.finnForetrukketIdent
 import java.time.LocalDate
 import java.time.Period
 import java.time.ZonedDateTime
@@ -25,7 +28,7 @@ class PdlClientTest {
 
     @Test
     fun `hentGt skal plukke ut riktig gt fra PDL response`() = testApplication {
-        val fnr = Fnr("12345678901")
+        val fnr = randomFnr()
         val bydelGtNr = "4141"
         val client = mockPdl(
             """
@@ -49,7 +52,7 @@ class PdlClientTest {
 
     @Test
     fun `hentGt skal håndtere feil i graphql reponse på spørring på GT`() = testApplication {
-        val fnr = Fnr("12345678901")
+        val fnr = randomFnr()
         val pdlTestUrl = "http://pdl.test.local"
         val errorMessage = "Ingen GT funnet for bruker"
 
@@ -74,7 +77,7 @@ class PdlClientTest {
 
     @Test
     fun `hentGt skal håndtere http-feil ved graphql spørring på GT`() = testApplication {
-        val fnr = Fnr("12345678901")
+        val fnr = randomFnr()
         val client = mockPdl(HttpStatusCode.InternalServerError)
         val pdlClient = PdlClient(pdlTestUrl, client)
         val gt = pdlClient.hentGt(fnr)
@@ -86,7 +89,7 @@ class PdlClientTest {
 
     @Test
     fun `hentAlder skal returnere alder som et positivt heltall`() = testApplication {
-        val fnr = Fnr("12345678901")
+        val fnr = randomFnr()
         val localDate = LocalDate.of(1990, 1, 31)
         val diff = Period.between(localDate, ZonedDateTime.now().toLocalDate()).years
         val client = mockPdl(
@@ -110,7 +113,7 @@ class PdlClientTest {
 
     @Test
     fun `hentAlder skal bruker foedselsaar til å beregne alder om foedselsdato ikke finnes`() = testApplication {
-        val fnr = Fnr("12345678901")
+        val fnr = randomFnr()
         val localDate = LocalDate.of(1990, 1, 1)
         val now = LocalDate.of(2025, 12, 31)
         val diff = Period.between(localDate, now).years
@@ -136,7 +139,7 @@ class PdlClientTest {
     @Test
     fun `harStrengtFortroligAdresse skal returnere strengt fortrolig adresse true når adressebeskyttelse er STRENGT_FORTROLIG_UTLAND`() =
         testApplication {
-            val fnr = Fnr("12345678901")
+            val fnr = randomFnr()
             val client = mockPdl(
                 hentPersonQuery(
                     """
@@ -159,7 +162,7 @@ class PdlClientTest {
     @Test
     fun `harStrengtFortroligAdresse skal returnere strengt fortrolig adresse true når adressebeskyttelse er STRENGT_FORTROLIG`() =
         testApplication {
-            val fnr = Fnr("12345678901")
+            val fnr = randomFnr()
             val client = mockPdl(
                 hentPersonQuery(
                     """
@@ -178,7 +181,7 @@ class PdlClientTest {
     @Test
     fun `harStrengtFortroligAdresse skal returnere at bruker ikke har adressebeskyttelse når gradering feltet er null`() =
         testApplication {
-            val fnr = Fnr("12345678901")
+            val fnr = randomFnr()
             val client = mockPdl(
                 hentPersonQuery(
                     """
@@ -197,7 +200,7 @@ class PdlClientTest {
     @Test
     fun `harStrengtFortroligAdresse skal returnere at bruker ikke har adressebeskyttelse når adressebeskyttelse er en tom liste`() =
         testApplication {
-            val fnr = Fnr("12345678901")
+            val fnr = randomFnr()
             val client = mockPdl(
                 hentPersonQuery(
                     """
@@ -215,7 +218,7 @@ class PdlClientTest {
 
     @Test
     fun `harStrengtFortroligAdresse skal returnere feil oppslag ved ukjent felter`() = testApplication {
-        val fnr = Fnr("12345678901")
+        val fnr = randomFnr()
         val client = mockPdl(
             hentPersonQuery(
                 """
@@ -232,8 +235,8 @@ class PdlClientTest {
 
     @Test
     fun `hentIdenter skal returnere fnr for aktorId`() = testApplication {
-        val aktorId = "12345678901"
-        val fnr = Fnr("12345678901")
+        val aktorId = "55555555555"
+        val fnr = randomFnr()
         val client = mockPdl(
             """
             {
@@ -241,12 +244,12 @@ class PdlClientTest {
                     "hentIdenter": {
                         "identer": [
                           {
-                            "ident": "44444444",
+                            "ident": "44444444444",
                             "historisk": false,
                             "gruppe": "${IdentGruppe.NPID}"
                           },
                           {
-                            "ident": "55555555",
+                            "ident": "55555555555",
                             "historisk": false,
                             "gruppe": "${IdentGruppe.AKTORID}"
                           },
@@ -272,8 +275,8 @@ class PdlClientTest {
 
     @Test
     fun `hentFnrFraAktorId skal returnere npid for aktorId hvis ikke fnr finnes`() = testApplication {
-        val aktorId = "12345678901"
-        val npid = Npid("41254141414")
+        val aktorId = "5555555555555"
+        val npid = Npid("41254141414", Ident.HistoriskStatus.AKTIV)
         val client = mockPdl(
             """
             {
@@ -281,12 +284,12 @@ class PdlClientTest {
                     "hentIdenter": {
                         "identer": [
                           {
-                            "ident": "${npid}",
+                            "ident": "$npid",
                             "historisk": false,
                             "gruppe": "${IdentGruppe.NPID}"
                           },
                           {
-                            "ident": "5555555555555",
+                            "ident": "$aktorId",
                             "historisk": false,
                             "gruppe": "${IdentGruppe.AKTORID}"
                           }
@@ -355,14 +358,14 @@ class PdlClientTest {
 
     @Test
     fun `gjeldende fnr og dnr skal foretrekke fnr`() {
-        val fnr = Fnr("22122222222")
-        val dnr = Dnr("55125555555")
+        val fnr = randomFnr()
+        val dnr = Dnr("55125555555", Ident.HistoriskStatus.AKTIV)
 
         val foretrukketIdent = IdenterFunnet(
             listOf(
-                IdentInformasjon(dnr.value, false, IdentGruppe.FOLKEREGISTERIDENT),
-                IdentInformasjon(fnr.value, false, IdentGruppe.FOLKEREGISTERIDENT)
-            ), fnr.value
+                fnr,
+                dnr,
+            ), fnr
         ).finnForetrukketIdent()
 
         foretrukketIdent.shouldBeInstanceOf<IdentFunnet>()

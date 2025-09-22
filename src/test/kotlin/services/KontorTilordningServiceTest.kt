@@ -3,6 +3,8 @@ package services
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import no.nav.db.Fnr
+import no.nav.db.Ident
+import no.nav.db.Ident.HistoriskStatus.AKTIV
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.KontorHistorikkEntity
@@ -27,7 +29,7 @@ class KontorTilordningServiceTest {
         flywayMigrationInTest()
         val fnr = "01078598765"
         val oppfolginsperiodeUuid = OppfolgingsperiodeId(UUID.randomUUID())
-        val kontorEndretEvent = OppfolgingsperiodeStartetNoeTilordning(Fnr(fnr), oppfolginsperiodeUuid)
+        val kontorEndretEvent = OppfolgingsperiodeStartetNoeTilordning(Fnr(fnr, AKTIV), oppfolginsperiodeUuid)
 
         KontorTilordningService.tilordneKontor(kontorEndretEvent)
         KontorTilordningService.tilordneKontor(kontorEndretEvent)
@@ -50,8 +52,8 @@ class KontorTilordningServiceTest {
         flywayMigrationInTest()
         val fnr = "01078598765"
         val oppfolginsperiodeUuid = OppfolgingsperiodeId(UUID.randomUUID())
-        val aoEndring =  OppfolgingsperiodeStartetNoeTilordning(Fnr(fnr), oppfolginsperiodeUuid)
-        val arenaEndring = ArenaKontorVedOppfolgingStart(KontorTilordning(Fnr(fnr), KontorId("1122"), oppfolginsperiodeUuid))
+        val aoEndring =  OppfolgingsperiodeStartetNoeTilordning(Fnr(fnr, AKTIV), oppfolginsperiodeUuid)
+        val arenaEndring = ArenaKontorVedOppfolgingStart(KontorTilordning(Fnr(fnr, AKTIV), KontorId("1122"), oppfolginsperiodeUuid))
 
         KontorTilordningService.tilordneKontor(KontorEndringer(
             aoKontorEndret = aoEndring,

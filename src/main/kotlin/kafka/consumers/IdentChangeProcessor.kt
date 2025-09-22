@@ -20,7 +20,7 @@ class IdentChangeProcessor(
 
     fun process(record: Record<String, Aktor>): RecordProcessingResult<String, Aktor> {
         return runBlocking {
-            runCatching { AktorId(record.key().replace("\u0000", "")) }
+            runCatching { AktorId(record.key().replace("\u0000", ""), Ident.HistoriskStatus.UKJENT) }
                 .mapCatching { aktorId ->
                     val payload = record.value()
                     if (payload == null) {
@@ -28,7 +28,13 @@ class IdentChangeProcessor(
                         Commit()
                     } else {
                         val nyeIdenter = payload.identifikatorer
-                            .map { OppdatertIdent(Ident.of(it.idnummer), !it.gjeldende) }
+                            .map { OppdatertIdent(
+                                Ident.of(
+                                    it.idnummer,
+                                    if (!it.gjeldende) Ident.HistoriskStatus.HISTORISK else Ident.HistoriskStatus.AKTIV
+                                ),
+                                !it.gjeldende)
+                            }
                         identService.håndterEndringPåIdenter(aktorId, nyeIdenter)
                         Commit<String, Aktor>()
                     }

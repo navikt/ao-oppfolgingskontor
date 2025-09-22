@@ -12,6 +12,7 @@ import kafka.retry.library.internal.setupKafkaMock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import no.nav.db.AktorId
+import no.nav.db.Ident
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.KontorHistorikkEntity
@@ -67,7 +68,7 @@ class BigAppTest {
     @Test
     fun `app should forward messages to KontorTilordning in prod`() = testApplication {
         val fnr = randomFnr()
-        val aktorId = AktorId("4444447890246")
+        val aktorId = AktorId("4444447890246", Ident.HistoriskStatus.AKTIV)
         val kontor = KontorId("2232")
         val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
         environment {
@@ -75,7 +76,7 @@ class BigAppTest {
         }
         application {
             val topics = this.environment.topics()
-            val oppfolgingsperiodeProvider = { _: IdentResult -> AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, OffsetDateTime.now()) }
+            val oppfolgingsperiodeProvider = { _: Ident -> AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, OffsetDateTime.now()) }
             val automatiskKontorRutingService =  AutomatiskKontorRutingService(
                 KontorTilordningService::tilordneKontor,
                 { _, a, b-> KontorForGtNrFantDefaultKontor(kontor, b, a, GeografiskTilknytningBydelNr("3131")) },
@@ -99,7 +100,7 @@ class BigAppTest {
                 ArenaKontorEntity::sisteLagreKontorArenaKontor,
                 oppfolgingsperiodeProvider
             )
-            val identService = IdentService { IdenterFunnet(emptyList(), "") }
+            val identService = IdentService { IdenterFunnet(emptyList(), fnr) }
             val identendringsProcessor = IdentChangeProcessor(identService)
             val topology = configureTopology(
                 this.environment,
@@ -110,7 +111,7 @@ class BigAppTest {
                 skjermingProcessor,
                 endringPaaOppfolgingsBrukerProcessor,
                 identendringsProcessor,
-                OppfolgingsHendelseProcessor(OppfolgingsperiodeService())
+                OppfolgingsHendelseProcessor(OppfolgingsperiodeService(identService::hentAlleIdenter ))
             )
             val (driver, inputTopics, _) = setupKafkaMock(topology,
                 listOf(topics.inn.oppfolgingsHendelser.name), null

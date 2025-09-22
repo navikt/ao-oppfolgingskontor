@@ -7,6 +7,7 @@ import kafka.consumers.oppfolgingsHendelser.OppfolgingsAvsluttetHendelseDto
 import kafka.consumers.oppfolgingsHendelser.OppfolgingsHendelseDto
 import kafka.consumers.oppfolgingsHendelser.oppfolgingsHendelseJson
 import no.nav.db.Ident
+import no.nav.db.IdentSomKanLagres
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
@@ -23,7 +24,6 @@ import no.nav.kafka.processor.Skip
 import no.nav.services.KontorTilordningService
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.deleteAll
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
@@ -48,7 +48,7 @@ class OppfolgingsHendelseProcessor(
         record: Record<String, String>
     ): RecordProcessingResult<Ident, OppfolgingsperiodeStartet> {
         var hendelseType = "<Ukjent hendelsetype>"
-        val ident = Ident.of(record.key())
+        val ident = Ident.of(record.key(), Ident.HistoriskStatus.UKJENT)
         return runCatching {
             val oppfolgingsperiodeEvent = oppfolgingsHendelseJson
                 .decodeFromString<OppfolgingsHendelseDto>(record.value())
@@ -70,8 +70,10 @@ class OppfolgingsHendelseProcessor(
                                         oppfolgingsperiodeId = oppfolgingStartetInternalEvent.periodeId
                                     )
                                 ))
+                                Commit()
+                            } else {
+                                Skip()
                             }
-                            Commit()
                         }
                         HaddeNyerePeriodePåIdent, HarSlettetPeriode -> Skip()
                         OppfølgingsperiodeLagret -> {
@@ -128,14 +130,16 @@ class OppfolgingsHendelseProcessor(
 }
 
 fun OppfolgingStartetHendelseDto.toDomainObject() = OppfolgingsperiodeStartet(
-    fnr = Ident.of(this.fnr),
+    fnr = Ident.of(this.fnr, Ident.HistoriskStatus.UKJENT) as? IdentSomKanLagres
+        ?: throw IllegalStateException("Ident i oppfolgingshendelse-topic kan ikke være aktorId"),
     startDato = this.startetTidspunkt,
     periodeId = OppfolgingsperiodeId(UUID.fromString(this.oppfolgingsPeriodeId)),
     startetArenaKontor =this.arenaKontor?.let { KontorId(it) },
     arenaKontorFraOppfolgingsbrukerTopic = null
 )
 fun OppfolgingsAvsluttetHendelseDto.toDomainObject() = OppfolgingsperiodeAvsluttet(
-    Ident.of(this.fnr),
+    Ident.of(this.fnr, Ident.HistoriskStatus.UKJENT) as? IdentSomKanLagres
+        ?: throw IllegalStateException("Ident i oppfolgingshendelse-topic kan ikke være aktorId"),
     this.startetTidspunkt,
     OppfolgingsperiodeId(UUID.fromString(this.oppfolgingsPeriodeId))
 )

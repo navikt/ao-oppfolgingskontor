@@ -18,12 +18,15 @@ import io.ktor.server.routing.routing
 import no.nav.AuthResult
 import no.nav.Authenticated
 import no.nav.NotAuthenticated
+import no.nav.db.Ident
+import no.nav.http.client.IdenterResult
 import no.nav.http.client.Norg2Client
 import no.nav.http.graphql.queries.AlleKontorQuery
 import no.nav.http.graphql.queries.KontorHistorikkQuery
 import no.nav.http.graphql.queries.KontorQuery
 import no.nav.services.KontorTilhorighetService
 import org.slf4j.LoggerFactory
+import services.IdentService
 
 typealias AuthenticateRequest = (request: ApplicationRequest) -> AuthResult
 
@@ -47,7 +50,7 @@ class AppContextFactory(val authenticateRequest: AuthenticateRequest) : KtorGrap
     }
 }
 
-fun Application.installGraphQl(norg2Client: Norg2Client, kontorTilhorighetService: KontorTilhorighetService, authenticateRequest: AuthenticateRequest) {
+fun Application.installGraphQl(norg2Client: Norg2Client, kontorTilhorighetService: KontorTilhorighetService, authenticateRequest: AuthenticateRequest, hentAlleIdenter: suspend (Ident) -> IdenterResult) {
     install(GraphQL) {
         schema {
             packages = listOf(
@@ -56,7 +59,7 @@ fun Application.installGraphQl(norg2Client: Norg2Client, kontorTilhorighetServic
             )
             queries = listOf(
                 KontorQuery(kontorTilhorighetService),
-                KontorHistorikkQuery(),
+                KontorHistorikkQuery(hentAlleIdenter),
                 AlleKontorQuery(norg2Client)
             )
             federation {
@@ -83,8 +86,8 @@ fun ApplicationEnvironment.getPDLUrl(): String {
     return config.property("apis.pdl.url").getString()
 }
 
-fun Application.configureGraphQlModule(norg2Client: Norg2Client, kontorTilhorighetService: KontorTilhorighetService, authenticateCall: AuthenticateRequest) {
-    installGraphQl(norg2Client, kontorTilhorighetService, authenticateCall)
+fun Application.configureGraphQlModule(norg2Client: Norg2Client, kontorTilhorighetService: KontorTilhorighetService, authenticateCall: AuthenticateRequest, hentAlleIdenter: suspend (Ident) -> IdenterResult) {
+    installGraphQl(norg2Client, kontorTilhorighetService, authenticateCall, hentAlleIdenter)
 
     routing {
         authenticate("EntraAD") {

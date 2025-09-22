@@ -1,6 +1,7 @@
 package no.nav.domain.externalEvents
 
 import no.nav.db.Ident
+import no.nav.db.IdentSomKanLagres
 import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
 import java.time.OffsetDateTime
@@ -12,7 +13,7 @@ sealed class OppfolgingsperiodeEndret {
 }
 
 data class OppfolgingsperiodeStartet(
-    override val fnr: Ident,
+    override val fnr: IdentSomKanLagres,
     val startDato: ZonedDateTime,
     override val periodeId: OppfolgingsperiodeId,
     val startetArenaKontor: KontorId? = null,
@@ -20,7 +21,7 @@ data class OppfolgingsperiodeStartet(
 ): OppfolgingsperiodeEndret()
 
 class OppfolgingsperiodeAvsluttet(
-    override val fnr: Ident,
+    override val fnr: IdentSomKanLagres,
     val startDato: ZonedDateTime,
     override val periodeId: OppfolgingsperiodeId,
 ): OppfolgingsperiodeEndret() {

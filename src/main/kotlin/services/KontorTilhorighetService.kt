@@ -1,72 +1,105 @@
 package no.nav.services
 
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import no.nav.AOPrincipal
-import no.nav.db.Fnr
+import no.nav.db.Ident
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.GeografiskTilknyttetKontorEntity
+import no.nav.db.finnForetrukketIdent
+import no.nav.db.table.ArbeidsOppfolgingKontorTable
+import no.nav.db.table.ArenaKontorTable
+import no.nav.db.table.GeografiskTilknytningKontorTable
 import no.nav.domain.ArbeidsoppfolgingsKontor
 import no.nav.domain.ArenaKontor
 import no.nav.domain.GeografiskTilknyttetKontor
 import no.nav.domain.KontorId
 import no.nav.domain.KontorType
 import no.nav.domain.KontorNavn
+import no.nav.http.client.IdenterFunnet
+import no.nav.http.client.IdenterResult
 import no.nav.http.client.poaoTilgang.PoaoTilgangKtorHttpClient
 import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
 import no.nav.http.graphql.schemas.RegistrantTypeDto
-import no.nav.poao_tilgang.client_core.PoaoTilgangClient
-import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
+import org.jetbrains.exposed.sql.SizedIterable
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.slf4j.LoggerFactory
 
 class KontorTilhorighetService(
     val kontorNavnService: KontorNavnService,
-    val poaoTilgangClient: PoaoTilgangKtorHttpClient
+    val poaoTilgangClient: PoaoTilgangKtorHttpClient,
+    val hentAlleIdenter: suspend (Ident) -> IdenterResult,
 ) {
-    suspend fun getKontorTilhorigheter(fnr: Fnr, principal: AOPrincipal): Triple<ArbeidsoppfolgingsKontor?, ArenaKontor?, GeografiskTilknyttetKontor?> {
-        val aokontor = getArbeidsoppfolgingKontorTilhorighet(fnr, principal)
-        val arenakontor = getArenaKontorTilhorighet(fnr)
-        val gtkontor = getGeografiskTilknyttetKontorTilhorighet(fnr)
+    val log = LoggerFactory.getLogger(KontorTilhorighetService::class.java)
+
+    suspend fun getKontorTilhorigheter(ident: Ident, principal: AOPrincipal): Triple<ArbeidsoppfolgingsKontor?, ArenaKontor?, GeografiskTilknyttetKontor?> {
+        val alleIdenter = hentAlleIdenter(ident).getOrThrow()
+        val aokontor = getArbeidsoppfolgingKontorTilhorighet(alleIdenter, principal)
+        val arenakontor = getArenaKontorTilhorighet(alleIdenter)
+        val gtkontor = getGeografiskTilknyttetKontorTilhorighet(alleIdenter)
         return Triple(aokontor, arenakontor, gtkontor)
     }
 
-    suspend fun getArbeidsoppfolgingKontorTilhorighet(fnr: Fnr, principal: AOPrincipal): ArbeidsoppfolgingsKontor? {
-        poaoTilgangClient.harLeseTilgang(principal, fnr)
-        return getArbeidsoppfolgingKontorTilhorighet(fnr)
+    suspend fun getArbeidsoppfolgingKontorTilhorighet(ident: Ident, principal: AOPrincipal): ArbeidsoppfolgingsKontor? {
+        val alleIdenter = hentAlleIdenter(ident).getOrThrow()
+        return getArbeidsoppfolgingKontorTilhorighet(alleIdenter, principal)
     }
-
-    private suspend fun getArbeidsoppfolgingKontorTilhorighet(fnr: Fnr): ArbeidsoppfolgingsKontor? {
-        return transaction { getAOKontor(fnr) }
+    private suspend  fun getArbeidsoppfolgingKontorTilhorighet(ident: IdenterFunnet, principal: AOPrincipal): ArbeidsoppfolgingsKontor? {
+        poaoTilgangClient.harLeseTilgang(principal, ident.foretrukketIdent)
+        return getArbeidsoppfolgingKontorTilhorighet(ident)
+    }
+    private suspend fun getArbeidsoppfolgingKontorTilhorighet(ident: IdenterFunnet): ArbeidsoppfolgingsKontor? {
+        return transaction { getAOKontor(ident.identer) }
             ?.let { it to kontorNavnService.getKontorNavn(KontorId(it.kontorId)) }
             ?.let { (kontor, kontorNavn) -> ArbeidsoppfolgingsKontor(kontorNavn,kontor.getKontorId()) }
     }
 
-    private suspend fun getArenaKontorTilhorighet(fnr: Fnr): ArenaKontor? {
-        return transaction { getArenaKontor(fnr) }
+    private suspend fun getArenaKontorTilhorighet(ident: IdenterFunnet): ArenaKontor? {
+        return transaction { getArenaKontor(ident.identer) }
             ?.let { it to kontorNavnService.getKontorNavn(KontorId(it.kontorId)) }
             ?.let { (kontor, kontorNavn) -> ArenaKontor(kontorNavn, kontor.getKontorId()) }
     }
 
-    private suspend fun getGeografiskTilknyttetKontorTilhorighet(fnr: Fnr): GeografiskTilknyttetKontor? {
-        return transaction { getGTKontor(fnr) }
+    private suspend fun getGeografiskTilknyttetKontorTilhorighet(ident: IdenterFunnet): GeografiskTilknyttetKontor? {
+        return transaction { getGTKontor(ident.identer) }
             ?.let { it to kontorNavnService.getKontorNavn(KontorId(it.kontorId)) }
             ?.let { (kontor, kontorNavn) -> GeografiskTilknyttetKontor(kontorNavn,kontor.getKontorId()) }
     }
 
-    private fun getGTKontor(fnr: Fnr) = GeografiskTilknyttetKontorEntity.findById(fnr.value)
-    private fun getArenaKontor(fnr: Fnr) = ArenaKontorEntity.findById(fnr.value)
-    private fun getAOKontor(fnr: Fnr) = ArbeidsOppfolgingKontorEntity.findById(fnr.value)
+    inline fun <reified T> SizedIterable<T>.firstOrNullOrThrow(identer: List<Ident>, identProvider: (T) -> String): T? {
+        val historiskeIdenter = identer.filter { it.historisk == Ident.HistoriskStatus.HISTORISK }.map { it.value }
+        val withoutHistorisk = this.filter { !historiskeIdenter.contains(identProvider(it)) }
+        return when (withoutHistorisk.size) {
+            0 -> null
+            1 ->  this.first()
+            else -> { // Har flere nåværende kontor på en person
+                log.error("Fant flere ressurser på en person, ressurstype ${T::class.simpleName}")
+                return identer.finnForetrukketIdent()
+                    ?.let { foretrukketIdent -> this.firstOrNull { identProvider(it) == foretrukketIdent.value } }
+                    ?: throw IllegalStateException("Fant flere ressurser på 1 person men ingen av dem bruker foretrukket ident, ressurstype:${T::class.simpleName}")
+            }
+        }
+    }
 
-    suspend fun getKontorTilhorighet(fnr: Fnr, principal: AOPrincipal): KontorTilhorighetQueryDto? {
-        poaoTilgangClient.harLeseTilgang(principal, fnr)
+    private fun getGTKontor(identer: List<Ident>) = GeografiskTilknyttetKontorEntity
+        .find { GeografiskTilknytningKontorTable.id inList(identer.map { it.value } ) }
+        .firstOrNullOrThrow(identer) { it.fnr.value }
+    private fun getArenaKontor(identer: List<Ident>) = ArenaKontorEntity
+        .find { ArenaKontorTable.id inList(identer.map { it.value } ) }
+        .firstOrNullOrThrow(identer) { it.fnr.value }
+    private fun getAOKontor(identer: List<Ident>) = ArbeidsOppfolgingKontorEntity
+        .find { ArbeidsOppfolgingKontorTable.id inList(identer.map { it.value } ) }
+        .firstOrNullOrThrow(identer) { it.fnr.value }
+
+    suspend fun getKontorTilhorighet(ident: Ident, principal: AOPrincipal): KontorTilhorighetQueryDto? {
+        poaoTilgangClient.harLeseTilgang(principal, ident)
+        val identer = hentAlleIdenter(ident).getOrThrow()
+
         val kontorer = transaction {
             /* The ordering is important! */
             listOf(
-                 getAOKontor(fnr),
-                 getArenaKontor(fnr),
-                 getGTKontor(fnr),
+                 getAOKontor(identer.identer),
+                 getArenaKontor(identer.identer),
+                 getGTKontor(identer.identer),
             )
         }
         return kontorer.firstOrNull { it != null }

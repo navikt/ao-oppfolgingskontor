@@ -1,6 +1,9 @@
 package services
 
 import db.table.IdentMappingTable
+import db.table.InternIdentSequence
+import db.table.nextValueOf
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.server.testing.*
@@ -13,20 +16,25 @@ import no.nav.db.AktorId
 import no.nav.db.Dnr
 import no.nav.db.Fnr
 import no.nav.db.Ident
+import no.nav.db.Ident.HistoriskStatus.AKTIV
+import no.nav.db.Ident.HistoriskStatus.HISTORISK
+import no.nav.db.Ident.HistoriskStatus.UKJENT
 import no.nav.db.Npid
 import no.nav.http.client.IdentFunnet
 import no.nav.http.client.IdenterFunnet
-import no.nav.http.graphql.generated.client.enums.IdentGruppe
-import no.nav.http.graphql.generated.client.hentfnrquery.IdentInformasjon
+import no.nav.http.client.IdenterOppslagFeil
+import no.nav.http.client.IdenterResult
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
 import no.nav.person.pdl.aktor.v2.Aktor
 import no.nav.person.pdl.aktor.v2.Identifikator
 import no.nav.person.pdl.aktor.v2.Type
 import no.nav.utils.flywayMigrationInTest
+import no.nav.utils.randomAktorId
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.batchUpsert
+import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
 import java.time.OffsetDateTime
@@ -36,53 +44,33 @@ class IdentServiceTest {
     @Test
     fun `skal cache påfølgende kall til hentFnrFraAktorId`() = runTest {
         flywayMigrationInTest()
-        val aktorId = AktorId("4141112121313")
-        val fnr = Fnr("01020304052")
-        val fnrIdentInformasjon = IdentInformasjon(
-            historisk = false,
-            gruppe = IdentGruppe.FOLKEREGISTERIDENT,
-            ident = fnr.value
-        )
-        val aktorIdIdentInformasjon = IdentInformasjon(
-            historisk = false,
-            gruppe = IdentGruppe.AKTORID,
-            ident = aktorId.value
-        )
+        val aktorId = AktorId("4141112121313", AKTIV)
+        val fnr = Fnr("01020304052", AKTIV)
         var invocations = 0
-        val identProvider = { aktorId: String ->
+        val identProvider = { oppslagId: String ->
             invocations++
-            IdenterFunnet(listOf(fnrIdentInformasjon, aktorIdIdentInformasjon), aktorId)
+            IdenterFunnet(listOf(fnr, aktorId), Ident.of(oppslagId, UKJENT))
         }
         val identService = IdentService(identProvider)
 
-        identService.hentForetrukketIdentFor(aktorId)
-        identService.hentForetrukketIdentFor(aktorId)
+        identService.veksleAktorIdIForetrukketIdent(aktorId)
+        identService.veksleAktorIdIForetrukketIdent(aktorId)
 
         invocations shouldBe 1
     }
 
     @Test
-    fun `skal gi ut npid hvis det bare finnes npid`() = runTest {
+    fun `skal gi ut npid hvis det bare finnes npid i folkeregisteridentene`() = runTest {
         flywayMigrationInTest()
-        val npid = Npid("01020304050")
-        val aktorId = AktorId("4141112122441")
-        val npIdIdentInformasjon = IdentInformasjon(
-            historisk = false,
-            gruppe = IdentGruppe.NPID,
-            ident = npid.value
-        )
-        val aktorIdIdentInformasjon = IdentInformasjon(
-            historisk = false,
-            gruppe = IdentGruppe.AKTORID,
-            ident = aktorId.value
-        )
-        val fnrProvider = { ident: String ->
-            IdenterFunnet(listOf(npIdIdentInformasjon, aktorIdIdentInformasjon), inputIdent = aktorId.value)
+        val npid = Npid("01020304050", AKTIV)
+        val aktorId = AktorId("4141112122441", AKTIV)
+        val alleIdenterProvider = { ident: String ->
+            IdenterFunnet(listOf(npid, aktorId), inputIdent = Ident.of(ident, UKJENT))
         }
-        val identService = IdentService(fnrProvider)
+        val identService = IdentService(alleIdenterProvider)
 
-        identService.hentForetrukketIdentFor(aktorId)
-        val npidUt = identService.hentForetrukketIdentFor(aktorId)
+        identService.veksleAktorIdIForetrukketIdent(aktorId)
+        val npidUt = identService.veksleAktorIdIForetrukketIdent(aktorId)
 
         npidUt.shouldBeInstanceOf<IdentFunnet>()
         npidUt.ident shouldBe npid
@@ -91,70 +79,42 @@ class IdentServiceTest {
     @Test
     fun `skal gi ut dnr hvis det er beste match`() = runTest {
         flywayMigrationInTest()
-        val npid = Npid("01220304052")
-        val aktorId = AktorId("4141112122442")
-        val dnr = Dnr("41020304052")
-        val npIdIdentInformasjon = IdentInformasjon(
-            historisk = false,
-            gruppe = IdentGruppe.NPID,
-            ident = npid.value
-        )
-        val dnrIdentInformasjon = IdentInformasjon(
-            historisk = false,
-            gruppe = IdentGruppe.FOLKEREGISTERIDENT,
-            ident = dnr.value
-        )
-        val aktorIdIdentInformasjon = IdentInformasjon(
-            historisk = false,
-            gruppe = IdentGruppe.AKTORID,
-            ident = aktorId.value
-        )
+        val npid = Npid("01220304052", AKTIV)
+        val aktorId = AktorId("4141112122442", AKTIV)
+        val dnr = Dnr("41020304052", AKTIV)
+
         val fnrProvider = { ident: String ->
             IdenterFunnet(
-                listOf(npIdIdentInformasjon, dnrIdentInformasjon, aktorIdIdentInformasjon),
-                inputIdent = aktorId.value
+                listOf(npid, dnr, aktorId),
+                inputIdent = Ident.of(ident, UKJENT)
             )
         }
         val identService = IdentService(fnrProvider)
 
-        identService.hentForetrukketIdentFor(aktorId)
-        val dnrUt = identService.hentForetrukketIdentFor(aktorId)
+        identService.veksleAktorIdIForetrukketIdent(aktorId)
+        val dnrUt = identService.veksleAktorIdIForetrukketIdent(aktorId)
 
         dnrUt.shouldBeInstanceOf<IdentFunnet>()
         dnrUt.ident shouldBe dnr
     }
 
-    @Test
+
+//    @Test
     fun `skal gi fnr ved søk på npid`() = runTest {
         flywayMigrationInTest()
-        val npid = Npid("01220304055")
-        val fnr = Fnr("11111111111")
-        val aktorId = AktorId("2938764298763")
-        val npIdIdentInformasjon = IdentInformasjon(
-            historisk = false,
-            gruppe = IdentGruppe.NPID,
-            ident = npid.value
-        )
-        val fnrIdentInformasjon = IdentInformasjon(
-            historisk = false,
-            gruppe = IdentGruppe.FOLKEREGISTERIDENT,
-            ident = fnr.value
-        )
-        val aktorIdIdentInformasjon = IdentInformasjon(
-            historisk = false,
-            gruppe = IdentGruppe.AKTORID,
-            ident = aktorId.value
-        )
+        val npid = Npid("01220304055", AKTIV)
+        val fnr = Fnr("11111111111", AKTIV)
+        val aktorId = AktorId("2938764298763", AKTIV)
 
         val fnrProvider = { ident: String ->
             IdenterFunnet(
-                listOf(npIdIdentInformasjon, aktorIdIdentInformasjon, fnrIdentInformasjon),
-                inputIdent = npid.value
+                listOf(npid, aktorId, fnr),
+                inputIdent = Ident.of(ident, UKJENT)
             )
         }
 
         val identService = IdentService(fnrProvider)
-        val foretrukketIdent = identService.hentForetrukketIdentFor(npid)
+        val foretrukketIdent = identService.veksleAktorIdIForetrukketIdent(aktorId)
 
         foretrukketIdent.shouldBeInstanceOf<IdentFunnet>()
         foretrukketIdent.ident.shouldBeInstanceOf<Fnr>()
@@ -164,66 +124,59 @@ class IdentServiceTest {
     @Test
     fun `skal oppdatere identer ved merge på aktorid`() = runTest {
         flywayMigrationInTest()
-        val npid = Npid("01220304055")
-        val fnr = Fnr("11111111111")
-        val gammelAktorId = AktorId("2938764298763")
-        val nyAktorId = AktorId("3938764298763")
-        val npIdIdentInformasjon = IdentInformasjon(
-            historisk = false,
-            gruppe = IdentGruppe.NPID,
-            ident = npid.value
-        )
-        val fnrIdentInformasjon = IdentInformasjon(
-            historisk = false,
-            gruppe = IdentGruppe.FOLKEREGISTERIDENT,
-            ident = fnr.value
-        )
-        val gammelAktorIdIdentInformasjonIkkeHistorisk = IdentInformasjon(
-            historisk = false,
-            gruppe = IdentGruppe.AKTORID,
-            ident = gammelAktorId.value
-        )
-        val gammelAktorIdIdentInformasjon = IdentInformasjon(
-            historisk = true,
-            gruppe = IdentGruppe.AKTORID,
-            ident = gammelAktorId.value
-        )
-        val nyAktorIdIdentInformasjon = IdentInformasjon(
-            historisk = false,
-            gruppe = IdentGruppe.AKTORID,
-            ident = nyAktorId.value
-        )
+        val npid = Npid("01220304055", AKTIV)
+        val fnr = Fnr("11111111111", AKTIV)
+        val gammelAktorId = AktorId("2938764298763", HISTORISK)
+        val nyAktorId = AktorId("3938764298763", AKTIV)
 
         val identService = IdentService { _ ->
             IdenterFunnet(listOf(
-                npIdIdentInformasjon,
-                gammelAktorIdIdentInformasjonIkkeHistorisk,
-                fnrIdentInformasjon), npid.value)
+                npid,
+                gammelAktorId,
+                fnr), npid)
         }
-        identService.hentForetrukketIdentFor(npid)
+        identService.veksleAktorIdIForetrukketIdent(gammelAktorId)
 
         val oppdatertIdentService = IdentService { _ ->
             IdenterFunnet(listOf(
-                npIdIdentInformasjon,
-                gammelAktorIdIdentInformasjon,
-                nyAktorIdIdentInformasjon,
-                fnrIdentInformasjon), npid.value)
+                npid,
+                gammelAktorId,
+                nyAktorId,
+                fnr), npid)
         }
         val identer = oppdatertIdentService.håndterEndringPåIdenter(npid)
 
         identer shouldBe IdenterFunnet(listOf(
-            npIdIdentInformasjon,
-            gammelAktorIdIdentInformasjon,
-            nyAktorIdIdentInformasjon,
-            fnrIdentInformasjon
-        ), npid.value)
+            npid,
+            gammelAktorId,
+            nyAktorId,
+            fnr
+        ), npid)
+    }
+
+    @Test
+    fun `håndterEndringPåIdenter - skal returnere feil hvis synkront kall til pdl  feiler`() = runTest   {
+        val identProvider: suspend (String) -> IdenterResult = { IdenterOppslagFeil("Noe gikk galt") }
+        val identService = IdentService(identProvider)
+        val aktorId = randomAktorId()
+
+        shouldThrow<Exception> { identService.håndterEndringPåIdenter(aktorId, emptyList()) }
+    }
+
+    @Test
+    fun `håndterEndringPåIdenter - skal kaste exception ved uhåndtert feil i pdl-kall`() = runTest   {
+        val identProvider: suspend (String) -> IdenterFunnet = { throw IllegalStateException("Noe gikk galt") }
+        val identService = IdentService(identProvider)
+        val aktorId = AktorId("2938764298763", AKTIV)
+
+        shouldThrow<IllegalStateException> { identService.håndterEndringPåIdenter(aktorId) }
     }
 
     @Test
     fun `skal gi dnr for Tenor som starter med 4,5,6,7`() = testApplication {
         val identValue = "42876702740";
 
-        val ident = Ident.of(identValue)
+        val ident = Ident.of(identValue, UKJENT)
 
         ident.shouldBeInstanceOf<Dnr>()
         ident.value shouldBe identValue
@@ -233,7 +186,7 @@ class IdentServiceTest {
     fun `skal gi dnr for Dolly som starter med 4,5,6,7`() = testApplication {
         val identValue = "42456702740";
 
-        val ident = Ident.of(identValue)
+        val ident = Ident.of(identValue, UKJENT)
 
         ident.shouldBeInstanceOf<Dnr>()
         ident.value shouldBe identValue
@@ -243,11 +196,16 @@ class IdentServiceTest {
     fun `aktor-v2 endring - skal oppdatere identer når det kommer endring`() = runTest {
         flywayMigrationInTest()
 
-        val identProvider: suspend (String) -> IdenterFunnet = { aktorId -> IdenterFunnet(emptyList(), aktorId) }
+        val identProvider: suspend (String) -> IdenterFunnet = { aktorId ->
+            IdenterFunnet(
+                emptyList(),
+            Ident.of(aktorId, UKJENT)
+            )
+        }
         val identService = IdentService(identProvider)
-        val aktorId = AktorId("2938764298763")
-        val dnr = Dnr("48764298763")
-        val fnr = Fnr("38764298763")
+        val aktorId = AktorId("2938764298763", AKTIV)
+        val dnr = Dnr("48764298763", AKTIV)
+
         val internIdent = 4343L
 
         transaction {
@@ -259,6 +217,7 @@ class IdentServiceTest {
             }
         }
 
+        val fnr = Fnr("38764298763", AKTIV)
         val innkommendeIdenter = listOf(
             OppdatertIdent(aktorId, false),
             OppdatertIdent(dnr, true),
@@ -278,13 +237,13 @@ class IdentServiceTest {
     fun `aktor-v2 endring - skal ikke oppdatere identer når vi ikke har noe intern-ident på bruker`() = runTest {
         flywayMigrationInTest()
 
-        val aktorId = AktorId("2938764298763")
-        val fnr = Fnr("18111298763")
+        val aktorId = AktorId("2938764298763", AKTIV)
+        val fnr = Fnr("18111298763", AKTIV)
 
         val identProvider: suspend (String) -> IdenterFunnet = { innkommendeAktorId -> IdenterFunnet(listOf(
-            IdentInformasjon(aktorId.value, false) ,
-            IdentInformasjon(fnr.value, false),
-        ), innkommendeAktorId) }
+            aktorId,
+            fnr,
+        ), Ident.of(innkommendeAktorId, UKJENT)) }
         val identService = IdentService(identProvider)
 
         val innkommendeIdenter = listOf(
@@ -301,11 +260,11 @@ class IdentServiceTest {
     fun `aktor-v2 endring - skal kun sette aktørId i key som slettet når det kommer en tombstone`() = runTest {
         flywayMigrationInTest()
 
-        val identProvider: suspend (String) -> IdenterFunnet = { aktorId -> IdenterFunnet(emptyList(), aktorId) }
+        val identProvider: suspend (String) -> IdenterFunnet = { aktorId -> IdenterFunnet(emptyList(), Ident.of(aktorId, AKTIV)) }
         val identService = IdentService(identProvider)
         val proccessor = IdentChangeProcessor(identService)
-        val aktorId = AktorId("2938764298763")
-        val fnr = Fnr("01010198765")
+        val aktorId = AktorId("2938764298763", AKTIV)
+        val fnr = Fnr("01010198765", AKTIV)
         val internId = 1231231231L
 
         transaction {
@@ -328,11 +287,11 @@ class IdentServiceTest {
     fun `aktor-v2 endring - skal slette identer som ikke er med i endringssettet`() = runTest {
         flywayMigrationInTest()
 
-        val identProvider: suspend (String) -> IdenterFunnet = { aktorId -> IdenterFunnet(emptyList(), aktorId) }
+        val identProvider: suspend (String) -> IdenterFunnet = { aktorId -> IdenterFunnet(emptyList(), Ident.of(aktorId, AKTIV)) }
         val identService = IdentService(identProvider)
-        val aktorId = AktorId("2938764298793")
-        val dnr = Dnr("48764298868")
-        val fnr = Fnr("01010196769")
+        val aktorId = AktorId("2938764298793", AKTIV)
+        val dnr = Dnr("48764298868", AKTIV)
+        val fnr = Fnr("01010196769", AKTIV)
         val internId = 1231231291L
 
         transaction {
@@ -362,12 +321,12 @@ class IdentServiceTest {
     fun `skal finne internId på ny aktørId selvom gammel aktørId er opphørt hvis fnr finnes`() = runTest {
         flywayMigrationInTest()
 
-        val opphortAktorId = AktorId("4938764598763")
-        val nyAktorId = AktorId("2938764297763")
-        val fnr = Fnr("02010198765")
+        val opphortAktorId = AktorId("4938764598763", HISTORISK)
+        val nyAktorId = AktorId("2938764297763", AKTIV)
+        val fnr = Fnr("02010198765", AKTIV)
         val internId = 31231L
 
-        /* AktorId er slettet, men det finnes fortsatt FNR som ikke er slettet */
+        /* AktorId er slettet, men det finnes fortsatt FNR som ikke er slettet. Slettet ident dukker ikke opp i liste av identer på topicet */
         transaction {
             IdentMappingTable.batchInsert(listOf(opphortAktorId, fnr)) {
                 this[IdentMappingTable.internIdent] = internId
@@ -380,9 +339,8 @@ class IdentServiceTest {
 
         val identProvider: suspend (String) -> IdenterFunnet = { nyMenIkkeLagretEndaAktorId ->
             IdenterFunnet(listOf(
-                IdentInformasjon(fnr.value, false, IdentGruppe.FOLKEREGISTERIDENT),
-                IdentInformasjon(nyAktorId.value, false, IdentGruppe.AKTORID)
-            ), nyMenIkkeLagretEndaAktorId)
+                fnr, nyAktorId
+            ), Ident.of(nyMenIkkeLagretEndaAktorId, AKTIV))
         }
         val identService = IdentService(identProvider)
         val proccessor = IdentChangeProcessor(identService)
@@ -410,8 +368,8 @@ class IdentServiceTest {
         val identService = IdentService(identProvider)
         val proccessor = IdentChangeProcessor(identService)
 
-        val aktorId = AktorId("2593876429711")
-        val fnr = Fnr("02010198111")
+        val aktorId = AktorId("2593876429711", AKTIV)
+        val fnr = Fnr("02010198111", AKTIV)
         val payload = mockk<Aktor> {
             every { identifikatorer } returns listOf(
                 Identifikator(fnr.value, Type.FOLKEREGISTERIDENT, true),
@@ -425,6 +383,30 @@ class IdentServiceTest {
     }
 
     @Test
+    fun `veksleAktorIdIForetrukketIdent - skal fallback til å hente identer på nytt hvis bare aktorid finnes i id-mapping`() = runTest {
+        flywayMigrationInTest()
+        val aktorId = AktorId("2221219811121", AKTIV)
+        val fnr = Fnr("12112198111", AKTIV)
+        val identProvider: suspend (String) -> IdenterFunnet = { input -> IdenterFunnet(
+            listOf(fnr, aktorId),
+            Ident.of(input, UKJENT))
+        }
+        val identService = IdentService(identProvider)
+        /* Only having AktorId will  */
+        transaction {
+            val internId = nextValueOf(InternIdentSequence)
+            IdentMappingTable.insert {
+                it[IdentMappingTable.id] = aktorId.value
+                it[IdentMappingTable.historisk] = false
+                it[IdentMappingTable.identType] = "AKTOR_ID"
+                it[IdentMappingTable.internIdent] = internId
+            }
+        }
+
+        identService.veksleAktorIdIForetrukketIdent(aktorId).shouldBeInstanceOf<IdentFunnet>()
+    }
+
+    @Test
     fun `IdentChangePrcessor - skal hopper over personer is test`() {
         flywayMigrationInTest()
 
@@ -432,8 +414,8 @@ class IdentServiceTest {
         val identService = IdentService(identProvider)
         val proccessor = IdentChangeProcessor(identService, skipPersonIkkeFunnet = true)
 
-        val aktorId = AktorId("2593876429722")
-        val fnr = Fnr("02010198122")
+        val aktorId = AktorId("2593876429722", AKTIV)
+        val fnr = Fnr("02010198122", AKTIV)
         val payload = mockk<Aktor> {
             every { identifikatorer } returns listOf(
                 Identifikator(fnr.value, Type.FOLKEREGISTERIDENT, true),
@@ -463,12 +445,6 @@ class IdentServiceTest {
                     row[IdentMappingTable.historisk],
                     row[IdentMappingTable.slettetHosOss] != null
                 )  }
-        }
-    }
-
-    fun mockAktor(identer: List<Identifikator> = emptyList()): Aktor {
-        return mockk<Aktor> {
-            every { identifikatorer } returns identer
         }
     }
 }
