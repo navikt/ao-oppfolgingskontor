@@ -1,13 +1,7 @@
-FROM busybox:1.36.1-uclibc as busybox
-
-FROM gcr.io/distroless/java21
-
-COPY --from=busybox /bin/sh /bin/sh
-COPY --from=busybox /bin/printenv /bin/printenv
+FROM europe-north1-docker.pkg.dev/cgr-nav/pull-through/nav.no/jre:openjdk-21
 
 ENV TZ="Europe/Oslo"
 WORKDIR /app
 COPY build/libs/*.jar ./
 EXPOSE 8080
-USER nonroot
-CMD ["ao-oppfolgingskontor-all.jar"]
+CMD ["-jar","ao-oppfolgingskontor-all.jar"]
