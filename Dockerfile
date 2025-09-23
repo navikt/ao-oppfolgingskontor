@@ -4,4 +4,4 @@ ENV TZ="Europe/Oslo"
 WORKDIR /app
 COPY build/libs/*.jar ./
 EXPOSE 8080
-CMD ["ao-oppfolgingskontor-all.jar"]
+CMD ["-jar","ao-oppfolgingskontor-all.jar"]
