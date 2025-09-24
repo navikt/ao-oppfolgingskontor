@@ -37,12 +37,16 @@ jobs:
       - name: Test and build
         run: ./gradlew build --scan
 
+      - name: Generate and output SBOM
+        run: ./gradlew cyclonedxBom
+
       - name: Push docker image to GAR
         uses: nais/docker-build-push@v0
         id: docker-build-push
         with:
           docker_context: .
           team: dab
+          byosbom: 'build/reports/bom.json'
       - name: Slack Notification (test failure)
         if: failure()
         uses: rtCamp/action-slack-notify@v2
