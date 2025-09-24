@@ -4,7 +4,9 @@ import io.ktor.http.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
-fun Routing.healthEndpoints() {
+fun Routing.healthEndpoints(): (Boolean) -> Unit {
+    val hasCriticalError = { errr: Boolean -> }
+
     route("/isAlive") {
         get {
             call.respond(HttpStatusCode.OK)

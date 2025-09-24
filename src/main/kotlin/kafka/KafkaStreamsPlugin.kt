@@ -51,6 +51,7 @@ class KafkaStreamsPluginConfig(
     var oppfolgingsperiodeService: OppfolgingsperiodeService? = null,
     var oppfolgingsperiodeDao: OppfolgingsperiodeDao? = null,
     var identService: IdentService? = null,
+    var hasError: (Boolean) -> Unit,
 )
 
 const val arbeidsoppfolgingkontorSinkName = "endring-pa-arbeidsoppfolgingskontor"
@@ -76,6 +77,9 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     }
     val identService = requireNotNull(this.pluginConfig.identService) {
         "IdentService must be configured for KafkaStreamPlugin"
+    }
+    val hasError = requireNotNull(this.pluginConfig.hasError) {
+        "Must provide hasError function to KafkaStreamsPlugin"
     }
     val isProduction = environment.isProduction()
     if (isProduction) logger.info("Kjører i produksjonsmodus. Konsumerer kun siste-oppfølgingsperiode.")
@@ -107,6 +111,12 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         oppfolgingsHendelseProcessor = oppfolgingsHendelseProcessor
     )
     val kafkaStream = KafkaStreams(topology, kafkaStreamsProps(environment.config))
+
+    kafkaStream.setStateListener { _, newState ->
+        if (newState == KafkaStreams.State.ERROR) {
+            hasError(true)
+        }
+    }
 
     kafkaStream.setUncaughtExceptionHandler {
         logger.error("Uncaught exception in Kafka Streams. Shutting down client", it)

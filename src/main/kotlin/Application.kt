@@ -24,6 +24,7 @@ import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
 import no.nav.services.KontorTilordningService
 import no.nav.services.OppfolgingsperiodeDao
+import org.apache.kafka.streams.KafkaStreams
 import services.IdentService
 import services.OppfolgingsperiodeService
 
@@ -33,7 +34,7 @@ fun main(args: Array<String>) {
 
 fun Application.module() {
     val meterRegistry = configureMonitoring()
-    configureHealthAndCompression()
+    val setHasCriticalError: (Boolean) -> Unit = configureHealthAndCompression()
     configureSecurity()
     val database = configureDatabase()
 
@@ -81,6 +82,7 @@ fun Application.module() {
         this.oppfolgingsperiodeService = oppfolgingsperiodeService
         this.oppfolgingsperiodeDao = OppfolgingsperiodeDao
         this.identService = identService
+        this.hasError = setHasCriticalError
     }
 
     val issuer = environment.getIssuer()
