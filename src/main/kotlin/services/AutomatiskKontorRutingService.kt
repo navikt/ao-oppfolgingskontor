@@ -116,7 +116,11 @@ class AutomatiskKontorRutingService(
             }
             val profilering = when (val profileringResultat = profileringProvider(fnr)) {
                 is ProfileringFunnet -> profileringResultat
-                is ProfileringIkkeFunnet -> profileringResultat
+                is ProfileringIkkeFunnet -> {
+                    TODO("Hopp over hvis Inngar - nye typer for å skille oppfølgingStart")
+                    TODO("Finner ikke profilering og mindre enn ti sekunder siden bruker ble registrert returner 'ForsøkEnGangTilFordiLittTidlig'")
+                    TODO("Finner ikke profilering men mer enn ti sekunder siden, så returner 'profileringResultat'")
+                }
                 is ProfileringOppslagFeil -> return TilordningFeil("Kunne ikke hente profilering: ${profileringResultat.error.message}")
             }
             val kontorTilordning = when (val gtKontorResultat = gtKontorProvider(fnr, harStrengtFortroligAdresse, erSkjermet)) {
