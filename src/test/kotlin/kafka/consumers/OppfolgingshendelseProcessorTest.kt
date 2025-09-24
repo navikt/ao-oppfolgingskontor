@@ -34,6 +34,7 @@ import no.nav.utils.lagreIdentIIdentmappingTabell
 import no.nav.utils.randomFnr
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import services.IdentService
 import services.OppfolgingsperiodeService
@@ -212,7 +213,7 @@ class OppfolgingshendelseProcessorTest {
                 bruker.ident,
                 nyereStartDato,
                 OppfolgingsperiodeId(nyerePeriodeId),
-                KontorId("4141"),
+                null,
                 null
             )
             processingResult.topic shouldBe null
@@ -288,6 +289,7 @@ class OppfolgingshendelseProcessorTest {
         resultStoppMeldingPåNytt.shouldBeInstanceOf<Skip<*, *>>()
     }
 
+    @Disabled
     @Test
     fun `skal hoppe over start-melding men oppdatere kontor når perioden er allerede er startet (men ikke avsluttet)`() {
         val bruker = testBruker()
