@@ -551,7 +551,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                     brukerMedLandskodeUtenFallback.fnr(),
                     HarSkjerming(true)
                 )
-            ) shouldBe Result.success(
+            ) shouldBe Result.success(EndringISkjermingResult(
                 KontorEndringer(
                     gtKontorEndret = GTKontorEndret.endretPgaSkjermingEndret(
                         KontorTilordning(
@@ -569,7 +569,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                             brukerMedLandskodeUtenFallback.oppfolgingsperiodeId()
                         )
                     ),
-                )
+                ))
             ) shouldBe Result.success(EndringISkjermingResult(
                 KontorEndringer(
                     gtKontorEndret = GTKontorEndret.endretPgaSkjermingEndret(
