@@ -39,7 +39,9 @@ import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.SkjermingIkkeFunnet
 import no.nav.http.client.SkjermingResult
 import no.nav.http.client.arbeidssogerregisteret.HentProfileringsResultat
+import no.nav.http.client.arbeidssogerregisteret.Profilering
 import no.nav.http.client.arbeidssogerregisteret.ProfileringFunnet
+import no.nav.http.client.arbeidssogerregisteret.ProfileringIkkeAktuell
 import no.nav.http.client.arbeidssogerregisteret.ProfileringIkkeFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
 import no.nav.http.client.arbeidssogerregisteret.ProfileringOppslagFeil
@@ -50,6 +52,8 @@ import no.nav.kafka.consumers.HåndterPersondataEndretSuccess
 import no.nav.kafka.consumers.KontorEndringer
 import org.slf4j.LoggerFactory
 import utils.Outcome
+import java.time.Duration
+import java.time.ZonedDateTime
 
 sealed class TilordningResultat
 sealed class TilordningSuccess : TilordningResultat()
@@ -114,16 +118,19 @@ class AutomatiskKontorRutingService(
                 is AlderIkkeFunnet -> return TilordningFeil("Kunne ikke hente alder: ${result.message}")
                 is AlderOppslagFeil -> return TilordningFeil("Henting av alder feilet: ${result.message}")
             }
-            val profilering = when (val profileringResultat = profileringProvider(fnr)) {
-                is ProfileringFunnet -> profileringResultat
-                is ProfileringIkkeFunnet -> {
-                    val skalForsøkePåNytt = oppfolgingsperiodeStartet.erArbeidssøkerRegistrering
-
-                    TODO("Hopp over hvis Inngar - nye typer for å skille oppfølgingStart")
-                    TODO("Finner ikke profilering og mindre enn ti sekunder siden bruker ble registrert returner 'ForsøkEnGangTilFordiLittTidlig'")
-                    TODO("Finner ikke profilering men mer enn ti sekunder siden, så returner 'profileringResultat'")
+            val profilering = when(oppfolgingsperiodeStartet.erArbeidssøkerRegistrering) {
+                true -> {
+                    when (val profileringResultat = profileringProvider(fnr)) {
+                        is ProfileringFunnet -> profileringResultat
+                        is ProfileringIkkeFunnet -> {
+                            val diff = Duration.of(oppfolgingsperiodeStartet.startDato, ZonedDateTime.now())
+                            TODO("Finner ikke profilering og mindre enn ti sekunder siden bruker ble registrert returner 'ForsøkEnGangTilFordiLittTidlig'")
+                            TODO("Finner ikke profilering men mer enn ti sekunder siden, så returner 'profileringResultat'")
+                        }
+                        is ProfileringOppslagFeil -> return TilordningFeil("Kunne ikke hente profilering: ${profileringResultat.error.message}")
+                    }
                 }
-                is ProfileringOppslagFeil -> return TilordningFeil("Kunne ikke hente profilering: ${profileringResultat.error.message}")
+                false -> ProfileringIkkeAktuell
             }
             val kontorTilordning = when (val gtKontorResultat = gtKontorProvider(fnr, harStrengtFortroligAdresse, erSkjermet)) {
                 is KontorForGtFinnesIkke -> hentTilordningUtenGT(fnr, alder, profilering, oppfolgingsperiodeId, gtKontorResultat)
@@ -168,7 +175,7 @@ class AutomatiskKontorRutingService(
 
     private fun skalTilNasjonalOppfølgingsEnhet(
         sensitivitet: Sensitivitet,
-        profilering: HentProfileringsResultat,
+        profilering: Profilering,
         alder: Int
     ): Boolean {
         return !sensitivitet.erSensitiv() &&
@@ -180,7 +187,7 @@ class AutomatiskKontorRutingService(
     private fun hentTilordningUtenGT(
         fnr: Ident,
         alder: Int,
-        profilering: HentProfileringsResultat,
+        profilering: Profilering,
         oppfolgingsperiodeId: OppfolgingsperiodeId,
         gtResultat: KontorForGtFinnesIkke
     ): AOKontorEndret {
