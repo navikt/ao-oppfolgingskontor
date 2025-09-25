@@ -1,5 +1,6 @@
 package no.nav
 
+import dab.poao.nav.no.health.CriticalErrorNotificationFunction
 import io.ktor.server.application.*
 import io.ktor.server.netty.*
 import no.nav.db.configureDatabase
@@ -24,7 +25,6 @@ import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
 import no.nav.services.KontorTilordningService
 import no.nav.services.OppfolgingsperiodeDao
-import org.apache.kafka.streams.KafkaStreams
 import services.IdentService
 import services.OppfolgingsperiodeService
 
@@ -34,7 +34,7 @@ fun main(args: Array<String>) {
 
 fun Application.module() {
     val meterRegistry = configureMonitoring()
-    val setHasCriticalError: (Boolean) -> Unit = configureHealthAndCompression()
+    val setCriticalError: CriticalErrorNotificationFunction = configureHealthAndCompression()
     configureSecurity()
     val database = configureDatabase()
 
@@ -82,7 +82,7 @@ fun Application.module() {
         this.oppfolgingsperiodeService = oppfolgingsperiodeService
         this.oppfolgingsperiodeDao = OppfolgingsperiodeDao
         this.identService = identService
-        this.hasError = setHasCriticalError
+        this.criticalErrorNotificationFunction = setCriticalError
     }
 
     val issuer = environment.getIssuer()

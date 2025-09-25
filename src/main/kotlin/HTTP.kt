@@ -1,14 +1,18 @@
 package no.nav
 
+import dab.poao.nav.no.health.CriticalErrorNotificationFunction
 import dab.poao.nav.no.health.healthEndpoints
 import io.ktor.server.application.*
 import io.ktor.server.plugins.compression.*
 import io.ktor.server.routing.routing
 
-fun Application.configureHealthAndCompression() {
+fun Application.configureHealthAndCompression(): CriticalErrorNotificationFunction {
     install(Compression)
+
+    lateinit var criticalErrorNotificationFunction: CriticalErrorNotificationFunction
+
     routing {
-        healthEndpoints()
+        criticalErrorNotificationFunction = healthEndpoints()
     }
     /*
     routing {
@@ -17,4 +21,5 @@ fun Application.configureHealthAndCompression() {
     routing {
         swaggerUI(path = "openapi", swaggerFile = "openapi/documentation.yaml")
     }*/
+    return criticalErrorNotificationFunction
 }

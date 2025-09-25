@@ -1,5 +1,6 @@
 package no.nav.kafka
 
+import dab.poao.nav.no.health.CriticalErrorNotificationFunction
 import io.ktor.events.EventDefinition
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationPlugin
@@ -51,7 +52,7 @@ class KafkaStreamsPluginConfig(
     var oppfolgingsperiodeService: OppfolgingsperiodeService? = null,
     var oppfolgingsperiodeDao: OppfolgingsperiodeDao? = null,
     var identService: IdentService? = null,
-    var hasError: (Boolean) -> Unit,
+    var criticalErrorNotificationFunction: CriticalErrorNotificationFunction
 )
 
 const val arbeidsoppfolgingkontorSinkName = "endring-pa-arbeidsoppfolgingskontor"
@@ -78,7 +79,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val identService = requireNotNull(this.pluginConfig.identService) {
         "IdentService must be configured for KafkaStreamPlugin"
     }
-    val hasError = requireNotNull(this.pluginConfig.hasError) {
+    val setHasCriticalError = requireNotNull(this.pluginConfig.criticalErrorNotificationFunction) {
         "Must provide hasError function to KafkaStreamsPlugin"
     }
     val isProduction = environment.isProduction()
@@ -114,7 +115,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
 
     kafkaStream.setStateListener { _, newState ->
         if (newState == KafkaStreams.State.ERROR) {
-            hasError(true)
+            setHasCriticalError()
         }
     }
 
