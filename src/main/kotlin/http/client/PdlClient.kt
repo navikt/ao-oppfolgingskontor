@@ -61,11 +61,9 @@ sealed class GtForBrukerFunnet : GtForBrukerSuccess()
 data class GtNummerForBrukerFunnet(val gtNr: GeografiskTilknytningNr) : GtForBrukerFunnet() {
     override fun toString() = "${gtNr.value} type: ${gtNr.type.name}"
 }
-
 data class GtLandForBrukerFunnet(val land: GeografiskTilknytningLand) : GtForBrukerFunnet() {
     override fun toString() = "${land.value} type: Land"
 }
-
 data class GtForBrukerIkkeFunnet(val message: String) : GtForBrukerSuccess()
 data class GtForBrukerOppslagFeil(val message: String) : GtForBrukerResult()
 

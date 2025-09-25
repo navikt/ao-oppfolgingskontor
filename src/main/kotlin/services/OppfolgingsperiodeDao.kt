@@ -2,6 +2,7 @@ package no.nav.services
 
 import java.time.ZonedDateTime
 import no.nav.db.Ident
+import no.nav.db.IdentSomKanLagres
 import no.nav.db.entity.OppfolgingsperiodeEntity
 import no.nav.db.finnForetrukketIdent
 import no.nav.db.table.KontorhistorikkTable
@@ -20,7 +21,7 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 
 sealed class OppfolgingsperiodeOppslagResult()
-data class AktivOppfolgingsperiode(val fnr: Ident, val periodeId: OppfolgingsperiodeId, val startDato: OffsetDateTime) : OppfolgingsperiodeOppslagResult()
+data class AktivOppfolgingsperiode(val fnr: IdentSomKanLagres, val periodeId: OppfolgingsperiodeId, val startDato: OffsetDateTime) : OppfolgingsperiodeOppslagResult()
 object NotUnderOppfolging : OppfolgingsperiodeOppslagResult()
 data class OppfolgingperiodeOppslagFeil(val message: String) : OppfolgingsperiodeOppslagResult()
 

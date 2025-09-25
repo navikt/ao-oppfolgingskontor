@@ -140,8 +140,8 @@ class BigAppTest {
             val antallHistorikkRader = transaction {
                 KontorHistorikkEntity.find { KontorhistorikkTable.ident eq fnr.value }.count()
             }
-            withClue("Skal finnes 1 historikkinnslag på bruker men var $antallHistorikkRader") {
-                antallHistorikkRader shouldBe 1
+            withClue("Skal finnes 2 historikkinnslag på bruker men var $antallHistorikkRader") {
+                antallHistorikkRader shouldBe 2
             }
         }
     }
