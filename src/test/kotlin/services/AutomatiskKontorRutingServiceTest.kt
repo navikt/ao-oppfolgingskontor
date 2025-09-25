@@ -945,9 +945,10 @@ val brukerUtenProfileringEnnå = Bruker(
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
 )
 val brukerMedFeilendeProfilering = brukerUtenProfileringEnnå.copy(
-    oppfolgingsPeriodeResult = brukerUtenProfileringEnnå.oppfolgingsPeriodeResult.copy(
-
+    oppfolgingsPeriodeResult = (brukerUtenProfileringEnnå.oppfolgingsPeriodeResult as AktivOppfolgingsperiode).copy(
+        startDato = OffsetDateTime.now().minusMinutes(11)
     )
+)
 val brukerMedFeilendeSkjerming = Bruker(
     IdentFunnet(Fnr("11111111111", AKTIV)),
     AlderFunnet(20),
