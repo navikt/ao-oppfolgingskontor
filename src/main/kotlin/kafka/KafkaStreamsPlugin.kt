@@ -1,5 +1,6 @@
 package no.nav.kafka
 
+import dab.poao.nav.no.health.CriticalErrorNotificationFunction
 import io.ktor.events.EventDefinition
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationPlugin
@@ -51,6 +52,7 @@ class KafkaStreamsPluginConfig(
     var oppfolgingsperiodeService: OppfolgingsperiodeService? = null,
     var oppfolgingsperiodeDao: OppfolgingsperiodeDao? = null,
     var identService: IdentService? = null,
+    var criticalErrorNotificationFunction: CriticalErrorNotificationFunction? = null
 )
 
 const val arbeidsoppfolgingkontorSinkName = "endring-pa-arbeidsoppfolgingskontor"
@@ -76,6 +78,9 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     }
     val identService = requireNotNull(this.pluginConfig.identService) {
         "IdentService must be configured for KafkaStreamPlugin"
+    }
+    val setHasCriticalError = requireNotNull(this.pluginConfig.criticalErrorNotificationFunction) {
+        "Must provide hasError function to KafkaStreamsPlugin"
     }
     val isProduction = environment.isProduction()
     if (isProduction) logger.info("Kjører i produksjonsmodus. Konsumerer kun siste-oppfølgingsperiode.")
@@ -107,6 +112,12 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         oppfolgingsHendelseProcessor = oppfolgingsHendelseProcessor
     )
     val kafkaStream = KafkaStreams(topology, kafkaStreamsProps(environment.config))
+
+    kafkaStream.setStateListener { _, newState ->
+        if (newState == KafkaStreams.State.ERROR) {
+            setHasCriticalError()
+        }
+    }
 
     kafkaStream.setUncaughtExceptionHandler {
         logger.error("Uncaught exception in Kafka Streams. Shutting down client", it)

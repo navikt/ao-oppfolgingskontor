@@ -4,10 +4,18 @@ import io.ktor.http.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
-fun Routing.healthEndpoints() {
+typealias CriticalErrorNotificationFunction = () -> Unit
+
+fun Routing.healthEndpoints(): CriticalErrorNotificationFunction {
+    var hasCriticalError = false
+    val criticalErrorNotificationFunction = { hasCriticalError = true  }
+
     route("/isAlive") {
         get {
-            call.respond(HttpStatusCode.OK)
+            when (hasCriticalError) {
+                true -> call.respond(HttpStatusCode.InternalServerError)
+                false -> call.respond(HttpStatusCode.OK)
+            }
         }
     }
     route("/isReady") {
@@ -15,4 +23,6 @@ fun Routing.healthEndpoints() {
             call.respond(HttpStatusCode.OK)
         }
     }
+
+    return criticalErrorNotificationFunction
 }
