@@ -83,7 +83,11 @@ class ArbeidssokerregisterClient(
     }
 }
 
-sealed class HentProfileringsResultat
+sealed class Profilering
+
+data object ProfileringIkkeAktuell: Profilering()
+sealed class HentProfileringsResultat: Profilering()
+
 data class ProfileringFunnet(val profilering: ProfileringsResultat) : HentProfileringsResultat()
 data class ProfileringIkkeFunnet(val melding: String) : HentProfileringsResultat()
 data class ProfileringOppslagFeil(val error: Throwable) : HentProfileringsResultat()

@@ -2,6 +2,8 @@ package kafka.consumers
 
 import db.entity.TidligArenaKontorEntity
 import db.table.TidligArenaKontorTable
+import kafka.consumers.oppfolgingsHendelser.OppfolgingStartBegrunnelse
+import kafka.consumers.oppfolgingsHendelser.OppfolgingStartBegrunnelse.ARBEIDSSOKER_REGISTRERING
 import kafka.consumers.oppfolgingsHendelser.OppfolgingStartetHendelseDto
 import kafka.consumers.oppfolgingsHendelser.OppfolgingsAvsluttetHendelseDto
 import kafka.consumers.oppfolgingsHendelser.OppfolgingsHendelseDto
@@ -135,7 +137,8 @@ fun OppfolgingStartetHendelseDto.toDomainObject() = OppfolgingsperiodeStartet(
     startDato = this.startetTidspunkt,
     periodeId = OppfolgingsperiodeId(UUID.fromString(this.oppfolgingsPeriodeId)),
     startetArenaKontor = null, // Settes til null med vilje, feltet fjernes hvis det ikke trengs
-    arenaKontorFraOppfolgingsbrukerTopic = null
+    arenaKontorFraOppfolgingsbrukerTopic = null,
+    erArbeidssøkerRegistrering = startetBegrunnelse == ARBEIDSSOKER_REGISTRERING
 )
 fun OppfolgingsAvsluttetHendelseDto.toDomainObject() = OppfolgingsperiodeAvsluttet(
     Ident.of(this.fnr, Ident.HistoriskStatus.UKJENT) as? IdentSomKanLagres

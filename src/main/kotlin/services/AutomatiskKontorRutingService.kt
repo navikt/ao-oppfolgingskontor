@@ -40,7 +40,9 @@ import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.SkjermingIkkeFunnet
 import no.nav.http.client.SkjermingResult
 import no.nav.http.client.arbeidssogerregisteret.HentProfileringsResultat
+import no.nav.http.client.arbeidssogerregisteret.Profilering
 import no.nav.http.client.arbeidssogerregisteret.ProfileringFunnet
+import no.nav.http.client.arbeidssogerregisteret.ProfileringIkkeAktuell
 import no.nav.http.client.arbeidssogerregisteret.ProfileringIkkeFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
 import no.nav.http.client.arbeidssogerregisteret.ProfileringOppslagFeil
@@ -52,6 +54,8 @@ import no.nav.kafka.consumers.KontorEndringer
 import no.nav.services.AutomatiskKontorRutingService.Companion.VIKAFOSSEN
 import org.slf4j.LoggerFactory
 import utils.Outcome
+import java.time.Duration
+import java.time.ZonedDateTime
 
 sealed class TilordningResultat
 sealed class TilordningSuccess : TilordningResultat()
@@ -116,10 +120,20 @@ class AutomatiskKontorRutingService(
                 is AlderIkkeFunnet -> return TilordningFeil("Kunne ikke hente alder: ${result.message}")
                 is AlderOppslagFeil -> return TilordningFeil("Henting av alder feilet: ${result.message}")
             }
-            val profilering = when (val profileringResultat = profileringProvider(fnr)) {
-                is ProfileringFunnet -> profileringResultat
-                is ProfileringIkkeFunnet -> profileringResultat
-                is ProfileringOppslagFeil -> return TilordningFeil("Kunne ikke hente profilering: ${profileringResultat.error.message}")
+            val profilering: Profilering = when(oppfolgingsperiodeStartet.erArbeidssøkerRegistrering) {
+                true -> {
+                    when (val profileringResultat = profileringProvider(fnr)) {
+                        is ProfileringFunnet -> profileringResultat
+                        is ProfileringIkkeFunnet -> {
+                            when (skalForsøkeÅHenteProfileringPåNytt(oppfolgingsperiodeStartet.startDato)) {
+                                true -> return TilordningFeil("Fant ikke profilering, men skal forsøke på nytt. Ble registrert for ${Duration.between(oppfolgingsperiodeStartet.startDato, ZonedDateTime.now()).toSeconds()} sekunder siden")
+                                false -> profileringResultat
+                            }
+                        }
+                        is ProfileringOppslagFeil -> return TilordningFeil("Kunne ikke hente profilering: ${profileringResultat.error.message}")
+                    }
+                }
+                false -> ProfileringIkkeAktuell
             }
             val gtKontorResultat = gtKontorProvider(fnr, harStrengtFortroligAdresse, erSkjermet)
             val kontorTilordning = when (gtKontorResultat) {
@@ -170,7 +184,7 @@ class AutomatiskKontorRutingService(
 
     private fun skalTilNasjonalOppfølgingsEnhet(
         sensitivitet: Sensitivitet,
-        profilering: HentProfileringsResultat,
+        profilering: Profilering,
         alder: Int
     ): Boolean {
         return !sensitivitet.erSensitiv() &&
@@ -182,7 +196,7 @@ class AutomatiskKontorRutingService(
     private fun hentTilordningUtenGT(
         fnr: Ident,
         alder: Int,
-        profilering: HentProfileringsResultat,
+        profilering: Profilering,
         oppfolgingsperiodeId: OppfolgingsperiodeId,
         gtResultat: KontorForGtFinnesIkke
     ): AOKontorEndret {
@@ -216,7 +230,7 @@ class AutomatiskKontorRutingService(
         fnr: Ident,
         gtKontor: KontorForGtFantLandEllerKontor,
         alder: Int,
-        profilering: HentProfileringsResultat,
+        profilering: Profilering,
         oppfolgingsperiodeId: OppfolgingsperiodeId,
     ): AOKontorEndret {
         val skalTilNOE = skalTilNasjonalOppfølgingsEnhet(gtKontor.sensitivitet(), profilering, alder)
@@ -499,6 +513,15 @@ class AutomatiskKontorRutingService(
         endringISkjermingStatus.erSkjermet,
         gtForBruker
     )
+
+    private fun skalForsøkeÅHenteProfileringPåNytt(oppfolgingsperiodeStartet: ZonedDateTime): Boolean {
+        val tidSidenBrukerBleRegistrert = Duration.between(oppfolgingsperiodeStartet, ZonedDateTime.now())
+        val forventetForsinkelsePåProfilering = Duration.ofSeconds(5)
+        val feilmargin = Duration.ofSeconds(5)
+        return (tidSidenBrukerBleRegistrert < (forventetForsinkelsePåProfilering + feilmargin)).also {
+            log.info("Bruker ble registrert som arbeidssøker for tid siden: ${tidSidenBrukerBleRegistrert}")
+        }
+    }
 }
 
 
