@@ -123,7 +123,15 @@ class AutomatiskKontorRutingService(
                     when (val profileringResultat = profileringProvider(fnr)) {
                         is ProfileringFunnet -> profileringResultat
                         is ProfileringIkkeFunnet -> {
-                            val diff = Duration.of(oppfolgingsperiodeStartet.startDato, ZonedDateTime.now())
+                            val tidSidenBrukerBleRegistrert = Duration.between(oppfolgingsperiodeStartet.startDato, ZonedDateTime.now())
+                            val forventetForsinkelsePåProfilering = Duration.ofSeconds(5)
+                            val feilmargin = Duration.ofSeconds(5)
+                            when()
+                            if (tidSidenBrukerBleRegistrert < forventetForsinkelsePåProfilering + feilmargin) {
+                                return TilordningFeil("ForsøkEnGangTilFordiLittTidlig")
+                            } else {
+                                profileringResultat
+                            }
                             TODO("Finner ikke profilering og mindre enn ti sekunder siden bruker ble registrert returner 'ForsøkEnGangTilFordiLittTidlig'")
                             TODO("Finner ikke profilering men mer enn ti sekunder siden, så returner 'profileringResultat'")
                         }
