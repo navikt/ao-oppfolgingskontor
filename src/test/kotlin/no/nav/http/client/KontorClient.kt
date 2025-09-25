@@ -19,6 +19,6 @@ suspend fun HttpClient.settKontor(server: MockOAuth2Server, kontorId: String, fn
         ).serialize()}")
         header("Content-Type", "application/json")
         header("Accept", "application/json")
-        setBody("""{ "kontorId": "$kontorId", "fnr": "$fnr", "begrunnelse": null }""")
+        setBody("""{ "kontorId": "$kontorId", "ident": "$fnr", "begrunnelse": null }""")
     }
 }
