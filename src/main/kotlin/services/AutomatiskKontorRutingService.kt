@@ -124,7 +124,7 @@ class AutomatiskKontorRutingService(
                         is ProfileringFunnet -> profileringResultat
                         is ProfileringIkkeFunnet -> {
                             when (skalForsøkeÅHenteProfileringPåNytt(oppfolgingsperiodeStartet.startDato)) {
-                                true -> TilordningFeil("Fant ikke profilering, men skal forsøke på nytt")
+                                true -> return TilordningFeil("Fant ikke profilering, men skal forsøke på nytt")
                                 false -> profileringResultat
                             }
                         }
@@ -222,7 +222,7 @@ class AutomatiskKontorRutingService(
         fnr: Ident,
         gtKontor: KontorForGtFantLandEllerKontor,
         alder: Int,
-        profilering: HentProfileringsResultat,
+        profilering: Profilering,
         oppfolgingsperiodeId: OppfolgingsperiodeId,
     ): AOKontorEndret {
         val skalTilNOE = skalTilNasjonalOppfølgingsEnhet(gtKontor.sensitivitet(), profilering, alder)
