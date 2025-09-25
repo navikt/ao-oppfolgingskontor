@@ -719,12 +719,18 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
     }
 })
 
-fun oppfolgingsperiodeStartet(bruker: Bruker, arenaKontor: KontorId? = null, tidligArenaKontor: TidligArenaKontor? = null) = oppfolgingsperiodeStartet(bruker.fnr(), arenaKontor, tidligArenaKontor)
+fun oppfolgingsperiodeStartet(bruker: Bruker, arenaKontor: KontorId? = null, tidligArenaKontor: TidligArenaKontor? = null) =
+    oppfolgingsperiodeStartet(bruker.fnr(), arenaKontor, tidligArenaKontor, (bruker.oppfolgingsPeriodeResult as AktivOppfolgingsperiode).startDato)
 
-fun oppfolgingsperiodeStartet(fnr: IdentSomKanLagres, arenaKontor: KontorId? = null, tidligArenaKontor: TidligArenaKontor? = null): OppfolgingsperiodeStartet {
+fun oppfolgingsperiodeStartet(
+    fnr: IdentSomKanLagres,
+    arenaKontor: KontorId? = null,
+    tidligArenaKontor: TidligArenaKontor? = null,
+    startDato: OffsetDateTime = OffsetDateTime.now(),
+): OppfolgingsperiodeStartet {
     return OppfolgingsperiodeStartet(
         fnr = fnr,
-        startDato = ZonedDateTime.now(),
+        startDato = startDato.toZonedDateTime(),
         periodeId = OppfolgingsperiodeId(UUID.randomUUID()),
         startetArenaKontor =   arenaKontor,
         arenaKontorFraOppfolgingsbrukerTopic = tidligArenaKontor,
@@ -946,7 +952,7 @@ val brukerUtenProfileringEnnå = Bruker(
 )
 val brukerMedFeilendeProfilering = brukerUtenProfileringEnnå.copy(
     oppfolgingsPeriodeResult = (brukerUtenProfileringEnnå.oppfolgingsPeriodeResult as AktivOppfolgingsperiode).copy(
-        startDato = OffsetDateTime.now().minusMinutes(11)
+        startDato = OffsetDateTime.now().withHour(0).withMinute(0).withYear(2024).withMonth(1)
     )
 )
 val brukerMedFeilendeSkjerming = Bruker(
