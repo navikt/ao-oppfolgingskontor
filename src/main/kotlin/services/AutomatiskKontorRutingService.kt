@@ -118,22 +118,15 @@ class AutomatiskKontorRutingService(
                 is AlderIkkeFunnet -> return TilordningFeil("Kunne ikke hente alder: ${result.message}")
                 is AlderOppslagFeil -> return TilordningFeil("Henting av alder feilet: ${result.message}")
             }
-            val profilering = when(oppfolgingsperiodeStartet.erArbeidssøkerRegistrering) {
+            val profilering: Profilering = when(oppfolgingsperiodeStartet.erArbeidssøkerRegistrering) {
                 true -> {
                     when (val profileringResultat = profileringProvider(fnr)) {
                         is ProfileringFunnet -> profileringResultat
                         is ProfileringIkkeFunnet -> {
-                            val tidSidenBrukerBleRegistrert = Duration.between(oppfolgingsperiodeStartet.startDato, ZonedDateTime.now())
-                            val forventetForsinkelsePåProfilering = Duration.ofSeconds(5)
-                            val feilmargin = Duration.ofSeconds(5)
-                            when()
-                            if (tidSidenBrukerBleRegistrert < forventetForsinkelsePåProfilering + feilmargin) {
-                                return TilordningFeil("ForsøkEnGangTilFordiLittTidlig")
-                            } else {
-                                profileringResultat
+                            when (skalForsøkeÅHenteProfileringPåNytt(oppfolgingsperiodeStartet.startDato)) {
+                                true -> TilordningFeil("Fant ikke profilering, men skal forsøke på nytt")
+                                false -> profileringResultat
                             }
-                            TODO("Finner ikke profilering og mindre enn ti sekunder siden bruker ble registrert returner 'ForsøkEnGangTilFordiLittTidlig'")
-                            TODO("Finner ikke profilering men mer enn ti sekunder siden, så returner 'profileringResultat'")
                         }
                         is ProfileringOppslagFeil -> return TilordningFeil("Kunne ikke hente profilering: ${profileringResultat.error.message}")
                     }
@@ -504,5 +497,12 @@ class AutomatiskKontorRutingService(
         endringISkjermingStatus.erSkjermet,
         gtForBruker
     )
+
+    private fun skalForsøkeÅHenteProfileringPåNytt(oppfolgingsperiodeStartet: ZonedDateTime): Boolean {
+        val tidSidenBrukerBleRegistrert = Duration.between(oppfolgingsperiodeStartet, ZonedDateTime.now())
+        val forventetForsinkelsePåProfilering = Duration.ofSeconds(5)
+        val feilmargin = Duration.ofSeconds(5)
+        return tidSidenBrukerBleRegistrert < (forventetForsinkelsePåProfilering + feilmargin)
+    }
 }
 
