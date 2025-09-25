@@ -31,11 +31,11 @@ jobs:
           gradle-version: "8.13"
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
-      - name: Generate graphql schema
-        run: ./gradlew graphqlGenerateSDL
-
       - name: Test and build
         run: ./gradlew build --scan
+
+      - name: Generate graphql schema
+        run: ./gradlew graphqlGenerateSDL
 
       - name: Generate and output SBOM
         run: ./gradlew cyclonedxBom
