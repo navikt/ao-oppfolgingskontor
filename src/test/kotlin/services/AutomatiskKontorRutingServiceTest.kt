@@ -657,15 +657,16 @@ class AutomatiskKontorRutingServiceTest: DescribeSpec({
                 TilordningSuccessKontorEndret(
                     KontorEndringer(
                         aoKontorEndret = OppfolgingsPeriodeStartetLokalKontorTilordning(
-                        KontorTilordning(
-                            brukerMedFeilendeProfilering.fnr(),
-                            brukerMedFeilendeProfilering.gtKontor(),
-                            brukerMedFeilendeProfilering.oppfolgingsperiodeId()
-                        ),
-                        ingenSensitivitet
-                    )
+                            KontorTilordning(
+                                brukerMedFeilendeProfilering.fnr(),
+                                brukerMedFeilendeProfilering.gtKontor(),
+                                brukerMedFeilendeProfilering.oppfolgingsperiodeId()
+                            ),
+                            ingenSensitivitet
+                        )
                     )
                 ),
+                TilordningFeil("Kunne ikke hente profilering: feil i profilering"),
                 TilordningFeil("Kunne ikke hente skjerming ved kontortilordning: feil i skjerming"),
                 TilordningFeil("Kunne ikke hente adressebeskyttelse ved kontortilordning: feil i adressebeskyttelse"),
                 TilordningFeil("Feil ved henting av gt-kontor: Feil i gt-kontor oppslag"),
@@ -996,6 +997,7 @@ val feilendeBrukere = listOf(
     brukerMedFeilendeFnr,
     brukerMedFeilendeAlder,
     brukerMedFeilendeProfilering,
+    brukerUtenProfileringEnnå,
     brukerMedFeilendeSkjerming,
     brukerMedFeilendeAdressebeskyttelse,
     brukerMedFeilendeKontorForGt,
