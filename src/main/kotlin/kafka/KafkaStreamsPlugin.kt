@@ -52,7 +52,7 @@ class KafkaStreamsPluginConfig(
     var oppfolgingsperiodeService: OppfolgingsperiodeService? = null,
     var oppfolgingsperiodeDao: OppfolgingsperiodeDao? = null,
     var identService: IdentService? = null,
-    var criticalErrorNotificationFunction: CriticalErrorNotificationFunction
+    var criticalErrorNotificationFunction: CriticalErrorNotificationFunction? = null
 )
 
 const val arbeidsoppfolgingkontorSinkName = "endring-pa-arbeidsoppfolgingskontor"
