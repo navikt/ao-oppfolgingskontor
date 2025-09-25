@@ -1,5 +1,6 @@
 package no.nav
 
+import dab.poao.nav.no.health.CriticalErrorNotificationFunction
 import io.ktor.server.application.*
 import io.ktor.server.netty.*
 import no.nav.db.configureDatabase
@@ -33,7 +34,7 @@ fun main(args: Array<String>) {
 
 fun Application.module() {
     val meterRegistry = configureMonitoring()
-    configureHealthAndCompression()
+    val setCriticalError: CriticalErrorNotificationFunction = configureHealthAndCompression()
     configureSecurity()
     val database = configureDatabase()
 
@@ -81,6 +82,7 @@ fun Application.module() {
         this.oppfolgingsperiodeService = oppfolgingsperiodeService
         this.oppfolgingsperiodeDao = OppfolgingsperiodeDao
         this.identService = identService
+        this.criticalErrorNotificationFunction = setCriticalError
     }
 
     val issuer = environment.getIssuer()
