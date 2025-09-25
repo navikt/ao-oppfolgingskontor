@@ -14,5 +14,6 @@ enum class KontorEndringsType {
     ArenaKontorVedOppfolgingsStart,
     ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart,
     EndretBostedsadresse,
+    GTKontorVedOppfolgingStart,
     ArenaMigrering
 }

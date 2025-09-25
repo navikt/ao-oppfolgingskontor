@@ -4,6 +4,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
+import no.nav.domain.GT_VAR_LAND_FALLBACK
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.INGEN_GT_KONTOR_FALLBACK
@@ -50,6 +51,7 @@ import no.nav.kafka.consumers.HåndterPersondataEndretFail
 import no.nav.kafka.consumers.HåndterPersondataEndretResultat
 import no.nav.kafka.consumers.HåndterPersondataEndretSuccess
 import no.nav.kafka.consumers.KontorEndringer
+import no.nav.services.AutomatiskKontorRutingService.Companion.VIKAFOSSEN
 import org.slf4j.LoggerFactory
 import utils.Outcome
 import java.time.Duration
@@ -133,11 +135,17 @@ class AutomatiskKontorRutingService(
                 }
                 false -> ProfileringIkkeAktuell
             }
-            val kontorTilordning = when (val gtKontorResultat = gtKontorProvider(fnr, harStrengtFortroligAdresse, erSkjermet)) {
+            val gtKontorResultat = gtKontorProvider(fnr, harStrengtFortroligAdresse, erSkjermet)
+            val kontorTilordning = when (gtKontorResultat) {
                 is KontorForGtFinnesIkke -> hentTilordningUtenGT(fnr, alder, profilering, oppfolgingsperiodeId, gtKontorResultat)
                 is KontorForGtFantLandEllerKontor -> hentTilordning(fnr, gtKontorResultat, alder, profilering, oppfolgingsperiodeId)
                 is KontorForGtFeil -> return TilordningFeil("Feil ved henting av gt-kontor: ${gtKontorResultat.melding}")
-            }.let { KontorEndringer(aoKontorEndret = it, arenaKontorEndret = arenaKontorEndring(oppfolgingsperiodeStartet, oppfolgingsperiodeId)) }
+            }   .let { KontorEndringer(
+                        aoKontorEndret = it,
+                        arenaKontorEndret = arenaKontorEndring(oppfolgingsperiodeStartet, oppfolgingsperiodeId),
+                        gtKontorEndret = gtKontorResultat.toGtKontorEndret(fnr, oppfolgingsperiodeId)
+                    )
+                }
             tilordneKontor( kontorTilordning)
             return TilordningSuccessKontorEndret(kontorTilordning)
 
@@ -307,7 +315,7 @@ class AutomatiskKontorRutingService(
             return when (gtKontorResultat) {
                 is KontorForGtSuccess -> {
                     val kontorId = when (gtKontorResultat) {
-                        is KontorForGtFantLand,
+                        is KontorForGtFantLand -> GT_VAR_LAND_FALLBACK
                         is KontorForGtFinnesIkke -> INGEN_GT_KONTOR_FALLBACK
                         is KontorForGtNrFantDefaultKontor -> gtKontorResultat.kontorId
                         is KontorForGtNrFantFallbackKontorForManglendeGt -> gtKontorResultat.kontorId
@@ -474,8 +482,7 @@ class AutomatiskKontorRutingService(
     fun getGTKontorOrFallback(gtKontorResultat: KontorForGtSuccess): KontorId {
         return when (gtKontorResultat) {
             is KontorForGtNrFantKontor -> gtKontorResultat.kontorId
-            is KontorForGtFinnesIkke,
-            is KontorForGtFantLand -> {
+            is KontorForGtFinnesIkke -> {
                 if (gtKontorResultat.sensitivitet().strengtFortroligAdresse.value) {
                     VIKAFOSSEN
                 } else if (gtKontorResultat.sensitivitet().skjermet.value) {
@@ -483,6 +490,15 @@ class AutomatiskKontorRutingService(
                         "Skjermede brukere uten geografisk tilknytning eller med land som GT kan ikke tilordnes kontor"
                     )
                 } else INGEN_GT_KONTOR_FALLBACK
+            }
+            is KontorForGtFantLand -> {
+                if (gtKontorResultat.sensitivitet().strengtFortroligAdresse.value) {
+                    VIKAFOSSEN
+                } else if (gtKontorResultat.sensitivitet().skjermet.value) {
+                    throw IllegalStateException(
+                        "Skjermede brukere uten geografisk tilknytning eller med land som GT kan ikke tilordnes kontor"
+                    )
+                } else GT_VAR_LAND_FALLBACK
             }
         }
     }
@@ -508,3 +524,46 @@ class AutomatiskKontorRutingService(
     }
 }
 
+
+fun KontorForGtSuccess.toGtKontorEndret(ident: IdentSomKanLagres, oppfolgingsperiodeId: OppfolgingsperiodeId): GTKontorEndret? {
+    if (this.erStrengtFortrolig()) {
+        return GTKontorEndret.syncVedStartOppfolging(
+            tilordning = KontorTilordning(
+                fnr = ident,
+                kontorId = VIKAFOSSEN,
+                oppfolgingsperiodeId = oppfolgingsperiodeId
+            ),
+            this.gt()
+        )
+    }
+
+    return when (this) {
+        is KontorForGtFantLand -> GTKontorEndret.syncVedStartOppfolging(
+            tilordning = KontorTilordning(
+                fnr = ident,
+                kontorId = GT_VAR_LAND_FALLBACK,
+                oppfolgingsperiodeId = oppfolgingsperiodeId
+            ),
+            this.gt()
+        )
+        is KontorForGtNrFantDefaultKontor -> GTKontorEndret.syncVedStartOppfolging(
+            tilordning = KontorTilordning(
+                fnr = ident,
+                kontorId = this.kontorId,
+                oppfolgingsperiodeId = oppfolgingsperiodeId
+            ),
+            this.gt()
+        )
+        is KontorForGtNrFantFallbackKontorForManglendeGt -> {
+            GTKontorEndret.syncVedStartOppfolging(
+                tilordning = KontorTilordning(
+                    fnr = ident,
+                    kontorId = this.kontorId,
+                    oppfolgingsperiodeId = oppfolgingsperiodeId
+                ),
+                this.gt()
+            )
+        }
+        is KontorForGtFinnesIkke -> null
+    }
+}

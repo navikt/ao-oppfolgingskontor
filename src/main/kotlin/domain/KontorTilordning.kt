@@ -10,3 +10,4 @@ data class KontorTilordning(
 )
 
 val INGEN_GT_KONTOR_FALLBACK = KontorId("2990")
+val GT_VAR_LAND_FALLBACK = KontorId("0393")
