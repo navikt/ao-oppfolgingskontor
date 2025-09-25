@@ -112,11 +112,11 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                     oppfolgingsperiodeStartet(eldreBrukerMedGodeMuligheter)
                 ) shouldBe TilordningSuccessKontorEndret(
                     KontorEndringer(
-                    aoKontorEndret = OppfolgingsperiodeStartetNoeTilordning(
-                        eldreBrukerMedGodeMuligheter.fnr(),
-                        eldreBrukerMedGodeMuligheter.oppfolgingsperiodeId()
-                    ),
-                    gtKontorEndret = eldreBrukerMedGodeMuligheter.defaultGtKontorVedOppfolgStart()
+                        aoKontorEndret = OppfolgingsperiodeStartetNoeTilordning(
+                            eldreBrukerMedGodeMuligheter.fnr(),
+                            eldreBrukerMedGodeMuligheter.oppfolgingsperiodeId()
+                        ),
+                        gtKontorEndret = eldreBrukerMedGodeMuligheter.defaultGtKontorVedOppfolgStart()
                     )
                 )
             }
@@ -552,31 +552,11 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                     HarSkjerming(true)
                 )
             ) shouldBe Result.success(
-                EndringISkjermingResult(
-                    KontorEndringer(
-                        gtKontorEndret = GTKontorEndret.endretPgaSkjermingEndret(
-                            KontorTilordning(
-                                brukerMedLandskodeUtenFallback.fnr(),
-                                INGEN_GT_KONTOR_FALLBACK,
-                                brukerMedLandskodeUtenFallback.oppfolgingsperiodeId()
-                            ),
-                            HarSkjerming(true),
-                            brukerMedLandskodeUtenFallback.gtForBruker as GtLandForBrukerFunnet
-                        ),
-                        aoKontorEndret = AOKontorEndretPgaSkjermingEndret(
-                            KontorTilordning(
-                                brukerMedLandskodeUtenFallback.fnr(),
-                                INGEN_GT_KONTOR_FALLBACK,
-                                brukerMedLandskodeUtenFallback.oppfolgingsperiodeId()
-                            )
-                        ),
-                    )
-            ) shouldBe  Result.success(EndringISkjermingResult(
                 KontorEndringer(
                     gtKontorEndret = GTKontorEndret.endretPgaSkjermingEndret(
                         KontorTilordning(
                             brukerMedLandskodeUtenFallback.fnr(),
-                             GT_VAR_LAND_FALLBACK,
+                            GT_VAR_LAND_FALLBACK,
                             brukerMedLandskodeUtenFallback.oppfolgingsperiodeId()
                         ),
                         HarSkjerming(true),
@@ -590,6 +570,26 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                         )
                     ),
                 )
+            ) shouldBe Result.success(EndringISkjermingResult(
+                KontorEndringer(
+                    gtKontorEndret = GTKontorEndret.endretPgaSkjermingEndret(
+                        KontorTilordning(
+                            brukerMedLandskodeUtenFallback.fnr(),
+                            GT_VAR_LAND_FALLBACK,
+                            brukerMedLandskodeUtenFallback.oppfolgingsperiodeId()
+                        ),
+                        HarSkjerming(true),
+                        brukerMedLandskodeUtenFallback.gtForBruker as GtLandForBrukerFunnet
+                    ),
+                    aoKontorEndret = AOKontorEndretPgaSkjermingEndret(
+                        KontorTilordning(
+                            brukerMedLandskodeUtenFallback.fnr(),
+                            GT_VAR_LAND_FALLBACK,
+                            brukerMedLandskodeUtenFallback.oppfolgingsperiodeId()
+                        )
+                    ),
+                )
+            )
             )
         }
 
@@ -722,16 +722,18 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
         it("skal synce gt kontor med norg for brukere med gt-landskode uten arbeidsfordeling fallback") {
             gitt(brukerMedLandskodeUtenFallback).handterEndringForBostedsadresse(
                 BostedsadresseEndret(brukerMedLandskodeUtenFallback.fnr())
-            ) shouldBe HåndterPersondataEndretSuccess(KontorEndringer(
-                gtKontorEndret = GTKontorEndret.endretPgaBostedsadresseEndret(
-                    KontorTilordning(
-                        brukerMedLandskodeUtenFallback.fnr(),
-                        GT_VAR_LAND_FALLBACK,
-                        brukerMedLandskodeUtenFallback.oppfolgingsperiodeId()
-                    ),
-                    brukerMedLandskodeUtenFallback.gtForBruker as GtForBrukerFunnet
+            ) shouldBe HåndterPersondataEndretSuccess(
+                KontorEndringer(
+                    gtKontorEndret = GTKontorEndret.endretPgaBostedsadresseEndret(
+                        KontorTilordning(
+                            brukerMedLandskodeUtenFallback.fnr(),
+                            GT_VAR_LAND_FALLBACK,
+                            brukerMedLandskodeUtenFallback.oppfolgingsperiodeId()
+                        ),
+                        brukerMedLandskodeUtenFallback.gtForBruker as GtForBrukerFunnet
+                    )
                 )
-            ))
+            )
         }
 
         it("skal ikke behandle brukere som ikke er under oppfølging") {
@@ -779,9 +781,11 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                                 brukerMedFeilendeProfilering.oppfolgingsperiodeId()
                             ),
                             ingenSensitivitet
-                        )
+                        ),
+                        gtKontorEndret = brukerMedFeilendeProfilering.defaultGtKontorVedOppfolgStart()
                     )
                 ),
+                TilordningFeil(message = "Fant ikke profilering, men skal forsøke på nytt. Ble registrert for 0 sekunder siden"),
                 TilordningFeil("Kunne ikke hente skjerming ved kontortilordning: feil i skjerming"),
                 TilordningFeil("Kunne ikke hente adressebeskyttelse ved kontortilordning: feil i adressebeskyttelse"),
                 TilordningFeil("Feil ved henting av gt-kontor: Feil i gt-kontor oppslag"),
@@ -913,6 +917,7 @@ data class Bruker(
         }
         throw IllegalStateException("Prøvde hente gtKontor fra testbruker men bruker var ikke konfigurert med et gt-kontor, men hadde istedet: ${this.gtKontor}")
     }
+
     fun defaultGtKontorVedOppfolgStart(): GTKontorEndret {
         return GTKontorEndret.syncVedStartOppfolging(
             tilordning = KontorTilordning(
@@ -923,6 +928,7 @@ data class Bruker(
             gt = this.gtForBruker as GtForBrukerSuccess
         )
     }
+
     fun gtVikafossen(): GTKontorEndret {
         return GTKontorEndret.syncVedStartOppfolging(
             tilordning = KontorTilordning(
@@ -933,6 +939,7 @@ data class Bruker(
             gt = this.gtForBruker as GtForBrukerSuccess
         )
     }
+
     fun oppfolgingsperiodeId(): OppfolgingsperiodeId {
         if (oppfolgingsPeriodeResult is AktivOppfolgingsperiode) {
             return oppfolgingsPeriodeResult.periodeId
