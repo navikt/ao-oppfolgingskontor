@@ -63,6 +63,7 @@ sealed class Ident {
 
 /* Identer som kan lagres data på, feks oppfolgingsperiode, kontor etc.
 * Alle identer utenom AKtorId støttes */
+@Serializable
 sealed class IdentSomKanLagres(): Ident()
 
 /*
