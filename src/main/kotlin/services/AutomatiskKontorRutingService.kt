@@ -117,6 +117,8 @@ class AutomatiskKontorRutingService(
             val profilering = when (val profileringResultat = profileringProvider(fnr)) {
                 is ProfileringFunnet -> profileringResultat
                 is ProfileringIkkeFunnet -> {
+                    val skalForsøkePåNytt = oppfolgingsperiodeStartet.erArbeidssøkerRegistrering
+
                     TODO("Hopp over hvis Inngar - nye typer for å skille oppfølgingStart")
                     TODO("Finner ikke profilering og mindre enn ti sekunder siden bruker ble registrert returner 'ForsøkEnGangTilFordiLittTidlig'")
                     TODO("Finner ikke profilering men mer enn ti sekunder siden, så returner 'profileringResultat'")

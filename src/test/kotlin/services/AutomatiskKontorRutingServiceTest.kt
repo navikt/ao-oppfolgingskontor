@@ -724,11 +724,12 @@ fun oppfolgingsperiodeStartet(bruker: Bruker, arenaKontor: KontorId? = null, tid
 
 fun oppfolgingsperiodeStartet(fnr: IdentSomKanLagres, arenaKontor: KontorId? = null, tidligArenaKontor: TidligArenaKontor? = null): OppfolgingsperiodeStartet {
     return OppfolgingsperiodeStartet(
-        fnr,
-        ZonedDateTime.now(),
-        OppfolgingsperiodeId(UUID.randomUUID()),
-            arenaKontor,
-        tidligArenaKontor,
+        fnr = fnr,
+        startDato = ZonedDateTime.now(),
+        periodeId = OppfolgingsperiodeId(UUID.randomUUID()),
+        startetArenaKontor =   arenaKontor,
+        arenaKontorFraOppfolgingsbrukerTopic = tidligArenaKontor,
+        erArbeidssøkerRegistrering = true
     )
 }
 

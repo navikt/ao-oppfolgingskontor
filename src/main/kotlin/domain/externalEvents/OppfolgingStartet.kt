@@ -17,7 +17,8 @@ data class OppfolgingsperiodeStartet(
     val startDato: ZonedDateTime,
     override val periodeId: OppfolgingsperiodeId,
     val startetArenaKontor: KontorId? = null,
-    val arenaKontorFraOppfolgingsbrukerTopic: TidligArenaKontor?
+    val arenaKontorFraOppfolgingsbrukerTopic: TidligArenaKontor?,
+    val erArbeidssøkerRegistrering: Boolean,
 ): OppfolgingsperiodeEndret()
 
 class OppfolgingsperiodeAvsluttet(
