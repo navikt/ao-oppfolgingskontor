@@ -935,7 +935,7 @@ val brukerMedFeilendeAlder = Bruker(
     SkjermingFunnet(HarSkjerming(false)),
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
 )
-val brukerMedFeilendeProfilering = Bruker(
+val brukerUtenProfileringEnnå = Bruker(
     IdentFunnet(Fnr("11111111111", AKTIV)),
     AlderFunnet(20),
     ProfileringIkkeFunnet("profilering ikke funnet"),
@@ -944,6 +944,10 @@ val brukerMedFeilendeProfilering = Bruker(
     SkjermingFunnet(HarSkjerming(false)),
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
 )
+val brukerMedFeilendeProfilering = brukerUtenProfileringEnnå.copy(
+    oppfolgingsPeriodeResult = brukerUtenProfileringEnnå.oppfolgingsPeriodeResult.copy(
+
+    )
 val brukerMedFeilendeSkjerming = Bruker(
     IdentFunnet(Fnr("11111111111", AKTIV)),
     AlderFunnet(20),
