@@ -502,7 +502,9 @@ class AutomatiskKontorRutingService(
         val tidSidenBrukerBleRegistrert = Duration.between(oppfolgingsperiodeStartet, ZonedDateTime.now())
         val forventetForsinkelsePåProfilering = Duration.ofSeconds(5)
         val feilmargin = Duration.ofSeconds(5)
-        return tidSidenBrukerBleRegistrert < (forventetForsinkelsePåProfilering + feilmargin)
+        return (tidSidenBrukerBleRegistrert < (forventetForsinkelsePåProfilering + feilmargin)).also {
+            log.info("Bruker ble registrert som arbeidssøker for tid siden: ${tidSidenBrukerBleRegistrert}")
+        }
     }
 }
 
