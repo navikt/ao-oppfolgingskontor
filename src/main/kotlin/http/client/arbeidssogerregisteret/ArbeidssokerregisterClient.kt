@@ -65,16 +65,20 @@ class ArbeidssokerregisterClient(
             }
 
             return currentOpenPeriod.opplysningerOmArbeidssoeker
-                .firstOrNull()
-                ?.profilering
-                ?.profilertTil?.let { profilertTil ->
+                .let {
+                    it.firstOrNull()
+                        ?: return ProfileringIkkeFunnet("Listen med opplysningerOmArbeidssoeker i profileringsresponse var tom")
+                }
+                .let {
+                    it.profilering
+                        ?: return ProfileringIkkeFunnet("Feltet 'profilering' i opplysningerOmArbeidssoeker var null")
+                }
+                .profilertTil.let { profilertTil ->
                     when (profilertTil) {
                         ProfileringsResultat.UKJENT_VERDI -> ProfileringIkkeFunnet("Ukjent verdi for profilering.")
                         else -> ProfileringFunnet(profilertTil)
                     }
                 }
-                ?: ProfileringIkkeFunnet("Bruker hadde ikke profilering")
-
 
         } catch (e: Exception) {
             log.error(e.message, e)

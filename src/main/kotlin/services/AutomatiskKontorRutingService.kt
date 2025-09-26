@@ -129,6 +129,9 @@ class AutomatiskKontorRutingService(
                             when (skalForsøkeÅHenteProfileringPåNytt(oppfolgingsperiodeStartet.startDato)) {
                                 true -> return TilordningRetry("Fant ikke profilering, men skal forsøke på nytt. Ble registrert for kort tid siden")
                                 false -> profileringResultat
+                                    .also {
+                                        log.info("Tilordner bruker kontor uten at profilering ble funnet: ${profileringResultat.melding}")
+                                    }
                             }
                         }
                         is ProfileringOppslagFeil -> return TilordningFeil("Kunne ikke hente profilering: ${profileringResultat.error.message}")
