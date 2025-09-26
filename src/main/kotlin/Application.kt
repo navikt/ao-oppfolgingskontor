@@ -71,7 +71,7 @@ fun Application.module() {
         { skjermingsClient.hentSkjerming(it) },
         { pdlClient.harStrengtFortroligAdresse(it) },
         { oppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) },
-        { ident, oppfolgingsperiodeId -> OppfolgingsperiodeDao.harBruktPeriodeTidligere(ident, oppfolgingsperiodeId) },
+        { ident, oppfolgingsperiodeId -> OppfolgingsperiodeDao.harBruktPeriodeIAoKontorTidligere(ident, oppfolgingsperiodeId) },
     )
 
     install(KafkaStreamsPlugin) {

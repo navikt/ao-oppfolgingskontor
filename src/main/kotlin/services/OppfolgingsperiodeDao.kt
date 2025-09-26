@@ -8,6 +8,7 @@ import no.nav.db.finnForetrukketIdent
 import no.nav.db.table.KontorhistorikkTable
 import no.nav.db.table.OppfolgingsperiodeTable
 import no.nav.db.table.OppfolgingsperiodeTable.oppfolgingsperiodeId
+import no.nav.domain.KontorType
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -53,6 +54,25 @@ object OppfolgingsperiodeDao {
             transaction {
                 val tidligereEntries = KontorhistorikkTable.select(KontorhistorikkTable.ident)
                     .where { KontorhistorikkTable.ident eq ident.value and (KontorhistorikkTable.oppfolgingsperiodeId eq periodeId.value) }
+                    .map { it }
+                    .size
+                Outcome.Success((tidligereEntries) > 0)
+            }
+        } catch (e: Exception) {
+            log.error("Kunne ikke sjekke om oppfølgingsperiode allerede er brukt for å gjøre kontortilordning")
+            return Outcome.Failure(e)
+        }
+    }
+
+    fun harBruktPeriodeIAoKontorTidligere(ident: Ident, periodeId: OppfolgingsperiodeId): Outcome<Boolean> {
+        return try {
+            transaction {
+                val tidligereEntries = KontorhistorikkTable.select(KontorhistorikkTable.ident)
+                    .where {
+                        KontorhistorikkTable.ident eq ident.value and
+                                (KontorhistorikkTable.oppfolgingsperiodeId eq periodeId.value) and
+                                (KontorhistorikkTable.kontorType eq KontorType.ARBEIDSOPPFOLGING.name)
+                    }
                     .map { it }
                     .size
                 Outcome.Success((tidligereEntries) > 0)
