@@ -59,7 +59,7 @@ class OppfolgingsperiodeService(
             }
             return when (periodeHarFåttTilordning) {
                 true -> HaddePeriodeMedTilordningAllerede
-                false -> HaddePeriodeMedTilordningAllerede
+                false -> HaddePeriodeAlleredeMenManglerTilordning
             }
         }
         val harBruktPeriodeTidligere = OppfolgingsperiodeDao.harBruktPeriodeTidligere(oppfolgingsperiode.periodeId)
