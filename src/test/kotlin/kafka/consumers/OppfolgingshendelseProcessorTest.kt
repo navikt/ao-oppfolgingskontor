@@ -290,6 +290,20 @@ class OppfolgingshendelseProcessorTest {
         resultStoppMeldingPåNytt.shouldBeInstanceOf<Skip<*, *>>()
     }
 
+    @Test
+    fun `Skal forwarde melding om allerede lagret oppfølgingsperiode hvis kontortilordning (ao-kontor) ikke er gjort`() {
+        val bruker = testBruker()
+        flywayMigrationInTest()
+        bruker.gittBrukerUNderOppfolging()
+        bruker.gittArenaKontorTilordning(KontorId("1199"))
+        val oppfolgingshendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
+        val startmelding = oppfolgingStartetMelding(bruker)
+
+        val result = oppfolgingshendelseProcessor.process(startmelding)
+
+        result.shouldBeInstanceOf<Forward<*, *>>()
+    }
+
     @Disabled
     @Test
     fun `skal hoppe over start-melding men oppdatere kontor når perioden er allerede er startet (men ikke avsluttet)`() {
