@@ -53,12 +53,16 @@ class OppfolgingsperiodeService(
             return HaddeNyerePeriodePåIdent
         }
         if (OppfolgingsperiodeDao.finnesPeriode(oppfolgingsperiode.periodeId)) {
-            if(OppfolgingsperiodeDao.finnesAoKontorPåPeriode(oppfolgingsperiode.fnr, oppfolgingsperiode.periodeId)) {
-                return HaddePeriodeMedTilordningAllerede
+            val periodeHarFåttTilordning = when (val result = OppfolgingsperiodeDao.finnesAoKontorPåPeriode(oppfolgingsperiode.periodeId)) {
+                is Outcome.Failure -> throw Error("Klarte ikke sjekke om oppfolgingsperiode hadde tilordning: ${result.exception.message}", result.exception)
+                is Outcome.Success<Boolean> -> result.data
             }
-            return HaddePeriodeMedTilordningAllerede
+            return when (periodeHarFåttTilordning) {
+                true -> HaddePeriodeMedTilordningAllerede
+                false -> HaddePeriodeMedTilordningAllerede
+            }
         }
-        val harBruktPeriodeTidligere = OppfolgingsperiodeDao.harBruktPeriodeTidligere(oppfolgingsperiode.fnr, oppfolgingsperiode.periodeId)
+        val harBruktPeriodeTidligere = OppfolgingsperiodeDao.harBruktPeriodeTidligere(oppfolgingsperiode.periodeId)
         if (harBruktPeriodeTidligere is Outcome.Failure) {
             throw harBruktPeriodeTidligere.exception
         } else if (harBruktPeriodeTidligere is Outcome.Success && harBruktPeriodeTidligere.data) {

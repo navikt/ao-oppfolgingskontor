@@ -30,6 +30,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import services.GammelPeriodeAvsluttet
 import services.HaddeNyerePeriodePåIdent
+import services.HaddePeriodeAlleredeMenManglerTilordning
 import services.HaddePeriodeMedTilordningAllerede
 import services.HandterPeriodeAvsluttetResultat
 import services.HarSlettetPeriode
@@ -60,6 +61,7 @@ class OppfolgingsHendelseProcessor(
                     val oppfolgingStartetInternalEvent = oppfolgingsperiodeEvent.toDomainObject()
                     val periodeResult = oppfolgingsPeriodeService.handterPeriodeStartet(oppfolgingStartetInternalEvent)
                     return when (periodeResult) {
+                        HaddeNyerePeriodePåIdent, HarSlettetPeriode -> Skip()
                         HaddePeriodeMedTilordningAllerede -> {
                             val innkommendeArenaKontor = oppfolgingStartetInternalEvent.startetArenaKontor
                             val kontor = sisteArenaKontor(oppfolgingStartetInternalEvent)
@@ -76,21 +78,12 @@ class OppfolgingsHendelseProcessor(
                                 Skip()
                             }
                         }
-                        HaddeNyerePeriodePåIdent, HarSlettetPeriode -> Skip()
+                        HaddePeriodeAlleredeMenManglerTilordning,
                         OppfølgingsperiodeLagret -> {
-                            val forhåndslagretArenaKontor = hentSisteArenaKontorFraOppfolgingsBrukerOgSlettHvisFunnet(ident)
-                            val oppdatertOppfolgingStartetInternalEvent = oppfolgingStartetInternalEvent.copy(
-                                arenaKontorFraOppfolgingsbrukerTopic = forhåndslagretArenaKontor?.let {
-                                    TidligArenaKontor(
-                                        it.sistEndretDato,
-                                        KontorId(it.kontorId)
-                                    )
-                                }
-                            )
                             Forward(
                                 Record(
                                     ident,
-                                    oppdatertOppfolgingStartetInternalEvent,
+                                    oppfolgingStartetInternalEvent.enrichWithTidligArenaKontor(),
                                     Instant.now().toEpochMilli()
                                 ), null
                             )
@@ -109,6 +102,18 @@ class OppfolgingsHendelseProcessor(
                 log.error(feilmelding, error)
                 Retry<Ident, OppfolgingsperiodeStartet>(feilmelding)
             }
+    }
+
+    fun OppfolgingsperiodeStartet.enrichWithTidligArenaKontor(): OppfolgingsperiodeStartet {
+        val forhåndslagretArenaKontor = hentSisteArenaKontorFraOppfolgingsBrukerOgSlettHvisFunnet(this.fnr)
+        return this.copy(
+            arenaKontorFraOppfolgingsbrukerTopic = forhåndslagretArenaKontor?.let {
+                TidligArenaKontor(
+                    it.sistEndretDato,
+                    KontorId(it.kontorId)
+                )
+            }
+        )
     }
 
     fun hentSisteArenaKontorFraOppfolgingsBrukerOgSlettHvisFunnet(ident: Ident): TidligArenaKontorEntity? {
