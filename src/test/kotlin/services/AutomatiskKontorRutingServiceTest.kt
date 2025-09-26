@@ -76,6 +76,7 @@ import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingperiodeOppslagFeil
 import no.nav.services.OppfolgingsperiodeOppslagResult
 import no.nav.services.TilordningFeil
+import no.nav.services.TilordningRetry
 import no.nav.services.TilordningSuccessIngenEndring
 import no.nav.services.TilordningSuccessKontorEndret
 import utils.Outcome
@@ -785,7 +786,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                         gtKontorEndret = brukerMedFeilendeProfilering.defaultGtKontorVedOppfolgStart()
                     )
                 ),
-                TilordningFeil(message = "Fant ikke profilering, men skal forsøke på nytt. Ble registrert for 0 sekunder siden"),
+                TilordningRetry(message = "Fant ikke profilering, men skal forsøke på nytt. Ble registrert for 0 sekunder siden"),
                 TilordningFeil("Kunne ikke hente skjerming ved kontortilordning: feil i skjerming"),
                 TilordningFeil("Kunne ikke hente adressebeskyttelse ved kontortilordning: feil i adressebeskyttelse"),
                 TilordningFeil("Feil ved henting av gt-kontor: Feil i gt-kontor oppslag"),
@@ -1176,7 +1177,7 @@ val brukerUtenProfileringEnnå = Bruker(
 )
 val brukerMedFeilendeProfilering = brukerUtenProfileringEnnå.copy(
     oppfolgingsPeriodeResult = (brukerUtenProfileringEnnå.oppfolgingsPeriodeResult as AktivOppfolgingsperiode).copy(
-        startDato = OffsetDateTime.now().minusSeconds(11)
+        startDato = OffsetDateTime.now().minusSeconds(15)
     )
 )
 val brukerMedFeilendeSkjerming = Bruker(

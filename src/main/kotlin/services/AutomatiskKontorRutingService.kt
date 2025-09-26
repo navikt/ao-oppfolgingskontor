@@ -62,6 +62,7 @@ sealed class TilordningSuccess : TilordningResultat()
 object TilordningSuccessIngenEndring : TilordningSuccess()
 data class TilordningSuccessKontorEndret(val kontorEndretEvent: KontorEndringer) : TilordningSuccess()
 data class TilordningFeil(val message: String) : TilordningResultat()
+data class TilordningRetry(val message: String) : TilordningResultat()
 
 class AutomatiskKontorRutingService(
     private val tilordneKontor: suspend (kontorEndretEvent: KontorEndringer) -> Unit,
@@ -126,7 +127,7 @@ class AutomatiskKontorRutingService(
                         is ProfileringFunnet -> profileringResultat
                         is ProfileringIkkeFunnet -> {
                             when (skalForsøkeÅHenteProfileringPåNytt(oppfolgingsperiodeStartet.startDato)) {
-                                true -> return TilordningFeil("Fant ikke profilering, men skal forsøke på nytt. Ble registrert for ${Duration.between(oppfolgingsperiodeStartet.startDato, ZonedDateTime.now()).toSeconds()} sekunder siden")
+                                true -> return TilordningRetry("Fant ikke profilering, men skal forsøke på nytt. Ble registrert for ${Duration.between(oppfolgingsperiodeStartet.startDato, ZonedDateTime.now()).toSeconds()} sekunder siden")
                                 false -> profileringResultat
                             }
                         }
