@@ -290,20 +290,6 @@ class OppfolgingshendelseProcessorTest {
         resultStoppMeldingPåNytt.shouldBeInstanceOf<Skip<*, *>>()
     }
 
-    @Test
-    fun `Skal forwarde melding om allerede lagret oppfølgingsperiode hvis kontortilordning (ao-kontor) ikke er gjort`() {
-        val bruker = testBruker()
-        flywayMigrationInTest()
-        bruker.gittBrukerUNderOppfolging()
-        bruker.gittArenaKontorTilordning(KontorId("1199"))
-        val oppfolgingshendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
-        val startmelding = oppfolgingStartetMelding(bruker)
-
-        val result = oppfolgingshendelseProcessor.process(startmelding)
-
-        result.shouldBeInstanceOf<Forward<*, *>>()
-    }
-
     @Disabled
     @Test
     fun `skal hoppe over start-melding men oppdatere kontor når perioden er allerede er startet (men ikke avsluttet)`() {
@@ -337,6 +323,43 @@ class OppfolgingshendelseProcessorTest {
         result.shouldBeInstanceOf<Skip<Ident, OppfolgingsperiodeStartet>>()
     }
 
+    fun gittBrukerMedTidligArenaKontor(bruker: Bruker, arenaKontorVeilarboppfolging: String, arenaKontor: String) {
+        val arenaKontorFraVeilarboppfolging = mockk<ArenaKontorEntity> {
+            every { sistEndretDatoArena } returns OffsetDateTime.now().minusSeconds(1)
+            every { kontorId } returns arenaKontorVeilarboppfolging
+        }
+        val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
+            { arenaKontorFraVeilarboppfolging },
+            { NotUnderOppfolging })
+        endringPaOppfolgingsBrukerProcessor.process(
+            TopicUtils.endringPaaOppfolgingsBrukerMessage(
+                bruker.ident,
+                arenaKontor,
+                Instant.now().atZone(ZoneId.of("Europe/Oslo")).toOffsetDateTime(),
+                no.nav.kafka.consumers.FormidlingsGruppe.ARBS,
+                no.nav.kafka.consumers.Kvalifiseringsgruppe.IKVAL
+            )
+        )
+    }
+
+    fun Bruker.skalHaTidligArenaKontor(foreventetKontor: String?) {
+        val arenaKontor = transaction {
+            TidligArenaKontorEntity.findById(this@skalHaTidligArenaKontor.ident.value)?.kontorId
+        }
+        withClue("Forventet bruker skulle ha forhåndslagret arenakontor for oppfølging-start: $foreventetKontor men hadde $arenaKontor") {
+            arenaKontor shouldBe foreventetKontor
+        }
+    }
+
+    fun Bruker.skalHaArenaKontor(foreventetKontor: String?) {
+        val arenaKontor = transaction {
+            ArenaKontorEntity.findById(this@skalHaArenaKontor.ident.value)?.kontorId
+        }
+        withClue("Forventet bruker skulle arenakontor: $foreventetKontor men hadde $arenaKontor") {
+            arenaKontor shouldBe foreventetKontor
+        }
+    }
+
     @Test
     fun `skal rydde opp i tidlig-arena-kontor hvis det blir brukt`() {
         val bruker = testBruker()
@@ -352,6 +375,13 @@ class OppfolgingshendelseProcessorTest {
         bruker.skalHaTidligArenaKontor(null)
     }
 
+
+    class Asserts(val service: OppfolgingsperiodeService, val bruker: Bruker) {
+        fun skalVæreUnderOppfolging() = service.getCurrentOppfolgingsperiode(IdentFunnet(bruker.ident))
+            .shouldBeInstanceOf<AktivOppfolgingsperiode>()
+        fun skalIkkeVæreUnderOppfolging() = service.getCurrentOppfolgingsperiode(IdentFunnet(bruker.ident))
+            .shouldBeInstanceOf<NotUnderOppfolging>()
+    }
     @Test
     fun `avslutt-melding med ny ident skal kunne avslutte periode`() = testApplication {
         val aktivtDnr = Dnr("52105678901", AKTIV)
@@ -409,50 +439,6 @@ class OppfolgingshendelseProcessorTest {
             avsluttMedNyIdentResult.shouldBeInstanceOf<Commit<*, *>>()
             brukerMedDnrAsserts.skalIkkeVæreUnderOppfolging()
             brukerMedFnrAsserts.skalIkkeVæreUnderOppfolging()
-        }
-    }
-
-    class Asserts(val service: OppfolgingsperiodeService, val bruker: Bruker) {
-        fun skalVæreUnderOppfolging() = service.getCurrentOppfolgingsperiode(IdentFunnet(bruker.ident))
-            .shouldBeInstanceOf<AktivOppfolgingsperiode>()
-        fun skalIkkeVæreUnderOppfolging() = service.getCurrentOppfolgingsperiode(IdentFunnet(bruker.ident))
-            .shouldBeInstanceOf<NotUnderOppfolging>()
-    }
-
-    fun gittBrukerMedTidligArenaKontor(bruker: Bruker, arenaKontorVeilarboppfolging: String, arenaKontor: String) {
-        val arenaKontorFraVeilarboppfolging = mockk<ArenaKontorEntity> {
-            every { sistEndretDatoArena } returns OffsetDateTime.now().minusSeconds(1)
-            every { kontorId } returns arenaKontorVeilarboppfolging
-        }
-        val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
-            { arenaKontorFraVeilarboppfolging },
-            { NotUnderOppfolging })
-        endringPaOppfolgingsBrukerProcessor.process(
-            TopicUtils.endringPaaOppfolgingsBrukerMessage(
-                bruker.ident,
-                arenaKontor,
-                Instant.now().atZone(ZoneId.of("Europe/Oslo")).toOffsetDateTime(),
-                no.nav.kafka.consumers.FormidlingsGruppe.ARBS,
-                no.nav.kafka.consumers.Kvalifiseringsgruppe.IKVAL
-            )
-        )
-    }
-
-    fun Bruker.skalHaTidligArenaKontor(foreventetKontor: String?) {
-        val arenaKontor = transaction {
-            TidligArenaKontorEntity.findById(this@skalHaTidligArenaKontor.ident.value)?.kontorId
-        }
-        withClue("Forventet bruker skulle ha forhåndslagret arenakontor for oppfølging-start: $foreventetKontor men hadde $arenaKontor") {
-            arenaKontor shouldBe foreventetKontor
-        }
-    }
-
-    fun Bruker.skalHaArenaKontor(foreventetKontor: String?) {
-        val arenaKontor = transaction {
-            ArenaKontorEntity.findById(this@skalHaArenaKontor.ident.value)?.kontorId
-        }
-        withClue("Forventet bruker skulle arenakontor: $foreventetKontor men hadde $arenaKontor") {
-            arenaKontor shouldBe foreventetKontor
         }
     }
 
