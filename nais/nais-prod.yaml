@@ -61,7 +61,7 @@ spec:
           namespace: org
         - application: poao-tilgang
           namespace: poao
-        - application: paw-arbeidssoekerregisteret-api-oppslag-v2
+        - application: paw-arbeidssoekerregisteret-api-oppslag
           namespace: paw
         - application: skjermede-personer-pip
           namespace: nom
@@ -87,9 +87,9 @@ spec:
     - name: PDL_SCOPE
       value: api://prod-fss.pdl.pdl-api/.default
     - name: ARBEIDSSOKERREGISTERET_URL
-      value: http://paw-arbeidssoekerregisteret-api-oppslag-v2.paw
+      value: http://paw-arbeidssoekerregisteret-api-oppslag.paw
     - name: ARBEIDSSOKERREGISTERET_SCOPE
-      value: api://prod-gcp.paw.paw-arbeidssoekerregisteret-api-oppslag-v2/.default
+      value: api://prod-gcp.paw.paw-arbeidssoekerregisteret-api-oppslag/.default
     - name: SKJERMEDE_PERSONER_PIP_URL
       value: http://skjermede-personer-pip.nom
     - name: SKJERMEDE_PERSONER_PIP_SCOPE
