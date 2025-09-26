@@ -13,6 +13,7 @@ import no.nav.db.*
 import no.nav.db.Ident.HistoriskStatus.*
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.OppfolgingsperiodeEntity
+import no.nav.db.table.OppfolgingsperiodeTable
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
@@ -33,6 +34,7 @@ import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.lagreIdentIIdentmappingTabell
 import no.nav.utils.randomFnr
 import org.apache.kafka.streams.processor.api.Record
+import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
@@ -79,6 +81,16 @@ class OppfolgingshendelseProcessorTest {
                 OffsetDateTime.now()
             )
         )
+    }
+
+    fun Bruker.gittBrukerUnderOppfolging() {
+        transaction {
+            OppfolgingsperiodeTable.insert {
+                it[id] = this@gittBrukerUnderOppfolging.ident.value
+                it[oppfolgingsperiodeId] = this@gittBrukerUnderOppfolging.oppfolgingsperiodeId.value
+                it[startDato] = ZonedDateTime.now().toOffsetDateTime()
+            }
+        }
     }
 
     fun testBruker() = Bruker(
@@ -262,7 +274,13 @@ class OppfolgingshendelseProcessorTest {
         val bruker = testBruker()
         val oppfolgingsHendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
 
-        val result = oppfolgingsHendelseProcessor.process(Record(bruker.aktorId, """{ "lol": "lal" }""", Instant.now().toEpochMilli()))
+        val result = oppfolgingsHendelseProcessor.process(
+            Record(
+                bruker.aktorId,
+                """{ "lol": "lal" }""",
+                Instant.now().toEpochMilli()
+            )
+        )
 
         result.shouldBeInstanceOf<Retry<*, *>>()
         result.reason shouldBe """
@@ -294,7 +312,7 @@ class OppfolgingshendelseProcessorTest {
     fun `Skal forwarde melding om allerede lagret oppfølgingsperiode hvis kontortilordning (ao-kontor) ikke er gjort`() {
         val bruker = testBruker()
         flywayMigrationInTest()
-        bruker.gittBrukerUNderOppfolging()
+        bruker.gittBrukerUnderOppfolging()
         bruker.gittArenaKontorTilordning(KontorId("1199"))
         val oppfolgingshendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
         val startmelding = oppfolgingStartetMelding(bruker)
@@ -393,9 +411,11 @@ class OppfolgingshendelseProcessorTest {
     class Asserts(val service: OppfolgingsperiodeService, val bruker: Bruker) {
         fun skalVæreUnderOppfolging() = service.getCurrentOppfolgingsperiode(IdentFunnet(bruker.ident))
             .shouldBeInstanceOf<AktivOppfolgingsperiode>()
+
         fun skalIkkeVæreUnderOppfolging() = service.getCurrentOppfolgingsperiode(IdentFunnet(bruker.ident))
             .shouldBeInstanceOf<NotUnderOppfolging>()
     }
+
     @Test
     fun `avslutt-melding med ny ident skal kunne avslutte periode`() = testApplication {
         val aktivtDnr = Dnr("52105678901", AKTIV)
@@ -435,10 +455,12 @@ class OppfolgingshendelseProcessorTest {
             brukerMedDnrAsserts.skalVæreUnderOppfolging()
 
             /* Marker dnr som historisk */
-            identChangeProcessor.process(TopicUtils.aktorV2Message(
-                aktorId.value,
-                listOf(aktorId, historiskDnr, fnr),
-            ))
+            identChangeProcessor.process(
+                TopicUtils.aktorV2Message(
+                    aktorId.value,
+                    listOf(aktorId, historiskDnr, fnr),
+                )
+            )
 
             /* Når man har mottatt ident-endring skal begge identene
             * svare at bruker er under oppfølging */
