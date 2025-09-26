@@ -1,0 +1,1 @@
+create index if not exists kontorhistorikk_oppfolgingsperiode_idx on kontorhistorikk(oppfolgingsperiode_id);
