@@ -786,7 +786,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                         gtKontorEndret = brukerMedFeilendeProfilering.defaultGtKontorVedOppfolgStart()
                     )
                 ),
-                TilordningRetry(message = "Fant ikke profilering, men skal forsøke på nytt. Ble registrert for 0 sekunder siden"),
+                TilordningRetry(message = "Fant ikke profilering, men skal forsøke på nytt. Ble registrert for kort tid siden"),
                 TilordningFeil("Kunne ikke hente skjerming ved kontortilordning: feil i skjerming"),
                 TilordningFeil("Kunne ikke hente adressebeskyttelse ved kontortilordning: feil i adressebeskyttelse"),
                 TilordningFeil("Feil ved henting av gt-kontor: Feil i gt-kontor oppslag"),

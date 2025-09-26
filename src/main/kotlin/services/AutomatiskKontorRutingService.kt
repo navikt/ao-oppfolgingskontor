@@ -127,7 +127,7 @@ class AutomatiskKontorRutingService(
                         is ProfileringFunnet -> profileringResultat
                         is ProfileringIkkeFunnet -> {
                             when (skalForsøkeÅHenteProfileringPåNytt(oppfolgingsperiodeStartet.startDato)) {
-                                true -> return TilordningRetry("Fant ikke profilering, men skal forsøke på nytt. Ble registrert for ${Duration.between(oppfolgingsperiodeStartet.startDato, ZonedDateTime.now()).toSeconds()} sekunder siden")
+                                true -> return TilordningRetry("Fant ikke profilering, men skal forsøke på nytt. Ble registrert for kort tid siden")
                                 false -> profileringResultat
                             }
                         }
