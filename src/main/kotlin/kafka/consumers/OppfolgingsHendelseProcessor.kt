@@ -2,7 +2,6 @@ package kafka.consumers
 
 import db.entity.TidligArenaKontorEntity
 import db.table.TidligArenaKontorTable
-import kafka.consumers.oppfolgingsHendelser.OppfolgingStartBegrunnelse
 import kafka.consumers.oppfolgingsHendelser.OppfolgingStartBegrunnelse.ARBEIDSSOKER_REGISTRERING
 import kafka.consumers.oppfolgingsHendelser.OppfolgingStartetHendelseDto
 import kafka.consumers.oppfolgingsHendelser.OppfolgingsAvsluttetHendelseDto
@@ -31,7 +30,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import services.GammelPeriodeAvsluttet
 import services.HaddeNyerePeriodePåIdent
-import services.HaddePeriodeAllerede
+import services.HaddePeriodeMedTilordningAllerede
 import services.HandterPeriodeAvsluttetResultat
 import services.HarSlettetPeriode
 import services.IngenPeriodeAvsluttet
@@ -61,7 +60,7 @@ class OppfolgingsHendelseProcessor(
                     val oppfolgingStartetInternalEvent = oppfolgingsperiodeEvent.toDomainObject()
                     val periodeResult = oppfolgingsPeriodeService.handterPeriodeStartet(oppfolgingStartetInternalEvent)
                     return when (periodeResult) {
-                        HaddePeriodeAllerede -> {
+                        HaddePeriodeMedTilordningAllerede -> {
                             val innkommendeArenaKontor = oppfolgingStartetInternalEvent.startetArenaKontor
                             val kontor = sisteArenaKontor(oppfolgingStartetInternalEvent)
                             if (innkommendeArenaKontor != null && kontor?.id != oppfolgingStartetInternalEvent.startetArenaKontor?.id) {

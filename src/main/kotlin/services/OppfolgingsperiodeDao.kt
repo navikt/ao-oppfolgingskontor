@@ -64,14 +64,13 @@ object OppfolgingsperiodeDao {
         }
     }
 
-    fun harBruktPeriodeIAoKontorTidligere(ident: Ident, periodeId: OppfolgingsperiodeId): Outcome<Boolean> {
+    fun finnesAoKontorPåPeriode(periodeId: OppfolgingsperiodeId): Outcome<Boolean> {
         return try {
             transaction {
                 val tidligereEntries = KontorhistorikkTable.select(KontorhistorikkTable.ident)
                     .where {
-                        KontorhistorikkTable.ident eq ident.value and
-                                (KontorhistorikkTable.oppfolgingsperiodeId eq periodeId.value) and
-                                (KontorhistorikkTable.kontorType eq KontorType.ARBEIDSOPPFOLGING.name)
+                        (KontorhistorikkTable.oppfolgingsperiodeId eq periodeId.value) and
+                        (KontorhistorikkTable.kontorType eq KontorType.ARBEIDSOPPFOLGING.name)
                     }
                     .map { it }
                     .size

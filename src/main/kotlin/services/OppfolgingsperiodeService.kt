@@ -53,7 +53,10 @@ class OppfolgingsperiodeService(
             return HaddeNyerePeriodePåIdent
         }
         if (OppfolgingsperiodeDao.finnesPeriode(oppfolgingsperiode.periodeId)) {
-            return HaddePeriodeAllerede
+            if(OppfolgingsperiodeDao.finnesAoKontorPåPeriode(oppfolgingsperiode.fnr, oppfolgingsperiode.periodeId)) {
+                return HaddePeriodeMedTilordningAllerede
+            }
+            return HaddePeriodeMedTilordningAllerede
         }
         val harBruktPeriodeTidligere = OppfolgingsperiodeDao.harBruktPeriodeTidligere(oppfolgingsperiode.fnr, oppfolgingsperiode.periodeId)
         if (harBruktPeriodeTidligere is Outcome.Failure) {
@@ -113,7 +116,8 @@ class OppfolgingsperiodeService(
 
 sealed class HandterPeriodeStartetResultat
 object HaddeNyerePeriodePåIdent: HandterPeriodeStartetResultat()
-object HaddePeriodeAllerede: HandterPeriodeStartetResultat()
+object HaddePeriodeMedTilordningAllerede: HandterPeriodeStartetResultat()
+object HaddePeriodeAlleredeMenManglerTilordning: HandterPeriodeStartetResultat()
 object HarSlettetPeriode: HandterPeriodeStartetResultat()
 object OppfølgingsperiodeLagret: HandterPeriodeStartetResultat()
 
