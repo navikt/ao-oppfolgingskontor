@@ -13,6 +13,8 @@ import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.TilordningFeil
 import no.nav.services.TilordningRetry
 import no.nav.services.TilordningSuccess
+import no.nav.services.TilordningSuccessIngenEndring
+import no.nav.services.TilordningSuccessKontorEndret
 import org.apache.kafka.common.serialization.Deserializer
 import org.apache.kafka.common.serialization.Serde
 import org.apache.kafka.common.serialization.Serializer
@@ -61,7 +63,23 @@ class KontortilordningsProcessor(
                                     Retry(melding)
                                 }
                             }
-                            is TilordningSuccess -> Commit()
+                            is TilordningSuccess -> {
+                                when (tilordningResultat) {
+                                    TilordningSuccessIngenEndring -> {
+                                        log.info("Behandlet start oppfølging uten at noen kontor ble endret")
+                                    }
+                                    is TilordningSuccessKontorEndret -> {
+                                        val arenaKontor = tilordningResultat.kontorEndretEvent.arenaKontorEndret
+                                        val aoKontor = tilordningResultat.kontorEndretEvent.aoKontorEndret
+                                        if (arenaKontor?.tilordning?.kontorId != aoKontor?.tilordning?.kontorId) {
+                                            log.warn("Behandlet start oppfølging men fikk forskjelling kontor i arena og ao, arena: ${arenaKontor?.tilordning?.kontorId} - ao: ${aoKontor?.tilordning?.kontorId}")
+                                        } else {
+                                            log.info("Behandlet start oppfølging og fikk samme kontor i arena og ao: ${arenaKontor?.tilordning?.kontorId}")
+                                        }
+                                    }
+                                }
+                                Commit()
+                            }
                         }
                     }
             }
