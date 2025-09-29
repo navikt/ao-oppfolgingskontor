@@ -5,22 +5,32 @@ import no.nav.domain.KontorHistorikkInnslag
 import no.nav.domain.KontorTilordning
 import no.nav.domain.KontorType
 import no.nav.domain.System
-import no.nav.http.logger
 import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 
-data class ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart(
+data class TidligArenaKontorVedOppfolgingStart(
     private val kontortilordning: KontorTilordning,
     private val sistEndretIArena: OffsetDateTime
 ) : ArenaKontorEndret(kontortilordning, sistEndretIArena) {
     override fun toHistorikkInnslag() = lagKontorHistorikkInnslag(
-        KontorEndringsType.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart
+        KontorEndringsType.TidligArenaKontorVedOppfolgingStart
     )
 }
 
+@Deprecated("Bruk ")
 data class ArenaKontorVedOppfolgingStart(private val kontorTilordning: KontorTilordning) :
     ArenaKontorEndret(kontorTilordning, ZonedDateTime.now().toOffsetDateTime()) {
     override fun toHistorikkInnslag() = lagKontorHistorikkInnslag(KontorEndringsType.ArenaKontorVedOppfolgingsStart)
+}
+
+data class ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep(
+    private val kontorTilordning: KontorTilordning,
+    private val sistEndretIArena: OffsetDateTime,
+): ArenaKontorEndret(
+    tilordning = kontorTilordning,
+    sistEndretDatoArena = sistEndretIArena
+) {
+    override fun toHistorikkInnslag() = lagKontorHistorikkInnslag(KontorEndringsType.ArenaKontorVedOppfolgingStartMedEtterslep)
 }
 
 data class EndringPaaOppfolgingsBrukerFraArena(

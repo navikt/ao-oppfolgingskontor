@@ -16,13 +16,12 @@ import no.nav.domain.events.AOKontorEndret
 import no.nav.domain.events.AOKontorEndretPgaAdressebeskyttelseEndret
 import no.nav.domain.events.AOKontorEndretPgaSkjermingEndret
 import no.nav.domain.events.ArenaKontorEndret
-import no.nav.domain.events.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart
-import no.nav.domain.events.ArenaKontorVedOppfolgingStart
 import no.nav.domain.events.GTKontorEndret
 import no.nav.domain.events.OppfolgingsPeriodeStartetFallbackKontorTilordning
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.domain.events.OppfolgingsPeriodeStartetSensitivKontorTilordning
 import no.nav.domain.events.OppfolgingsperiodeStartetNoeTilordning
+import no.nav.domain.events.TidligArenaKontorVedOppfolgingStart
 import no.nav.domain.externalEvents.AdressebeskyttelseEndret
 import no.nav.domain.externalEvents.BostedsadresseEndret
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
@@ -159,27 +158,17 @@ class AutomatiskKontorRutingService(
     }
 
     private fun arenaKontorEndring(periodeStartetEvent: OppfolgingsperiodeStartet, oppfolgingsperiodeId: OppfolgingsperiodeId): ArenaKontorEndret? {
-        val arenaKontorFraVeilarboppfolging = periodeStartetEvent.startetArenaKontor
         val arenaKontorFraOppfolgingsbruker = periodeStartetEvent.arenaKontorFraOppfolgingsbrukerTopic
 
         return when {
             arenaKontorFraOppfolgingsbruker != null -> {
-                ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart(
+                TidligArenaKontorVedOppfolgingStart(
                     KontorTilordning(
                         periodeStartetEvent.fnr,
                         arenaKontorFraOppfolgingsbruker.kontor,
                         oppfolgingsperiodeId,
                     ),
                     arenaKontorFraOppfolgingsbruker.sistEndretDato
-                )
-            }
-            arenaKontorFraVeilarboppfolging != null -> {
-                ArenaKontorVedOppfolgingStart(
-                    KontorTilordning(
-                        periodeStartetEvent.fnr,
-                        arenaKontorFraVeilarboppfolging,
-                        oppfolgingsperiodeId,
-                    )
                 )
             }
             else -> null

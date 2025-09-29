@@ -18,13 +18,12 @@ import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.Sensitivitet
 import no.nav.domain.events.AOKontorEndretPgaAdressebeskyttelseEndret
 import no.nav.domain.events.AOKontorEndretPgaSkjermingEndret
-import no.nav.domain.events.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart
-import no.nav.domain.events.ArenaKontorVedOppfolgingStart
 import no.nav.domain.events.GTKontorEndret
 import no.nav.domain.events.OppfolgingsPeriodeStartetFallbackKontorTilordning
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.domain.events.OppfolgingsPeriodeStartetSensitivKontorTilordning
 import no.nav.domain.events.OppfolgingsperiodeStartetNoeTilordning
+import no.nav.domain.events.TidligArenaKontorVedOppfolgingStart
 import no.nav.domain.externalEvents.AdressebeskyttelseEndret
 import no.nav.domain.externalEvents.BostedsadresseEndret
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
@@ -81,7 +80,6 @@ import no.nav.services.TilordningSuccessIngenEndring
 import no.nav.services.TilordningSuccessKontorEndret
 import utils.Outcome
 import java.time.OffsetDateTime
-import java.time.ZonedDateTime
 import java.util.UUID
 
 class AutomatiskKontorRutingServiceTest : DescribeSpec({
@@ -315,10 +313,10 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                 ) shouldBe TilordningSuccessIngenEndring
             }
 
-            it("skal sette Arenakontor hvis det kommer med i startmelding") {
+            it("skal ikke sette Arenakontor selvom det kommer med i start-oppfolging melding") {
                 val arenaKontor = KontorId("3311")
                 gitt(ungBrukerMedGodeMuligheter).tilordneKontorAutomatisk(
-                    oppfolgingsperiodeStartet(ungBrukerMedGodeMuligheter, arenaKontor)
+                    oppfolgingsperiodeStartet(ungBrukerMedGodeMuligheter)
                 ) shouldBe TilordningSuccessKontorEndret(
                     KontorEndringer(
                         gtKontorEndret = ungBrukerMedGodeMuligheter.defaultGtKontorVedOppfolgStart(),
@@ -330,13 +328,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                             ),
                             ingenSensitivitet
                         ),
-                        arenaKontorEndret = ArenaKontorVedOppfolgingStart(
-                            KontorTilordning(
-                                ungBrukerMedGodeMuligheter.fnr(),
-                                arenaKontor,
-                                ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()
-                            )
-                        )
+                        arenaKontorEndret = null
                     )
                 )
             }
@@ -366,7 +358,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                             aoKontorTilordning,
                             ingenSensitivitet
                         ),
-                        arenaKontorEndret = ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart(
+                        arenaKontorEndret = TidligArenaKontorVedOppfolgingStart(
                             arenaKontorTilordning,
                             tidligArenaKontor.sistEndretDato
                         )
@@ -842,19 +834,16 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
 
 fun oppfolgingsperiodeStartet(
     bruker: Bruker,
-    arenaKontor: KontorId? = null,
     tidligArenaKontor: TidligArenaKontor? = null
 ) =
     oppfolgingsperiodeStartet(
         bruker.fnr(),
-        arenaKontor,
         tidligArenaKontor,
         (bruker.oppfolgingsPeriodeResult as AktivOppfolgingsperiode).startDato
     )
 
 fun oppfolgingsperiodeStartet(
     fnr: IdentSomKanLagres,
-    arenaKontor: KontorId? = null,
     tidligArenaKontor: TidligArenaKontor? = null,
     startDato: OffsetDateTime = OffsetDateTime.now(),
 ): OppfolgingsperiodeStartet {
@@ -862,7 +851,6 @@ fun oppfolgingsperiodeStartet(
         fnr = fnr,
         startDato = startDato.toZonedDateTime(),
         periodeId = OppfolgingsperiodeId(UUID.randomUUID()),
-        startetArenaKontor = arenaKontor,
         arenaKontorFraOppfolgingsbrukerTopic = tidligArenaKontor,
         erArbeidssøkerRegistrering = true
     )

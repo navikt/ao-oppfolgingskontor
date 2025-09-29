@@ -9,11 +9,8 @@ import kafka.consumers.oppfolgingsHendelser.OppfolgingsHendelseDto
 import kafka.consumers.oppfolgingsHendelser.oppfolgingsHendelseJson
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
-import no.nav.db.entity.ArenaKontorEntity
 import no.nav.domain.KontorId
-import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
-import no.nav.domain.events.ArenaKontorVedOppfolgingStart
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.domain.externalEvents.TidligArenaKontor
@@ -22,7 +19,6 @@ import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
-import no.nav.services.KontorTilordningService
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.deleteWhere
@@ -62,22 +58,7 @@ class OppfolgingsHendelseProcessor(
                     val periodeResult = oppfolgingsPeriodeService.handterPeriodeStartet(oppfolgingStartetInternalEvent)
                     return when (periodeResult) {
                         HaddeNyerePeriodePåIdent, HarSlettetPeriode -> Skip()
-                        HaddePeriodeMedTilordningAllerede -> {
-                            val innkommendeArenaKontor = oppfolgingStartetInternalEvent.startetArenaKontor
-                            val kontor = sisteArenaKontor(oppfolgingStartetInternalEvent)
-                            if (innkommendeArenaKontor != null && kontor?.id != oppfolgingStartetInternalEvent.startetArenaKontor.id) {
-                                KontorTilordningService.tilordneKontor(ArenaKontorVedOppfolgingStart(
-                                    KontorTilordning(
-                                        fnr = oppfolgingStartetInternalEvent.fnr,
-                                        kontorId = innkommendeArenaKontor,
-                                        oppfolgingsperiodeId = oppfolgingStartetInternalEvent.periodeId
-                                    )
-                                ))
-                                Commit()
-                            } else {
-                                Skip()
-                            }
-                        }
+                        HaddePeriodeMedTilordningAllerede -> Skip()
                         HaddePeriodeAlleredeMenManglerTilordning,
                         OppfølgingsperiodeLagret -> {
                             Forward(
@@ -126,13 +107,6 @@ class OppfolgingsHendelseProcessor(
                 }
         }
     }
-
-    fun sisteArenaKontor(oppfolgingsperiode: OppfolgingsperiodeStartet): KontorId? {
-        return transaction {
-            ArenaKontorEntity.findById(oppfolgingsperiode.fnr.value)
-                ?.let { KontorId(it.kontorId) }
-        }
-    }
 }
 
 fun OppfolgingStartetHendelseDto.toDomainObject() = OppfolgingsperiodeStartet(
@@ -140,7 +114,7 @@ fun OppfolgingStartetHendelseDto.toDomainObject() = OppfolgingsperiodeStartet(
         ?: throw IllegalStateException("Ident i oppfolgingshendelse-topic kan ikke være aktorId"),
     startDato = this.startetTidspunkt,
     periodeId = OppfolgingsperiodeId(UUID.fromString(this.oppfolgingsPeriodeId)),
-    startetArenaKontor = null, // Settes til null med vilje, feltet fjernes hvis det ikke trengs
+//    startetArenaKontor = null, // Settes til null med vilje, feltet fjernes hvis det ikke trengs
     arenaKontorFraOppfolgingsbrukerTopic = null,
     erArbeidssøkerRegistrering = startetBegrunnelse == ARBEIDSSOKER_REGISTRERING
 )

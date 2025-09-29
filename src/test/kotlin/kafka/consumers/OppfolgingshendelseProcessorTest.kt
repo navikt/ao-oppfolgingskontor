@@ -16,7 +16,7 @@ import no.nav.db.table.OppfolgingsperiodeTable
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
-import no.nav.domain.events.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart
+import no.nav.domain.events.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.http.client.IdentFunnet
@@ -85,7 +85,7 @@ class OppfolgingshendelseProcessorTest {
 
     fun Bruker.gittArenaKontorTilordning(kontorId: KontorId) {
         KontorTilordningService.tilordneKontor(
-            ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart(
+            ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep(
                 KontorTilordning(this.ident, kontorId, this.oppfolgingsperiodeId),
                 OffsetDateTime.now()
             )
@@ -220,7 +220,6 @@ class OppfolgingshendelseProcessorTest {
             bruker.ident,
             nyereStartDato,
             OppfolgingsperiodeId(nyerePeriodeId),
-            null,
             null,
             true
         )
