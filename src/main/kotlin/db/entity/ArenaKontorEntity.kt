@@ -1,6 +1,5 @@
 package no.nav.db.entity
 
-import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.db.table.ArenaKontorTable
 import no.nav.domain.KontorId

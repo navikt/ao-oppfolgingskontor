@@ -65,7 +65,7 @@ class OppfolgingsHendelseProcessor(
                         HaddePeriodeMedTilordningAllerede -> {
                             val innkommendeArenaKontor = oppfolgingStartetInternalEvent.startetArenaKontor
                             val kontor = sisteArenaKontor(oppfolgingStartetInternalEvent)
-                            if (innkommendeArenaKontor != null && kontor?.id != oppfolgingStartetInternalEvent.startetArenaKontor?.id) {
+                            if (innkommendeArenaKontor != null && kontor?.id != oppfolgingStartetInternalEvent.startetArenaKontor.id) {
                                 KontorTilordningService.tilordneKontor(ArenaKontorVedOppfolgingStart(
                                     KontorTilordning(
                                         fnr = oppfolgingStartetInternalEvent.fnr,

@@ -27,6 +27,7 @@ import no.nav.kafka.consumers.LeesahProcessor
 import no.nav.kafka.consumers.KontortilordningsProcessor
 import no.nav.kafka.consumers.SkjermingProcessor
 import no.nav.services.AutomatiskKontorRutingService
+import no.nav.services.KontorTilhorighetService
 import no.nav.services.OppfolgingsperiodeDao
 import org.apache.kafka.streams.KafkaStreams
 import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler
@@ -52,7 +53,8 @@ class KafkaStreamsPluginConfig(
     var oppfolgingsperiodeService: OppfolgingsperiodeService? = null,
     var oppfolgingsperiodeDao: OppfolgingsperiodeDao? = null,
     var identService: IdentService? = null,
-    var criticalErrorNotificationFunction: CriticalErrorNotificationFunction? = null
+    var criticalErrorNotificationFunction: CriticalErrorNotificationFunction? = null,
+    var kontorTilhorighetService: KontorTilhorighetService? = null
 )
 
 const val arbeidsoppfolgingkontorSinkName = "endring-pa-arbeidsoppfolgingskontor"
@@ -82,12 +84,16 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val setHasCriticalError = requireNotNull(this.pluginConfig.criticalErrorNotificationFunction) {
         "Must provide hasError function to KafkaStreamsPlugin"
     }
+    val kontorTilhorighetService = requireNotNull(this.pluginConfig.kontorTilhorighetService) {
+        "KontorTilhorighetService must be configured for KafkaStreamsPlugin"
+    }
+
     val isProduction = environment.isProduction()
     if (isProduction) logger.info("Kjører i produksjonsmodus. Konsumerer kun siste-oppfølgingsperiode.")
 
     val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
-        ArenaKontorEntity::sisteLagreKontorArenaKontor,
-        { oppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) }
+        { oppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) },
+        { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) }
     )
 
     val kontorTilordningsProcessor = KontortilordningsProcessor(

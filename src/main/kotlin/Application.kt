@@ -83,6 +83,7 @@ fun Application.module() {
         this.oppfolgingsperiodeDao = OppfolgingsperiodeDao
         this.identService = identService
         this.criticalErrorNotificationFunction = setCriticalError
+        this.kontorTilhorighetService = kontorTilhorighetService
     }
 
     val issuer = environment.getIssuer()
