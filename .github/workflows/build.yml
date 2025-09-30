@@ -31,11 +31,17 @@ jobs:
           gradle-version: "9.1.0"
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
-      - name: Generate graphql schema
-        run: ./gradlew graphqlGenerateSDL
-
       - name: Test and build
         run: ./gradlew build --scan
+
+      - name: Generate and output SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          path: 'build/libs'
+          format: 'cyclonedx-json'
+          artifact-name: 'bom.json'
+          output-file: 'build/reports/bom.json'
+          upload-artifact: 'true'
 
       - name: Push docker image to GAR
         uses: nais/docker-build-push@v0
@@ -43,6 +49,7 @@ jobs:
         with:
           docker_context: .
           team: dab
+          byosbom: 'build/reports/bom.json'
       - name: Slack Notification (test failure)
         if: failure()
         uses: rtCamp/action-slack-notify@v2
