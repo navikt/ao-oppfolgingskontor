@@ -44,6 +44,7 @@ kotlin {
 tasks.shadowJar {
     isZip64 = true
     mergeServiceFiles()
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE // <- add this
 }
 
 tasks.test {
@@ -136,6 +137,10 @@ tasks.jacocoTestReport {
 
 tasks.sonar {
     dependsOn(tasks.jacocoTestReport)
+}
+
+tasks.build {
+    dependsOn(tasks.graphqlGenerateSDL)
 }
 
 sonar {
