@@ -52,9 +52,12 @@ class KontorTilhorighetService(
     suspend fun getArenaKontorMedOppfolgingsperiode(ident: Ident): ArenaKontorUtvidet? {
         val alleIdenter = hentAlleIdenter(ident).getOrThrow()
         val arenaKontor = getArenaKontor(alleIdenter.identer) ?: return null
+        val oppfolgingsperiode = transaction {
+            arenaKontor.historikkEntry?.oppfolgingsperiode?.let { OppfolgingsperiodeId(it) }
+        }
         return ArenaKontorUtvidet(
             KontorId(arenaKontor.kontorId),
-            arenaKontor.historikkEntry?.oppfolgingsperiode?.let { OppfolgingsperiodeId(it) },
+             oppfolgingsperiode,
             arenaKontor.sistEndretDatoArena
         )
     }
@@ -91,15 +94,20 @@ class KontorTilhorighetService(
         }
     }
 
-    private fun getGTKontor(identer: List<Ident>) = GeografiskTilknyttetKontorEntity
+    private fun getGTKontor(identer: List<Ident>) = transaction { GeografiskTilknyttetKontorEntity
         .find { GeografiskTilknytningKontorTable.id inList(identer.map { it.value } ) }
         .firstOrNullOrThrow(identer) { it.fnr.value }
-    private fun getArenaKontor(identer: List<Ident>) = ArenaKontorEntity
-        .find { ArenaKontorTable.id inList(identer.map { it.value } ) }
-        .firstOrNullOrThrow(identer) { it.fnr.value }
-    private fun getAOKontor(identer: List<Ident>) = ArbeidsOppfolgingKontorEntity
-        .find { ArbeidsOppfolgingKontorTable.id inList(identer.map { it.value } ) }
-        .firstOrNullOrThrow(identer) { it.fnr.value }
+    }
+    private fun getArenaKontor(identer: List<Ident>) = transaction {
+        ArenaKontorEntity
+            .find { ArenaKontorTable.id inList (identer.map { it.value }) }
+            .firstOrNullOrThrow(identer) { it.fnr.value }
+    }
+    private fun getAOKontor(identer: List<Ident>) = transaction {
+        ArbeidsOppfolgingKontorEntity
+            .find { ArbeidsOppfolgingKontorTable.id inList (identer.map { it.value }) }
+            .firstOrNullOrThrow(identer) { it.fnr.value }
+    }
 
     suspend fun getKontorTilhorighet(ident: Ident, principal: AOPrincipal): KontorTilhorighetQueryDto? {
         poaoTilgangClient.harLeseTilgang(principal, ident)

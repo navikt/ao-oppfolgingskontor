@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
+import no.nav.db.table.ArenaKontorTable.historikkEntry
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
