@@ -21,7 +21,9 @@ import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.http.client.IdentFunnet
 import no.nav.http.client.IdenterFunnet
+import no.nav.kafka.consumers.ArenaKontorEndringsType
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
+import no.nav.kafka.consumers.harKontorBlittEndret
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.Retry
@@ -119,33 +121,27 @@ class OppfolgingshendelseProcessorTest {
     @Test
     fun `Skal lagre ny oppfolgingsperiode når oppfolgingsperiode-startet`() = testApplication {
         val bruker = testBruker()
-        application {
+        val oppfolgingshendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
+        val record = oppfolgingStartetMelding(bruker)
 
-            val oppfolgingshendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
-            val record = oppfolgingStartetMelding(bruker)
+        val result = oppfolgingshendelseProcessor.process(record)
 
-            val result = oppfolgingshendelseProcessor.process(record)
-
-            result.shouldBeInstanceOf<Forward<Ident, OppfolgingsperiodeStartet>>()
-            bruker.skalVæreUnderOppfølging()
-        }
+        result.shouldBeInstanceOf<Forward<Ident, OppfolgingsperiodeStartet>>()
+        bruker.skalVæreUnderOppfølging()
     }
 
     @Test
     fun `Skal slette periode når avslutningsmelding kommer `() = testApplication {
         val bruker = testBruker()
-        application {
+        val oppfolgingshendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
+        val hendelseStartResult = oppfolgingshendelseProcessor.process(oppfolgingStartetMelding(bruker))
+        hendelseStartResult.shouldBeInstanceOf<Forward<*, *>>()
 
-            val oppfolgingshendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
-            val hendelseStartResult = oppfolgingshendelseProcessor.process(oppfolgingStartetMelding(bruker))
-            hendelseStartResult.shouldBeInstanceOf<Forward<*, *>>()
+        val sluttDato = ZonedDateTime.now()
+        val hendelseResult = oppfolgingshendelseProcessor.process(oppfolgingAvsluttetMelding(bruker, sluttDato))
 
-            val sluttDato = ZonedDateTime.now()
-            val hendelseResult = oppfolgingshendelseProcessor.process(oppfolgingAvsluttetMelding(bruker, sluttDato))
-
-            hendelseResult.shouldBeInstanceOf<Commit<*, *>>()
-            bruker.skalIkkeVæreUnderOppfølging()
-        }
+        hendelseResult.shouldBeInstanceOf<Commit<*, *>>()
+        bruker.skalIkkeVæreUnderOppfølging()
     }
 
     @Test

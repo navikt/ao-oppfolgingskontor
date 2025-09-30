@@ -57,7 +57,8 @@ class OppfolgingsHendelseProcessor(
                     val oppfolgingStartetInternalEvent = oppfolgingsperiodeEvent.toDomainObject()
                     val periodeResult = oppfolgingsPeriodeService.handterPeriodeStartet(oppfolgingStartetInternalEvent)
                     return when (periodeResult) {
-                        HaddeNyerePeriodePåIdent, HarSlettetPeriode -> Skip()
+                        HaddeNyerePeriodePåIdent,
+                        HarSlettetPeriode,
                         HaddePeriodeMedTilordningAllerede -> Skip()
                         HaddePeriodeAlleredeMenManglerTilordning,
                         OppfølgingsperiodeLagret -> {
@@ -114,7 +115,6 @@ fun OppfolgingStartetHendelseDto.toDomainObject() = OppfolgingsperiodeStartet(
         ?: throw IllegalStateException("Ident i oppfolgingshendelse-topic kan ikke være aktorId"),
     startDato = this.startetTidspunkt,
     periodeId = OppfolgingsperiodeId(UUID.fromString(this.oppfolgingsPeriodeId)),
-//    startetArenaKontor = null, // Settes til null med vilje, feltet fjernes hvis det ikke trengs
     arenaKontorFraOppfolgingsbrukerTopic = null,
     erArbeidssøkerRegistrering = startetBegrunnelse == ARBEIDSSOKER_REGISTRERING
 )
