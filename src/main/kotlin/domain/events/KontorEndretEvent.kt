@@ -80,6 +80,11 @@ data class GTKontorEndret(val kontorTilordning: KontorTilordning, val kontorEndr
             tilordning,
                 KontorEndringsType.EndretBostedsadresse,
                 gt)
+
+        fun syncVedStartOppfolging(tilordning: KontorTilordning, gt: GtForBrukerSuccess) = GTKontorEndret(
+            tilordning,
+            KontorEndringsType.GTKontorVedOppfolgingStart,
+            gt)
     }
 }
 sealed class AOKontorEndret(tilordning: KontorTilordning, val registrant: Registrant) : KontorEndretEvent(tilordning)

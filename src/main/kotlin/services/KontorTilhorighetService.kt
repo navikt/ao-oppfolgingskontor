@@ -1,5 +1,6 @@
 package no.nav.services
 
+import domain.ArenaKontorUtvidet
 import no.nav.AOPrincipal
 import no.nav.db.Ident
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
@@ -15,6 +16,7 @@ import no.nav.domain.GeografiskTilknyttetKontor
 import no.nav.domain.KontorId
 import no.nav.domain.KontorType
 import no.nav.domain.KontorNavn
+import no.nav.domain.OppfolgingsperiodeId
 import no.nav.http.client.IdenterFunnet
 import no.nav.http.client.IdenterResult
 import no.nav.http.client.poaoTilgang.PoaoTilgangKtorHttpClient
@@ -39,26 +41,35 @@ class KontorTilhorighetService(
         return Triple(aokontor, arenakontor, gtkontor)
     }
 
-    suspend fun getArbeidsoppfolgingKontorTilhorighet(ident: Ident, principal: AOPrincipal): ArbeidsoppfolgingsKontor? {
+    suspend fun getArbeidsoppfolgingKontorTilhorighet(ident: Ident, principal: AOPrincipal)
+        = getArbeidsoppfolgingKontorTilhorighet(hentAlleIdenter(ident).getOrThrow(), principal)
+    private suspend  fun getArbeidsoppfolgingKontorTilhorighet(identer: IdenterFunnet, principal: AOPrincipal): ArbeidsoppfolgingsKontor? {
+        poaoTilgangClient.harLeseTilgang(principal, identer.foretrukketIdent)
+        return getArbeidsoppfolgingKontorTilhorighet(identer)
+    }
+
+    /* Nåværedne arena-kontor med oppfølgingsperiode */
+    suspend fun getArenaKontorMedOppfolgingsperiode(ident: Ident): ArenaKontorUtvidet? {
         val alleIdenter = hentAlleIdenter(ident).getOrThrow()
-        return getArbeidsoppfolgingKontorTilhorighet(alleIdenter, principal)
+        val arenaKontor = getArenaKontor(alleIdenter.identer) ?: return null
+        return ArenaKontorUtvidet(
+            KontorId(arenaKontor.kontorId),
+            arenaKontor.historikkEntry?.oppfolgingsperiode?.let { OppfolgingsperiodeId(it) },
+            arenaKontor.sistEndretDatoArena
+        )
     }
-    private suspend  fun getArbeidsoppfolgingKontorTilhorighet(ident: IdenterFunnet, principal: AOPrincipal): ArbeidsoppfolgingsKontor? {
-        poaoTilgangClient.harLeseTilgang(principal, ident.foretrukketIdent)
-        return getArbeidsoppfolgingKontorTilhorighet(ident)
-    }
-    private suspend fun getArbeidsoppfolgingKontorTilhorighet(ident: IdenterFunnet): ArbeidsoppfolgingsKontor? {
-        return transaction { getAOKontor(ident.identer) }
+
+    /* Private fordi tilgangskontrollen gjøre før disse kalles */
+    private suspend fun getArbeidsoppfolgingKontorTilhorighet(identer: IdenterFunnet): ArbeidsoppfolgingsKontor? {
+        return transaction { getAOKontor(identer.identer) }
             ?.let { it to kontorNavnService.getKontorNavn(KontorId(it.kontorId)) }
             ?.let { (kontor, kontorNavn) -> ArbeidsoppfolgingsKontor(kontorNavn,kontor.getKontorId()) }
     }
-
     private suspend fun getArenaKontorTilhorighet(ident: IdenterFunnet): ArenaKontor? {
         return transaction { getArenaKontor(ident.identer) }
             ?.let { it to kontorNavnService.getKontorNavn(KontorId(it.kontorId)) }
             ?.let { (kontor, kontorNavn) -> ArenaKontor(kontorNavn, kontor.getKontorId()) }
     }
-
     private suspend fun getGeografiskTilknyttetKontorTilhorighet(ident: IdenterFunnet): GeografiskTilknyttetKontor? {
         return transaction { getGTKontor(ident.identer) }
             ?.let { it to kontorNavnService.getKontorNavn(KontorId(it.kontorId)) }

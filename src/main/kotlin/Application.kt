@@ -71,7 +71,7 @@ fun Application.module() {
         { skjermingsClient.hentSkjerming(it) },
         { pdlClient.harStrengtFortroligAdresse(it) },
         { oppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) },
-        { ident, oppfolgingsperiodeId -> OppfolgingsperiodeDao.harBruktPeriodeTidligere(ident, oppfolgingsperiodeId) },
+        { _, oppfolgingsperiodeId -> OppfolgingsperiodeDao.finnesAoKontorPåPeriode(oppfolgingsperiodeId) },
     )
 
     install(KafkaStreamsPlugin) {
@@ -83,6 +83,7 @@ fun Application.module() {
         this.oppfolgingsperiodeDao = OppfolgingsperiodeDao
         this.identService = identService
         this.criticalErrorNotificationFunction = setCriticalError
+        this.kontorTilhorighetService = kontorTilhorighetService
     }
 
     val issuer = environment.getIssuer()

@@ -3,6 +3,7 @@ package no.nav.no.nav
 import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
 import io.ktor.server.testing.testApplication
+import io.mockk.mockk
 import kafka.consumers.TopicUtils
 import kafka.retry.TestLockProvider
 import kafka.retry.library.StreamType
@@ -40,6 +41,7 @@ import no.nav.kafka.retry.library.internal.RetryableProcessor
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.KontorForGtNrFantDefaultKontor
+import no.nav.services.KontorTilhorighetService
 import no.nav.services.KontorTilordningService
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.gittBrukerUnderOppfolging
@@ -74,8 +76,8 @@ class KafkaApplicationTest {
         val fnr = randomFnr()
         val oppfolgingsperiodeService = OppfolgingsperiodeService({ IdenterFunnet(listOf(fnr), fnr) })
         val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
-            ArenaKontorEntity::sisteLagreKontorArenaKontor,
-            oppfolgingsperiodeService::getCurrentOppfolgingsperiode
+            oppfolgingsperiodeService::getCurrentOppfolgingsperiode,
+            { null }
         )
 
         application {
@@ -108,9 +110,13 @@ class KafkaApplicationTest {
         val fnr = randomFnr()
         val topic = randomTopicName()
         val oppfolgingsperiodeService = OppfolgingsperiodeService({ IdenterFunnet(listOf(fnr), fnr) })
+        val kontorTilhorighetService = KontorTilhorighetService(
+            kontorNavnService = mockk(),
+            poaoTilgangClient = mockk()
+        ) { IdenterFunnet(listOf(fnr), fnr) }
         val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
-            ArenaKontorEntity::sisteLagreKontorArenaKontor,
-            oppfolgingsperiodeService::getCurrentOppfolgingsperiode
+            oppfolgingsperiodeService::getCurrentOppfolgingsperiode,
+            { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },
         )
 
         application {

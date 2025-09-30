@@ -53,6 +53,8 @@ spec:
       rules:
         - application: veilarbpersonflate
           namespace: poao
+        - application: poao-admin
+          namespace: poao
     outbound:
       rules:
         - application: norg2

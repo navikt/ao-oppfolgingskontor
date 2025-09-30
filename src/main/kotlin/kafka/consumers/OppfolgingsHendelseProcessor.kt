@@ -2,17 +2,15 @@ package kafka.consumers
 
 import db.entity.TidligArenaKontorEntity
 import db.table.TidligArenaKontorTable
+import kafka.consumers.oppfolgingsHendelser.OppfolgingStartBegrunnelse.ARBEIDSSOKER_REGISTRERING
 import kafka.consumers.oppfolgingsHendelser.OppfolgingStartetHendelseDto
 import kafka.consumers.oppfolgingsHendelser.OppfolgingsAvsluttetHendelseDto
 import kafka.consumers.oppfolgingsHendelser.OppfolgingsHendelseDto
 import kafka.consumers.oppfolgingsHendelser.oppfolgingsHendelseJson
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
-import no.nav.db.entity.ArenaKontorEntity
 import no.nav.domain.KontorId
-import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
-import no.nav.domain.events.ArenaKontorVedOppfolgingStart
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.domain.externalEvents.TidligArenaKontor
@@ -21,7 +19,6 @@ import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
-import no.nav.services.KontorTilordningService
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.deleteWhere
@@ -29,7 +26,8 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import services.GammelPeriodeAvsluttet
 import services.HaddeNyerePeriodePåIdent
-import services.HaddePeriodeAllerede
+import services.HaddePeriodeAlleredeMenManglerTilordning
+import services.HaddePeriodeMedTilordningAllerede
 import services.HandterPeriodeAvsluttetResultat
 import services.HarSlettetPeriode
 import services.IngenPeriodeAvsluttet
@@ -59,37 +57,15 @@ class OppfolgingsHendelseProcessor(
                     val oppfolgingStartetInternalEvent = oppfolgingsperiodeEvent.toDomainObject()
                     val periodeResult = oppfolgingsPeriodeService.handterPeriodeStartet(oppfolgingStartetInternalEvent)
                     return when (periodeResult) {
-                        HaddePeriodeAllerede -> {
-                            val innkommendeArenaKontor = oppfolgingStartetInternalEvent.startetArenaKontor
-                            val kontor = sisteArenaKontor(oppfolgingStartetInternalEvent)
-                            if (innkommendeArenaKontor != null && kontor?.id != oppfolgingStartetInternalEvent.startetArenaKontor?.id) {
-                                KontorTilordningService.tilordneKontor(ArenaKontorVedOppfolgingStart(
-                                    KontorTilordning(
-                                        fnr = oppfolgingStartetInternalEvent.fnr,
-                                        kontorId = innkommendeArenaKontor,
-                                        oppfolgingsperiodeId = oppfolgingStartetInternalEvent.periodeId
-                                    )
-                                ))
-                                Commit()
-                            } else {
-                                Skip()
-                            }
-                        }
-                        HaddeNyerePeriodePåIdent, HarSlettetPeriode -> Skip()
+                        HaddeNyerePeriodePåIdent,
+                        HarSlettetPeriode,
+                        HaddePeriodeMedTilordningAllerede -> Skip()
+                        HaddePeriodeAlleredeMenManglerTilordning,
                         OppfølgingsperiodeLagret -> {
-                            val forhåndslagretArenaKontor = hentSisteArenaKontorFraOppfolgingsBrukerOgSlettHvisFunnet(ident)
-                            val oppdatertOppfolgingStartetInternalEvent = oppfolgingStartetInternalEvent.copy(
-                                arenaKontorFraOppfolgingsbrukerTopic = forhåndslagretArenaKontor?.let {
-                                    TidligArenaKontor(
-                                        it.sistEndretDato,
-                                        KontorId(it.kontorId)
-                                    )
-                                }
-                            )
                             Forward(
                                 Record(
                                     ident,
-                                    oppdatertOppfolgingStartetInternalEvent,
+                                    oppfolgingStartetInternalEvent.enrichWithTidligArenaKontor(),
                                     Instant.now().toEpochMilli()
                                 ), null
                             )
@@ -110,6 +86,18 @@ class OppfolgingsHendelseProcessor(
             }
     }
 
+    fun OppfolgingsperiodeStartet.enrichWithTidligArenaKontor(): OppfolgingsperiodeStartet {
+        val forhåndslagretArenaKontor = hentSisteArenaKontorFraOppfolgingsBrukerOgSlettHvisFunnet(this.fnr)
+        return this.copy(
+            arenaKontorFraOppfolgingsbrukerTopic = forhåndslagretArenaKontor?.let {
+                TidligArenaKontor(
+                    it.sistEndretDato,
+                    KontorId(it.kontorId)
+                )
+            }
+        )
+    }
+
     fun hentSisteArenaKontorFraOppfolgingsBrukerOgSlettHvisFunnet(ident: Ident): TidligArenaKontorEntity? {
         return transaction {
             TidligArenaKontorEntity.findById(ident.value)
@@ -120,13 +108,6 @@ class OppfolgingsHendelseProcessor(
                 }
         }
     }
-
-    fun sisteArenaKontor(oppfolgingsperiode: OppfolgingsperiodeStartet): KontorId? {
-        return transaction {
-            ArenaKontorEntity.findById(oppfolgingsperiode.fnr.value)
-                ?.let { KontorId(it.kontorId) }
-        }
-    }
 }
 
 fun OppfolgingStartetHendelseDto.toDomainObject() = OppfolgingsperiodeStartet(
@@ -134,8 +115,8 @@ fun OppfolgingStartetHendelseDto.toDomainObject() = OppfolgingsperiodeStartet(
         ?: throw IllegalStateException("Ident i oppfolgingshendelse-topic kan ikke være aktorId"),
     startDato = this.startetTidspunkt,
     periodeId = OppfolgingsperiodeId(UUID.fromString(this.oppfolgingsPeriodeId)),
-    startetArenaKontor = null, // Settes til null med vilje, feltet fjernes hvis det ikke trengs
-    arenaKontorFraOppfolgingsbrukerTopic = null
+    arenaKontorFraOppfolgingsbrukerTopic = null,
+    erArbeidssøkerRegistrering = startetBegrunnelse == ARBEIDSSOKER_REGISTRERING
 )
 fun OppfolgingsAvsluttetHendelseDto.toDomainObject() = OppfolgingsperiodeAvsluttet(
     Ident.of(this.fnr, Ident.HistoriskStatus.UKJENT) as? IdentSomKanLagres

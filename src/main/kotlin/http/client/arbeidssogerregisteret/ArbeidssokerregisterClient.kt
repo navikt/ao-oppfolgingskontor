@@ -4,6 +4,8 @@ import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.plugins.logging.LogLevel
+import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
@@ -37,6 +39,9 @@ class ArbeidssokerregisterClient(
             install(SystemTokenPlugin) {
                 this.tokenProvider = azureTokenProvider
             }
+            install(Logging) {
+                level = LogLevel.INFO
+            }
             install(ContentNegotiation) {
                 json(Json { ignoreUnknownKeys = true })
             }
@@ -60,16 +65,20 @@ class ArbeidssokerregisterClient(
             }
 
             return currentOpenPeriod.opplysningerOmArbeidssoeker
-                .firstOrNull()
-                ?.profilering
-                ?.profilertTil?.let { profilertTil ->
+                .let {
+                    it.firstOrNull()
+                        ?: return ProfileringIkkeFunnet("Listen med opplysningerOmArbeidssoeker i profileringsresponse var tom")
+                }
+                .let {
+                    it.profilering
+                        ?: return ProfileringIkkeFunnet("Feltet 'profilering' i opplysningerOmArbeidssoeker var null")
+                }
+                .profilertTil.let { profilertTil ->
                     when (profilertTil) {
                         ProfileringsResultat.UKJENT_VERDI -> ProfileringIkkeFunnet("Ukjent verdi for profilering.")
                         else -> ProfileringFunnet(profilertTil)
                     }
                 }
-                ?: ProfileringIkkeFunnet("Bruker hadde ikke profilering")
-
 
         } catch (e: Exception) {
             log.error(e.message, e)
@@ -78,7 +87,11 @@ class ArbeidssokerregisterClient(
     }
 }
 
-sealed class HentProfileringsResultat
+sealed class Profilering
+
+data object ProfileringIkkeAktuell: Profilering()
+sealed class HentProfileringsResultat: Profilering()
+
 data class ProfileringFunnet(val profilering: ProfileringsResultat) : HentProfileringsResultat()
 data class ProfileringIkkeFunnet(val melding: String) : HentProfileringsResultat()
 data class ProfileringOppslagFeil(val error: Throwable) : HentProfileringsResultat()

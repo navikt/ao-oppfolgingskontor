@@ -11,5 +11,6 @@ object ArenaKontorTable: IdTable<String>("arenakontor") {
     val createdAt = timestampWithTimeZone("created_at").defaultExpression(CurrentTimestampWithTimeZone) // TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     val updatedAt = timestampWithTimeZone("updated_at").defaultExpression(CurrentTimestampWithTimeZone) // TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     val sistEndretDatoArena = timestampWithTimeZone("sist_endret_dato_arena")
-    val historikkEntry = integer("historikk_entry").references(KontorhistorikkTable.id)
+    /* Noen få arena-kontor (alle fra 2025-08-20) har ikke fått historikk entry, derfor må denne være nullable */
+    val historikkEntry = integer("historikk_entry").references(KontorhistorikkTable.id).nullable()
 }

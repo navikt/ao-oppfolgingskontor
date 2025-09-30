@@ -1,27 +1,29 @@
 package kafka.consumers
 
 import db.entity.TidligArenaKontorEntity
+import domain.ArenaKontorUtvidet
 import io.kotest.assertions.withClue
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.server.testing.*
-import io.mockk.every
-import io.mockk.mockk
 import no.nav.db.*
 import no.nav.db.Ident.HistoriskStatus.*
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.OppfolgingsperiodeEntity
+import no.nav.db.table.OppfolgingsperiodeTable
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
-import no.nav.domain.events.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart
+import no.nav.domain.events.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.http.client.IdentFunnet
 import no.nav.http.client.IdenterFunnet
+import no.nav.kafka.consumers.ArenaKontorEndringsType
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
+import no.nav.kafka.consumers.harKontorBlittEndret
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.Retry
@@ -33,7 +35,9 @@ import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.lagreIdentIIdentmappingTabell
 import no.nav.utils.randomFnr
 import org.apache.kafka.streams.processor.api.Record
+import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import services.IdentService
@@ -48,6 +52,15 @@ import java.util.*
 import kotlin.test.fail
 
 class OppfolgingshendelseProcessorTest {
+
+    companion object {
+        @BeforeAll
+        @JvmStatic
+        fun setup() {
+            flywayMigrationInTest()
+        }
+    }
+
 
     fun Bruker.skalVæreUnderOppfølging(periodeId: OppfolgingsperiodeId? = null) {
         transaction {
@@ -74,11 +87,21 @@ class OppfolgingshendelseProcessorTest {
 
     fun Bruker.gittArenaKontorTilordning(kontorId: KontorId) {
         KontorTilordningService.tilordneKontor(
-            ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart(
+            ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep(
                 KontorTilordning(this.ident, kontorId, this.oppfolgingsperiodeId),
                 OffsetDateTime.now()
             )
         )
+    }
+
+    fun Bruker.gittBrukerUnderOppfolging() {
+        transaction {
+            OppfolgingsperiodeTable.insert {
+                it[id] = this@gittBrukerUnderOppfolging.ident.value
+                it[oppfolgingsperiodeId] = this@gittBrukerUnderOppfolging.oppfolgingsperiodeId.value
+                it[startDato] = ZonedDateTime.now().toOffsetDateTime()
+            }
+        }
     }
 
     fun testBruker() = Bruker(
@@ -96,172 +119,155 @@ class OppfolgingshendelseProcessorTest {
     }
 
     @Test
-    fun `skal lagre ny oppfolgingsperiode når oppfolgingsperiode-startet`() = testApplication {
+    fun `Skal lagre ny oppfolgingsperiode når oppfolgingsperiode-startet`() = testApplication {
         val bruker = testBruker()
-        application {
-            flywayMigrationInTest()
-            val oppfolgingshendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
-            val record = oppfolgingStartetMelding(bruker)
+        val oppfolgingshendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
+        val record = oppfolgingStartetMelding(bruker)
 
-            val result = oppfolgingshendelseProcessor.process(record)
+        val result = oppfolgingshendelseProcessor.process(record)
 
-            result.shouldBeInstanceOf<Forward<Ident, OppfolgingsperiodeStartet>>()
-            bruker.skalVæreUnderOppfølging()
-        }
+        result.shouldBeInstanceOf<Forward<Ident, OppfolgingsperiodeStartet>>()
+        bruker.skalVæreUnderOppfølging()
     }
 
     @Test
-    fun `skal slette periode når avslutningsmelding kommer `() = testApplication {
+    fun `Skal slette periode når avslutningsmelding kommer `() = testApplication {
         val bruker = testBruker()
-        application {
-            flywayMigrationInTest()
-            val oppfolgingshendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
-            val hendelseStartResult = oppfolgingshendelseProcessor.process(oppfolgingStartetMelding(bruker))
-            hendelseStartResult.shouldBeInstanceOf<Forward<*, *>>()
+        val oppfolgingshendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
+        val hendelseStartResult = oppfolgingshendelseProcessor.process(oppfolgingStartetMelding(bruker))
+        hendelseStartResult.shouldBeInstanceOf<Forward<*, *>>()
 
-            val sluttDato = ZonedDateTime.now()
-            val hendelseResult = oppfolgingshendelseProcessor.process(oppfolgingAvsluttetMelding(bruker, sluttDato))
+        val sluttDato = ZonedDateTime.now()
+        val hendelseResult = oppfolgingshendelseProcessor.process(oppfolgingAvsluttetMelding(bruker, sluttDato))
 
-            hendelseResult.shouldBeInstanceOf<Commit<*, *>>()
-            bruker.skalIkkeVæreUnderOppfølging()
-        }
+        hendelseResult.shouldBeInstanceOf<Commit<*, *>>()
+        bruker.skalIkkeVæreUnderOppfølging()
     }
 
     @Test
-    fun `skal ikke lagre oppfolgingsperiode når sluttDato ikke er null (oppfolgingsperiode-avsluttet)`() =
-        testApplication {
-            val bruker = testBruker()
-            val periodeSlutt = ZonedDateTime.now().minusDays(1)
-
-            application {
-                flywayMigrationInTest()
-                val consumer = bruker.defaultOppfolgingsHendelseProcessor()
-
-                consumer.process(oppfolgingAvsluttetMelding(bruker, sluttDato = periodeSlutt))
-
-                bruker.skalIkkeVæreUnderOppfølging()
-            }
-        }
-
-    @Test
-    fun `skal slette eksisterende oppfolgingsperiode når perioden er avsluttet`() = testApplication {
+    fun `Skal hoppe over avslutt-melding når bruker ikke er under oppfølging`() = testApplication {
         val bruker = testBruker()
         val periodeSlutt = ZonedDateTime.now().minusDays(1)
 
-        application {
-            flywayMigrationInTest()
-            val consumer = bruker.defaultOppfolgingsHendelseProcessor()
-            val startPeriodeRecord = oppfolgingStartetMelding(bruker)
-            val avsluttetNyerePeriodeRecord = oppfolgingAvsluttetMelding(
-                bruker.copy(periodeStart = bruker.periodeStart.plusSeconds(1)), sluttDato = periodeSlutt
-            )
+        val consumer = bruker.defaultOppfolgingsHendelseProcessor()
+        val result = consumer.process(oppfolgingAvsluttetMelding(bruker, sluttDato = periodeSlutt))
 
-            consumer.process(startPeriodeRecord)
-            val result = consumer.process(avsluttetNyerePeriodeRecord)
-
-            result.shouldBeInstanceOf<Commit<*, *>>()
-            bruker.skalIkkeVæreUnderOppfølging()
-        }
+        result.shouldBeInstanceOf<Skip<*, *>>()
+        bruker.skalIkkeVæreUnderOppfølging()
     }
 
     @Test
-    fun `skal hoppe over melding hvis den er på en gammel periode`() = testApplication {
+    fun `Skal slette eksisterende oppfolgingsperiode når perioden er avsluttet`() = testApplication {
         val bruker = testBruker()
+        val periodeSlutt = ZonedDateTime.now().minusDays(1)
 
-        application {
-            flywayMigrationInTest()
-            val consumer = bruker.defaultOppfolgingsHendelseProcessor()
-            val startPeriodeRecord = oppfolgingStartetMelding(bruker)
-            val startGammelPeriodeRecord = oppfolgingStartetMelding(
-                bruker.copy(
-                    oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
-                    periodeStart = bruker.periodeStart.minusSeconds(1),
-                )
-            )
+        val consumer = bruker.defaultOppfolgingsHendelseProcessor()
+        val startPeriodeRecord = oppfolgingStartetMelding(bruker)
+        val avsluttetNyerePeriodeRecord = oppfolgingAvsluttetMelding(
+            bruker.copy(periodeStart = bruker.periodeStart.plusSeconds(1)), sluttDato = periodeSlutt
+        )
 
-            consumer.process(startPeriodeRecord)
-            val processingResult = consumer.process(startGammelPeriodeRecord)
+        consumer.process(startPeriodeRecord)
+        val result = consumer.process(avsluttetNyerePeriodeRecord)
 
-            processingResult.shouldBeInstanceOf<Skip<*, *>>()
-            bruker.skalVæreUnderOppfølging()
-        }
+        result.shouldBeInstanceOf<Commit<*, *>>()
+        bruker.skalIkkeVæreUnderOppfølging()
     }
 
     @Test
-    fun `start på nyere periode skal slette gammel periode og lagre ny på gitt ident`() = testApplication {
+    fun `Skal hoppe over start-melding hvis den er på en gammel periode`() = testApplication {
+        val bruker = testBruker()
+        val consumer = bruker.defaultOppfolgingsHendelseProcessor()
+        val startPeriodeRecord = oppfolgingStartetMelding(bruker)
+        val startGammelPeriodeRecord = oppfolgingStartetMelding(
+            bruker.copy(
+                oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
+                periodeStart = bruker.periodeStart.minusSeconds(1),
+            )
+        )
+
+        consumer.process(startPeriodeRecord)
+        val processingResult = consumer.process(startGammelPeriodeRecord)
+
+        processingResult.shouldBeInstanceOf<Skip<*, *>>()
+        bruker.skalVæreUnderOppfølging()
+    }
+
+    @Test
+    fun `Skal slette gammel periode ved melding om start på nyere periode`() = testApplication {
         val bruker = testBruker()
         val nyerePeriodeId = UUID.randomUUID()
         val nyereStartDato = bruker.periodeStart.plusSeconds(1)
-
-        application {
-            flywayMigrationInTest()
-            val consumer = bruker.defaultOppfolgingsHendelseProcessor()
-            val startPeriodeRecord = oppfolgingStartetMelding(bruker)
-            val startNyerePeriodeRecord = oppfolgingStartetMelding(
-                bruker.copy(
-                    oppfolgingsperiodeId = OppfolgingsperiodeId(nyerePeriodeId),
-                    periodeStart = nyereStartDato,
-                )
+        val consumer = bruker.defaultOppfolgingsHendelseProcessor()
+        val startPeriodeRecord = oppfolgingStartetMelding(bruker)
+        val startNyerePeriodeRecord = oppfolgingStartetMelding(
+            bruker.copy(
+                oppfolgingsperiodeId = OppfolgingsperiodeId(nyerePeriodeId),
+                periodeStart = nyereStartDato,
             )
+        )
+        consumer.process(startPeriodeRecord)
 
-            consumer.process(startPeriodeRecord)
-            val processingResult = consumer.process(startNyerePeriodeRecord)
+        val processingResult = consumer.process(startNyerePeriodeRecord)
 
-            processingResult.shouldBeInstanceOf<Forward<*, *>>()
-            processingResult.forwardedRecord.key() shouldBe bruker.ident
-            processingResult.forwardedRecord.value() shouldBe OppfolgingsperiodeStartet(
-                bruker.ident,
-                nyereStartDato,
-                OppfolgingsperiodeId(nyerePeriodeId),
-                null,
-                null
-            )
-            processingResult.topic shouldBe null
-            transaction {
-                val oppfolgingForBruker = OppfolgingsperiodeEntity.findById(bruker.ident.value)
-                oppfolgingForBruker.shouldNotBeNull()
-                oppfolgingForBruker.oppfolgingsperiodeId shouldBe nyerePeriodeId
-                withClue("startDato lest fra db: ${oppfolgingForBruker.startDato.toInstant()} skal være lik input startDato: ${nyereStartDato.toInstant()}") {
-                    // Truncated always rounds down, therefore we add 500 nanos to make it behave like actual rounding like done when
-                    // too high precision is inserted into the db
-                    oppfolgingForBruker.startDato.toInstant() shouldBe nyereStartDato.toInstant().plusNanos(500)
-                        .truncatedTo(ChronoUnit.MICROS)
-                }
+        processingResult.shouldBeInstanceOf<Forward<*, *>>()
+        processingResult.forwardedRecord.key() shouldBe bruker.ident
+        processingResult.forwardedRecord.value() shouldBe OppfolgingsperiodeStartet(
+            bruker.ident,
+            nyereStartDato,
+            OppfolgingsperiodeId(nyerePeriodeId),
+            null,
+            true
+        )
+        processingResult.topic shouldBe null
+        transaction {
+            val oppfolgingForBruker = OppfolgingsperiodeEntity.findById(bruker.ident.value)
+            oppfolgingForBruker.shouldNotBeNull()
+            oppfolgingForBruker.oppfolgingsperiodeId shouldBe nyerePeriodeId
+            withClue("startDato lest fra db: ${oppfolgingForBruker.startDato.toInstant()} skal være lik input startDato: ${nyereStartDato.toInstant()}") {
+                // Truncated always rounds down, therefore we add 500 nanos to make it behave like actual rounding like done when
+                // too high precision is inserted into the db
+                oppfolgingForBruker.startDato.toInstant() shouldBe nyereStartDato.toInstant().plusNanos(500)
+                    .truncatedTo(ChronoUnit.MICROS)
             }
         }
+
     }
 
     @Test
-    fun `nyere slutt skal slette gammel periode`() = testApplication {
+    fun `Skal slette gammel periode ved melding om slutt på nyere periode`() = testApplication {
         val bruker = testBruker()
         val nyereStartDato = bruker.periodeStart.plusSeconds(1)
         val periodeSlutt = nyereStartDato.plusSeconds(1)
+        val oppfolgingsHendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
+        val startPeriodeRecord = oppfolgingStartetMelding(bruker)
+        val sluttNyerePeriodeRecord = oppfolgingAvsluttetMelding(
+            bruker.copy(
+                oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
+                periodeStart = nyereStartDato,
+            ), sluttDato = periodeSlutt
+        )
+        oppfolgingsHendelseProcessor.process(startPeriodeRecord)
 
-        application {
-            flywayMigrationInTest()
-            val oppfolgingsHendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
-            val startPeriodeRecord = oppfolgingStartetMelding(bruker)
-            val sluttNyerePeriodeRecord = oppfolgingAvsluttetMelding(
-                bruker.copy(
-                    oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
-                    periodeStart = nyereStartDato,
-                ), sluttDato = periodeSlutt
-            )
-            oppfolgingsHendelseProcessor.process(startPeriodeRecord)
+        val processingResult = oppfolgingsHendelseProcessor.process(sluttNyerePeriodeRecord)
 
-            val processingResult = oppfolgingsHendelseProcessor.process(sluttNyerePeriodeRecord)
+        processingResult.shouldBeInstanceOf<Commit<*, *>>()
+        bruker.skalIkkeVæreUnderOppfølging()
 
-            processingResult.shouldBeInstanceOf<Commit<*, *>>()
-            bruker.skalIkkeVæreUnderOppfølging()
-        }
     }
 
     @Test
-    fun `skal håndtere deserialiseringsfeil`() {
+    fun `Skal retry-e på deserialiseringsfeil`() {
         val bruker = testBruker()
         val oppfolgingsHendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
 
-        val result = oppfolgingsHendelseProcessor.process(Record(bruker.aktorId, """{ "lol": "lal" }""", Instant.now().toEpochMilli()))
+        val result = oppfolgingsHendelseProcessor.process(
+            Record(
+                bruker.aktorId,
+                """{ "lol": "lal" }""",
+                Instant.now().toEpochMilli()
+            )
+        )
 
         result.shouldBeInstanceOf<Retry<*, *>>()
         result.reason shouldBe """
@@ -271,9 +277,8 @@ class OppfolgingshendelseProcessorTest {
     }
 
     @Test
-    fun `skal hoppe over start-melding når perioden er slettet`() {
+    fun `Skal hoppe over start-melding når perioden er slettet`() {
         val bruker = testBruker()
-        flywayMigrationInTest()
         val oppfolgingshendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
         val sluttDato = ZonedDateTime.now().plusDays(1)
         val startmelding = oppfolgingStartetMelding(bruker)
@@ -289,11 +294,36 @@ class OppfolgingshendelseProcessorTest {
         resultStoppMeldingPåNytt.shouldBeInstanceOf<Skip<*, *>>()
     }
 
+    @Test
+    fun `Skal forwarde start-melding om på allerede lagrede oppfølgingsperioder hvis kontortilordning (ao-kontor) ikke er gjort`() {
+        val bruker = testBruker()
+        bruker.gittBrukerUnderOppfolging()
+        bruker.gittArenaKontorTilordning(KontorId("1199"))
+        val oppfolgingshendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
+        val startmelding = oppfolgingStartetMelding(bruker)
+
+        val result = oppfolgingshendelseProcessor.process(startmelding)
+
+        result.shouldBeInstanceOf<Forward<*, *>>()
+    }
+
+    @Test
+    fun `Skal hoppe over start-melding hvis perioden og kontortilordning (ao-kontor) finnes`() {
+        val bruker = testBruker()
+        bruker.gittBrukerUnderOppfolging()
+        bruker.gittAOKontorTilordning(KontorId("1199"))
+        val oppfolgingshendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
+        val startmelding = oppfolgingStartetMelding(bruker)
+
+        val result = oppfolgingshendelseProcessor.process(startmelding)
+
+        result.shouldBeInstanceOf<Skip<*, *>>()
+    }
+
     @Disabled
     @Test
-    fun `skal hoppe over start-melding men oppdatere kontor når perioden er allerede er startet (men ikke avsluttet)`() {
+    fun `Skal hoppe over start-melding men oppdatere kontor når perioden er allerede er startet (men ikke avsluttet)`() {
         val bruker = testBruker()
-        flywayMigrationInTest()
         val arenaKontor = KontorId("1122")
         val oppfolgingshendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
         val startmelding = oppfolgingStartetMelding(bruker, arenaKontor)
@@ -311,9 +341,8 @@ class OppfolgingshendelseProcessorTest {
     }
 
     @Test
-    fun `skal håndtere oppfølging avsluttet for en periode vi ikke visste om`() {
+    fun `Skal hoppe over avslutt-melding for en periode vi ikke visste om`() {
         val bruker = testBruker()
-        flywayMigrationInTest()
         val oppfolgingshendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
         val record = TopicUtils.oppfolgingAvsluttetMelding(bruker, ZonedDateTime.now())
 
@@ -322,14 +351,15 @@ class OppfolgingshendelseProcessorTest {
         result.shouldBeInstanceOf<Skip<Ident, OppfolgingsperiodeStartet>>()
     }
 
-    fun gittBrukerMedTidligArenaKontor(bruker: Bruker, arenaKontorVeilarboppfolging: String, arenaKontor: String) {
-        val arenaKontorFraVeilarboppfolging = mockk<ArenaKontorEntity> {
-            every { sistEndretDatoArena } returns OffsetDateTime.now().minusSeconds(1)
-            every { kontorId } returns arenaKontorVeilarboppfolging
-        }
+    fun gittBrukerMedTidligArenaKontor(bruker: Bruker, sistLagretArenaKontor: String, arenaKontor: String) {
+        val sistLagreArenaKontor = ArenaKontorUtvidet(
+            kontorId = KontorId(sistLagretArenaKontor),
+            oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
+            sistEndretDatoArena = OffsetDateTime.now().minusSeconds(1)
+        )
         val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
-            { arenaKontorFraVeilarboppfolging },
-            { NotUnderOppfolging })
+            { NotUnderOppfolging },
+            { sistLagreArenaKontor })
         endringPaOppfolgingsBrukerProcessor.process(
             TopicUtils.endringPaaOppfolgingsBrukerMessage(
                 bruker.ident,
@@ -360,9 +390,9 @@ class OppfolgingshendelseProcessorTest {
     }
 
     @Test
-    fun `skal rydde opp i tidlig-arena-kontor hvis det blir brukt`() {
+    fun `Skal slette tidlig-arena-kontor hvis det blir brukt`() {
         val bruker = testBruker()
-        flywayMigrationInTest()
+
         val arenaKontorVeilarboppfolging = "4141"
         val arenaKontor = "4142"
         val hendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
@@ -378,11 +408,13 @@ class OppfolgingshendelseProcessorTest {
     class Asserts(val service: OppfolgingsperiodeService, val bruker: Bruker) {
         fun skalVæreUnderOppfolging() = service.getCurrentOppfolgingsperiode(IdentFunnet(bruker.ident))
             .shouldBeInstanceOf<AktivOppfolgingsperiode>()
+
         fun skalIkkeVæreUnderOppfolging() = service.getCurrentOppfolgingsperiode(IdentFunnet(bruker.ident))
             .shouldBeInstanceOf<NotUnderOppfolging>()
     }
+
     @Test
-    fun `avslutt-melding med ny ident skal kunne avslutte periode`() = testApplication {
+    fun `Skal slette periode ved avslutt-melding (på ny ident)`() = testApplication {
         val aktivtDnr = Dnr("52105678901", AKTIV)
         val historiskDnr = Dnr(aktivtDnr.value, HISTORISK)
         val aktorId = AktorId("1234567890123", AKTIV)
@@ -396,7 +428,6 @@ class OppfolgingshendelseProcessorTest {
         val brukerMedDnr = bruker.copy(ident = aktivtDnr)
         val brukerMedFnr = bruker.copy(ident = fnr)
         application {
-            flywayMigrationInTest()
             lagreIdentIIdentmappingTabell(aktivtDnr)
             val identService = IdentService { input ->
                 val inputIdent = Ident.of(input, UKJENT)
@@ -420,10 +451,12 @@ class OppfolgingshendelseProcessorTest {
             brukerMedDnrAsserts.skalVæreUnderOppfolging()
 
             /* Marker dnr som historisk */
-            identChangeProcessor.process(TopicUtils.aktorV2Message(
-                aktorId.value,
-                listOf(aktorId, historiskDnr, fnr),
-            ))
+            identChangeProcessor.process(
+                TopicUtils.aktorV2Message(
+                    aktorId.value,
+                    listOf(aktorId, historiskDnr, fnr),
+                )
+            )
 
             /* Når man har mottatt ident-endring skal begge identene
             * svare at bruker er under oppfølging */

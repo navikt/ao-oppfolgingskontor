@@ -1,19 +1,17 @@
 package no.nav.kafka.consumers
 
 import db.table.TidligArenaKontorTable
+import domain.ArenaKontorUtvidet
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import no.nav.db.AktorId
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
-import no.nav.db.entity.ArenaKontorEntity
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
+import no.nav.domain.events.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep
 import no.nav.domain.events.EndringPaaOppfolgingsBrukerFraArena
-import no.nav.http.client.IdentFunnet
-import no.nav.http.client.IdentResult
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
@@ -32,8 +30,8 @@ import java.time.ZoneOffset
 import java.time.ZonedDateTime
 
 class EndringPaOppfolgingsBrukerProcessor(
-    val sistLagretArenaKontorProvider: (IdentSomKanLagres) -> ArenaKontorEntity?,
     val oppfolgingsperiodeProvider: suspend (IdentSomKanLagres) -> OppfolgingsperiodeOppslagResult,
+    val arenaKontorProvider: suspend (IdentSomKanLagres) -> ArenaKontorUtvidet?,
 ) {
     val log = LoggerFactory.getLogger(EndringPaOppfolgingsBrukerProcessor::class.java)
 
@@ -66,15 +64,23 @@ class EndringPaOppfolgingsBrukerProcessor(
                 Skip()
             }
             is SkalLagre -> {
+                val kontorTilordning = KontorTilordning(
+                    fnr = result.fnr,
+                    kontorId = KontorId(result.oppfolgingsenhet),
+                    result.oppfolgingsperiodeId
+                )
                 KontorTilordningService.tilordneKontor(
-                    EndringPaaOppfolgingsBrukerFraArena(
-                        kontorTilordning = KontorTilordning(
-                            fnr = result.fnr,
-                            kontorId = KontorId(result.oppfolgingsenhet),
-                            result.oppfolgingsperiodeId
-                        ),
-                        sistEndretIArena = result.endretTidspunkt,
-                    )
+                    if (result.erFørsteArenaKontorIOppfolgingsperiode) {
+                        ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep(
+                            kontorTilordning = kontorTilordning,
+                            sistEndretIArena = result.endretTidspunkt,
+                        )
+                    } else {
+                        EndringPaaOppfolgingsBrukerFraArena(
+                            kontorTilordning = kontorTilordning,
+                            sistEndretIArena = result.endretTidspunkt,
+                        )
+                    }
                 )
                 Commit()
             }
@@ -98,30 +104,28 @@ class EndringPaOppfolgingsBrukerProcessor(
     }
 
     fun process(record: Record<String, String>): RecordProcessingResult<String, String> {
-        val result = internalProcess(record)
-        return handleResult(result)
+        try {
+            val result = internalProcess(record)
+            return handleResult(result)
+        } catch (e: Throwable) {
+            val message = "Uhåndtert feil ved behandling av endring på oppfolgingsbruker fra Arena: ${e.message}"
+            log.error(message, e)
+            return handleResult(Feil(Retry(message)))
+        }
     }
 
     fun internalProcess(record: Record<String, String>): EndringPaaOppfolgingsBrukerResult {
-        val fnr = Ident.of(record.key(), Ident.HistoriskStatus.UKJENT) as IdentSomKanLagres
+        val ident = Ident.of(record.key(), Ident.HistoriskStatus.UKJENT) as IdentSomKanLagres
         val endringPaOppfolgingsBruker = json.decodeFromString<EndringPaOppfolgingsBrukerDto>(record.value())
         val oppfolgingsenhet = endringPaOppfolgingsBruker.oppfolgingsenhet
         val endretTidspunktInnkommendeMelding = endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime()
 
-        val sistLagretArenaKontor by lazy { sistLagretArenaKontorProvider(fnr) }
-        val oppfolgingperiode by lazy { runBlocking { oppfolgingsperiodeProvider(fnr) } }
+        val sistLagretArenaKontor by lazy { runBlocking { arenaKontorProvider(ident) } }
+        val oppfolgingperiode by lazy { runBlocking { oppfolgingsperiodeProvider(ident) } }
 
         fun harNyereLagretEndring(): Boolean {
-            val sistEndretDatoArena = sistLagretArenaKontor?.sistEndretDatoArena ?: return false
+            val sistEndretDatoArena = sistLagretArenaKontor?. sistEndretDatoArena ?: return false
             return sistEndretDatoArena > endretTidspunktInnkommendeMelding
-        }
-
-        fun harKontorBlittEndret(): Boolean {
-            val sistLagretKontorId = sistLagretArenaKontor?.kontorId
-            return when (sistLagretKontorId) {
-                null -> true
-                else -> sistLagretKontorId != oppfolgingsenhet
-            }
         }
 
         return when {
@@ -131,14 +135,17 @@ class EndringPaOppfolgingsBrukerProcessor(
             else -> {
                 when (val periode = oppfolgingperiode) {
                     is AktivOppfolgingsperiode -> {
-                        return when (harKontorBlittEndret()) {
-                            true -> SkalLagre(
+                        return when (val endringsType = harKontorBlittEndret(sistLagretArenaKontor, oppfolgingsenhet, periode.periodeId)) {
+                            ArenaKontorEndringsType.IKKE_ENDRET_KONTOR -> IngenEndring()
+                            ArenaKontorEndringsType.ENDRET_I_PERIODE,
+                            ArenaKontorEndringsType.FØRSTE_KONTOR_I_PERIODE,
+                            ArenaKontorEndringsType.FØRSTE_KONTOR_PÅ_BRUKER -> SkalLagre(
                                 oppfolgingsenhet,
                                 endretTidspunktInnkommendeMelding,
-                                fnr,
-                                periode.periodeId
+                                ident,
+                                periode.periodeId,
+                                erFørsteArenaKontorIOppfolgingsperiode = endringsType.erFørsteArenaKontorIOppfolgingsperiode()
                             )
-                            false -> IngenEndring()
                         }
                     }
                     NotUnderOppfolging -> {
@@ -146,7 +153,7 @@ class EndringPaOppfolgingsBrukerProcessor(
                             UnderOppfolgingIArenaMenIkkeLokalt(
                                 KontorId(endringPaOppfolgingsBruker.oppfolgingsenhet),
                                 endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime(),
-                                fnr
+                                ident
                             )
                         } else {
                             IkkeUnderOppfolging()
@@ -169,6 +176,25 @@ class EndringPaOppfolgingsBrukerProcessor(
     }
 }
 
+fun harKontorBlittEndret(arenaKontorUtvidet: ArenaKontorUtvidet?, oppfolgingsEnhetFraTopic: String, oppfolgingsperiodeId: OppfolgingsperiodeId): ArenaKontorEndringsType {
+    if (arenaKontorUtvidet == null) return ArenaKontorEndringsType.FØRSTE_KONTOR_PÅ_BRUKER
+
+    val endringErINyPeriode = arenaKontorUtvidet.oppfolgingsperiodeId?.value != oppfolgingsperiodeId.value
+
+    return if (arenaKontorUtvidet.kontorId.id != oppfolgingsEnhetFraTopic) {
+        when (endringErINyPeriode) {
+            true -> ArenaKontorEndringsType.FØRSTE_KONTOR_I_PERIODE
+            false ->  ArenaKontorEndringsType.ENDRET_I_PERIODE
+        }
+    } else {
+        when (endringErINyPeriode) {
+            /* Setter samme kontoret på nytt med ny oppfølgingsperiode */
+            true -> ArenaKontorEndringsType.FØRSTE_KONTOR_I_PERIODE
+            false ->  ArenaKontorEndringsType.IKKE_ENDRET_KONTOR
+        }
+    }
+}
+
 sealed class EndringPaaOppfolgingsBrukerResult
 class BeforeCutoff : EndringPaaOppfolgingsBrukerResult()
 class HaddeNyereEndring : EndringPaaOppfolgingsBrukerResult()
@@ -183,7 +209,8 @@ class SkalLagre(
     val oppfolgingsenhet: String,
     val endretTidspunkt: OffsetDateTime,
     val fnr: Ident,
-    val oppfolgingsperiodeId: OppfolgingsperiodeId
+    val oppfolgingsperiodeId: OppfolgingsperiodeId,
+    val erFørsteArenaKontorIOppfolgingsperiode: Boolean,
 ) : EndringPaaOppfolgingsBrukerResult()
 
 class IngenEndring : EndringPaaOppfolgingsBrukerResult()
@@ -240,3 +267,14 @@ data class EndringPaOppfolgingsBrukerDto(
     val formidlingsgruppe: FormidlingsGruppe,
     val kvalifiseringsgruppe: Kvalifiseringsgruppe
 )
+
+enum class ArenaKontorEndringsType {
+    IKKE_ENDRET_KONTOR,
+    FØRSTE_KONTOR_I_PERIODE,
+    FØRSTE_KONTOR_PÅ_BRUKER,
+    ENDRET_I_PERIODE;
+
+    fun erFørsteArenaKontorIOppfolgingsperiode(): Boolean {
+        return this == FØRSTE_KONTOR_PÅ_BRUKER || this == FØRSTE_KONTOR_I_PERIODE
+    }
+}

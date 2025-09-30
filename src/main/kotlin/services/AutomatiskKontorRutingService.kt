@@ -4,6 +4,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
+import no.nav.domain.GT_VAR_LAND_FALLBACK
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.INGEN_GT_KONTOR_FALLBACK
@@ -15,13 +16,12 @@ import no.nav.domain.events.AOKontorEndret
 import no.nav.domain.events.AOKontorEndretPgaAdressebeskyttelseEndret
 import no.nav.domain.events.AOKontorEndretPgaSkjermingEndret
 import no.nav.domain.events.ArenaKontorEndret
-import no.nav.domain.events.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart
-import no.nav.domain.events.ArenaKontorVedOppfolgingStart
 import no.nav.domain.events.GTKontorEndret
 import no.nav.domain.events.OppfolgingsPeriodeStartetFallbackKontorTilordning
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.domain.events.OppfolgingsPeriodeStartetSensitivKontorTilordning
 import no.nav.domain.events.OppfolgingsperiodeStartetNoeTilordning
+import no.nav.domain.events.TidligArenaKontorVedOppfolgingStart
 import no.nav.domain.externalEvents.AdressebeskyttelseEndret
 import no.nav.domain.externalEvents.BostedsadresseEndret
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
@@ -39,7 +39,9 @@ import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.SkjermingIkkeFunnet
 import no.nav.http.client.SkjermingResult
 import no.nav.http.client.arbeidssogerregisteret.HentProfileringsResultat
+import no.nav.http.client.arbeidssogerregisteret.Profilering
 import no.nav.http.client.arbeidssogerregisteret.ProfileringFunnet
+import no.nav.http.client.arbeidssogerregisteret.ProfileringIkkeAktuell
 import no.nav.http.client.arbeidssogerregisteret.ProfileringIkkeFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
 import no.nav.http.client.arbeidssogerregisteret.ProfileringOppslagFeil
@@ -48,14 +50,18 @@ import no.nav.kafka.consumers.HåndterPersondataEndretFail
 import no.nav.kafka.consumers.HåndterPersondataEndretResultat
 import no.nav.kafka.consumers.HåndterPersondataEndretSuccess
 import no.nav.kafka.consumers.KontorEndringer
+import no.nav.services.AutomatiskKontorRutingService.Companion.VIKAFOSSEN
 import org.slf4j.LoggerFactory
 import utils.Outcome
+import java.time.Duration
+import java.time.ZonedDateTime
 
 sealed class TilordningResultat
 sealed class TilordningSuccess : TilordningResultat()
 object TilordningSuccessIngenEndring : TilordningSuccess()
 data class TilordningSuccessKontorEndret(val kontorEndretEvent: KontorEndringer) : TilordningSuccess()
 data class TilordningFeil(val message: String) : TilordningResultat()
+data class TilordningRetry(val message: String) : TilordningResultat()
 
 class AutomatiskKontorRutingService(
     private val tilordneKontor: suspend (kontorEndretEvent: KontorEndringer) -> Unit,
@@ -114,16 +120,35 @@ class AutomatiskKontorRutingService(
                 is AlderIkkeFunnet -> return TilordningFeil("Kunne ikke hente alder: ${result.message}")
                 is AlderOppslagFeil -> return TilordningFeil("Henting av alder feilet: ${result.message}")
             }
-            val profilering = when (val profileringResultat = profileringProvider(fnr)) {
-                is ProfileringFunnet -> profileringResultat
-                is ProfileringIkkeFunnet -> profileringResultat
-                is ProfileringOppslagFeil -> return TilordningFeil("Kunne ikke hente profilering: ${profileringResultat.error.message}")
+            val profilering: Profilering = when(oppfolgingsperiodeStartet.erArbeidssøkerRegistrering) {
+                true -> {
+                    when (val profileringResultat = profileringProvider(fnr)) {
+                        is ProfileringFunnet -> profileringResultat
+                        is ProfileringIkkeFunnet -> {
+                            when (skalForsøkeÅHenteProfileringPåNytt(oppfolgingsperiodeStartet.startDato)) {
+                                true -> return TilordningRetry("Fant ikke profilering, men skal forsøke på nytt. Ble registrert for kort tid siden")
+                                false -> profileringResultat
+                                    .also {
+                                        log.info("Tilordner bruker kontor uten at profilering ble funnet: ${profileringResultat.melding}")
+                                    }
+                            }
+                        }
+                        is ProfileringOppslagFeil -> return TilordningFeil("Kunne ikke hente profilering: ${profileringResultat.error.message}")
+                    }
+                }
+                false -> ProfileringIkkeAktuell
             }
-            val kontorTilordning = when (val gtKontorResultat = gtKontorProvider(fnr, harStrengtFortroligAdresse, erSkjermet)) {
+            val gtKontorResultat = gtKontorProvider(fnr, harStrengtFortroligAdresse, erSkjermet)
+            val kontorTilordning = when (gtKontorResultat) {
                 is KontorForGtFinnesIkke -> hentTilordningUtenGT(fnr, alder, profilering, oppfolgingsperiodeId, gtKontorResultat)
                 is KontorForGtFantLandEllerKontor -> hentTilordning(fnr, gtKontorResultat, alder, profilering, oppfolgingsperiodeId)
                 is KontorForGtFeil -> return TilordningFeil("Feil ved henting av gt-kontor: ${gtKontorResultat.melding}")
-            }.let { KontorEndringer(aoKontorEndret = it, arenaKontorEndret = arenaKontorEndring(oppfolgingsperiodeStartet, oppfolgingsperiodeId)) }
+            }   .let { KontorEndringer(
+                        aoKontorEndret = it,
+                        arenaKontorEndret = arenaKontorEndring(oppfolgingsperiodeStartet, oppfolgingsperiodeId),
+                        gtKontorEndret = gtKontorResultat.toGtKontorEndret(fnr, oppfolgingsperiodeId)
+                    )
+                }
             tilordneKontor( kontorTilordning)
             return TilordningSuccessKontorEndret(kontorTilordning)
 
@@ -133,12 +158,11 @@ class AutomatiskKontorRutingService(
     }
 
     private fun arenaKontorEndring(periodeStartetEvent: OppfolgingsperiodeStartet, oppfolgingsperiodeId: OppfolgingsperiodeId): ArenaKontorEndret? {
-        val arenaKontorFraVeilarboppfolging = periodeStartetEvent.startetArenaKontor
         val arenaKontorFraOppfolgingsbruker = periodeStartetEvent.arenaKontorFraOppfolgingsbrukerTopic
 
         return when {
             arenaKontorFraOppfolgingsbruker != null -> {
-                ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart(
+                TidligArenaKontorVedOppfolgingStart(
                     KontorTilordning(
                         periodeStartetEvent.fnr,
                         arenaKontorFraOppfolgingsbruker.kontor,
@@ -147,22 +171,13 @@ class AutomatiskKontorRutingService(
                     arenaKontorFraOppfolgingsbruker.sistEndretDato
                 )
             }
-            arenaKontorFraVeilarboppfolging != null -> {
-                ArenaKontorVedOppfolgingStart(
-                    KontorTilordning(
-                        periodeStartetEvent.fnr,
-                        arenaKontorFraVeilarboppfolging,
-                        oppfolgingsperiodeId,
-                    )
-                )
-            }
             else -> null
         }
     }
 
     private fun skalTilNasjonalOppfølgingsEnhet(
         sensitivitet: Sensitivitet,
-        profilering: HentProfileringsResultat,
+        profilering: Profilering,
         alder: Int
     ): Boolean {
         return !sensitivitet.erSensitiv() &&
@@ -174,7 +189,7 @@ class AutomatiskKontorRutingService(
     private fun hentTilordningUtenGT(
         fnr: Ident,
         alder: Int,
-        profilering: HentProfileringsResultat,
+        profilering: Profilering,
         oppfolgingsperiodeId: OppfolgingsperiodeId,
         gtResultat: KontorForGtFinnesIkke
     ): AOKontorEndret {
@@ -208,7 +223,7 @@ class AutomatiskKontorRutingService(
         fnr: Ident,
         gtKontor: KontorForGtFantLandEllerKontor,
         alder: Int,
-        profilering: HentProfileringsResultat,
+        profilering: Profilering,
         oppfolgingsperiodeId: OppfolgingsperiodeId,
     ): AOKontorEndret {
         val skalTilNOE = skalTilNasjonalOppfølgingsEnhet(gtKontor.sensitivitet(), profilering, alder)
@@ -293,7 +308,7 @@ class AutomatiskKontorRutingService(
             return when (gtKontorResultat) {
                 is KontorForGtSuccess -> {
                     val kontorId = when (gtKontorResultat) {
-                        is KontorForGtFantLand,
+                        is KontorForGtFantLand -> GT_VAR_LAND_FALLBACK
                         is KontorForGtFinnesIkke -> INGEN_GT_KONTOR_FALLBACK
                         is KontorForGtNrFantDefaultKontor -> gtKontorResultat.kontorId
                         is KontorForGtNrFantFallbackKontorForManglendeGt -> gtKontorResultat.kontorId
@@ -460,8 +475,7 @@ class AutomatiskKontorRutingService(
     fun getGTKontorOrFallback(gtKontorResultat: KontorForGtSuccess): KontorId {
         return when (gtKontorResultat) {
             is KontorForGtNrFantKontor -> gtKontorResultat.kontorId
-            is KontorForGtFinnesIkke,
-            is KontorForGtFantLand -> {
+            is KontorForGtFinnesIkke -> {
                 if (gtKontorResultat.sensitivitet().strengtFortroligAdresse.value) {
                     VIKAFOSSEN
                 } else if (gtKontorResultat.sensitivitet().skjermet.value) {
@@ -469,6 +483,15 @@ class AutomatiskKontorRutingService(
                         "Skjermede brukere uten geografisk tilknytning eller med land som GT kan ikke tilordnes kontor"
                     )
                 } else INGEN_GT_KONTOR_FALLBACK
+            }
+            is KontorForGtFantLand -> {
+                if (gtKontorResultat.sensitivitet().strengtFortroligAdresse.value) {
+                    VIKAFOSSEN
+                } else if (gtKontorResultat.sensitivitet().skjermet.value) {
+                    throw IllegalStateException(
+                        "Skjermede brukere uten geografisk tilknytning eller med land som GT kan ikke tilordnes kontor"
+                    )
+                } else GT_VAR_LAND_FALLBACK
             }
         }
     }
@@ -483,5 +506,57 @@ class AutomatiskKontorRutingService(
         endringISkjermingStatus.erSkjermet,
         gtForBruker
     )
+
+    private fun skalForsøkeÅHenteProfileringPåNytt(oppfolgingsperiodeStartet: ZonedDateTime): Boolean {
+        val tidSidenBrukerBleRegistrert = Duration.between(oppfolgingsperiodeStartet, ZonedDateTime.now())
+        val forventetForsinkelsePåProfilering = Duration.ofSeconds(5)
+        val feilmargin = Duration.ofSeconds(5)
+        return (tidSidenBrukerBleRegistrert < (forventetForsinkelsePåProfilering + feilmargin)).also {
+            log.info("Bruker ble registrert som arbeidssøker for tid siden: ${tidSidenBrukerBleRegistrert}")
+        }
+    }
 }
 
+
+fun KontorForGtSuccess.toGtKontorEndret(ident: IdentSomKanLagres, oppfolgingsperiodeId: OppfolgingsperiodeId): GTKontorEndret? {
+    if (this.erStrengtFortrolig()) {
+        return GTKontorEndret.syncVedStartOppfolging(
+            tilordning = KontorTilordning(
+                fnr = ident,
+                kontorId = VIKAFOSSEN,
+                oppfolgingsperiodeId = oppfolgingsperiodeId
+            ),
+            this.gt()
+        )
+    }
+
+    return when (this) {
+        is KontorForGtFantLand -> GTKontorEndret.syncVedStartOppfolging(
+            tilordning = KontorTilordning(
+                fnr = ident,
+                kontorId = GT_VAR_LAND_FALLBACK,
+                oppfolgingsperiodeId = oppfolgingsperiodeId
+            ),
+            this.gt()
+        )
+        is KontorForGtNrFantDefaultKontor -> GTKontorEndret.syncVedStartOppfolging(
+            tilordning = KontorTilordning(
+                fnr = ident,
+                kontorId = this.kontorId,
+                oppfolgingsperiodeId = oppfolgingsperiodeId
+            ),
+            this.gt()
+        )
+        is KontorForGtNrFantFallbackKontorForManglendeGt -> {
+            GTKontorEndret.syncVedStartOppfolging(
+                tilordning = KontorTilordning(
+                    fnr = ident,
+                    kontorId = this.kontorId,
+                    oppfolgingsperiodeId = oppfolgingsperiodeId
+                ),
+                this.gt()
+            )
+        }
+        is KontorForGtFinnesIkke -> null
+    }
+}

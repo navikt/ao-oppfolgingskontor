@@ -39,11 +39,12 @@ import no.nav.kafka.consumers.SkjermingProcessor
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.KontorForGtNrFantDefaultKontor
+import no.nav.services.KontorNavnService
+import no.nav.services.KontorTilhorighetService
 import no.nav.services.KontorTilordningService
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.randomFnr
 import org.jetbrains.exposed.sql.deleteAll
-import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -97,8 +98,8 @@ class BigAppTest {
                 automatiskKontorRutingService
             )
             val endringPaaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
-                ArenaKontorEntity::sisteLagreKontorArenaKontor,
-                oppfolgingsperiodeProvider
+                oppfolgingsperiodeProvider,
+                { null } // TODO: Mer realitisk test-oppsett
             )
             val identService = IdentService { IdenterFunnet(emptyList(), fnr) }
             val identendringsProcessor = IdentChangeProcessor(identService)
@@ -140,8 +141,8 @@ class BigAppTest {
             val antallHistorikkRader = transaction {
                 KontorHistorikkEntity.find { KontorhistorikkTable.ident eq fnr.value }.count()
             }
-            withClue("Skal finnes 1 historikkinnslag på bruker men var $antallHistorikkRader") {
-                antallHistorikkRader shouldBe 1
+            withClue("Skal finnes 2 historikkinnslag på bruker men var $antallHistorikkRader") {
+                antallHistorikkRader shouldBe 2
             }
         }
     }

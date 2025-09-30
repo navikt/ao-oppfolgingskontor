@@ -63,6 +63,7 @@ sealed class Ident {
 
 /* Identer som kan lagres data på, feks oppfolgingsperiode, kontor etc.
 * Alle identer utenom AKtorId støttes */
+@Serializable(with = IdentSomKanLagresSerializer::class)
 sealed class IdentSomKanLagres(): Ident()
 
 /*
@@ -113,6 +114,16 @@ object ValueSerializer : KSerializer<Ident> {
         PrimitiveSerialDescriptor("Ident", PrimitiveKind.STRING)
     override fun serialize(encoder: Encoder, value: Ident) = encoder.encodeString(value.value)
     override fun deserialize(decoder: Decoder) = Ident.of(decoder.decodeString(), Ident.HistoriskStatus.UKJENT)
+}
+
+object IdentSomKanLagresSerializer : KSerializer<IdentSomKanLagres> {
+    override val descriptor: SerialDescriptor =
+        PrimitiveSerialDescriptor("IdentSomKanLagres", PrimitiveKind.STRING)
+    override fun serialize(encoder: Encoder, value: IdentSomKanLagres) =
+        ValueSerializer.serialize(encoder, value)
+    override fun deserialize(decoder: Decoder): IdentSomKanLagres =
+        ValueSerializer.deserialize(decoder) as? IdentSomKanLagres
+            ?: throw Exception("Deserialisert ident er ikke en ident som kan lagres")
 }
 
 fun List<Ident>.finnForetrukketIdent(): IdentSomKanLagres? {
