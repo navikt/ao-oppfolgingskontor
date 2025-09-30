@@ -12,5 +12,5 @@ object KontorhistorikkTable : IntIdTable("kontorhistorikk", "id") {
     val kontorendringstype = varchar("kontorendringstype", 255) // VARCHAR(20),
     val createdAt = timestampWithTimeZone("created_at").defaultExpression(CurrentTimestampWithTimeZone) // TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     val kontorType = varchar("kontor_type", 255)
-    val oppfolgingsperiodeId = uuid("oppfolgingsperiode_id")
+    val oppfolgingsperiodeId = uuid("oppfolgingsperiode_id").nullable()
 }
