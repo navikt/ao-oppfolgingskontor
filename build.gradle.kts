@@ -43,7 +43,7 @@ kotlin {
 
 tasks.shadowJar {
     isZip64 = true
-    mergeServiceFiles()
+//    mergeServiceFiles()
 }
 
 tasks.test {
