@@ -13,7 +13,6 @@ import no.nav.db.table.GeografiskTilknytningKontorTable
 import no.nav.domain.ArbeidsoppfolgingsKontor
 import no.nav.domain.ArenaKontor
 import no.nav.domain.GeografiskTilknyttetKontor
-import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorId
 import no.nav.domain.KontorType
 import no.nav.domain.KontorNavn
@@ -55,7 +54,7 @@ class KontorTilhorighetService(
         val arenaKontor = getArenaKontor(alleIdenter.identer) ?: return null
         return ArenaKontorUtvidet(
             KontorId(arenaKontor.kontorId),
-            arenaKontor.historikkEntry.oppfolgingsperiode?.let { OppfolgingsperiodeId(it) },
+            arenaKontor.historikkEntry?.oppfolgingsperiode?.let { OppfolgingsperiodeId(it) },
             arenaKontor.sistEndretDatoArena
         )
     }

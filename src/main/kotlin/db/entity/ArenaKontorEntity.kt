@@ -20,7 +20,7 @@ class ArenaKontorEntity(id: EntityID<String>): Entity<String>(id), KontorEntity 
     val createdAt by ArenaKontorTable.createdAt
     val updatedAt by ArenaKontorTable.updatedAt
     val sistEndretDatoArena by ArenaKontorTable.sistEndretDatoArena
-    val historikkEntry by KontorHistorikkEntity referencedOn ArenaKontorTable.historikkEntry
+    val historikkEntry by KontorHistorikkEntity optionalReferencedOn ArenaKontorTable.historikkEntry
 
     override fun getKontorId(): KontorId {
         return KontorId(kontorId)
