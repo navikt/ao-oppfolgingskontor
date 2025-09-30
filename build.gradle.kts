@@ -139,6 +139,10 @@ tasks.sonar {
     dependsOn(tasks.jacocoTestReport)
 }
 
+tasks.build {
+    dependsOn(tasks.graphqlGenerateSDL)
+}
+
 sonar {
     properties {
         property("sonar.projectKey", "navikt_ao-oppfolgingskontor")
