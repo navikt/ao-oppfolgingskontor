@@ -1,4 +1,5 @@
 import com.expediagroup.graphql.plugin.gradle.config.GraphQLSerializer
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
@@ -29,12 +30,15 @@ repositories {
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(21))
+        languageVersion.set(JavaLanguageVersion.of(24))
     }
 }
 
 kotlin {
-    jvmToolchain(21)
+    jvmToolchain(24)
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_24)
+    }
 }
 
 tasks.shadowJar {
