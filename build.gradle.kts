@@ -44,6 +44,7 @@ kotlin {
 tasks.shadowJar {
     isZip64 = true
     mergeServiceFiles()
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE // <- add this
 }
 
 tasks.test {
