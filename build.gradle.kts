@@ -10,7 +10,6 @@ plugins {
     id("project-report")
     id("io.github.androa.gradle.plugin.avro") version "0.0.11"
     jacoco
-    id("org.cyclonedx.bom") version "3.0.0-alpha-1"
 }
 
 group = "dab.poao.nav.no"
