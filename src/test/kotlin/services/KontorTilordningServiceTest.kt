@@ -44,7 +44,7 @@ class KontorTilordningServiceTest {
 
         historikkEntries shouldHaveSize 2
         val sisteEntry = historikkEntries.maxBy { it.id.value }
-        arbeidsoppfolgingskontor.historikkEntry shouldBe sisteEntry.id.value
+        arbeidsoppfolgingskontor.historikkEntry shouldBe sisteEntry.id
     }
 
     @Test

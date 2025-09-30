@@ -12,5 +12,5 @@ object ArbeidsOppfolgingKontorTable: IdTable<String>("arbeidsoppfolgingskontor")
     val endretAvType = varchar("endret_av_type", 20) // VARCHAR(20),
     val createdAt = timestampWithTimeZone("created_at").defaultExpression(CurrentTimestampWithTimeZone) // TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     val updatedAt = timestampWithTimeZone("updated_at").defaultExpression(CurrentTimestampWithTimeZone) // TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    val historikkEntry = integer("historikk_entry").references(KontorhistorikkTable.id)
+    val historikkEntry = reference("historikk_entry", KontorhistorikkTable.id)
 }

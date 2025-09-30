@@ -43,7 +43,7 @@ object KontorTilordningService {
                         it[id] = kontorTilhorighet.fnr.value
                         it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
                         it[sistEndretDatoArena] = kontorEndring.sistEndretDatoArena
-                        it[historikkEntry] = entryId.value
+                        it[historikkEntry] = entryId
                     }
                 }
                 is GTKontorEndret -> {
