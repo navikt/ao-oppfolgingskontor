@@ -40,6 +40,7 @@ jobs:
       - name: Generate and output SBOM
         uses: anchore/sbom-action@v0
         with:
+          format: 'cyclonedx-json'
           artifact-name: 'bom.json'
           output-file: 'build/reports/bom.json'
 
