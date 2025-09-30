@@ -41,6 +41,7 @@ jobs:
           format: 'cyclonedx-json'
           artifact-name: 'bom.json'
           output-file: 'build/reports/bom.json'
+          upload-artifact: 'false'
 
       - name: Push docker image to GAR
         uses: nais/docker-build-push@v0
