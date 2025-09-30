@@ -39,6 +39,8 @@ jobs:
 
       - name: Generate and output SBOM
         uses: anchore/sbom-action@v0
+        with:
+          output-file: 'build/reports/bom.json'
 
       - name: Push docker image to GAR
         uses: nais/docker-build-push@v0
