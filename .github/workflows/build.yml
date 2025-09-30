@@ -34,12 +34,10 @@ jobs:
       - name: Test and build
         run: ./gradlew build --scan
 
-      - name: Generate graphql schema
-        run: ./gradlew graphqlGenerateSDL
-
       - name: Generate and output SBOM
         uses: anchore/sbom-action@v0
         with:
+          path: 'build/libs'
           format: 'cyclonedx-json'
           artifact-name: 'bom.json'
           output-file: 'build/reports/bom.json'
