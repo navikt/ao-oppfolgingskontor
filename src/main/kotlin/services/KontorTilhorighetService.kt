@@ -55,7 +55,7 @@ class KontorTilhorighetService(
         val arenaKontor = getArenaKontor(alleIdenter.identer) ?: return null
         return ArenaKontorUtvidet(
             KontorId(arenaKontor.kontorId),
-            OppfolgingsperiodeId(arenaKontor.historikkEntry.oppfolgingsperiode),
+            arenaKontor.historikkEntry.oppfolgingsperiode?.let { OppfolgingsperiodeId(it) },
             arenaKontor.sistEndretDatoArena
         )
     }
