@@ -11,8 +11,10 @@ enum class KontorEndringsType {
     FikkAddressebeskyttelse,
     AddressebeskyttelseMistet,
     EndretIArena,
+    @Deprecated("Alle kontor bør taes fra topic, ikke fra veilarboppfolging")
     ArenaKontorVedOppfolgingsStart,
-    ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart,
+    TidligArenaKontorVedOppfolgingStart,
+    ArenaKontorVedOppfolgingStartMedEtterslep,
     EndretBostedsadresse,
     GTKontorVedOppfolgingStart,
     ArenaMigrering

@@ -2,10 +2,12 @@ package kafka.consumers;
 
 import domain.ArenaKontorUtvidet
 import io.kotest.assertions.withClue
+import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import no.nav.db.Fnr
 import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
+import no.nav.kafka.consumers.ArenaKontorEndringsType
 import no.nav.kafka.consumers.BeforeCutoff
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
 import no.nav.kafka.consumers.Feil
@@ -16,6 +18,7 @@ import no.nav.kafka.consumers.IngenEndring
 import no.nav.kafka.consumers.Kvalifiseringsgruppe
 import no.nav.kafka.consumers.SkalLagre
 import no.nav.kafka.consumers.UnderOppfolgingIArenaMenIkkeLokalt
+import no.nav.kafka.consumers.harKontorBlittEndret
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingperiodeOppslagFeil
@@ -71,6 +74,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
         val result = processor.internalProcess(testRecord(fnr, sistEndretDato = etterCutoffMenAnnenTidssone))
         withClue("forventer SkalLagre men var ${result.javaClass.simpleName}") {
             result.shouldBeInstanceOf<SkalLagre>()
+            result.erFørsteArenaKontorIOppfolgingsperiode shouldBe true
         }
     }
 
@@ -100,20 +104,22 @@ class EndringPaOppfolgingsBrukerProcessorTest {
     }
 
     @Test
-    fun `skal lagre melding hvis lagret kontor-endring er eldre enn innkommende endring`() {
+    fun `skal lagre arena-kontor hvis lagret arena-kontor er eldre enn innkommende endring`() {
         val sisteLagreMeldingTidspunkt = rettFørCutoff.plusDays(1)
         val innkommendeMeldingEndretTidspunkt = sisteLagreMeldingTidspunkt.plusSeconds(1)
         val oppfolgingsStartet = sisteLagreMeldingTidspunkt.minusDays(1)
         val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
+        val kontorId = KontorId("3131")
         val fnr = randomFnr()
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, oppfolgingsStartet) },
-            { arenaKontor(endret = sisteLagreMeldingTidspunkt) })
+            { arenaKontor(endret = sisteLagreMeldingTidspunkt, kontor = kontorId, oppfolgingsperiodeId = oppfolgingsperiodeId) })
 
-        val result = processor.internalProcess(testRecord(fnr, sistEndretDato = innkommendeMeldingEndretTidspunkt))
+        val result = processor.internalProcess(testRecord(fnr, sistEndretDato = innkommendeMeldingEndretTidspunkt, kontor = KontorId("3132")))
 
         withClue("forventer SkalLagre men var ${result.javaClass.simpleName}") {
             result.shouldBeInstanceOf<SkalLagre>()
+            result.erFørsteArenaKontorIOppfolgingsperiode shouldBe false
         }
     }
 
@@ -140,12 +146,12 @@ class EndringPaOppfolgingsBrukerProcessorTest {
         val oppfolgingStartet = OffsetDateTime.now().minusDays(1)
         val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
         val fnr = randomFnr()
-        val kontorId = "3333"
+        val kontorId = KontorId("3333")
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, oppfolgingStartet) },
             { arenaKontor(kontor = kontorId, endret = oppfolgingStartet, oppfolgingsperiodeId = oppfolgingsperiodeId) })
 
-        val result = processor.internalProcess(testRecord(fnr, enhet = kontorId))
+        val result = processor.internalProcess(testRecord(fnr, kontor = kontorId))
 
         result.shouldBeInstanceOf<IngenEndring>()
     }
@@ -155,15 +161,16 @@ class EndringPaOppfolgingsBrukerProcessorTest {
         val oppfolgingStartet = OffsetDateTime.now().minusDays(1)
         val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
         val fnr = randomFnr()
-        val kontorId = "3333"
+        val kontorId = KontorId("3333")
         val arenaKontorMedAnnenOppfolgingsperiode = arenaKontor(kontor = kontorId, endret = oppfolgingStartet)
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, oppfolgingStartet) },
             { arenaKontorMedAnnenOppfolgingsperiode })
 
-        val result = processor.internalProcess(testRecord(fnr, enhet = kontorId))
+        val result = processor.internalProcess(testRecord(fnr, kontor = kontorId))
 
         result.shouldBeInstanceOf<SkalLagre>()
+        result.erFørsteArenaKontorIOppfolgingsperiode shouldBe true
     }
 
     @Test
@@ -178,16 +185,52 @@ class EndringPaOppfolgingsBrukerProcessorTest {
         }
     }
 
+    @Test
+    fun `harKontorBlittEndret - skal gi IKKE_ENDRET_KONTOR hvis kontor og oppfolgingsperiode er lik`() {
+        val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
+        harKontorBlittEndret(
+            ArenaKontorUtvidet(KontorId("1212"), oppfolgingsperiodeId, OffsetDateTime.now()),
+            "1212",
+            oppfolgingsperiodeId,
+        ) shouldBe ArenaKontorEndringsType.IKKE_ENDRET_KONTOR
+    }
+    @Test
+    fun `harKontorBlittEndret - skal gi FØRSTE_KONTOR_PÅ_BRUKER hvis kontor det ikke finnes tidligere arenakontor på bruker`() {
+        val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
+        harKontorBlittEndret(
+            null,
+            "1212",
+            oppfolgingsperiodeId,
+        ) shouldBe ArenaKontorEndringsType.FØRSTE_KONTOR_PÅ_BRUKER
+    }
+    @Test
+    fun `harKontorBlittEndret - skal gi FØRSTE_KONTOR_I_PERIODE hvis kontor er likt men oppfolgingsperiode er forskjellig`() {
+        harKontorBlittEndret(
+            ArenaKontorUtvidet(KontorId("1212"), OppfolgingsperiodeId(UUID.randomUUID()), OffsetDateTime.now()),
+            "1212",
+            OppfolgingsperiodeId(UUID.randomUUID()),
+        ) shouldBe ArenaKontorEndringsType.FØRSTE_KONTOR_I_PERIODE
+    }
+    @Test
+    fun `harKontorBlittEndret - skal gi ENDRET_I_PERIODE hvis oppfolgingsperiode er lik men kontor er forskjellig`() {
+        val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
+        harKontorBlittEndret(
+            ArenaKontorUtvidet(KontorId("1212"), oppfolgingsperiodeId, OffsetDateTime.now()),
+            "1213",
+            oppfolgingsperiodeId,
+        ) shouldBe ArenaKontorEndringsType.ENDRET_I_PERIODE
+    }
+
     fun testRecord(
         fnr: Fnr,
-        enhet: String = "4414",
+        kontor: KontorId = KontorId("4414"),
         sistEndretDato: OffsetDateTime = OffsetDateTime.now(),
         formidlingsGruppe: FormidlingsGruppe = FormidlingsGruppe.ARBS,
         kvalifiseringsgruppe: Kvalifiseringsgruppe = Kvalifiseringsgruppe.BATT
     ): Record<String, String> {
         return TopicUtils.endringPaaOppfolgingsBrukerMessage(
             fnr,
-            enhet,
+            kontor.id,
             sistEndretDato,
             formidlingsGruppe,
             kvalifiseringsgruppe
@@ -196,11 +239,11 @@ class EndringPaOppfolgingsBrukerProcessorTest {
 
     fun arenaKontor(
         endret: OffsetDateTime = OffsetDateTime.now(),
-        kontor: String = "4111",
+        kontor: KontorId = KontorId("4111"),
         oppfolgingsperiodeId: OppfolgingsperiodeId? = OppfolgingsperiodeId(UUID.randomUUID()),
     ): ArenaKontorUtvidet {
         return ArenaKontorUtvidet(
-            kontorId = KontorId(kontor),
+            kontorId = kontor,
             oppfolgingsperiodeId = oppfolgingsperiodeId,
             sistEndretDatoArena = endret
         )

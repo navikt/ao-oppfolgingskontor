@@ -10,6 +10,7 @@ import no.nav.db.IdentSomKanLagres
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
+import no.nav.domain.events.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep
 import no.nav.domain.events.EndringPaaOppfolgingsBrukerFraArena
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.RecordProcessingResult
@@ -70,7 +71,7 @@ class EndringPaOppfolgingsBrukerProcessor(
                 )
                 KontorTilordningService.tilordneKontor(
                     if (result.erFørsteArenaKontorIOppfolgingsperiode) {
-                        EndringPaaOppfolgingsBrukerFraArena(
+                        ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep(
                             kontorTilordning = kontorTilordning,
                             sistEndretIArena = result.endretTidspunkt,
                         )
