@@ -110,7 +110,7 @@ class EndringPaOppfolgingsBrukerProcessor(
         } catch (e: Throwable) {
             val message = "Uhåndtert feil ved behandling av endring på oppfolgingsbruker fra Arena: ${e.message}"
             log.error(message, e)
-            handleResult(Feil(Retry(message)))
+            return handleResult(Feil(Retry(message)))
         }
     }
 
