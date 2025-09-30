@@ -3,7 +3,6 @@ package services
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import no.nav.db.Fnr
-import no.nav.db.Ident
 import no.nav.db.Ident.HistoriskStatus.AKTIV
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.ArenaKontorEntity
@@ -12,13 +11,14 @@ import no.nav.db.table.KontorhistorikkTable
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
-import no.nav.domain.events.ArenaKontorVedOppfolgingStart
+import no.nav.domain.events.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep
 import no.nav.domain.events.OppfolgingsperiodeStartetNoeTilordning
 import no.nav.kafka.consumers.KontorEndringer
 import no.nav.services.KontorTilordningService
 import no.nav.utils.flywayMigrationInTest
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
+import java.time.OffsetDateTime
 import java.util.*
 
 
@@ -53,7 +53,14 @@ class KontorTilordningServiceTest {
         val fnr = "01078598765"
         val oppfolginsperiodeUuid = OppfolgingsperiodeId(UUID.randomUUID())
         val aoEndring =  OppfolgingsperiodeStartetNoeTilordning(Fnr(fnr, AKTIV), oppfolginsperiodeUuid)
-        val arenaEndring = ArenaKontorVedOppfolgingStart(KontorTilordning(Fnr(fnr, AKTIV), KontorId("1122"), oppfolginsperiodeUuid))
+        val arenaEndring = ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep(
+            KontorTilordning(
+                Fnr(fnr, AKTIV),
+                KontorId("1122"),
+                oppfolginsperiodeUuid
+            ),
+            sistEndretIArena = OffsetDateTime.now(),
+        )
 
         KontorTilordningService.tilordneKontor(KontorEndringer(
             aoKontorEndret = aoEndring,
