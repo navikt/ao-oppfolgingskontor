@@ -1165,7 +1165,7 @@ val brukerUtenProfileringEnnå = Bruker(
 )
 val brukerMedFeilendeProfilering = brukerUtenProfileringEnnå.copy(
     oppfolgingsPeriodeResult = (brukerUtenProfileringEnnå.oppfolgingsPeriodeResult as AktivOppfolgingsperiode).copy(
-        startDato = OffsetDateTime.now().minusSeconds(15)
+        startDato = OffsetDateTime.now().minusSeconds(30)
     )
 )
 val brukerMedFeilendeSkjerming = Bruker(
