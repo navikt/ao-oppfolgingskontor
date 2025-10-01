@@ -135,7 +135,16 @@ tasks.sonar {
 
 tasks.build {
     dependsOn(tasks.graphqlGenerateSDL)
+    dependsOn(tasks.installDist)
 }
+tasks.shadowJar {
+    enabled = false
+}
+
+//tasks.installDist {
+//    dependsOn(tasks.check)
+//    dependsOn(tasks.graphqlGenerateSDL)
+//}
 
 sonar {
     properties {
