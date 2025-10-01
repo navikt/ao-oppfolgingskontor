@@ -1,6 +1,4 @@
 import com.expediagroup.graphql.plugin.gradle.config.GraphQLSerializer
-import com.github.jengelman.gradle.plugins.shadow.transformers.PreserveFirstFoundResourceTransformer
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
@@ -40,15 +38,6 @@ kotlin {
 //    compilerOptions {
 //        jvmTarget.set(JvmTarget.JVM_21)
 //    }
-}
-
-tasks.shadowJar {
-    isZip64 = true
-    mergeServiceFiles()
-    duplicatesStrategy = DuplicatesStrategy.INCLUDE // <- add this
-    transform<PreserveFirstFoundResourceTransformer> {
-        resources.add("logback.xml")
-    }
 }
 
 tasks.test {
@@ -145,6 +134,11 @@ tasks.sonar {
 
 tasks.build {
     dependsOn(tasks.graphqlGenerateSDL)
+    dependsOn(tasks.installDist)
+}
+
+tasks.shadowJar {
+    enabled = false
 }
 
 sonar {
