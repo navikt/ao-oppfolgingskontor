@@ -1,5 +1,4 @@
 import com.expediagroup.graphql.plugin.gradle.config.GraphQLSerializer
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
@@ -137,14 +136,10 @@ tasks.build {
     dependsOn(tasks.graphqlGenerateSDL)
     dependsOn(tasks.installDist)
 }
+
 tasks.shadowJar {
     enabled = false
 }
-
-//tasks.installDist {
-//    dependsOn(tasks.check)
-//    dependsOn(tasks.graphqlGenerateSDL)
-//}
 
 sonar {
     properties {
