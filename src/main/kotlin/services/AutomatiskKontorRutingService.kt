@@ -509,9 +509,8 @@ class AutomatiskKontorRutingService(
 
     private fun skalForsøkeÅHenteProfileringPåNytt(oppfolgingsperiodeStartet: ZonedDateTime): Boolean {
         val tidSidenBrukerBleRegistrert = Duration.between(oppfolgingsperiodeStartet, ZonedDateTime.now())
-        val forventetForsinkelsePåProfilering = Duration.ofSeconds(5)
-        val feilmargin = Duration.ofSeconds(55)
-        return (tidSidenBrukerBleRegistrert < (forventetForsinkelsePåProfilering + feilmargin)).also {
+        val worstCaseForsinkelse = Duration.ofMinutes(30)
+        return (tidSidenBrukerBleRegistrert < worstCaseForsinkelse).also {
             log.info("Bruker ble registrert som arbeidssøker for tid siden: ${tidSidenBrukerBleRegistrert}")
         }
     }
