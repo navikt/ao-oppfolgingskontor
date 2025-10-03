@@ -5,6 +5,7 @@
     <root level="INFO">
         <appender-ref ref="loggIJsonFormatTilKibana"/>
     </root>
+<!-- MERK: hvis du skrur på DEBUG logging for Exposed, så vil potensielt FNR skrives til loggen -->
     <logger name="io.netty" level="INFO"/>
     <logger name="org.apache.zookeeper" level="WARN"/>
     <logger name="org.eclipse.jetty" level="INFO"/>
