@@ -25,8 +25,7 @@ fun Application.hentArbeidsoppfolgingskontorModule(
         authenticate("TilgangsMaskinen") {
             post("api/tilgang/brukers-kontor-bulk") {
                 val bulkRequest = call.receive<BulkKontorInboundDto>()
-
-
+                kontorTilhorighetService.getKontorTilhorighetBulk()
             }
         }
     }
