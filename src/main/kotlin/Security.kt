@@ -1,8 +1,11 @@
 package no.nav
 
 import com.nimbusds.jose.util.DefaultResourceRetriever
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.cio.Request
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
+import io.ktor.server.routing.RoutingCall
 import no.nav.domain.NavIdent
 import no.nav.domain.Registrant
 import no.nav.domain.System
