@@ -8,11 +8,11 @@ import io.ktor.server.request.receive
 import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import no.nav.http.ArbeidsoppfolgingsKontorTilordningDTO
-import no.nav.services.KontorTilhorighetService
+import no.nav.db.Ident
+import services.KontorTilhorighetBulkService
 
 fun Application.hentArbeidsoppfolgingskontorModule(
-    kontorTilhorighetService: KontorTilhorighetService,
+    kontorTilhorighetService: KontorTilhorighetBulkService,
 ) {
 
     routing {
@@ -25,7 +25,8 @@ fun Application.hentArbeidsoppfolgingskontorModule(
         authenticate("TilgangsMaskinen") {
             post("api/tilgang/brukers-kontor-bulk") {
                 val bulkRequest = call.receive<BulkKontorInboundDto>()
-                kontorTilhorighetService.getKontorTilhorighetBulk()
+                val identer = bulkRequest.identer.map { Ident.of(it, Ident.HistoriskStatus.UKJENT) }
+                kontorTilhorighetService.getKontorTilhorighetBulk(identer)
             }
         }
     }

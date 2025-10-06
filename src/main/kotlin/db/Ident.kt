@@ -138,3 +138,15 @@ fun List<Ident>.finnForetrukketIdent(): IdentSomKanLagres? {
             }
         }
 }
+
+fun List<Ident>.finnForetrukketIdentRelaxed(): Ident? {
+    return this
+        .minByOrNull {
+            when (it) {
+                is Fnr -> 1
+                is Dnr -> 2
+                is Npid -> 3
+                is AktorId -> 4
+            }
+        }
+}

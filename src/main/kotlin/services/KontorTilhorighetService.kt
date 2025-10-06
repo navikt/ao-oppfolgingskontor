@@ -22,11 +22,7 @@ import no.nav.http.client.IdenterResult
 import no.nav.http.client.poaoTilgang.PoaoTilgangKtorHttpClient
 import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
 import no.nav.http.graphql.schemas.RegistrantTypeDto
-import org.intellij.lang.annotations.Language
-import org.jetbrains.exposed.sql.BooleanColumnType
 import org.jetbrains.exposed.sql.SizedIterable
-import org.jetbrains.exposed.sql.StringColumnType
-import org.jetbrains.exposed.sql.VarCharColumnType
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 
@@ -34,7 +30,6 @@ class KontorTilhorighetService(
     val kontorNavnService: KontorNavnService,
     val poaoTilgangClient: PoaoTilgangKtorHttpClient,
     val hentAlleIdenter: suspend (Ident) -> IdenterResult,
-    val hentAlleIdenterBulk: suspend (List<Ident>) -> List<IdenterResult>,
 ) {
     val log = LoggerFactory.getLogger(KontorTilhorighetService::class.java)
 
@@ -138,33 +133,6 @@ class KontorTilhorighetService(
                     is GeografiskTilknyttetKontorEntity -> kontor.toKontorTilhorighetQueryDto(kontorNavn)
                 }
             }
-    }
-
-    suspend fun getKontorTilhorighetBulk(identer: List<Ident>) {
-        val identerMedAlleIdenter = hentAlleIdenterBulk(identer)
-
-        @Language("PostgreSQL")
-        val query = """
-            SELECT innkommendeIdent.ident, ao.kontor_id
-            FROM ident_mapping innkommendeIdent
-            JOIN ident_mapping alleIdenter on innkommendeIdent.intern_ident = alleIdenter.intern_ident
-            JOIN arbeidsoppfolgingskontor ao on alleIdenter.ident = ao.fnr
-            WHERE innkommendeIdent.slettet_hos_oss IS NULL 
-                AND innkommendeIdent.ident in (?);
-        """.trimIndent()
-
-        val lol = transaction {
-            exec(
-                stmt = query,
-                args = listOf(VarCharColumnType() to identerMedAlleIdenter.map { it })
-            ) { result ->
-                val films = mutableListOf<Pair<Int, String>>()
-                while (result.next()) {
-                    films += result.getInt(1) to result.getString(2)
-                }
-                films
-            }
-        }
     }
 }
 
