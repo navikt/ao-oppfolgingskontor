@@ -10,6 +10,7 @@ import no.nav.domain.NavIdent
 import no.nav.domain.Registrant
 import no.nav.domain.System
 import no.nav.domain.Veileder
+import no.nav.security.token.support.v3.RequiredClaims
 import no.nav.security.token.support.v3.TokenValidationContextPrincipal
 import no.nav.security.token.support.v3.tokenValidationSupport
 import java.util.UUID
@@ -21,6 +22,16 @@ fun Application.configureSecurity() {
             config = config,
             resourceRetriever = DefaultResourceRetriever(),
             name = "EntraAD"
+        )
+
+        tokenValidationSupport(
+            config = config,
+            requiredClaims = RequiredClaims(
+                issuer = "EntraAD",
+                claimMap = arrayOf()
+            ),
+            resourceRetriever = DefaultResourceRetriever(),
+            name = "TilgangsMaskinen"
         )
     }
 }

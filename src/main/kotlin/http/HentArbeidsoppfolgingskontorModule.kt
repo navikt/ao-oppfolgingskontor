@@ -1,9 +1,11 @@
 package http
 
+import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.plugins.contentnegotiation.*
+import io.ktor.server.response.respond
 import io.ktor.server.routing.*
 import kotlinx.serialization.json.Json
 import no.nav.*
@@ -14,20 +16,6 @@ fun Application.hentArbeidsoppfolgingskontorModule(
     kontorTilhorighetService: KontorTilhorighetService,
     authenticateRequest: AuthenticateRequest = { req -> req.call.authenticateCall(environment.getIssuer()) }
 ) {
-    routing {
-        install(ContentNegotiation) {
-            json(Json {
-                ignoreUnknownKeys = true
-                explicitNulls = false
-            })
-        }
-        authenticate("Systembruker") {
-            post("api/kontor/hent") {
-
-            }
-        }
-    }
-
     fun RoutingCall.erSystembruker(): Boolean {
         val principal = when (val authresult = authenticateRequest(this.request)) {
             is Authenticated -> authresult.principal
@@ -39,6 +27,23 @@ fun Application.hentArbeidsoppfolgingskontorModule(
         return when (principal) {
             is NavAnsatt -> false
             is SystemPrincipal -> true
+        }
+    }
+
+    routing {
+        install(ContentNegotiation) {
+            json(Json {
+                ignoreUnknownKeys = true
+                explicitNulls = false
+            })
+        }
+        authenticate("EntraAD") {
+            post("api/tilgang/brukers-kontor-bulk") {
+                if (!call.erSystembruker()) {
+                    call.respond(HttpStatusCode.Forbidden, "Bare systembrukere kan bruke /brukers-kontor-bulk endepunkt")
+                    return@post
+                }
+            }
         }
     }
 }
