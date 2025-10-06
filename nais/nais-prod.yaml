@@ -55,6 +55,11 @@ spec:
           namespace: poao
         - application: poao-admin
           namespace: poao
+        - application: populasjonstilgangskontroll
+          namespace: tilgangsmaskin
+          permissions:
+           roles:
+             - "bulk-hent-kontor"
     outbound:
       rules:
         - application: norg2

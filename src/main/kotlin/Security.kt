@@ -28,7 +28,7 @@ fun Application.configureSecurity() {
             config = config,
             requiredClaims = RequiredClaims(
                 issuer = "EntraAD",
-                claimMap = arrayOf()
+                claimMap = arrayOf("roles=bulk-hent-kontor")
             ),
             resourceRetriever = DefaultResourceRetriever(),
             name = "TilgangsMaskinen"
