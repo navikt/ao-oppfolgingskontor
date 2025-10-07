@@ -5,6 +5,9 @@ import db.table.IdentMappingTable.identType
 import db.table.IdentMappingTable.internIdent
 import db.table.IdentMappingTable.slettetHosOss
 import no.nav.db.Ident
+import no.nav.db.InvalidIdent
+import no.nav.db.MaybeValidIdent
+import no.nav.db.ValidIdent
 import no.nav.db.finnForetrukketIdentRelaxed
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import org.jetbrains.exposed.sql.JoinType
@@ -17,8 +20,11 @@ import kotlin.collections.map
 object KontorTilhorighetBulkService {
     val logger = LoggerFactory.getLogger(KontorTilhorighetBulkService::class.java)
 
-    fun getKontorTilhorighetBulk(identer: List<Ident>): List<KontorBulkDto> {
+    fun getKontorTilhorighetBulk(identer: List<MaybeValidIdent>): List<KontorBulkDto> {
         val kontorerPaIdentMutable = mutableMapOf<String, Set<KontorBulkResultat>>()
+        val identerIQuery = identer
+            .filter { it is ValidIdent }
+            .map { (it as ValidIdent).ident.value }
         transaction {
             val alleIdenter = IdentMappingTable.alias("alleIdenter")
             IdentMappingTable
@@ -36,7 +42,7 @@ object KontorTilhorighetBulkService {
                 )
                 .select(IdentMappingTable.id, alleIdenter[IdentMappingTable.id], ArbeidsOppfolgingKontorTable.kontorId)
                 .where {
-                    (IdentMappingTable.id inList identer.map { it.value }) and
+                    (IdentMappingTable.id inList identerIQuery) and
                         (alleIdenter[slettetHosOss].isNull()) and
                         (alleIdenter[identType] neq "AKTOR_ID")
                 }
@@ -54,6 +60,7 @@ object KontorTilhorighetBulkService {
         }
 
         return identer.map { inputIdent ->
+            if (inputIdent is InvalidIdent) return@map KontorBulkDto(inputIdent.value, null)
             val kontorer = kontorerPaIdentMutable[inputIdent.value]
             when {
                 kontorer == null -> KontorBulkDto(inputIdent.value, null)
@@ -67,7 +74,7 @@ object KontorTilhorighetBulkService {
     }
 
     private fun finnForetrukketKontor(kontorer: Set<KontorBulkResultat>, inputIdent: String): KontorBulkDto {
-        val foretrukketIdent = kontorer.map { Ident.of(it.lagretPaIdent, Ident.HistoriskStatus.UKJENT) }
+        val foretrukketIdent = kontorer.map { Ident.validateOrThrow(it.lagretPaIdent, Ident.HistoriskStatus.UKJENT) }
             .finnForetrukketIdentRelaxed()
             ?: return KontorBulkDto(inputIdent, null)
         val foretrukketKontor = kontorer.find { it.lagretPaIdent == foretrukketIdent.value }

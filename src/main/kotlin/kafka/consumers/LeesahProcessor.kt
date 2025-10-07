@@ -93,7 +93,7 @@ class LeesahProcessor(
         }
 
         // Antar alle identer i en Leesah hendelse AKTIV / ikke historiske
-        val personIdenter = hendelse.personidenter.map { Ident.of(it, Ident.HistoriskStatus.AKTIV) }
+        val personIdenter = hendelse.personidenter.map { Ident.validateOrThrow(it, Ident.HistoriskStatus.AKTIV) }
         return personIdenter.finnForetrukketIdent()?.let { IdentFunnet(it) }
             ?: IdentIkkeFunnet("Fant ingen foretrukket ident i Leesah melding sitt 'personidenter' felt, ${personIdenter.joinToString(",") { it.javaClass.simpleName }}")
     }

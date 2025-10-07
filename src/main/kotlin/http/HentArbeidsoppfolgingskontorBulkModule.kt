@@ -11,6 +11,7 @@ import kotlinx.serialization.Serializable
 import no.nav.db.Ident
 import no.nav.security.token.support.v3.RequiredClaims
 import no.nav.security.token.support.v3.tokenValidationSupport
+import org.slf4j.LoggerFactory
 import services.KontorTilhorighetBulkService
 
 const val tilhorighetBulkRoutePath = "/api/tilgang/brukers-kontor-bulk"
@@ -18,6 +19,7 @@ const val tilhorighetBulkRoutePath = "/api/tilgang/brukers-kontor-bulk"
 fun Application.configureHentArbeidsoppfolgingskontorBulkModule(
     kontorTilhorighetService: KontorTilhorighetBulkService,
 ) {
+    val log = LoggerFactory.getLogger("HentArbeidsoppfolgingskontorBulk")
     val config = environment.config
 
     routing {
@@ -39,17 +41,23 @@ fun Application.configureHentArbeidsoppfolgingskontorBulkModule(
 
         authenticate("TilgangsMaskinen") {
             post(tilhorighetBulkRoutePath) {
-                val bulkRequest = call.receive<BulkKontorInboundDto>()
-                val identer = bulkRequest.identer.map { Ident.of(it, Ident.HistoriskStatus.UKJENT) }
-                val result = kontorTilhorighetService.getKontorTilhorighetBulk(identer)
-                    .map {
-                        BulkKontorOutboundDto(
-                            it.ident,
-                            kontorId = it.kontorId,
-                            httpStatus = if (it.kontorId == null) 404 else 200
-                        )
+                try {
+                    val bulkRequest = call.receive<BulkKontorInboundDto>()
+                    val identer = bulkRequest.identer.map {
+                        Ident.validate(it, Ident.HistoriskStatus.UKJENT)
                     }
-                call.respond(HttpStatusCode.MultiStatus, result)
+                    val result = kontorTilhorighetService.getKontorTilhorighetBulk(identer)
+                        .map {
+                            BulkKontorOutboundDto(
+                                it.ident,
+                                kontorId = it.kontorId,
+                                httpStatus = if (it.kontorId == null) 404 else 200
+                            )
+                        }
+                    call.respond(HttpStatusCode.MultiStatus, result)
+                } catch (e: Throwable) {
+                    log.error("Kunne ikke svare på hent kontor bulkspørring: ${e.message}", e)
+                }
             }
         }
     }

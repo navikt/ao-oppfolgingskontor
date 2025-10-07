@@ -61,7 +61,7 @@ fun Application.configureArbeidsoppfolgingskontorModule(
                             return@post
                         }
                     }
-                    val muligLagrebarIdent = Ident.of(kontorTilordning.ident, Ident.HistoriskStatus.UKJENT)
+                    val muligLagrebarIdent = Ident.validateOrThrow(kontorTilordning.ident, Ident.HistoriskStatus.UKJENT)
                     val ident: IdentSomKanLagres = when (muligLagrebarIdent) {
                         is AktorId -> {
                             throw Exception("/api/kontor støtter ikke endring via aktorId, bruk dnr/fnr istedet")

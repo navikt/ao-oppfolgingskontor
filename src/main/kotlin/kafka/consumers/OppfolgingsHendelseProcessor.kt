@@ -46,7 +46,7 @@ class OppfolgingsHendelseProcessor(
         record: Record<String, String>
     ): RecordProcessingResult<Ident, OppfolgingsperiodeStartet> {
         var hendelseType = "<Ukjent hendelsetype>"
-        val ident = Ident.of(record.key(), Ident.HistoriskStatus.UKJENT)
+        val ident = Ident.validateOrThrow(record.key(), Ident.HistoriskStatus.UKJENT)
         return runCatching {
             val oppfolgingsperiodeEvent = oppfolgingsHendelseJson
                 .decodeFromString<OppfolgingsHendelseDto>(record.value())
@@ -111,7 +111,7 @@ class OppfolgingsHendelseProcessor(
 }
 
 fun OppfolgingStartetHendelseDto.toDomainObject() = OppfolgingsperiodeStartet(
-    fnr = Ident.of(this.fnr, Ident.HistoriskStatus.UKJENT) as? IdentSomKanLagres
+    fnr = Ident.validateOrThrow(this.fnr, Ident.HistoriskStatus.UKJENT) as? IdentSomKanLagres
         ?: throw IllegalStateException("Ident i oppfolgingshendelse-topic kan ikke være aktorId"),
     startDato = this.startetTidspunkt,
     periodeId = OppfolgingsperiodeId(UUID.fromString(this.oppfolgingsPeriodeId)),
@@ -119,7 +119,7 @@ fun OppfolgingStartetHendelseDto.toDomainObject() = OppfolgingsperiodeStartet(
     erArbeidssøkerRegistrering = startetBegrunnelse == ARBEIDSSOKER_REGISTRERING
 )
 fun OppfolgingsAvsluttetHendelseDto.toDomainObject() = OppfolgingsperiodeAvsluttet(
-    Ident.of(this.fnr, Ident.HistoriskStatus.UKJENT) as? IdentSomKanLagres
+    Ident.validateOrThrow(this.fnr, Ident.HistoriskStatus.UKJENT) as? IdentSomKanLagres
         ?: throw IllegalStateException("Ident i oppfolgingshendelse-topic kan ikke være aktorId"),
     this.startetTidspunkt,
     OppfolgingsperiodeId(UUID.fromString(this.oppfolgingsPeriodeId))

@@ -5,7 +5,6 @@ import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
 import no.nav.domain.HarSkjerming
 import no.nav.domain.externalEvents.SkjermetStatusEndret
-import no.nav.http.client.IdentIkkeFunnet
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
@@ -26,7 +25,7 @@ class SkjermingProcessor(
 
     fun handterEndringISKjermetStatus(fnr: String, skjermingStatus: Boolean): RecordProcessingResult<String, String> {
         return runBlocking {
-            runCatching { Ident.of(fnr, Ident.HistoriskStatus.UKJENT) }
+            runCatching { Ident.validateOrThrow(fnr, Ident.HistoriskStatus.UKJENT) }
                 .fold( { validFnr ->
                     val ident = validFnr as? IdentSomKanLagres
                         ?: throw IllegalStateException("Key i skjermings-topic var aktorId")

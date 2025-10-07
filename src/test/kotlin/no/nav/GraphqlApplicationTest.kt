@@ -5,7 +5,6 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.date.shouldBeCloseTo
 import io.kotest.matchers.shouldBe
 import io.ktor.client.call.*
-import io.ktor.http.*
 import io.ktor.http.HttpStatusCode.Companion.OK
 import io.ktor.server.routing.*
 import io.ktor.server.testing.*
@@ -42,7 +41,7 @@ import kotlin.time.Duration.Companion.milliseconds
 fun ApplicationTestBuilder.graphqlServerInTest(ident: Ident) {
     val norg2Client = mockNorg2Host()
     val poaoTilgangClient = mockPoaoTilgangHost(null)
-    val identer = IdenterFunnet(listOf(ident).map { Ident.of(it.value, AKTIV) }, ident)
+    val identer = IdenterFunnet(listOf(ident).map { Ident.validateOrThrow(it.value, AKTIV) }, ident)
     application {
         flywayMigrationInTest()
         installGraphQl(

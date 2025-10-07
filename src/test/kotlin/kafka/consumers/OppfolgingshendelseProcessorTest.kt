@@ -428,7 +428,7 @@ class OppfolgingshendelseProcessorTest {
         application {
             gittIdentIMapping(aktivtDnr)
             val identService = IdentService { input ->
-                val inputIdent = Ident.of(input, UKJENT)
+                val inputIdent = Ident.validateOrThrow(input, UKJENT)
                 // I denne testen simulerer vi at vi får inn en melding med dnr først, derfor returneres ikke fnr når inputIdent er dnr
                 when (inputIdent) {
                     is Dnr -> IdenterFunnet(listOf(aktorId, aktivtDnr), inputIdent)

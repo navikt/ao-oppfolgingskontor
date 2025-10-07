@@ -43,14 +43,14 @@ class IdentTest {
 
     @Test
     fun `Ident of`() {
-        Ident.of("12125678901", AKTIV).shouldBeInstanceOf<Fnr>()
-        Ident.of("42125678901", AKTIV).shouldBeInstanceOf<Dnr>()
-        Ident.of("42525678901", AKTIV).shouldBeInstanceOf<Dnr>()
-        Ident.of("42625678901", AKTIV).shouldBeInstanceOf<Dnr>()
-        Ident.of("42125678901", AKTIV).shouldBeInstanceOf<Dnr>()
-        Ident.of("12325678901", AKTIV).shouldBeInstanceOf<Npid>()
-        shouldThrow<Throwable> { Ident.of("32125678901", AKTIV) }
-        Ident.of("1232567890121", AKTIV).shouldBeInstanceOf<AktorId>()
+        Ident.validateOrThrow("12125678901", AKTIV).shouldBeInstanceOf<Fnr>()
+        Ident.validateOrThrow("42125678901", AKTIV).shouldBeInstanceOf<Dnr>()
+        Ident.validateOrThrow("42525678901", AKTIV).shouldBeInstanceOf<Dnr>()
+        Ident.validateOrThrow("42625678901", AKTIV).shouldBeInstanceOf<Dnr>()
+        Ident.validateOrThrow("42125678901", AKTIV).shouldBeInstanceOf<Dnr>()
+        Ident.validateOrThrow("12325678901", AKTIV).shouldBeInstanceOf<Npid>()
+        shouldThrow<Throwable> { Ident.validateOrThrow("32125678901", AKTIV) }
+        Ident.validateOrThrow("1232567890121", AKTIV).shouldBeInstanceOf<AktorId>()
     }
 
 }

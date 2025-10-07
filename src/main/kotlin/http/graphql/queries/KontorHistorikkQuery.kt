@@ -13,7 +13,6 @@ import no.nav.http.graphql.schemas.KontorHistorikkQueryDto
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
-import services.IdentService
 
 class KontorHistorikkQuery(
     val hentAlleIdenter: suspend (Ident) -> IdenterResult
@@ -24,7 +23,7 @@ class KontorHistorikkQuery(
         return runCatching {
             transaction {
                 // TODO Flytt dette til en service??
-                val inputIdent = Ident.of(ident, Ident.HistoriskStatus.UKJENT)
+                val inputIdent = Ident.validateOrThrow(ident, Ident.HistoriskStatus.UKJENT)
                 val alleIdenter = runBlocking { hentAlleIdenter(inputIdent).getOrThrow() }
                 KontorHistorikkEntity
                     .find { KontorhistorikkTable.ident inList alleIdenter.identer.map { it.value } }

@@ -147,7 +147,7 @@ class PdlClient(
                 return IdenterOppslagFeil(result.errors!!.joinToString { "${it.message}: ${it.extensions?.get("code")}" })
             }
             return result.data?.hentIdenter?.identer?.let { pdlIdenter ->
-                val identer = pdlIdenter.map { (ident, historisk) -> Ident.of(ident, historisk.toKnownHistoriskStatus()) }
+                val identer = pdlIdenter.map { (ident, historisk) -> Ident.validateOrThrow(ident, historisk.toKnownHistoriskStatus()) }
                 val inputIdent = identer.first { it.value == aktorId }
                 IdenterFunnet(identer, inputIdent)
             } ?: IdenterIkkeFunnet("Ingen identer funnet for aktorId")

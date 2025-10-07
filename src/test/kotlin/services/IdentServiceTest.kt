@@ -49,7 +49,7 @@ class IdentServiceTest {
         var invocations = 0
         val identProvider = { oppslagId: String ->
             invocations++
-            IdenterFunnet(listOf(fnr, aktorId), Ident.of(oppslagId, UKJENT))
+            IdenterFunnet(listOf(fnr, aktorId), Ident.validateOrThrow(oppslagId, UKJENT))
         }
         val identService = IdentService(identProvider)
 
@@ -65,7 +65,7 @@ class IdentServiceTest {
         val npid = Npid("01020304050", AKTIV)
         val aktorId = AktorId("4141112122441", AKTIV)
         val alleIdenterProvider = { ident: String ->
-            IdenterFunnet(listOf(npid, aktorId), inputIdent = Ident.of(ident, UKJENT))
+            IdenterFunnet(listOf(npid, aktorId), inputIdent = Ident.validateOrThrow(ident, UKJENT))
         }
         val identService = IdentService(alleIdenterProvider)
 
@@ -86,7 +86,7 @@ class IdentServiceTest {
         val fnrProvider = { ident: String ->
             IdenterFunnet(
                 listOf(npid, dnr, aktorId),
-                inputIdent = Ident.of(ident, UKJENT)
+                inputIdent = Ident.validateOrThrow(ident, UKJENT)
             )
         }
         val identService = IdentService(fnrProvider)
@@ -109,7 +109,7 @@ class IdentServiceTest {
         val fnrProvider = { ident: String ->
             IdenterFunnet(
                 listOf(npid, aktorId, fnr),
-                inputIdent = Ident.of(ident, UKJENT)
+                inputIdent = Ident.validateOrThrow(ident, UKJENT)
             )
         }
 
@@ -176,7 +176,7 @@ class IdentServiceTest {
     fun `skal gi dnr for Tenor som starter med 4,5,6,7`() = testApplication {
         val identValue = "42876702740";
 
-        val ident = Ident.of(identValue, UKJENT)
+        val ident = Ident.validateOrThrow(identValue, UKJENT)
 
         ident.shouldBeInstanceOf<Dnr>()
         ident.value shouldBe identValue
@@ -186,7 +186,7 @@ class IdentServiceTest {
     fun `skal gi dnr for Dolly som starter med 4,5,6,7`() = testApplication {
         val identValue = "42456702740";
 
-        val ident = Ident.of(identValue, UKJENT)
+        val ident = Ident.validateOrThrow(identValue, UKJENT)
 
         ident.shouldBeInstanceOf<Dnr>()
         ident.value shouldBe identValue
@@ -199,7 +199,7 @@ class IdentServiceTest {
         val identProvider: suspend (String) -> IdenterFunnet = { aktorId ->
             IdenterFunnet(
                 emptyList(),
-            Ident.of(aktorId, UKJENT)
+            Ident.validateOrThrow(aktorId, UKJENT)
             )
         }
         val identService = IdentService(identProvider)
@@ -243,7 +243,7 @@ class IdentServiceTest {
         val identProvider: suspend (String) -> IdenterFunnet = { innkommendeAktorId -> IdenterFunnet(listOf(
             aktorId,
             fnr,
-        ), Ident.of(innkommendeAktorId, UKJENT)) }
+        ), Ident.validateOrThrow(innkommendeAktorId, UKJENT)) }
         val identService = IdentService(identProvider)
 
         val innkommendeIdenter = listOf(
@@ -260,7 +260,7 @@ class IdentServiceTest {
     fun `aktor-v2 endring - skal kun sette aktørId i key som slettet når det kommer en tombstone`() = runTest {
         flywayMigrationInTest()
 
-        val identProvider: suspend (String) -> IdenterFunnet = { aktorId -> IdenterFunnet(emptyList(), Ident.of(aktorId, AKTIV)) }
+        val identProvider: suspend (String) -> IdenterFunnet = { aktorId -> IdenterFunnet(emptyList(), Ident.validateOrThrow(aktorId, AKTIV)) }
         val identService = IdentService(identProvider)
         val proccessor = IdentChangeProcessor(identService)
         val aktorId = AktorId("2938764298763", AKTIV)
@@ -287,7 +287,7 @@ class IdentServiceTest {
     fun `aktor-v2 endring - skal slette identer som ikke er med i endringssettet`() = runTest {
         flywayMigrationInTest()
 
-        val identProvider: suspend (String) -> IdenterFunnet = { aktorId -> IdenterFunnet(emptyList(), Ident.of(aktorId, AKTIV)) }
+        val identProvider: suspend (String) -> IdenterFunnet = { aktorId -> IdenterFunnet(emptyList(), Ident.validateOrThrow(aktorId, AKTIV)) }
         val identService = IdentService(identProvider)
         val aktorId = AktorId("2938764298793", AKTIV)
         val dnr = Dnr("48764298868", AKTIV)
@@ -340,7 +340,7 @@ class IdentServiceTest {
         val identProvider: suspend (String) -> IdenterFunnet = { nyMenIkkeLagretEndaAktorId ->
             IdenterFunnet(listOf(
                 fnr, nyAktorId
-            ), Ident.of(nyMenIkkeLagretEndaAktorId, AKTIV))
+            ), Ident.validateOrThrow(nyMenIkkeLagretEndaAktorId, AKTIV))
         }
         val identService = IdentService(identProvider)
         val proccessor = IdentChangeProcessor(identService)
@@ -389,7 +389,7 @@ class IdentServiceTest {
         val fnr = Fnr("12112198111", AKTIV)
         val identProvider: suspend (String) -> IdenterFunnet = { input -> IdenterFunnet(
             listOf(fnr, aktorId),
-            Ident.of(input, UKJENT))
+            Ident.validateOrThrow(input, UKJENT))
         }
         val identService = IdentService(identProvider)
         /* Only having AktorId will  */
