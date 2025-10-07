@@ -1,6 +1,7 @@
 package no.nav
 
 import dab.poao.nav.no.health.CriticalErrorNotificationFunction
+import http.hentArbeidsoppfolgingskontorModule
 import io.ktor.server.application.*
 import io.ktor.server.netty.*
 import no.nav.db.configureDatabase
@@ -26,6 +27,7 @@ import no.nav.services.KontorTilhorighetService
 import no.nav.services.KontorTilordningService
 import no.nav.services.OppfolgingsperiodeDao
 import services.IdentService
+import services.KontorTilhorighetBulkService
 import services.OppfolgingsperiodeService
 
 fun main(args: Array<String>) {
@@ -90,6 +92,7 @@ fun Application.module() {
     val authenticateRequest: AuthenticateRequest = { req -> req.call.authenticateCall(issuer) }
     configureGraphQlModule(norg2Client, kontorTilhorighetService, authenticateRequest, identService::hentAlleIdenter)
     configureArbeidsoppfolgingskontorModule(kontorNavnService, kontorTilhorighetService, poaoTilgangHttpClient, oppfolgingsperiodeService)
+    hentArbeidsoppfolgingskontorModule(KontorTilhorighetBulkService)
 }
 
 fun ApplicationEnvironment.getIssuer(): String {
