@@ -2,15 +2,12 @@ package http
 
 import com.nimbusds.jose.util.DefaultResourceRetriever
 import io.ktor.http.HttpStatusCode
-import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
-import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import no.nav.db.Ident
 import no.nav.security.token.support.v3.RequiredClaims
 import no.nav.security.token.support.v3.tokenValidationSupport
@@ -24,13 +21,6 @@ fun Application.configureHentArbeidsoppfolgingskontorBulkModule(
     val config = environment.config
 
     routing {
-        pluginOrNull(ContentNegotiation) ?: install(ContentNegotiation) {
-            json(Json {
-                ignoreUnknownKeys = true
-                explicitNulls = false
-            })
-        }
-
         fun AuthenticationConfig.setupTilgansmaskinAuth() {
             tokenValidationSupport(
                 config = config,

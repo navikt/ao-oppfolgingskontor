@@ -1,6 +1,7 @@
 package no.nav
 
 import com.expediagroup.graphql.server.ktor.graphQLPostRoute
+import http.configureContentNegotiation
 import io.kotest.matchers.shouldBe
 import io.ktor.client.call.body
 import io.ktor.http.HttpStatusCode
@@ -60,6 +61,7 @@ class SettArbeidsoppfolgingsKontorTest {
             extraDatabaseSetup()
             configureSecurity()
             installGraphQl(norg2Client, kontorTilhorighetService, { req -> req.call.authenticateCall(environment.getIssuer()) }, identService::hentAlleIdenter)
+            configureContentNegotiation()
             configureArbeidsoppfolgingskontorModule(
                 kontorNavnService,
                 kontorTilhorighetService,

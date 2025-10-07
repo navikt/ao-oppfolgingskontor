@@ -1,16 +1,13 @@
 package no.nav.http
 
 import io.ktor.http.HttpStatusCode
-import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
-import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.request.*
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import no.nav.Authenticated
 import no.nav.NotAuthenticated
 import no.nav.authenticateCall
@@ -52,12 +49,6 @@ fun Application.configureArbeidsoppfolgingskontorModule(
     val log = LoggerFactory.getLogger("Application.configureArbeidsoppfolgingskontorModule")
 
     routing {
-        install(ContentNegotiation) {
-            json(Json {
-                ignoreUnknownKeys = true
-                explicitNulls = false
-            })
-        }
         authenticate("EntraAD") {
             post("/api/kontor") {
                 runCatching {
