@@ -57,6 +57,7 @@ fun Application.configureHentArbeidsoppfolgingskontorBulkModule(
                     call.respond(HttpStatusCode.MultiStatus, result)
                 } catch (e: Throwable) {
                     log.error("Kunne ikke svare på hent kontor bulkspørring: ${e.message}", e)
+                    call.respond(HttpStatusCode.InternalServerError, "Noe gikk galt :(")
                 }
             }
         }
