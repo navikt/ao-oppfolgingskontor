@@ -1,29 +1,16 @@
 package services
 
-import db.table.IdentMappingTable
-import db.table.IdentMappingTable.historisk
-import db.table.IdentMappingTable.identType
-import db.table.IdentMappingTable.internIdent
-import db.table.IdentMappingTable.slettetHosOss
-import db.table.InternIdentSequence
-import db.table.nextValueOf
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
-import no.nav.db.Ident
 import no.nav.domain.KontorId
-import no.nav.domain.KontorTilordning
-import no.nav.domain.OppfolgingsperiodeId
-import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
-import no.nav.services.KontorTilordningService
 import no.nav.utils.flywayMigrationInTest
+import no.nav.utils.gittIdentIMapping
+import no.nav.utils.gittIdentMedKontor
 import no.nav.utils.randomDnr
 import no.nav.utils.randomFnr
-import org.jetbrains.exposed.sql.batchInsert
-import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import java.time.OffsetDateTime
-import java.util.UUID
 
 class KontorTilhorighetBulkServiceTest {
 
@@ -55,7 +42,7 @@ class KontorTilhorighetBulkServiceTest {
 
         result.first() shouldBe KontorBulkDto(bruker1.value, kontorId1.id)
         result[1] shouldBe KontorBulkDto(bruker2.value, kontorId2.id)
-        result.last() shouldBe null
+        result.last() shouldBe KontorBulkDto(brukerUtenKontor.value, null)
     }
 
     @Test
@@ -90,34 +77,6 @@ class KontorTilhorighetBulkServiceTest {
         )
 
         result shouldHaveSize 1
-        result.first() shouldBe null
+        result.first() shouldBe KontorBulkDto(dnr.value, null)
     }
-
-    fun gittIdentIMapping(ident: Ident, slettet: OffsetDateTime? = null) = gittIdentIMapping(listOf(ident), slettet)
-    fun gittIdentIMapping(identer: List<Ident>, slettet: OffsetDateTime? = null) {
-        transaction {
-            val nextInternId = nextValueOf(InternIdentSequence)
-            IdentMappingTable.batchInsert(identer) { ident ->
-                this[internIdent] = nextInternId
-                this[identType] = ident.toIdentType()
-                this[historisk] = false
-                this[IdentMappingTable.id] = ident.value
-                this[slettetHosOss] = slettet
-            }
-        }
-    }
-
-    fun gittIdentMedKontor(ident: Ident, kontorId: KontorId) {
-        KontorTilordningService.tilordneKontor(
-            OppfolgingsPeriodeStartetLokalKontorTilordning(
-                KontorTilordning(
-                    ident,
-                    kontorId,
-                    OppfolgingsperiodeId(UUID.randomUUID())
-                ),
-                ingenSensitivitet
-            )
-        )
-    }
-
 }

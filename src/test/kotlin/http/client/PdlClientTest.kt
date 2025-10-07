@@ -8,14 +8,12 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 import io.ktor.server.testing.*
 import no.nav.db.Dnr
-import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.db.Npid
 import no.nav.http.client.*
 import no.nav.http.graphql.generated.client.HentGtQuery
 import no.nav.http.graphql.generated.client.enums.GtType
 import no.nav.http.graphql.generated.client.enums.IdentGruppe
-import no.nav.http.graphql.generated.client.hentfnrquery.IdentInformasjon
 import no.nav.http.graphql.generated.client.hentgtquery.GeografiskTilknytning
 import no.nav.utils.randomFnr
 import org.junit.jupiter.api.Test

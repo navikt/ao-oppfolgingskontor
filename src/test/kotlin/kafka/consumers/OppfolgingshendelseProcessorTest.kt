@@ -21,9 +21,7 @@ import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.http.client.IdentFunnet
 import no.nav.http.client.IdenterFunnet
-import no.nav.kafka.consumers.ArenaKontorEndringsType
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
-import no.nav.kafka.consumers.harKontorBlittEndret
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.Retry
@@ -32,7 +30,7 @@ import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.KontorTilordningService
 import no.nav.services.NotUnderOppfolging
 import no.nav.utils.flywayMigrationInTest
-import no.nav.utils.lagreIdentIIdentmappingTabell
+import no.nav.utils.gittIdentIMapping
 import no.nav.utils.randomFnr
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.insert
@@ -428,7 +426,7 @@ class OppfolgingshendelseProcessorTest {
         val brukerMedDnr = bruker.copy(ident = aktivtDnr)
         val brukerMedFnr = bruker.copy(ident = fnr)
         application {
-            lagreIdentIIdentmappingTabell(aktivtDnr)
+            gittIdentIMapping(aktivtDnr)
             val identService = IdentService { input ->
                 val inputIdent = Ident.of(input, UKJENT)
                 // I denne testen simulerer vi at vi får inn en melding med dnr først, derfor returneres ikke fnr når inputIdent er dnr

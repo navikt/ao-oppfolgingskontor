@@ -27,7 +27,7 @@ fun Application.configureSecurity() {
         tokenValidationSupport(
             config = config,
             requiredClaims = RequiredClaims(
-                issuer = "EntraAD",
+                issuer = config.configList("no.nav.security.jwt.issuers").first().property("issuer_name").getString(),
                 claimMap = arrayOf("roles=bulk-hent-kontor")
             ),
             resourceRetriever = DefaultResourceRetriever(),

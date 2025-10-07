@@ -33,7 +33,7 @@ import no.nav.authenticateCall
 import no.nav.db.Ident
 import no.nav.http.client.IdenterFunnet
 import no.nav.http.client.IdenterIkkeFunnet
-import no.nav.utils.lagreIdentIIdentmappingTabell
+import no.nav.utils.gittIdentIMapping
 import no.nav.utils.randomFnr
 import org.junit.jupiter.api.Test
 import services.IdentService
@@ -54,7 +54,7 @@ class AuthenticationTest {
         val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangKtorHttpClient, identService::hentAlleIdenter)
         application {
             flywayMigrationInTest()
-            ident?.let { lagreIdentIIdentmappingTabell(it) }
+            ident?.let { gittIdentIMapping(it) }
             configureSecurity()
             installGraphQl(norg2Client, kontorTilhorighetService, { req -> req.call.authenticateCall(environment.getIssuer()) }, identService::hentAlleIdenter)
             routing {
