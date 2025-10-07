@@ -32,6 +32,7 @@ import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.KontorTilordningService
 import no.nav.services.NotUnderOppfolging
 import no.nav.utils.flywayMigrationInTest
+import no.nav.utils.hentInternId
 import no.nav.utils.lagreIdentIIdentmappingTabell
 import no.nav.utils.randomFnr
 import org.apache.kafka.streams.processor.api.Record
@@ -387,6 +388,24 @@ class OppfolgingshendelseProcessorTest {
         withClue("Forventet bruker skulle arenakontor: $foreventetKontor men hadde $arenaKontor") {
             arenaKontor shouldBe foreventetKontor
         }
+    }
+
+    @Test
+    fun `Skal finne tidlig-arena-kontor selv om det er lagret på en annen av brukers identer`() {
+        val bruker = testBruker()
+        lagreIdentIIdentmappingTabell(bruker.ident)
+        val nyIdent = randomFnr()
+        val internId = hentInternId(bruker.ident)
+        lagreIdentIIdentmappingTabell(nyIdent, internId)
+        val arenaKontorVeilarboppfolging = "4141"
+        val arenaKontor = "4142"
+        val hendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
+        gittBrukerMedTidligArenaKontor(bruker, arenaKontorVeilarboppfolging, arenaKontor)
+
+        hendelseProcessor.process(TopicUtils.oppfolgingStartetMelding(bruker))
+
+        bruker.skalHaArenaKontor(arenaKontor)
+        bruker.skalHaTidligArenaKontor(null)
     }
 
     @Test

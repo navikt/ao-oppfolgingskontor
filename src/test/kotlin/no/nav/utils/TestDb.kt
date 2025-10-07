@@ -14,8 +14,10 @@ import no.nav.db.flywayMigrate
 import no.nav.db.table.OppfolgingsperiodeTable
 import no.nav.domain.OppfolgingsperiodeId
 import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
+import services.IdentServiceTest.IdentFraDb
 import services.toIdentType
 import java.time.ZonedDateTime
 import java.util.UUID
@@ -51,13 +53,22 @@ fun gittBrukerUnderOppfolging(
     return oppfolgingsperiodeId
 }
 
-fun lagreIdentIIdentmappingTabell(ident: Ident) {
+fun lagreIdentIIdentmappingTabell(ident: Ident, internIdent: Long? = null) {
     transaction {
         IdentMappingTable.insert {
             it[IdentMappingTable.identType] = ident.toIdentType()
             it[IdentMappingTable.id] = ident.value
-            it[IdentMappingTable.internIdent] = nextValueOf(InternIdentSequence)
+            it[IdentMappingTable.internIdent] = internIdent ?: nextValueOf(InternIdentSequence)
             it[IdentMappingTable.historisk] = ident.historisk == HISTORISK
         }
+    }
+}
+
+fun hentInternId(ident: Ident): Long {
+    return transaction {
+        IdentMappingTable.select(IdentMappingTable.internIdent)
+            .where { IdentMappingTable.id eq ident.value }
+            .map { row -> row[IdentMappingTable.internIdent]}
+            .first()
     }
 }
