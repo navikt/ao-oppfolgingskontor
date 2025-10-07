@@ -14,7 +14,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import kotlin.collections.map
 
 object KontorTilhorighetBulkService {
-    fun getKontorTilhorighetBulk(identer: List<Ident>): List<KontorBulkDto?> {
+    fun getKontorTilhorighetBulk(identer: List<Ident>): List<KontorBulkDto> {
 
         val kontorerPaIdentMutable = mutableMapOf<String, Set<KontorBulkResultat>>()
 
@@ -55,20 +55,20 @@ object KontorTilhorighetBulkService {
         return identer.map { inputIdent ->
             val kontorer = kontorerPaIdentMutable[inputIdent.value]
             when {
-                kontorer == null -> null
+                kontorer == null -> KontorBulkDto(inputIdent.value, null)
                 kontorer.size == 1 -> KontorBulkDto(inputIdent.value, kontorer.first().kontorId)
                 else -> finnForetrukketKontor(kontorer, inputIdent.value)
             }
         }
     }
 
-    private fun finnForetrukketKontor(kontorer: Set<KontorBulkResultat>, inputIdent: String): KontorBulkDto? {
+    private fun finnForetrukketKontor(kontorer: Set<KontorBulkResultat>, inputIdent: String): KontorBulkDto {
         val foretrukketIdent = kontorer.map {
             Ident.of(it.lagretPaIdent, Ident.HistoriskStatus.UKJENT)
         }.finnForetrukketIdentRelaxed()
-            ?: return null
+            ?: return KontorBulkDto(inputIdent, null)
         val foretrukketKontor = kontorer.find { it.lagretPaIdent == foretrukketIdent.value }
-            ?: return null
+            ?: return KontorBulkDto(inputIdent, null)
         return KontorBulkDto(inputIdent, foretrukketKontor.kontorId)
     }
 }
@@ -80,5 +80,5 @@ data class KontorBulkResultat(
 
 data class KontorBulkDto(
     val ident: String,
-    val kontorId: String,
+    val kontorId: String?,
 )

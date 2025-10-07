@@ -27,6 +27,17 @@ fun Application.hentArbeidsoppfolgingskontorModule(
                 val bulkRequest = call.receive<BulkKontorInboundDto>()
                 val identer = bulkRequest.identer.map { Ident.of(it, Ident.HistoriskStatus.UKJENT) }
                 kontorTilhorighetService.getKontorTilhorighetBulk(identer)
+                    .map {
+                        when (it.kontorId) {
+                            null -> BulkKontorOutboundDto(
+                                it.ident,
+                            )
+                            else -> BulkKontorOutboundSuccessDto(
+                                ident = it.ident,
+                                kontorId = it.kontorId,
+                            )
+                        }
+                    }
             }
         }
     }
@@ -35,4 +46,16 @@ fun Application.hentArbeidsoppfolgingskontorModule(
 @Serializable
 data class BulkKontorInboundDto(
     val identer: List<String>
+)
+
+@Serializable
+class BulkKontorOutboundDto(
+    val ident: String,
+    val httpStatus: Int = 404, // 200 eller 404
+)
+@Serializable
+class BulkKontorOutboundSuccessDto(
+    val ident: String,
+    val kontorId: String,
+    val httpStatus: Int = 200, // 200 eller 404
 )
