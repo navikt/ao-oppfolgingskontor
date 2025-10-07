@@ -10,7 +10,6 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.testApplication
-import no.nav.configureSecurity
 import no.nav.db.Ident
 import no.nav.domain.KontorId
 import no.nav.security.mock.oauth2.MockOAuth2Server

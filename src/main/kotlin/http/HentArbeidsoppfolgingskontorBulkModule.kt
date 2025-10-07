@@ -16,7 +16,7 @@ import no.nav.security.token.support.v3.RequiredClaims
 import no.nav.security.token.support.v3.tokenValidationSupport
 import services.KontorTilhorighetBulkService
 
-const val tilhorighetBulkRoutePath = "api/tilgang/brukers-kontor-bulk"
+const val tilhorighetBulkRoutePath = "/api/tilgang/brukers-kontor-bulk"
 
 fun Application.hentArbeidsoppfolgingskontorModule(
     kontorTilhorighetService: KontorTilhorighetBulkService,
