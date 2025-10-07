@@ -8,9 +8,7 @@ import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
-import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
-import io.ktor.http.contentType
 import io.ktor.server.testing.testApplication
 import no.nav.configureSecurity
 import no.nav.db.Ident
@@ -47,7 +45,6 @@ class HentArbeidsoppfolgingskontorBulkTest {
             config = server.getMockOauth2ServerConfig()
         }
         application {
-            configureSecurity()
             hentArbeidsoppfolgingskontorModule(services.KontorTilhorighetBulkService)
         }
         val httpClient = getJsonHttpClient()

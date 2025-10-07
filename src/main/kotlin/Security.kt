@@ -23,16 +23,6 @@ fun Application.configureSecurity() {
             resourceRetriever = DefaultResourceRetriever(),
             name = "EntraAD"
         )
-
-        tokenValidationSupport(
-            config = config,
-            requiredClaims = RequiredClaims(
-                issuer = config.configList("no.nav.security.jwt.issuers").first().property("issuer_name").getString(),
-                claimMap = arrayOf("roles=bulk-hent-kontor")
-            ),
-            resourceRetriever = DefaultResourceRetriever(),
-            name = "TilgangsMaskinen"
-        )
     }
 }
 

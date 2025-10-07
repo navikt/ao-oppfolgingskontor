@@ -1,5 +1,6 @@
 package http
 
+import com.nimbusds.jose.util.DefaultResourceRetriever
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
@@ -11,6 +12,8 @@ import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import no.nav.db.Ident
+import no.nav.security.token.support.v3.RequiredClaims
+import no.nav.security.token.support.v3.tokenValidationSupport
 import services.KontorTilhorighetBulkService
 
 const val tilhorighetBulkRoutePath = "api/tilgang/brukers-kontor-bulk"
@@ -18,6 +21,7 @@ const val tilhorighetBulkRoutePath = "api/tilgang/brukers-kontor-bulk"
 fun Application.hentArbeidsoppfolgingskontorModule(
     kontorTilhorighetService: KontorTilhorighetBulkService,
 ) {
+    val config = environment.config
 
     routing {
         install(ContentNegotiation) {
@@ -26,6 +30,23 @@ fun Application.hentArbeidsoppfolgingskontorModule(
                 explicitNulls = false
             })
         }
+
+        fun AuthenticationConfig.setupTilgansmaskinAuth() {
+            tokenValidationSupport(
+                config = config,
+                requiredClaims = RequiredClaims(
+                    issuer = config.configList("no.nav.security.jwt.issuers").first().property("issuer_name").getString(),
+                    claimMap = arrayOf("roles=bulk-hent-kontor")
+                ),
+                resourceRetriever = DefaultResourceRetriever(),
+                name = "TilgangsMaskinen"
+            )
+        }
+
+        // Do it this way to isolate test setup
+        pluginOrNull(Authentication)?.configure { setupTilgansmaskinAuth() }
+            ?: install(Authentication) { setupTilgansmaskinAuth() }
+
         authenticate("TilgangsMaskinen") {
             post(tilhorighetBulkRoutePath) {
                 val bulkRequest = call.receive<BulkKontorInboundDto>()
