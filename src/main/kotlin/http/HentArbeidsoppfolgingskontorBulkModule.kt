@@ -24,7 +24,7 @@ fun Application.configureHentArbeidsoppfolgingskontorBulkModule(
     val config = environment.config
 
     routing {
-        install(ContentNegotiation) {
+        pluginOrNull(ContentNegotiation) ?: install(ContentNegotiation) {
             json(Json {
                 ignoreUnknownKeys = true
                 explicitNulls = false
