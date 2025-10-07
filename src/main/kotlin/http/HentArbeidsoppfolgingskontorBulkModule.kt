@@ -53,18 +53,11 @@ fun Application.hentArbeidsoppfolgingskontorModule(
                 val identer = bulkRequest.identer.map { Ident.of(it, Ident.HistoriskStatus.UKJENT) }
                 val result = kontorTilhorighetService.getKontorTilhorighetBulk(identer)
                     .map {
-                        when (it.kontorId) {
-                            null -> BulkKontorOutboundDto(
-                                it.ident,
-                                kontorId = null,
-                                httpStatus = 404
-                            )
-                            else -> BulkKontorOutboundDto(
-                                ident = it.ident,
-                                kontorId = it.kontorId,
-                                httpStatus = 200
-                            )
-                        }
+                        BulkKontorOutboundDto(
+                            it.ident,
+                            kontorId = it.kontorId,
+                            httpStatus = if (it.kontorId == null) 404 else 200
+                        )
                     }
                 call.respond(HttpStatusCode.MultiStatus, result)
             }

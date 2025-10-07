@@ -18,9 +18,7 @@ object KontorTilhorighetBulkService {
     val logger = LoggerFactory.getLogger(KontorTilhorighetBulkService::class.java)
 
     fun getKontorTilhorighetBulk(identer: List<Ident>): List<KontorBulkDto> {
-
         val kontorerPaIdentMutable = mutableMapOf<String, Set<KontorBulkResultat>>()
-
         transaction {
             val alleIdenter = IdentMappingTable.alias("alleIdenter")
             IdentMappingTable
@@ -69,9 +67,8 @@ object KontorTilhorighetBulkService {
     }
 
     private fun finnForetrukketKontor(kontorer: Set<KontorBulkResultat>, inputIdent: String): KontorBulkDto {
-        val foretrukketIdent = kontorer.map {
-            Ident.of(it.lagretPaIdent, Ident.HistoriskStatus.UKJENT)
-        }.finnForetrukketIdentRelaxed()
+        val foretrukketIdent = kontorer.map { Ident.of(it.lagretPaIdent, Ident.HistoriskStatus.UKJENT) }
+            .finnForetrukketIdentRelaxed()
             ?: return KontorBulkDto(inputIdent, null)
         val foretrukketKontor = kontorer.find { it.lagretPaIdent == foretrukketIdent.value }
             ?: return KontorBulkDto(inputIdent, null)

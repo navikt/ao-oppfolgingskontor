@@ -209,7 +209,7 @@ class MeldingManglerEnhet : EndringPaaOppfolgingsBrukerResult()
 class SkalLagre(
     val oppfolgingsenhet: String,
     val endretTidspunkt: OffsetDateTime,
-    val fnr: Ident,
+    val fnr: IdentSomKanLagres,
     val oppfolgingsperiodeId: OppfolgingsperiodeId,
     val erFørsteArenaKontorIOppfolgingsperiode: Boolean,
 ) : EndringPaaOppfolgingsBrukerResult()

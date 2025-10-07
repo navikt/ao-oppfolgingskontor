@@ -14,6 +14,7 @@ import no.nav.db.FlywayPlugin
 import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.db.Ident.HistoriskStatus.HISTORISK
+import no.nav.db.IdentSomKanLagres
 import no.nav.db.flywayMigrate
 import no.nav.db.table.OppfolgingsperiodeTable
 import no.nav.domain.KontorId
@@ -76,7 +77,7 @@ fun gittIdentIMapping(identer: List<Ident>, slettet: OffsetDateTime? = null) {
     }
 }
 
-fun gittIdentMedKontor(ident: Ident, kontorId: KontorId) {
+fun gittIdentMedKontor(ident: IdentSomKanLagres, kontorId: KontorId) {
     KontorTilordningService.tilordneKontor(
         OppfolgingsPeriodeStartetLokalKontorTilordning(
             KontorTilordning(
