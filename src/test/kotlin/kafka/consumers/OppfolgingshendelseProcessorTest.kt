@@ -21,9 +21,7 @@ import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.http.client.IdentFunnet
 import no.nav.http.client.IdenterFunnet
-import no.nav.kafka.consumers.ArenaKontorEndringsType
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
-import no.nav.kafka.consumers.harKontorBlittEndret
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.Retry
@@ -352,7 +350,7 @@ class OppfolgingshendelseProcessorTest {
         result.shouldBeInstanceOf<Skip<Ident, OppfolgingsperiodeStartet>>()
     }
 
-    fun gittBrukerMedTidligArenaKontor(bruker: Bruker, sistLagretArenaKontor: String, arenaKontor: String) {
+    fun gittBrukerMedTidligArenaKontor(ident: Ident, sistLagretArenaKontor: String, arenaKontor: String) {
         val sistLagreArenaKontor = ArenaKontorUtvidet(
             kontorId = KontorId(sistLagretArenaKontor),
             oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
@@ -363,7 +361,7 @@ class OppfolgingshendelseProcessorTest {
             { sistLagreArenaKontor })
         endringPaOppfolgingsBrukerProcessor.process(
             TopicUtils.endringPaaOppfolgingsBrukerMessage(
-                bruker.ident,
+                ident,
                 arenaKontor,
                 Instant.now().atZone(ZoneId.of("Europe/Oslo")).toOffsetDateTime(),
                 no.nav.kafka.consumers.FormidlingsGruppe.ARBS,
@@ -394,13 +392,13 @@ class OppfolgingshendelseProcessorTest {
     fun `Skal finne tidlig-arena-kontor selv om det er lagret på en annen av brukers identer`() {
         val bruker = testBruker()
         lagreIdentIIdentmappingTabell(bruker.ident)
-        val nyIdent = randomFnr()
+        val annenIdent = randomFnr()
         val internId = hentInternId(bruker.ident)
-        lagreIdentIIdentmappingTabell(nyIdent, internId)
+        lagreIdentIIdentmappingTabell(annenIdent, internId)
         val arenaKontorVeilarboppfolging = "4141"
         val arenaKontor = "4142"
         val hendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
-        gittBrukerMedTidligArenaKontor(bruker, arenaKontorVeilarboppfolging, arenaKontor)
+        gittBrukerMedTidligArenaKontor(annenIdent, arenaKontorVeilarboppfolging, arenaKontor)
 
         hendelseProcessor.process(TopicUtils.oppfolgingStartetMelding(bruker))
 
@@ -411,11 +409,10 @@ class OppfolgingshendelseProcessorTest {
     @Test
     fun `Skal slette tidlig-arena-kontor hvis det blir brukt`() {
         val bruker = testBruker()
-
         val arenaKontorVeilarboppfolging = "4141"
         val arenaKontor = "4142"
         val hendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
-        gittBrukerMedTidligArenaKontor(bruker, arenaKontorVeilarboppfolging, arenaKontor)
+        gittBrukerMedTidligArenaKontor(bruker.ident, arenaKontorVeilarboppfolging, arenaKontor)
         bruker.skalHaTidligArenaKontor(arenaKontor)
 
         hendelseProcessor.process(TopicUtils.oppfolgingStartetMelding(bruker))
