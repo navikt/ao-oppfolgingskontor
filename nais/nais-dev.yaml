@@ -56,6 +56,9 @@ spec:
         - application: azure-token-generator
           namespace: nais
           cluster: dev-gcp
+          permissions:
+            roles:
+              - "bulk-hent-kontor"
         - application: populasjonstilgangskontroll
           namespace: tilgangsmaskin
           permissions:
