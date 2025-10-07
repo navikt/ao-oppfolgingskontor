@@ -44,7 +44,7 @@ class HentArbeidsoppfolgingskontorBulkTest {
             config = server.getMockOauth2ServerConfig()
         }
         application {
-            hentArbeidsoppfolgingskontorModule(services.KontorTilhorighetBulkService)
+            configureHentArbeidsoppfolgingskontorBulkModule(services.KontorTilhorighetBulkService)
         }
         val httpClient = getJsonHttpClient()
         val bruker = randomFnr()

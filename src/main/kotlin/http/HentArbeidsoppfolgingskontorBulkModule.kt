@@ -18,7 +18,7 @@ import services.KontorTilhorighetBulkService
 
 const val tilhorighetBulkRoutePath = "/api/tilgang/brukers-kontor-bulk"
 
-fun Application.hentArbeidsoppfolgingskontorModule(
+fun Application.configureHentArbeidsoppfolgingskontorBulkModule(
     kontorTilhorighetService: KontorTilhorighetBulkService,
 ) {
     val config = environment.config
