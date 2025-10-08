@@ -1,6 +1,5 @@
 package kafka.consumers
 
-import db.entity.TidligArenaKontorEntity
 import db.table.IdentMappingTable
 import db.table.IdentMappingTable.internIdent
 import db.table.TidligArenaKontorTable
@@ -19,12 +18,9 @@ import no.nav.domain.externalEvents.TidligArenaKontor
 import no.nav.kafka.processor.*
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.JoinType.INNER
-import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.inSubQuery
 import org.jetbrains.exposed.sql.alias
 import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import services.*
