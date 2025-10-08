@@ -29,9 +29,9 @@ import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.getJsonHttpClient
 import no.nav.utils.getMockOauth2ServerConfig
 import no.nav.utils.gittBrukerUnderOppfolging
+import no.nav.utils.gittIdentIMapping
 import no.nav.utils.issueToken
 import no.nav.utils.kontorTilhorighet
-import no.nav.utils.lagreIdentIIdentmappingTabell
 import no.nav.utils.randomFnr
 import org.junit.jupiter.api.Test
 import services.IdentService
@@ -82,7 +82,7 @@ class SettArbeidsoppfolgingsKontorTest {
             val veilederIdent = NavIdent("Z990000")
             setupTestAppWithAuthAndGraphql(fnr) {
                 gittBrukerUnderOppfolging(fnr)
-                lagreIdentIIdentmappingTabell(fnr)
+                gittIdentIMapping(fnr)
             }
             val httpClient = getJsonHttpClient()
 
@@ -107,7 +107,7 @@ class SettArbeidsoppfolgingsKontorTest {
             val kontorId = "4444"
             val veilederIdent = NavIdent("Z990000")
             setupTestAppWithAuthAndGraphql(fnr) {
-                lagreIdentIIdentmappingTabell(fnr)
+                gittIdentIMapping(fnr)
             }
             val httpClient = getJsonHttpClient()
 

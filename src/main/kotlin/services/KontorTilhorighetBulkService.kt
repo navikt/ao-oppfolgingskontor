@@ -11,9 +11,12 @@ import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.alias
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.slf4j.LoggerFactory
 import kotlin.collections.map
 
 object KontorTilhorighetBulkService {
+    val logger = LoggerFactory.getLogger(KontorTilhorighetBulkService::class.java)
+
     fun getKontorTilhorighetBulk(identer: List<Ident>): List<KontorBulkDto> {
 
         val kontorerPaIdentMutable = mutableMapOf<String, Set<KontorBulkResultat>>()
@@ -21,7 +24,7 @@ object KontorTilhorighetBulkService {
         transaction {
             val alleIdenter = IdentMappingTable.alias("alleIdenter")
             IdentMappingTable
-                .join (
+                .join(
                     alleIdenter,
                     JoinType.INNER,
                     onColumn = internIdent,
@@ -57,7 +60,10 @@ object KontorTilhorighetBulkService {
             when {
                 kontorer == null -> KontorBulkDto(inputIdent.value, null)
                 kontorer.size == 1 -> KontorBulkDto(inputIdent.value, kontorer.first().kontorId)
-                else -> finnForetrukketKontor(kontorer, inputIdent.value)
+                else -> {
+                    logger.warn("Fant flere kontor på samme person (med forskjellige identer)")
+                    finnForetrukketKontor(kontorer, inputIdent.value)
+                }
             }
         }
     }

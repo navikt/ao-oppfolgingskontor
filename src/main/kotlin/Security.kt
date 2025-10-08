@@ -23,16 +23,6 @@ fun Application.configureSecurity() {
             resourceRetriever = DefaultResourceRetriever(),
             name = "EntraAD"
         )
-
-        tokenValidationSupport(
-            config = config,
-            requiredClaims = RequiredClaims(
-                issuer = "EntraAD",
-                claimMap = arrayOf("roles=bulk-hent-kontor")
-            ),
-            resourceRetriever = DefaultResourceRetriever(),
-            name = "TilgangsMaskinen"
-        )
     }
 }
 

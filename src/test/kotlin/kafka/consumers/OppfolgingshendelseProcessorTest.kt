@@ -31,7 +31,7 @@ import no.nav.services.KontorTilordningService
 import no.nav.services.NotUnderOppfolging
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.hentInternId
-import no.nav.utils.lagreIdentIIdentmappingTabell
+import no.nav.utils.gittIdentIMapping
 import no.nav.utils.randomFnr
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.insert
@@ -392,10 +392,10 @@ class OppfolgingshendelseProcessorTest {
     @Test
     fun `Skal finne tidlig-arena-kontor selv om det er lagret på en annen av brukers identer`() {
         val bruker = testBruker()
-        lagreIdentIIdentmappingTabell(bruker.ident)
+        gittIdentIMapping(bruker.ident)
         val annenIdent = randomFnr()
         val internId = hentInternId(bruker.ident)
-        lagreIdentIIdentmappingTabell(annenIdent, internId)
+        gittIdentIMapping(ident = annenIdent, internIdent = internId)
         val arenaKontorVeilarboppfolging = "4141"
         val arenaKontor = "4142"
         val hendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
@@ -412,7 +412,7 @@ class OppfolgingshendelseProcessorTest {
     @Test
     fun `Skal slette tidlig-arena-kontor hvis det blir brukt`() {
         val bruker = testBruker()
-        lagreIdentIIdentmappingTabell(bruker.ident)
+        gittIdentIMapping(bruker.ident)
         val arenaKontorVeilarboppfolging = "4141"
         val arenaKontor = "4142"
         val hendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
@@ -447,7 +447,7 @@ class OppfolgingshendelseProcessorTest {
         val brukerMedDnr = bruker.copy(ident = aktivtDnr)
         val brukerMedFnr = bruker.copy(ident = fnr)
         application {
-            lagreIdentIIdentmappingTabell(aktivtDnr)
+            gittIdentIMapping(aktivtDnr)
             val identService = IdentService { input ->
                 val inputIdent = Ident.of(input, UKJENT)
                 // I denne testen simulerer vi at vi får inn en melding med dnr først, derfor returneres ikke fnr når inputIdent er dnr
