@@ -187,7 +187,7 @@ class AutomatiskKontorRutingService(
     }
 
     private fun hentTilordningUtenGT(
-        fnr: Ident,
+        fnr: IdentSomKanLagres,
         alder: Int,
         profilering: Profilering,
         oppfolgingsperiodeId: OppfolgingsperiodeId,
@@ -220,7 +220,7 @@ class AutomatiskKontorRutingService(
     }
 
     private fun hentTilordning(
-        fnr: Ident,
+        fnr: IdentSomKanLagres,
         gtKontor: KontorForGtFantLandEllerKontor,
         alder: Int,
         profilering: Profilering,

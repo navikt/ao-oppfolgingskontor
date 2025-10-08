@@ -136,7 +136,7 @@ class IdentService(
             .where { IdentMappingTable.id inList(identer.map { it.value }) }
             .map {
                 IdentInfo(
-                    Ident.of(it[IdentMappingTable.id].value, it[historisk].toKnownHistoriskStatus()),
+                    Ident.validateOrThrow(it[IdentMappingTable.id].value, it[historisk].toKnownHistoriskStatus()),
                     it[historisk],
                     it[internIdent]
                 )

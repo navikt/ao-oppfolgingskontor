@@ -1,6 +1,6 @@
 package no.nav.domain.events
 
-import no.nav.db.Ident
+import no.nav.db.IdentSomKanLagres
 import no.nav.domain.INGEN_GT_KONTOR_FALLBACK
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorHistorikkInnslag
@@ -30,7 +30,7 @@ enum class RutingResultat {
 }
 
 data class OppfolgingsperiodeStartetNoeTilordning(
-    val fnr: Ident,
+    val fnr: IdentSomKanLagres,
     val oppfolgingsperiodeId: OppfolgingsperiodeId,
 ): AOKontorEndret(KontorTilordning(fnr, KontorId("4154"), oppfolgingsperiodeId), System()) {
     private val rutingResultat: RutingResultat = RutingResultat.RutetTilNOE
@@ -73,7 +73,7 @@ data class OppfolgingsPeriodeStartetLokalKontorTilordning(
     }
 }
 
-data class OppfolgingsPeriodeStartetFallbackKontorTilordning(val ident: Ident, val oppfolgingsperiodeId: OppfolgingsperiodeId, val sensitivitet: Sensitivitet) : AOKontorEndret(KontorTilordning(ident, INGEN_GT_KONTOR_FALLBACK, oppfolgingsperiodeId), System()) {
+data class OppfolgingsPeriodeStartetFallbackKontorTilordning(val ident: IdentSomKanLagres, val oppfolgingsperiodeId: OppfolgingsperiodeId, val sensitivitet: Sensitivitet) : AOKontorEndret(KontorTilordning(ident, INGEN_GT_KONTOR_FALLBACK, oppfolgingsperiodeId), System()) {
     val rutingResultat: RutingResultat = RutingResultat.RutetTilLokalkontorFallback
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(

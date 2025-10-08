@@ -29,7 +29,7 @@ class IdentChangeProcessor(
                     } else {
                         val nyeIdenter = payload.identifikatorer
                             .map { OppdatertIdent(
-                                Ident.of(
+                                Ident.validateOrThrow(
                                     it.idnummer,
                                     if (!it.gjeldende) Ident.HistoriskStatus.HISTORISK else Ident.HistoriskStatus.AKTIV
                                 ),

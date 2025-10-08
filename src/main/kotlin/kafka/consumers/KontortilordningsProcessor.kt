@@ -3,7 +3,6 @@ package no.nav.kafka.consumers
 import kafka.consumers.jsonSerde
 import kotlinx.coroutines.runBlocking
 import no.nav.db.Ident
-import no.nav.db.IdentSomKanLagres
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.RecordProcessingResult
@@ -32,7 +31,7 @@ class KontortilordningsProcessor(
             override fun serializer(): Serializer<Ident> =
                 Serializer<Ident> { topic, data -> data.toString().toByteArray() }
             override fun deserializer(): Deserializer<Ident> =
-                Deserializer<Ident> { topic, data -> Ident.of(data.decodeToString(), Ident.HistoriskStatus.UKJENT) }
+                Deserializer<Ident> { topic, data -> Ident.validateOrThrow(data.decodeToString(), Ident.HistoriskStatus.UKJENT) }
         }
         val oppfolgingsperiodeStartetSerde = jsonSerde<OppfolgingsperiodeStartet>()
     }

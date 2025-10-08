@@ -1,10 +1,10 @@
 package no.nav.domain
 
-import no.nav.db.Ident
+import no.nav.db.IdentSomKanLagres
 
 /* Tilordning må kunne gjøres uten å ha kontorNavn, brukes bare til skrive-operasjoner. Lese-operasjoner bruker KontorTilhørighet */
 data class KontorTilordning(
-    val fnr: Ident,
+    val fnr: IdentSomKanLagres,
     val kontorId: KontorId,
     val oppfolgingsperiodeId: OppfolgingsperiodeId
 )
