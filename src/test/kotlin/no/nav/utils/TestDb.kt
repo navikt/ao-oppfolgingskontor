@@ -7,8 +7,7 @@ import db.table.IdentMappingTable.internIdent
 import db.table.IdentMappingTable.slettetHosOss
 import db.table.InternIdentSequence
 import db.table.nextValueOf
-import io.ktor.server.application.Application
-import io.ktor.server.application.install
+import io.ktor.server.application.*
 import io.zonky.test.db.postgres.embedded.EmbeddedPostgres
 import no.nav.db.FlywayPlugin
 import no.nav.db.Fnr
@@ -30,7 +29,7 @@ import services.ingenSensitivitet
 import services.toIdentType
 import java.time.OffsetDateTime
 import java.time.ZonedDateTime
-import java.util.UUID
+import java.util.*
 import javax.sql.DataSource
 
 object TestDb {
@@ -63,17 +62,28 @@ fun gittBrukerUnderOppfolging(
     return oppfolgingsperiodeId
 }
 
+fun gittIdentIMapping(ident: Ident, internIdent: Long) = gittIdentIMapping(identer = listOf(ident), internId = internIdent)
+
 fun gittIdentIMapping(ident: Ident, slettet: OffsetDateTime? = null) = gittIdentIMapping(listOf(ident), slettet)
-fun gittIdentIMapping(identer: List<Ident>, slettet: OffsetDateTime? = null) {
+
+fun gittIdentIMapping(identer: List<Ident>, slettet: OffsetDateTime? = null, internId: Long? = null) {
     transaction {
-        val nextInternId = nextValueOf(InternIdentSequence)
         IdentMappingTable.batchInsert(identer) { ident ->
-            this[internIdent] = nextInternId
+            this[internIdent] = internId ?: nextValueOf(InternIdentSequence)
             this[identType] = ident.toIdentType()
             this[historisk] = ident.historisk == HISTORISK
             this[IdentMappingTable.id] = ident.value
             this[slettetHosOss] = slettet
         }
+    }
+}
+
+fun hentInternId(ident: Ident): Long {
+    return transaction {
+        IdentMappingTable.select(IdentMappingTable.internIdent)
+            .where { IdentMappingTable.id eq ident.value }
+            .map { row -> row[IdentMappingTable.internIdent]}
+            .first()
     }
 }
 

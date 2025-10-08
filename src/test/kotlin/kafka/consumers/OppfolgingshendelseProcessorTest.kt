@@ -30,6 +30,7 @@ import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.KontorTilordningService
 import no.nav.services.NotUnderOppfolging
 import no.nav.utils.flywayMigrationInTest
+import no.nav.utils.hentInternId
 import no.nav.utils.gittIdentIMapping
 import no.nav.utils.randomFnr
 import org.apache.kafka.streams.processor.api.Record
@@ -349,7 +350,7 @@ class OppfolgingshendelseProcessorTest {
         result.shouldBeInstanceOf<Skip<Ident, OppfolgingsperiodeStartet>>()
     }
 
-    fun gittBrukerMedTidligArenaKontor(bruker: Bruker, sistLagretArenaKontor: String, arenaKontor: String) {
+    fun gittBrukerMedTidligArenaKontor(ident: Ident, sistLagretArenaKontor: String, arenaKontor: String) {
         val sistLagreArenaKontor = ArenaKontorUtvidet(
             kontorId = KontorId(sistLagretArenaKontor),
             oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
@@ -360,7 +361,7 @@ class OppfolgingshendelseProcessorTest {
             { sistLagreArenaKontor })
         endringPaOppfolgingsBrukerProcessor.process(
             TopicUtils.endringPaaOppfolgingsBrukerMessage(
-                bruker.ident,
+                ident,
                 arenaKontor,
                 Instant.now().atZone(ZoneId.of("Europe/Oslo")).toOffsetDateTime(),
                 no.nav.kafka.consumers.FormidlingsGruppe.ARBS,
@@ -369,9 +370,10 @@ class OppfolgingshendelseProcessorTest {
         )
     }
 
-    fun Bruker.skalHaTidligArenaKontor(foreventetKontor: String?) {
+    fun Bruker.skalHaTidligArenaKontor(foreventetKontor: String?, annenIdent: Ident? = null) {
+        val identMedArenaKontor = annenIdent ?: this.ident
         val arenaKontor = transaction {
-            TidligArenaKontorEntity.findById(this@skalHaTidligArenaKontor.ident.value)?.kontorId
+            TidligArenaKontorEntity.findById(identMedArenaKontor.value)?.kontorId
         }
         withClue("Forventet bruker skulle ha forhåndslagret arenakontor for oppfølging-start: $foreventetKontor men hadde $arenaKontor") {
             arenaKontor shouldBe foreventetKontor
@@ -388,20 +390,39 @@ class OppfolgingshendelseProcessorTest {
     }
 
     @Test
-    fun `Skal slette tidlig-arena-kontor hvis det blir brukt`() {
+    fun `Skal finne tidlig-arena-kontor selv om det er lagret på en annen av brukers identer`() {
         val bruker = testBruker()
-
+        gittIdentIMapping(bruker.ident)
+        val annenIdent = randomFnr()
+        val internId = hentInternId(bruker.ident)
+        gittIdentIMapping(ident = annenIdent, internIdent = internId)
         val arenaKontorVeilarboppfolging = "4141"
         val arenaKontor = "4142"
         val hendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
-        gittBrukerMedTidligArenaKontor(bruker, arenaKontorVeilarboppfolging, arenaKontor)
+        gittBrukerMedTidligArenaKontor(annenIdent, arenaKontorVeilarboppfolging, arenaKontor)
+        bruker.skalHaTidligArenaKontor(arenaKontor, annenIdent)
+
+        val result = hendelseProcessor.process(TopicUtils.oppfolgingStartetMelding(bruker))
+
+        result.shouldBeInstanceOf<Forward<Ident, OppfolgingsperiodeStartet>>()
+        val videresendtMelding = result.forwardedRecord.value()
+        videresendtMelding.arenaKontorFraOppfolgingsbrukerTopic!!.kontor.id shouldBe arenaKontor
+    }
+
+    @Test
+    fun `Skal slette tidlig-arena-kontor hvis det blir brukt`() {
+        val bruker = testBruker()
+        gittIdentIMapping(bruker.ident)
+        val arenaKontorVeilarboppfolging = "4141"
+        val arenaKontor = "4142"
+        val hendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
+        gittBrukerMedTidligArenaKontor(bruker.ident, arenaKontorVeilarboppfolging, arenaKontor)
         bruker.skalHaTidligArenaKontor(arenaKontor)
 
         hendelseProcessor.process(TopicUtils.oppfolgingStartetMelding(bruker))
 
         bruker.skalHaTidligArenaKontor(null)
     }
-
 
     class Asserts(val service: OppfolgingsperiodeService, val bruker: Bruker) {
         fun skalVæreUnderOppfolging() = service.getCurrentOppfolgingsperiode(IdentFunnet(bruker.ident))
