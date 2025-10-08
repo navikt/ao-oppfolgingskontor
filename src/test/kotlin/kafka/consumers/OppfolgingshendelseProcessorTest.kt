@@ -370,9 +370,10 @@ class OppfolgingshendelseProcessorTest {
         )
     }
 
-    fun Bruker.skalHaTidligArenaKontor(foreventetKontor: String?) {
+    fun Bruker.skalHaTidligArenaKontor(foreventetKontor: String?, annenIdent: Ident? = null) {
+        val identMedArenaKontor = annenIdent ?: this.ident
         val arenaKontor = transaction {
-            TidligArenaKontorEntity.findById(this@skalHaTidligArenaKontor.ident.value)?.kontorId
+            TidligArenaKontorEntity.findById(identMedArenaKontor.value)?.kontorId
         }
         withClue("Forventet bruker skulle ha forhåndslagret arenakontor for oppfølging-start: $foreventetKontor men hadde $arenaKontor") {
             arenaKontor shouldBe foreventetKontor
@@ -399,16 +400,19 @@ class OppfolgingshendelseProcessorTest {
         val arenaKontor = "4142"
         val hendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
         gittBrukerMedTidligArenaKontor(annenIdent, arenaKontorVeilarboppfolging, arenaKontor)
+        bruker.skalHaTidligArenaKontor(arenaKontor, annenIdent)
 
-        hendelseProcessor.process(TopicUtils.oppfolgingStartetMelding(bruker))
+        val result = hendelseProcessor.process(TopicUtils.oppfolgingStartetMelding(bruker))
 
-        bruker.skalHaArenaKontor(arenaKontor)
-        bruker.skalHaTidligArenaKontor(null)
+        result.shouldBeInstanceOf<Forward<Ident, OppfolgingsperiodeStartet>>()
+        val videresendtMelding = result.forwardedRecord.value()
+        videresendtMelding.arenaKontorFraOppfolgingsbrukerTopic!!.kontor.id shouldBe arenaKontor
     }
 
     @Test
     fun `Skal slette tidlig-arena-kontor hvis det blir brukt`() {
         val bruker = testBruker()
+        lagreIdentIIdentmappingTabell(bruker.ident)
         val arenaKontorVeilarboppfolging = "4141"
         val arenaKontor = "4142"
         val hendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
@@ -419,7 +423,6 @@ class OppfolgingshendelseProcessorTest {
 
         bruker.skalHaTidligArenaKontor(null)
     }
-
 
     class Asserts(val service: OppfolgingsperiodeService, val bruker: Bruker) {
         fun skalVæreUnderOppfolging() = service.getCurrentOppfolgingsperiode(IdentFunnet(bruker.ident))

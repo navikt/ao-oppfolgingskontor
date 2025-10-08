@@ -1,6 +1,8 @@
 package kafka.consumers
 
 import db.entity.TidligArenaKontorEntity
+import db.table.IdentMappingTable
+import db.table.IdentMappingTable.internIdent
 import db.table.TidligArenaKontorTable
 import kafka.consumers.oppfolgingsHendelser.OppfolgingStartBegrunnelse.ARBEIDSSOKER_REGISTRERING
 import kafka.consumers.oppfolgingsHendelser.OppfolgingStartetHendelseDto
@@ -14,28 +16,20 @@ import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.domain.externalEvents.TidligArenaKontor
-import no.nav.kafka.processor.Commit
-import no.nav.kafka.processor.Forward
-import no.nav.kafka.processor.RecordProcessingResult
-import no.nav.kafka.processor.Retry
-import no.nav.kafka.processor.Skip
+import no.nav.kafka.processor.*
 import org.apache.kafka.streams.processor.api.Record
+import org.jetbrains.exposed.sql.JoinType.INNER
+import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inSubQuery
+import org.jetbrains.exposed.sql.alias
 import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
-import services.GammelPeriodeAvsluttet
-import services.HaddeNyerePeriodePåIdent
-import services.HaddePeriodeAlleredeMenManglerTilordning
-import services.HaddePeriodeMedTilordningAllerede
-import services.HandterPeriodeAvsluttetResultat
-import services.HarSlettetPeriode
-import services.IngenPeriodeAvsluttet
-import services.InnkommendePeriodeAvsluttet
-import services.OppfolgingsperiodeService
-import services.OppfølgingsperiodeLagret
+import services.*
 import java.time.Instant
-import java.util.UUID
+import java.util.*
 
 class OppfolgingsHendelseProcessor(
     val oppfolgingsPeriodeService: OppfolgingsperiodeService,
@@ -60,6 +54,7 @@ class OppfolgingsHendelseProcessor(
                         HaddeNyerePeriodePåIdent,
                         HarSlettetPeriode,
                         HaddePeriodeMedTilordningAllerede -> Skip()
+
                         HaddePeriodeAlleredeMenManglerTilordning,
                         OppfølgingsperiodeLagret -> {
                             Forward(
@@ -72,6 +67,7 @@ class OppfolgingsHendelseProcessor(
                         }
                     }
                 }
+
                 is OppfolgingsAvsluttetHendelseDto -> {
                     hendelseType = oppfolgingsperiodeEvent.hendelseType.name
                     oppfolgingsPeriodeService.handterPeriodeAvsluttet(oppfolgingsperiodeEvent.toDomainObject())
@@ -88,24 +84,32 @@ class OppfolgingsHendelseProcessor(
 
     fun OppfolgingsperiodeStartet.enrichWithTidligArenaKontor(): OppfolgingsperiodeStartet {
         val forhåndslagretArenaKontor = hentSisteArenaKontorFraOppfolgingsBrukerOgSlettHvisFunnet(this.fnr)
-        return this.copy(
-            arenaKontorFraOppfolgingsbrukerTopic = forhåndslagretArenaKontor?.let {
-                TidligArenaKontor(
-                    it.sistEndretDato,
-                    KontorId(it.kontorId)
-                )
-            }
-        )
+        return this.copy(arenaKontorFraOppfolgingsbrukerTopic = forhåndslagretArenaKontor)
     }
 
-    fun hentSisteArenaKontorFraOppfolgingsBrukerOgSlettHvisFunnet(ident: Ident): TidligArenaKontorEntity? {
+    fun hentSisteArenaKontorFraOppfolgingsBrukerOgSlettHvisFunnet(ident: Ident): TidligArenaKontor? {
         return transaction {
-            TidligArenaKontorEntity.findById(ident.value)
-                ?.also {
-                    TidligArenaKontorTable.deleteWhere {
-                        id eq ident.value
-                    }
-                }
+            val alleIdenter = IdentMappingTable.alias("alleIdenter")
+            val tidligArenaKontorOgIdent = IdentMappingTable
+                .join(alleIdenter, INNER, onColumn = internIdent, otherColumn = alleIdenter[internIdent])
+                .join(TidligArenaKontorTable, INNER, onColumn = alleIdenter[IdentMappingTable.id], otherColumn = TidligArenaKontorTable.id)
+                .select(TidligArenaKontorTable.id, TidligArenaKontorTable.kontorId, TidligArenaKontorTable.sisteEndretDato)
+                .where { IdentMappingTable.id eq ident.value }
+                .map { row ->
+                    TidligArenaKontor(
+                        kontor = KontorId(row[TidligArenaKontorTable.kontorId]),
+                        sistEndretDato = row[TidligArenaKontorTable.sisteEndretDato]
+                    ) to row[TidligArenaKontorTable.id]
+                }.firstOrNull()
+
+            val identSomKontorErLagretPå = tidligArenaKontorOgIdent?.second
+            val tidligArenaKontor = tidligArenaKontorOgIdent?.first
+
+            identSomKontorErLagretPå?.let {
+                TidligArenaKontorTable.deleteWhere { TidligArenaKontorTable.id eq identSomKontorErLagretPå.value }
+            }
+
+            tidligArenaKontor
         }
     }
 }
@@ -118,12 +122,14 @@ fun OppfolgingStartetHendelseDto.toDomainObject() = OppfolgingsperiodeStartet(
     arenaKontorFraOppfolgingsbrukerTopic = null,
     erArbeidssøkerRegistrering = startetBegrunnelse == ARBEIDSSOKER_REGISTRERING
 )
+
 fun OppfolgingsAvsluttetHendelseDto.toDomainObject() = OppfolgingsperiodeAvsluttet(
     Ident.of(this.fnr, Ident.HistoriskStatus.UKJENT) as? IdentSomKanLagres
         ?: throw IllegalStateException("Ident i oppfolgingshendelse-topic kan ikke være aktorId"),
     this.startetTidspunkt,
     OppfolgingsperiodeId(UUID.fromString(this.oppfolgingsPeriodeId))
 )
+
 fun HandterPeriodeAvsluttetResultat.toRecordResult(): RecordProcessingResult<Ident, OppfolgingsperiodeStartet> {
     return when (this) {
         GammelPeriodeAvsluttet -> Commit()
