@@ -51,6 +51,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: ./gradlew sonar --info --scan \
-            -Dscan.termsOfServiceUrl=https://gradle.com/terms-of-service \
-            -Dscan.acceptTermsOfService=yes
+        run: ./gradlew build sonar --info --scan
