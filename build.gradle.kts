@@ -148,8 +148,3 @@ sonar {
         property("sonar.host.url", "https://sonarcloud.io")
     }
 }
-
-extensions.findByName("buildScan")?.withGroovyBuilder {
-    setProperty("termsOfServiceUrl", "https://gradle.com/terms-of-service")
-    setProperty("termsOfServiceAgree", "yes")
-}
