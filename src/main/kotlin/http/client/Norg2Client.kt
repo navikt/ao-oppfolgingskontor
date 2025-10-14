@@ -7,6 +7,7 @@ import io.ktor.client.plugins.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.logging.*
 import io.ktor.client.request.*
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
@@ -70,7 +71,7 @@ class Norg2Client(
                 }
             }
             if (response.status != HttpStatusCode.OK)
-                throw RuntimeException("Kunne ikke hente kontor for GT i norg, http-status: ${response.status}, gt: ${gt.value} ${gt.type}")
+                throw RuntimeException("Kunne ikke hente kontor for GT i norg, http-status: ${response.status}, gt: ${gt.value} ${gt.type}, body: ${response.bodyAsText()}")
             return response.body<NorgKontor>().toMinimaltKontor()
                 .let {
                     KontorId(it.kontorId).toDefaultGtKontorFunnet(
