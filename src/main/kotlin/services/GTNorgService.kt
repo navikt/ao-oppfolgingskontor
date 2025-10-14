@@ -94,9 +94,9 @@ data class KontorForGtNrFantFallbackKontorForManglendeGt(
     override val kontorId: KontorId,
     override val skjerming: HarSkjerming,
     override val strengtFortroligAdresse: HarStrengtFortroligAdresse,
-    val gtForBruker: GtForBrukerSuccess
+    val gtForBruker: GtSomKreverFallback
 ): KontorForGtNrFantKontor(kontorId, skjerming, strengtFortroligAdresse) {
-    override fun gt() = gtForBruker
+    override fun gt() = gtForBruker as GtForBrukerFunnet
 }
 
 data class KontorForGtFeil(val melding: String) : KontorForGtResultat()

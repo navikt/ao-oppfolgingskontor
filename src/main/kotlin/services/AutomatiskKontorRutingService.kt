@@ -512,6 +512,11 @@ fun KontorForGtSuccess.toGtKontorEndret(ident: IdentSomKanLagres, oppfolgingsper
             this.gt()
         )
     }
+    if (this.skjerming.value && this.gt() is GtLandForBrukerFunnet) {
+        throw IllegalStateException(
+            "Vi håndterer ikke skjermede brukere uten geografisk tilknytning"
+        )
+    }
 
     val kontorId = when (this) {
         is KontorForGtNrFantDefaultKontor -> this.kontorId
