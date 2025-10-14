@@ -116,7 +116,7 @@ class Norg2ClientTest {
             HarSkjerming(false)
         )
 
-        response shouldBe KontorForGtFeil("Kunne ikke hente kontor for GT i norg, http-status: 500 Internal Server Error, gt: 634576 Bydel")
+        response shouldBe KontorForGtFeil("Kunne ikke hente kontor for GT i norg, http-status: 500 Internal Server Error, gt: 634576 Bydel, body: ")
     }
 
     @Test
