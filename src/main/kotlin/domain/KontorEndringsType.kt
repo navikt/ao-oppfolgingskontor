@@ -5,6 +5,7 @@ enum class KontorEndringsType {
     AutomatiskRutetTilLokalkontor,
     AutomatiskRutetTilLokalkontorFallback,
     AutomatiskRutetTilNavItManglerGt,
+    AutomatiskRutetTilNavItGtErLand,
     FlyttetAvVeileder,
     FikkSkjerming,
     MistetSkjerming,
@@ -18,5 +19,5 @@ enum class KontorEndringsType {
     EndretBostedsadresse,
     GTKontorVedOppfolgingStart,
     MIGRERING,
-    ArenaMigrering
+    ArenaMigrering,
 }

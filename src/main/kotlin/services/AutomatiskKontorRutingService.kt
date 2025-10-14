@@ -19,7 +19,6 @@ import no.nav.domain.events.ArenaKontorEndret
 import no.nav.domain.events.GTKontorEndret
 import no.nav.domain.events.OppfolgingsPeriodeStartetFallbackKontorTilordning
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
-import no.nav.domain.events.OppfolgingsPeriodeStartetSensitivKontorTilordning
 import no.nav.domain.events.OppfolgingsperiodeStartetNoeTilordning
 import no.nav.domain.events.TidligArenaKontorVedOppfolgingStart
 import no.nav.domain.externalEvents.AdressebeskyttelseEndret
@@ -195,25 +194,18 @@ class AutomatiskKontorRutingService(
     ): AOKontorEndret {
         return when {
             skalTilNasjonalOppfølgingsEnhet(gtResultat.sensitivitet(), profilering, alder) -> OppfolgingsperiodeStartetNoeTilordning(fnr, oppfolgingsperiodeId)
-            gtResultat.sensitivitet().erSensitiv() -> {
-                if (gtResultat.erStrengtFortrolig()) {
+            gtResultat.erStrengtFortrolig() -> {
                     OppfolgingsPeriodeStartetSensitivKontorTilordning(
                         KontorTilordning(fnr, VIKAFOSSEN, oppfolgingsperiodeId),
                         gtResultat.sensitivitet(),
                         gtResultat
                     )
-                }
-                else OppfolgingsPeriodeStartetFallbackKontorTilordning(
-                    fnr,
-                    oppfolgingsperiodeId,
-                    gtResultat.sensitivitet(),
-                )
             }
             else -> {
                 OppfolgingsPeriodeStartetFallbackKontorTilordning(
                     fnr,
                     oppfolgingsperiodeId,
-                    gtResultat.sensitivitet()
+                    gtResultat.sensitivitet(),
                 )
             }
         }
@@ -257,7 +249,7 @@ class AutomatiskKontorRutingService(
                             gtKontor.sensitivitet()
                         )
                     is KontorForGtFantLand ->
-                        OppfolgingsPeriodeStartetFallbackKontorTilordning(
+                        OppfolgingsPeriodeStartetFallbackKontorTilordning.OppfolgingsPeriodeStartetFallbackKontorTilordningGtErLand(
                             fnr,
                             oppfolgingsperiodeId,
                             gtKontor.sensitivitet()

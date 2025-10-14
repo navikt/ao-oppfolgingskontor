@@ -22,6 +22,7 @@ import no.nav.services.KontorForBrukerMedMangelfullGtIkkeFunnet
 import no.nav.services.KontorForBrukerMedMangelfullGtResultat
 import no.nav.services.KontorForGtNrFantDefaultKontor
 import no.nav.services.KontorForGtFeil
+import no.nav.services.KontorForGtFinnesIkke
 import no.nav.services.KontorForGtResultat
 import org.slf4j.LoggerFactory
 
@@ -70,8 +71,14 @@ class Norg2Client(
                     parameter("skjermet", "true")
                 }
             }
+
+            if (response.status == HttpStatusCode.NotFound)
+                return KontorForGtFinnesIkke(brukerErSkjermet, brukerHarStrengtFortroligAdresse,
+                    GtNummerForBrukerFunnet(gt))
+
             if (response.status != HttpStatusCode.OK)
                 throw RuntimeException("Kunne ikke hente kontor for GT i norg, http-status: ${response.status}, gt: ${gt.value} ${gt.type}, body: ${response.bodyAsText()}")
+
             return response.body<NorgKontor>().toMinimaltKontor()
                 .let {
                     KontorId(it.kontorId).toDefaultGtKontorFunnet(

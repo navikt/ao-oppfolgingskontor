@@ -10,13 +10,16 @@ import no.nav.domain.KontorType
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.Sensitivitet
 import no.nav.domain.System
+import no.nav.http.client.GtForBrukerIkkeFunnet
 import no.nav.http.logger
 import no.nav.services.KontorForGtFantLandEllerKontor
+import no.nav.services.KontorForGtFinnesIkke
 import no.nav.services.KontorForGtSuccess
 
 enum class RutingResultat {
     RutetTilNOE,
     FallbackIngenGTFunnet,
+    FallbackLandGTFunnet,
     RutetTilLokalkontorFallback,
     RutetTilLokalkontor;
     fun toKontorEndringsType(): KontorEndringsType {
@@ -25,6 +28,7 @@ enum class RutingResultat {
             RutetTilLokalkontor -> KontorEndringsType.AutomatiskRutetTilLokalkontor
             RutetTilLokalkontorFallback -> KontorEndringsType.AutomatiskRutetTilLokalkontorFallback
             FallbackIngenGTFunnet -> KontorEndringsType.AutomatiskRutetTilNavItManglerGt
+            FallbackLandGTFunnet -> KontorEndringsType.AutomatiskRutetTilNavItGtErLand
         }
     }
 }
@@ -73,8 +77,15 @@ data class OppfolgingsPeriodeStartetLokalKontorTilordning(
     }
 }
 
-data class OppfolgingsPeriodeStartetFallbackKontorTilordning(val ident: IdentSomKanLagres, val oppfolgingsperiodeId: OppfolgingsperiodeId, val sensitivitet: Sensitivitet) : AOKontorEndret(KontorTilordning(ident, INGEN_GT_KONTOR_FALLBACK, oppfolgingsperiodeId), System()) {
-    val rutingResultat: RutingResultat = RutingResultat.RutetTilLokalkontorFallback
+data class OppfolgingsPeriodeStartetFallbackKontorTilordning(
+    val ident: IdentSomKanLagres,
+    val oppfolgingsperiodeId: OppfolgingsperiodeId,
+    val sensitivitet: Sensitivitet)
+    : AOKontorEndret(KontorTilordning(
+    ident,
+    INGEN_GT_KONTOR_FALLBACK,
+    oppfolgingsperiodeId), System()) {
+    val rutingResultat: RutingResultat = RutingResultat.FallbackIngenGTFunnet
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(
             kontorId = tilordning.kontorId,

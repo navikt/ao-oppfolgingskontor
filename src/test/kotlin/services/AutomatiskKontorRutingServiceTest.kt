@@ -735,7 +735,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
             ) shouldBe HåndterPersondataEndretSuccess(KontorEndringer())
         }
 
-        it("skal sette hardkodet-fallback kontor hvis gt ikke finner og fallback til arbeidsforedeling også feiler") {
+        it("skal sette hardkodet-fallback kontor hvis gt ikke finnes og fallback til arbeidsforedeling også feiler") {
             gitt(brukerSomManglerGt).handterEndringForBostedsadresse(
                 BostedsadresseEndret(brukerSomManglerGt.fnr())
             ) shouldBe HåndterPersondataEndretSuccess(
