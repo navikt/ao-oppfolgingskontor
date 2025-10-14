@@ -66,7 +66,6 @@ import no.nav.services.AutomatiskKontorRutingService.Companion.VIKAFOSSEN
 import no.nav.services.KontorForGtFinnesIkke
 import no.nav.services.KontorForGtNrFantDefaultKontor
 import no.nav.services.KontorForGtNrFantKontor
-import no.nav.services.KontorForGtFantLand
 import no.nav.services.KontorForGtFeil
 import no.nav.services.KontorForGtNrFantFallbackKontorForManglendeGt
 import no.nav.services.KontorForGtResultat
@@ -147,7 +146,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                         aoKontorEndret = OppfolgingsPeriodeStartetSensitivKontorTilordning(
                             KontorTilordning(
                                 adressebeskyttetBruker.fnr(),
-                                adressebeskyttetBruker.gtKontor(),
+                                VIKAFOSSEN,
                                 adressebeskyttetBruker.oppfolgingsperiodeId()
                             ),
                             Sensitivitet(HarSkjerming(false), HarStrengtFortroligAdresse(true)),
@@ -238,20 +237,12 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                     oppfolgingsperiodeStartet(brukerMedLandskodeUtenFallback)
                 ) shouldBe TilordningSuccessKontorEndret(
                     KontorEndringer(
-                        gtKontorEndret = GTKontorEndret(
-                            kontorTilordning = KontorTilordning(
-                                brukerMedLandskodeUtenFallback.fnr(),
-                                GT_VAR_LAND_FALLBACK,
-                                brukerMedLandskodeUtenFallback.oppfolgingsperiodeId()
-                            ),
-                            KontorEndringsType.GTKontorVedOppfolgingStart,
-                            brukerMedLandskodeUtenFallback.gtForBruker as GtForBrukerFunnet,
-                        ),
+                        gtKontorEndret = null,
                         aoKontorEndret = OppfolgingsPeriodeStartetFallbackKontorTilordning(
                             brukerMedLandskodeUtenFallback.fnr(),
                             brukerMedLandskodeUtenFallback.oppfolgingsperiodeId(),
                             Sensitivitet(HarSkjerming(false), HarStrengtFortroligAdresse(false)),
-                            brukerMedLandskodeUtenFallback.gtKontor as KontorForGtFantLand
+                            brukerMedLandskodeUtenFallback.gtKontor as KontorForGtFinnesIkke
                         )
                     )
                 )
@@ -278,7 +269,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                                 brukerMedAdressebeskyttelseOgLandskode.oppfolgingsperiodeId()
                             ),
                             Sensitivitet(HarSkjerming(false), HarStrengtFortroligAdresse(true)),
-                            brukerMedAdressebeskyttelseOgLandskode.gtKontor as KontorForGtFantLand
+                            brukerMedAdressebeskyttelseOgLandskode.gtKontor as KontorForGtNrFantFallbackKontorForManglendeGt
                         )
                     )
                 )
@@ -401,7 +392,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                     gtKontorEndret = GTKontorEndret.endretPgaAdressebeskyttelseEndret(
                         KontorTilordning(
                             adressebeskyttetBruker.fnr(),
-                            adressebeskyttetBruker.gtKontor(),
+                            VIKAFOSSEN,
                             adressebeskyttetBruker.oppfolgingsperiodeId()
                         ),
                         HarStrengtFortroligAdresse(true),
@@ -410,7 +401,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                     aoKontorEndret = AOKontorEndretPgaAdressebeskyttelseEndret(
                         KontorTilordning(
                             adressebeskyttetBruker.fnr(),
-                            adressebeskyttetBruker.gtKontor(),
+                            VIKAFOSSEN,
                             adressebeskyttetBruker.oppfolgingsperiodeId()
                         )
                     )
@@ -551,7 +542,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                     gtKontorEndret = GTKontorEndret.endretPgaSkjermingEndret(
                         KontorTilordning(
                             brukerMedLandskodeUtenFallback.fnr(),
-                            GT_VAR_LAND_FALLBACK,
+                            INGEN_GT_KONTOR_FALLBACK,
                             brukerMedLandskodeUtenFallback.oppfolgingsperiodeId()
                         ),
                         HarSkjerming(true),
@@ -560,7 +551,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                     aoKontorEndret = AOKontorEndretPgaSkjermingEndret(
                         KontorTilordning(
                             brukerMedLandskodeUtenFallback.fnr(),
-                            GT_VAR_LAND_FALLBACK,
+                            INGEN_GT_KONTOR_FALLBACK,
                             brukerMedLandskodeUtenFallback.oppfolgingsperiodeId()
                         )
                     ),
@@ -570,7 +561,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                     gtKontorEndret = GTKontorEndret.endretPgaSkjermingEndret(
                         KontorTilordning(
                             brukerMedLandskodeUtenFallback.fnr(),
-                            GT_VAR_LAND_FALLBACK,
+                            INGEN_GT_KONTOR_FALLBACK,
                             brukerMedLandskodeUtenFallback.oppfolgingsperiodeId()
                         ),
                         HarSkjerming(true),
@@ -579,7 +570,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                     aoKontorEndret = AOKontorEndretPgaSkjermingEndret(
                         KontorTilordning(
                             brukerMedLandskodeUtenFallback.fnr(),
-                            GT_VAR_LAND_FALLBACK,
+                            INGEN_GT_KONTOR_FALLBACK,
                             brukerMedLandskodeUtenFallback.oppfolgingsperiodeId()
                         )
                     ),
@@ -722,7 +713,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                     gtKontorEndret = GTKontorEndret.endretPgaBostedsadresseEndret(
                         KontorTilordning(
                             brukerMedLandskodeUtenFallback.fnr(),
-                            GT_VAR_LAND_FALLBACK,
+                            INGEN_GT_KONTOR_FALLBACK,
                             brukerMedLandskodeUtenFallback.oppfolgingsperiodeId()
                         ),
                         brukerMedLandskodeUtenFallback.gtForBruker as GtForBrukerFunnet
@@ -1040,7 +1031,12 @@ val skjermetBrukerMedLandskode = Bruker(
     IdentFunnet(Fnr("72345678901", AKTIV)),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
-    KontorForGtFantLand(GeografiskTilknytningLand("JPN"), HarSkjerming(true), HarStrengtFortroligAdresse(false)),
+    KontorForGtNrFantFallbackKontorForManglendeGt(
+        INGEN_GT_KONTOR_FALLBACK,
+        HarSkjerming(true),
+        HarStrengtFortroligAdresse(false),
+        GtLandForBrukerFunnet(GeografiskTilknytningLand("JPN"))
+    ),
     GtNummerForBrukerFunnet(GeografiskTilknytningBydelNr("1111")),
     SkjermingFunnet(HarSkjerming(true)),
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
@@ -1063,7 +1059,11 @@ val brukerMedLandskodeUtenFallback = Bruker(
     IdentFunnet(Fnr("82345678991", AKTIV)),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
-    KontorForGtFantLand(GeografiskTilknytningLand("JPN"), HarSkjerming(false), HarStrengtFortroligAdresse(false)),
+    KontorForGtFinnesIkke(
+        HarSkjerming(false),
+        HarStrengtFortroligAdresse(false),
+        GtLandForBrukerFunnet(GeografiskTilknytningLand("JPN"))
+    ),
     GtLandForBrukerFunnet(GeografiskTilknytningLand("JPN")),
     SkjermingFunnet(HarSkjerming(false)),
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
@@ -1072,7 +1072,11 @@ val brukerMedAdressebeskyttelseOgLandskode = Bruker(
     IdentFunnet(Fnr("92345678901", AKTIV)),
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
-    KontorForGtFantLand(GeografiskTilknytningLand("JPN"), HarSkjerming(false), HarStrengtFortroligAdresse(true)),
+    KontorForGtNrFantFallbackKontorForManglendeGt(
+        INGEN_GT_KONTOR_FALLBACK,
+        HarSkjerming(false),
+        HarStrengtFortroligAdresse(true),
+        GtLandForBrukerFunnet(GeografiskTilknytningLand("JPN"))),
     GtLandForBrukerFunnet(GeografiskTilknytningLand("JPN")),
     SkjermingFunnet(HarSkjerming(false)),
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(true))

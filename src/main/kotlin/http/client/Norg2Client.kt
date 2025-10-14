@@ -100,22 +100,10 @@ class Norg2Client(
         val behandlingstype: String = "ae0253", // "Oppfølgingskontor"
     )
 
-    suspend fun hentKontorForBrukerMedMangelfullGT(gtForBruker: GtForBrukerResult, brukerHarStrengtFortroligAdresse: HarStrengtFortroligAdresse, brukerErSkjermet: HarSkjerming): KontorForBrukerMedMangelfullGtResultat {
-        return when (gtForBruker) {
-            is GtForBrukerOppslagFeil -> return KontorForBrukerMedMangelfullGtFeil(gtForBruker.message)
-            is GtForBrukerSuccess -> _hentKontorForBrukerMedMangelfullGT(
-                gtForBruker,
-                brukerHarStrengtFortroligAdresse,
-                brukerErSkjermet,
-            )
-        }
-    }
-
-    private suspend fun _hentKontorForBrukerMedMangelfullGT(gtForBruker: GtForBrukerSuccess, brukerHarStrengtFortroligAdresse: HarStrengtFortroligAdresse, brukerErSkjermet: HarSkjerming): KontorForBrukerMedMangelfullGtResultat {
+    suspend fun hentKontorForBrukerMedMangelfullGT(gtForBruker: GtSomKreverFallback, brukerHarStrengtFortroligAdresse: HarStrengtFortroligAdresse, brukerErSkjermet: HarSkjerming): KontorForBrukerMedMangelfullGtResultat {
         try {
             val geografiskOmraade = when (gtForBruker) {
                 is GtLandForBrukerFunnet -> gtForBruker.land.value
-                is GtNummerForBrukerFunnet -> gtForBruker.gtNr.value
                 is GtForBrukerIkkeFunnet -> null
             }
             val response = httpClient.post(arbeidsfordelingPath) {

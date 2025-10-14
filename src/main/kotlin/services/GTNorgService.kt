@@ -5,7 +5,6 @@ import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
 import no.nav.domain.Sensitivitet
-import no.nav.http.client.GeografiskTilknytningLand
 import no.nav.http.client.GeografiskTilknytningNr
 import no.nav.http.client.GtForBrukerFunnet
 import no.nav.http.client.GtForBrukerResult
@@ -14,12 +13,13 @@ import no.nav.http.client.GtForBrukerOppslagFeil
 import no.nav.http.client.GtForBrukerSuccess
 import no.nav.http.client.GtLandForBrukerFunnet
 import no.nav.http.client.GtNummerForBrukerFunnet
+import no.nav.http.client.GtSomKreverFallback
 import org.slf4j.LoggerFactory
 
 class GTNorgService(
     private val gtForBrukerProvider: suspend (fnr: Ident) -> GtForBrukerResult,
     private val kontorForGtProvider: suspend (gt: GeografiskTilknytningNr, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming) -> KontorForGtResultat,
-    private val kontorForBrukerMedMangelfullGt: suspend (gt: GtForBrukerSuccess, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming) -> KontorForBrukerMedMangelfullGtResultat,
+    private val kontorForBrukerMedMangelfullGt: suspend (gt: GtSomKreverFallback, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming) -> KontorForBrukerMedMangelfullGtResultat,
 ) {
     val log = LoggerFactory.getLogger(this::class.java)
 
@@ -52,7 +52,6 @@ class GTNorgService(
 * Når vi får gt med bare land fra PDL propagerer dette videre igjennom kontor-oppslag tjenesten
 */
 sealed class KontorForGtResultat
-sealed interface KontorForGtSomKreverFallback
 
 sealed class KontorForGtSuccess(
     open val skjerming: HarSkjerming,
@@ -66,32 +65,19 @@ data class KontorForGtFinnesIkke(
     override val skjerming: HarSkjerming,
     override val strengtFortroligAdresse: HarStrengtFortroligAdresse,
     val gtForBruker: GtForBrukerSuccess
-): KontorForGtSuccess(skjerming, strengtFortroligAdresse), KontorForGtSomKreverFallback {
+): KontorForGtSuccess(skjerming, strengtFortroligAdresse) {
     override fun gt(): GtForBrukerSuccess = gtForBruker
-}
-
-sealed class KontorForGtFantLandEllerKontor(
-    override val skjerming: HarSkjerming,
-    override val strengtFortroligAdresse: HarStrengtFortroligAdresse
-) : KontorForGtSuccess(
-    skjerming,
-    strengtFortroligAdresse
-)
-
-data class KontorForGtFantLand(
-    val landkode: GeografiskTilknytningLand,
-    override val skjerming: HarSkjerming,
-    override val strengtFortroligAdresse: HarStrengtFortroligAdresse
-) : KontorForGtFantLandEllerKontor(skjerming, strengtFortroligAdresse), KontorForGtSomKreverFallback {
-    override fun gt(): GtForBrukerFunnet = GtLandForBrukerFunnet(landkode)
 }
 
 sealed class KontorForGtNrFantKontor(
     open val kontorId: KontorId,
     override val skjerming: HarSkjerming,
     override val strengtFortroligAdresse: HarStrengtFortroligAdresse
-) : KontorForGtFantLandEllerKontor(skjerming, strengtFortroligAdresse)
+) : KontorForGtSuccess(skjerming, strengtFortroligAdresse)
 
+/**
+* Fant match på /navkontor/{geografiskOmråde}
+* */
 data class KontorForGtNrFantDefaultKontor(
     override val kontorId: KontorId,
     override val skjerming: HarSkjerming,
@@ -101,6 +87,9 @@ data class KontorForGtNrFantDefaultKontor(
     override fun gt(): GtForBrukerFunnet = GtNummerForBrukerFunnet(geografiskTilknytningNr)
 }
 
+/**
+ * Fallback til arbeidsfordeling/bestmatch
+ */
 data class KontorForGtNrFantFallbackKontorForManglendeGt(
     override val kontorId: KontorId,
     override val skjerming: HarSkjerming,
@@ -117,6 +106,6 @@ data class KontorForGtFeil(val melding: String) : KontorForGtResultat()
  * Når det skjer prøver vi arbeidsfordelings tik NORG endepunktet istedet
  */
 sealed class KontorForBrukerMedMangelfullGtResultat
-data class KontorForBrukerMedMangelfullGtFunnet(val kontorId: KontorId, val gtForBruker: GtForBrukerSuccess): KontorForBrukerMedMangelfullGtResultat()
-data class KontorForBrukerMedMangelfullGtIkkeFunnet(val gtForBruker: GtForBrukerSuccess): KontorForBrukerMedMangelfullGtResultat()
+data class KontorForBrukerMedMangelfullGtFunnet(val kontorId: KontorId, val gtForBruker: GtSomKreverFallback): KontorForBrukerMedMangelfullGtResultat()
+data class KontorForBrukerMedMangelfullGtIkkeFunnet(val gtForBruker: GtSomKreverFallback): KontorForBrukerMedMangelfullGtResultat()
 data class KontorForBrukerMedMangelfullGtFeil(val message: String): KontorForBrukerMedMangelfullGtResultat()

@@ -30,7 +30,10 @@ import no.nav.http.client.AlderFunnet
 import no.nav.http.client.AlderIkkeFunnet
 import no.nav.http.client.AlderOppslagFeil
 import no.nav.http.client.AlderResult
+import no.nav.http.client.GtForBrukerIkkeFunnet
 import no.nav.http.client.GtForBrukerSuccess
+import no.nav.http.client.GtLandForBrukerFunnet
+import no.nav.http.client.GtNummerForBrukerFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseIkkeFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseOppslagFeil
@@ -141,9 +144,11 @@ class AutomatiskKontorRutingService(
             val gtKontorResultat = gtKontorProvider(fnr, harStrengtFortroligAdresse, erSkjermet)
             val kontorTilordning = when (gtKontorResultat) {
                 is KontorForGtFinnesIkke -> hentTilordningUtenGT(fnr, alder, profilering, oppfolgingsperiodeId, gtKontorResultat)
-                is KontorForGtFantLandEllerKontor -> hentTilordning(fnr, gtKontorResultat, alder, profilering, oppfolgingsperiodeId)
+                is KontorForGtNrFantKontor -> hentTilordning(fnr, gtKontorResultat, alder, profilering, oppfolgingsperiodeId)
                 is KontorForGtFeil -> return TilordningFeil("Feil ved henting av gt-kontor: ${gtKontorResultat.melding}")
-            }   .let { KontorEndringer(
+            }
+                .let {
+                    KontorEndringer(
                         aoKontorEndret = it,
                         arenaKontorEndret = arenaKontorEndring(oppfolgingsperiodeStartet, oppfolgingsperiodeId),
                         gtKontorEndret = gtKontorResultat.toGtKontorEndret(fnr, oppfolgingsperiodeId)
@@ -215,7 +220,7 @@ class AutomatiskKontorRutingService(
 
     private fun hentTilordning(
         fnr: IdentSomKanLagres,
-        gtKontor: KontorForGtFantLandEllerKontor,
+        gtKontor: KontorForGtNrFantKontor,
         alder: Int,
         profilering: Profilering,
         oppfolgingsperiodeId: OppfolgingsperiodeId,
@@ -224,40 +229,23 @@ class AutomatiskKontorRutingService(
         return when {
             skalTilNOE -> OppfolgingsperiodeStartetNoeTilordning(fnr, oppfolgingsperiodeId)
             gtKontor.sensitivitet().erSensitiv() -> {
-                when (gtKontor) {
-                    is KontorForGtNrFantKontor ->
-                        OppfolgingsPeriodeStartetSensitivKontorTilordning(
-                            KontorTilordning(fnr, gtKontor.kontorId, oppfolgingsperiodeId),
-                            gtKontor
-                        )
-                    is KontorForGtFantLand ->
-                        if (gtKontor.erStrengtFortrolig()) {
-                            OppfolgingsPeriodeStartetSensitivKontorTilordning(
-                                KontorTilordning(fnr, VIKAFOSSEN, oppfolgingsperiodeId),
-                                gtKontor
-                            )
-                        } else {
-                            throw IllegalStateException(
-                                "Vi håndterer ikke skjermede brukere uten geografisk tilknytning"
-                            )
-                        }
+                if (gtKontor.erStrengtFortrolig()) {
+                    OppfolgingsPeriodeStartetSensitivKontorTilordning(
+                        KontorTilordning(fnr, VIKAFOSSEN, oppfolgingsperiodeId),
+                        gtKontor
+                    )
+                } else {
+                    OppfolgingsPeriodeStartetSensitivKontorTilordning(
+                        KontorTilordning(fnr, gtKontor.kontorId, oppfolgingsperiodeId),
+                        gtKontor
+                    )
                 }
             }
             else -> {
-                when (gtKontor) {
-                    is KontorForGtNrFantKontor ->
-                        OppfolgingsPeriodeStartetLokalKontorTilordning(
-                            KontorTilordning(fnr, gtKontor.kontorId, oppfolgingsperiodeId),
-                            gtKontor.sensitivitet()
-                        )
-                    is KontorForGtFantLand ->
-                        OppfolgingsPeriodeStartetFallbackKontorTilordning(
-                            fnr,
-                            oppfolgingsperiodeId,
-                            gtKontor.sensitivitet(),
-                            gtKontor
-                        )
-                }
+                OppfolgingsPeriodeStartetLokalKontorTilordning(
+                    KontorTilordning(fnr, gtKontor.kontorId, oppfolgingsperiodeId),
+                    gtKontor.sensitivitet()
+                )
             }
         }
     }
@@ -303,7 +291,6 @@ class AutomatiskKontorRutingService(
             return when (gtKontorResultat) {
                 is KontorForGtSuccess -> {
                     val kontorId = when (gtKontorResultat) {
-                        is KontorForGtFantLand -> GT_VAR_LAND_FALLBACK
                         is KontorForGtFinnesIkke -> INGEN_GT_KONTOR_FALLBACK
                         is KontorForGtNrFantDefaultKontor -> gtKontorResultat.kontorId
                         is KontorForGtNrFantFallbackKontorForManglendeGt -> gtKontorResultat.kontorId
@@ -469,7 +456,18 @@ class AutomatiskKontorRutingService(
 
     fun getGTKontorOrFallback(gtKontorResultat: KontorForGtSuccess): KontorId {
         return when (gtKontorResultat) {
-            is KontorForGtNrFantKontor -> gtKontorResultat.kontorId
+            // Enten default-kontor eller fallback-kontor (arbeidsfordeling/bestmatch)
+            is KontorForGtNrFantKontor -> {
+                if (gtKontorResultat.sensitivitet().strengtFortroligAdresse.value) {
+                    VIKAFOSSEN
+                } else if (gtKontorResultat.sensitivitet().skjermet.value) {
+                    throw IllegalStateException(
+                        "Skjermede brukere uten geografisk tilknytning eller med land som GT kan ikke tilordnes kontor"
+                    )
+                } else {
+                    gtKontorResultat.kontorId
+                }
+            }
             is KontorForGtFinnesIkke -> {
                 if (gtKontorResultat.sensitivitet().strengtFortroligAdresse.value) {
                     VIKAFOSSEN
@@ -478,15 +476,6 @@ class AutomatiskKontorRutingService(
                         "Skjermede brukere uten geografisk tilknytning eller med land som GT kan ikke tilordnes kontor"
                     )
                 } else INGEN_GT_KONTOR_FALLBACK
-            }
-            is KontorForGtFantLand -> {
-                if (gtKontorResultat.sensitivitet().strengtFortroligAdresse.value) {
-                    VIKAFOSSEN
-                } else if (gtKontorResultat.sensitivitet().skjermet.value) {
-                    throw IllegalStateException(
-                        "Skjermede brukere uten geografisk tilknytning eller med land som GT kan ikke tilordnes kontor"
-                    )
-                } else GT_VAR_LAND_FALLBACK
             }
         }
     }
@@ -524,33 +513,21 @@ fun KontorForGtSuccess.toGtKontorEndret(ident: IdentSomKanLagres, oppfolgingsper
         )
     }
 
-    return when (this) {
-        is KontorForGtFantLand -> GTKontorEndret.syncVedStartOppfolging(
-            tilordning = KontorTilordning(
-                fnr = ident,
-                kontorId = GT_VAR_LAND_FALLBACK,
-                oppfolgingsperiodeId = oppfolgingsperiodeId
-            ),
-            this.gt()
-        )
-        is KontorForGtNrFantDefaultKontor -> GTKontorEndret.syncVedStartOppfolging(
-            tilordning = KontorTilordning(
-                fnr = ident,
-                kontorId = this.kontorId,
-                oppfolgingsperiodeId = oppfolgingsperiodeId
-            ),
-            this.gt()
-        )
-        is KontorForGtNrFantFallbackKontorForManglendeGt -> {
-            GTKontorEndret.syncVedStartOppfolging(
-                tilordning = KontorTilordning(
-                    fnr = ident,
-                    kontorId = this.kontorId,
-                    oppfolgingsperiodeId = oppfolgingsperiodeId
-                ),
-                this.gt()
-            )
-        }
+    val kontorId = when (this) {
+        is KontorForGtNrFantDefaultKontor -> this.kontorId
+        is KontorForGtNrFantFallbackKontorForManglendeGt -> this.kontorId
         is KontorForGtFinnesIkke -> null
+    }
+
+    return when {
+        kontorId != null -> GTKontorEndret.syncVedStartOppfolging(
+            tilordning = KontorTilordning(
+                fnr = ident,
+                kontorId = kontorId,
+                oppfolgingsperiodeId = oppfolgingsperiodeId
+            ),
+            this.gt()
+        )
+        else -> null
     }
 }
