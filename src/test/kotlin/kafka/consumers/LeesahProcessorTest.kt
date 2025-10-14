@@ -34,6 +34,7 @@ import no.nav.kafka.processor.Retry
 import no.nav.person.pdl.leesah.adressebeskyttelse.Gradering
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
+import no.nav.services.AutomatiskKontorRutingService.Companion.VIKAFOSSEN
 import no.nav.services.KontorForGtNrFantDefaultKontor
 import no.nav.services.KontorForGtFeil
 import no.nav.services.KontorForGtResultat
@@ -88,10 +89,10 @@ class LeesahProcessorTest {
 
             transaction {
                 val gtKontorEtterEndring = GeografiskTilknyttetKontorEntity[fnr.value]
-                gtKontorEtterEndring.kontorId shouldBe nyKontorId
+                gtKontorEtterEndring.kontorId shouldBe VIKAFOSSEN.id
 
                 val aoKontorEtterEndirng = ArbeidsOppfolgingKontorEntity[fnr.value]
-                aoKontorEtterEndirng.kontorId shouldBe nyKontorId
+                aoKontorEtterEndirng.kontorId shouldBe VIKAFOSSEN.id
             }
         }
     }
