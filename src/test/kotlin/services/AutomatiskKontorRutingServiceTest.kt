@@ -131,7 +131,8 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                             Sensitivitet(
                                 HarSkjerming(false),
                                 HarStrengtFortroligAdresse(false)
-                            )
+                            ),
+                            brukerSomManglerGt.gtKontor as KontorForGtFinnesIkke
                         )
                     )
                 )
@@ -249,7 +250,8 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                         aoKontorEndret = OppfolgingsPeriodeStartetFallbackKontorTilordning(
                             brukerMedLandskodeUtenFallback.fnr(),
                             brukerMedLandskodeUtenFallback.oppfolgingsperiodeId(),
-                            Sensitivitet(HarSkjerming(false), HarStrengtFortroligAdresse(false))
+                            Sensitivitet(HarSkjerming(false), HarStrengtFortroligAdresse(false)),
+                            brukerMedLandskodeUtenFallback.gtKontor as KontorForGtFantLand
                         )
                     )
                 )

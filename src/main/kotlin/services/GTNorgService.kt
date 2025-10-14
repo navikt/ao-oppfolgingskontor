@@ -52,6 +52,7 @@ class GTNorgService(
 * Når vi får gt med bare land fra PDL propagerer dette videre igjennom kontor-oppslag tjenesten
 */
 sealed class KontorForGtResultat
+sealed interface KontorForGtSomKreverFallback
 
 sealed class KontorForGtSuccess(
     open val skjerming: HarSkjerming,
@@ -65,7 +66,7 @@ data class KontorForGtFinnesIkke(
     override val skjerming: HarSkjerming,
     override val strengtFortroligAdresse: HarStrengtFortroligAdresse,
     val gtForBruker: GtForBrukerSuccess
-): KontorForGtSuccess(skjerming, strengtFortroligAdresse) {
+): KontorForGtSuccess(skjerming, strengtFortroligAdresse), KontorForGtSomKreverFallback {
     override fun gt(): GtForBrukerSuccess = gtForBruker
 }
 
@@ -81,7 +82,7 @@ data class KontorForGtFantLand(
     val landkode: GeografiskTilknytningLand,
     override val skjerming: HarSkjerming,
     override val strengtFortroligAdresse: HarStrengtFortroligAdresse
-) : KontorForGtFantLandEllerKontor(skjerming, strengtFortroligAdresse) {
+) : KontorForGtFantLandEllerKontor(skjerming, strengtFortroligAdresse), KontorForGtSomKreverFallback {
     override fun gt(): GtForBrukerFunnet = GtLandForBrukerFunnet(landkode)
 }
 
@@ -113,6 +114,7 @@ data class KontorForGtFeil(val melding: String) : KontorForGtResultat()
 
 /**
 * Noen brukere mangler GT, andre ganger gir ikke GT noen kontor i NORG (http 404)
+ * Når det skjer prøver vi arbeidsfordelings tik NORG endepunktet istedet
  */
 sealed class KontorForBrukerMedMangelfullGtResultat
 data class KontorForBrukerMedMangelfullGtFunnet(val kontorId: KontorId, val gtForBruker: GtForBrukerSuccess): KontorForBrukerMedMangelfullGtResultat()

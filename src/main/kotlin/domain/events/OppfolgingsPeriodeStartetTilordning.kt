@@ -12,8 +12,10 @@ import no.nav.domain.Sensitivitet
 import no.nav.domain.System
 import no.nav.http.client.GtForBrukerIkkeFunnet
 import no.nav.http.logger
+import no.nav.services.KontorForGtFantLand
 import no.nav.services.KontorForGtFantLandEllerKontor
 import no.nav.services.KontorForGtFinnesIkke
+import no.nav.services.KontorForGtSomKreverFallback
 import no.nav.services.KontorForGtSuccess
 
 enum class RutingResultat {
@@ -80,12 +82,17 @@ data class OppfolgingsPeriodeStartetLokalKontorTilordning(
 data class OppfolgingsPeriodeStartetFallbackKontorTilordning(
     val ident: IdentSomKanLagres,
     val oppfolgingsperiodeId: OppfolgingsperiodeId,
-    val sensitivitet: Sensitivitet)
+    val sensitivitet: Sensitivitet,
+    val gt: KontorForGtSomKreverFallback
+)
     : AOKontorEndret(KontorTilordning(
     ident,
     INGEN_GT_KONTOR_FALLBACK,
     oppfolgingsperiodeId), System()) {
-    val rutingResultat: RutingResultat = RutingResultat.FallbackIngenGTFunnet
+    val rutingResultat: RutingResultat = when (gt) {
+        is KontorForGtFantLand -> RutingResultat.FallbackLandGTFunnet
+        is KontorForGtFinnesIkke -> RutingResultat.FallbackIngenGTFunnet
+    }
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(
             kontorId = tilordning.kontorId,

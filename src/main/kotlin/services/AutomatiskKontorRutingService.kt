@@ -19,6 +19,7 @@ import no.nav.domain.events.ArenaKontorEndret
 import no.nav.domain.events.GTKontorEndret
 import no.nav.domain.events.OppfolgingsPeriodeStartetFallbackKontorTilordning
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
+import no.nav.domain.events.OppfolgingsPeriodeStartetSensitivKontorTilordning
 import no.nav.domain.events.OppfolgingsperiodeStartetNoeTilordning
 import no.nav.domain.events.TidligArenaKontorVedOppfolgingStart
 import no.nav.domain.externalEvents.AdressebeskyttelseEndret
@@ -206,6 +207,7 @@ class AutomatiskKontorRutingService(
                     fnr,
                     oppfolgingsperiodeId,
                     gtResultat.sensitivitet(),
+                    gtResultat
                 )
             }
         }
@@ -249,10 +251,11 @@ class AutomatiskKontorRutingService(
                             gtKontor.sensitivitet()
                         )
                     is KontorForGtFantLand ->
-                        OppfolgingsPeriodeStartetFallbackKontorTilordning.OppfolgingsPeriodeStartetFallbackKontorTilordningGtErLand(
+                        OppfolgingsPeriodeStartetFallbackKontorTilordning(
                             fnr,
                             oppfolgingsperiodeId,
-                            gtKontor.sensitivitet()
+                            gtKontor.sensitivitet(),
+                            gtKontor
                         )
                 }
             }
