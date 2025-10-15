@@ -94,7 +94,7 @@ data class OppfolgingsPeriodeStartetFallbackKontorTilordning(
     ident,
     INGEN_GT_KONTOR_FALLBACK,
     oppfolgingsperiodeId), System()) {
-    val rutingResultat: RutingResultat = when (gt.gtForBruker as GtSomKreverFallback) {
+    val rutingResultat: RutingResultat = when (gt.gtForBruker) {
         is GtForBrukerIkkeFunnet -> RutingResultat.FallbackIngenGTFunnet
         is  GtLandForBrukerFunnet -> RutingResultat.FallbackLandGTFunnet
     }

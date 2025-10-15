@@ -30,9 +30,12 @@ sealed class KontorForGtSuccess(
 data class KontorForGtFinnesIkke(
     override val skjerming: HarSkjerming,
     override val strengtFortroligAdresse: HarStrengtFortroligAdresse,
-    val gtForBruker: GtForBrukerSuccess
+    val gtForBruker: GtSomKreverFallback
 ): KontorForGtSuccess(skjerming, strengtFortroligAdresse) {
-    override fun gt(): GtForBrukerSuccess = gtForBruker
+    override fun gt(): GtForBrukerSuccess = when (gtForBruker) {
+        is GtForBrukerIkkeFunnet -> gtForBruker
+        is GtLandForBrukerFunnet -> gtForBruker
+    }
 }
 
 sealed class KontorForGtNrFantKontor(
