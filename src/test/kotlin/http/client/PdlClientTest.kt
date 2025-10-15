@@ -1,6 +1,10 @@
 package http.client
 
 import com.expediagroup.graphql.client.types.GraphQLClientResponse
+import domain.gtForBruker.GtForBrukerIkkeFunnet
+import domain.gtForBruker.GtForBrukerOppslagFeil
+import domain.gtForBruker.GtLandForBrukerFunnet
+import domain.gtForBruker.GtNummerForBrukerFunnet
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.ints.shouldBePositive
 import io.kotest.matchers.shouldBe

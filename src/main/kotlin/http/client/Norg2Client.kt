@@ -1,5 +1,9 @@
 package no.nav.http.client
 
+import domain.gtForBruker.GtForBrukerIkkeFunnet
+import domain.gtForBruker.GtLandForBrukerFunnet
+import domain.gtForBruker.GtNummerForBrukerFunnet
+import domain.gtForBruker.GtSomKreverFallback
 import io.ktor.client.*
 import io.ktor.client.call.body
 import io.ktor.client.engine.cio.*
@@ -16,14 +20,14 @@ import kotlinx.serialization.Serializable
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
-import no.nav.services.KontorForBrukerMedMangelfullGtFeil
-import no.nav.services.KontorForBrukerMedMangelfullGtFunnet
-import no.nav.services.KontorForBrukerMedMangelfullGtIkkeFunnet
-import no.nav.services.KontorForBrukerMedMangelfullGtResultat
-import no.nav.services.KontorForGtNrFantDefaultKontor
-import no.nav.services.KontorForGtFeil
-import no.nav.services.KontorForGtFinnesIkke
-import no.nav.services.KontorForGtResultat
+import domain.kontorForGt.KontorForBrukerMedMangelfullGtFeil
+import domain.kontorForGt.KontorForBrukerMedMangelfullGtFunnet
+import domain.kontorForGt.KontorForBrukerMedMangelfullGtIkkeFunnet
+import domain.kontorForGt.KontorForBrukerMedMangelfullGtResultat
+import domain.kontorForGt.KontorForGtNrFantDefaultKontor
+import domain.kontorForGt.KontorForGtFeil
+import domain.kontorForGt.KontorForGtFinnesIkke
+import domain.kontorForGt.KontorForGtResultat
 import org.slf4j.LoggerFactory
 
 class Norg2Client(
@@ -74,7 +78,8 @@ class Norg2Client(
 
             if (response.status == HttpStatusCode.NotFound)
                 return KontorForGtFinnesIkke(brukerErSkjermet, brukerHarStrengtFortroligAdresse,
-                    GtNummerForBrukerFunnet(gt))
+                    GtNummerForBrukerFunnet(gt)
+                )
 
             if (response.status != HttpStatusCode.OK)
                 throw RuntimeException("Kunne ikke hente kontor for GT i norg, http-status: ${response.status}, gt: ${gt.value} ${gt.type}, body: ${response.bodyAsText()}")

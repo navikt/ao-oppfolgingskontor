@@ -11,16 +11,16 @@ import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
 import no.nav.http.client.GeografiskTilknytningBydelNr
-import no.nav.http.client.GtForBrukerIkkeFunnet
+import domain.gtForBruker.GtForBrukerIkkeFunnet
 import no.nav.http.client.Norg2Client
 import no.nav.http.client.Norg2Client.Companion.arbeidsfordelingPath
 import no.nav.http.client.NorgKontor
 import no.nav.http.client.mockNorg2Host
-import no.nav.services.KontorForBrukerMedMangelfullGtFeil
-import no.nav.services.KontorForBrukerMedMangelfullGtFunnet
-import no.nav.services.KontorForBrukerMedMangelfullGtIkkeFunnet
-import no.nav.services.KontorForGtNrFantDefaultKontor
-import no.nav.services.KontorForGtFeil
+import domain.kontorForGt.KontorForBrukerMedMangelfullGtFeil
+import domain.kontorForGt.KontorForBrukerMedMangelfullGtFunnet
+import domain.kontorForGt.KontorForBrukerMedMangelfullGtIkkeFunnet
+import domain.kontorForGt.KontorForGtNrFantDefaultKontor
+import domain.kontorForGt.KontorForGtFeil
 import org.junit.jupiter.api.Test
 
 class Norg2ClientTest {

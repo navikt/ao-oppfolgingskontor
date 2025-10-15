@@ -20,14 +20,14 @@ import no.nav.domain.events.GTKontorEndret
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.GeografiskTilknytningKommuneNr
-import no.nav.http.client.GtNummerForBrukerFunnet
+import domain.gtForBruker.GtNummerForBrukerFunnet
 import no.nav.http.client.IdenterFunnet
 import no.nav.http.client.mockNorg2Host
 import no.nav.http.client.mockPoaoTilgangHost
 import no.nav.http.graphql.installGraphQl
 import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
 import no.nav.http.graphql.schemas.RegistrantTypeDto
-import no.nav.services.KontorForGtNrFantDefaultKontor
+import domain.kontorForGt.KontorForGtNrFantDefaultKontor
 import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
 import no.nav.services.KontorTilordningService

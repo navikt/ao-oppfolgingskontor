@@ -24,7 +24,7 @@ import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
-import no.nav.services.KontorForGtNrFantDefaultKontor
+import domain.kontorForGt.KontorForGtNrFantDefaultKontor
 import org.apache.kafka.streams.processor.api.Record
 import org.junit.jupiter.api.Test
 import utils.Outcome

@@ -23,9 +23,8 @@ import no.nav.domain.externalEvents.BostedsadresseEndret
 import no.nav.http.client.IdentFunnet
 import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.GeografiskTilknytningNr
-import no.nav.http.client.GtForBrukerSuccess
-import no.nav.http.client.GtNummerForBrukerFunnet
-import no.nav.http.client.GtType
+import domain.gtForBruker.GtForBrukerSuccess
+import domain.gtForBruker.GtNummerForBrukerFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseResult
 import no.nav.http.client.SkjermingFunnet
@@ -35,9 +34,9 @@ import no.nav.person.pdl.leesah.adressebeskyttelse.Gradering
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.AutomatiskKontorRutingService.Companion.VIKAFOSSEN
-import no.nav.services.KontorForGtNrFantDefaultKontor
-import no.nav.services.KontorForGtFeil
-import no.nav.services.KontorForGtResultat
+import domain.kontorForGt.KontorForGtNrFantDefaultKontor
+import domain.kontorForGt.KontorForGtFeil
+import domain.kontorForGt.KontorForGtResultat
 import no.nav.services.KontorTilordningService
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.randomFnr

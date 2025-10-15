@@ -40,7 +40,7 @@ import no.nav.kafka.retry.library.internal.RetryableRepository
 import no.nav.kafka.retry.library.internal.RetryableProcessor
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
-import no.nav.services.KontorForGtNrFantDefaultKontor
+import domain.kontorForGt.KontorForGtNrFantDefaultKontor
 import no.nav.services.KontorTilhorighetService
 import no.nav.services.KontorTilordningService
 import no.nav.utils.flywayMigrationInTest

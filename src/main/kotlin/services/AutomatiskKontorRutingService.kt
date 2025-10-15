@@ -29,8 +29,15 @@ import no.nav.http.client.AlderFunnet
 import no.nav.http.client.AlderIkkeFunnet
 import no.nav.http.client.AlderOppslagFeil
 import no.nav.http.client.AlderResult
-import no.nav.http.client.GtForBrukerSuccess
-import no.nav.http.client.GtLandForBrukerFunnet
+import domain.gtForBruker.GtForBrukerSuccess
+import domain.gtForBruker.GtLandForBrukerFunnet
+import domain.kontorForGt.KontorForGtFeil
+import domain.kontorForGt.KontorForGtFinnesIkke
+import domain.kontorForGt.KontorForGtNrFantDefaultKontor
+import domain.kontorForGt.KontorForGtNrFantFallbackKontorForManglendeGt
+import domain.kontorForGt.KontorForGtNrFantKontor
+import domain.kontorForGt.KontorForGtResultat
+import domain.kontorForGt.KontorForGtSuccess
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseIkkeFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseOppslagFeil

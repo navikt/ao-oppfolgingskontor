@@ -1,5 +1,9 @@
 package no.nav.domain.events
 
+import domain.gtForBruker.GtForBrukerIkkeFunnet
+import domain.gtForBruker.GtForBrukerSuccess
+import domain.gtForBruker.GtLandForBrukerFunnet
+import domain.gtForBruker.GtNummerForBrukerFunnet
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorEndringsType
@@ -8,10 +12,6 @@ import no.nav.domain.KontorTilordning
 import no.nav.domain.KontorType
 import no.nav.domain.Registrant
 import no.nav.domain.System
-import no.nav.http.client.GtForBrukerIkkeFunnet
-import no.nav.http.client.GtForBrukerSuccess
-import no.nav.http.client.GtLandForBrukerFunnet
-import no.nav.http.client.GtNummerForBrukerFunnet
 import no.nav.http.logger
 import org.slf4j.LoggerFactory
 import java.time.OffsetDateTime

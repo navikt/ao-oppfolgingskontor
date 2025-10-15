@@ -1,5 +1,6 @@
 package no.nav.domain.events
 
+import domain.gtForBruker.GtForBrukerIkkeFunnet
 import no.nav.db.IdentSomKanLagres
 import no.nav.domain.INGEN_GT_KONTOR_FALLBACK
 import no.nav.domain.KontorEndringsType
@@ -10,15 +11,14 @@ import no.nav.domain.KontorType
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.Sensitivitet
 import no.nav.domain.System
-import no.nav.http.client.GtForBrukerIkkeFunnet
-import no.nav.http.client.GtLandForBrukerFunnet
-import no.nav.http.client.GtSomKreverFallback
+import domain.gtForBruker.GtLandForBrukerFunnet
+import domain.gtForBruker.GtSomKreverFallback
 import no.nav.http.logger
-import no.nav.services.KontorForGtFinnesIkke
-import no.nav.services.KontorForGtNrFantDefaultKontor
-import no.nav.services.KontorForGtNrFantFallbackKontorForManglendeGt
-import no.nav.services.KontorForGtNrFantKontor
-import no.nav.services.KontorForGtSuccess
+import domain.kontorForGt.KontorForGtFinnesIkke
+import domain.kontorForGt.KontorForGtNrFantDefaultKontor
+import domain.kontorForGt.KontorForGtNrFantFallbackKontorForManglendeGt
+import domain.kontorForGt.KontorForGtNrFantKontor
+import domain.kontorForGt.KontorForGtSuccess
 
 enum class RutingResultat {
     RutetTilNOE,

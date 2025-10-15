@@ -2,6 +2,11 @@ package no.nav.http.client
 
 import com.expediagroup.graphql.client.ktor.GraphQLKtorClient
 import com.expediagroup.graphql.client.types.GraphQLClientResponse
+import domain.gtForBruker.GtForBrukerIkkeFunnet
+import domain.gtForBruker.GtForBrukerOppslagFeil
+import domain.gtForBruker.GtForBrukerResult
+import domain.gtForBruker.GtLandForBrukerFunnet
+import domain.gtForBruker.GtNummerForBrukerFunnet
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.api.*
@@ -54,19 +59,6 @@ data class IdenterFunnet(val identer: List<Ident>, val inputIdent: Ident) : Iden
 }
 data class IdenterIkkeFunnet(val message: String) : IdenterResult()
 data class IdenterOppslagFeil(val message: String) : IdenterResult()
-
-sealed interface GtSomKreverFallback
-sealed class GtForBrukerResult
-sealed class GtForBrukerSuccess : GtForBrukerResult()
-sealed class GtForBrukerFunnet : GtForBrukerSuccess()
-data class GtNummerForBrukerFunnet(val gtNr: GeografiskTilknytningNr) : GtForBrukerFunnet() {
-    override fun toString() = "${gtNr.value} type: ${gtNr.type.name}"
-}
-data class GtLandForBrukerFunnet(val land: GeografiskTilknytningLand) : GtForBrukerFunnet(), GtSomKreverFallback {
-    override fun toString() = "${land.value} type: Land"
-}
-data class GtForBrukerIkkeFunnet(val message: String) : GtForBrukerSuccess(), GtSomKreverFallback
-data class GtForBrukerOppslagFeil(val message: String) : GtForBrukerResult()
 
 sealed class HarStrengtFortroligAdresseResult
 class HarStrengtFortroligAdresseFunnet(val harStrengtFortroligAdresse: HarStrengtFortroligAdresse) :

@@ -28,9 +28,9 @@ import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
 import no.nav.services.AktivOppfolgingsperiode
-import no.nav.services.KontorForBrukerMedMangelfullGtFunnet
-import no.nav.services.KontorForGtNrFantDefaultKontor
-import no.nav.services.KontorForGtNrFantFallbackKontorForManglendeGt
+import domain.kontorForGt.KontorForBrukerMedMangelfullGtFunnet
+import domain.kontorForGt.KontorForGtNrFantDefaultKontor
+import domain.kontorForGt.KontorForGtNrFantFallbackKontorForManglendeGt
 import no.nav.services.KontorTilordningService
 import no.nav.services.NotUnderOppfolging
 import no.nav.utils.flywayMigrationInTest

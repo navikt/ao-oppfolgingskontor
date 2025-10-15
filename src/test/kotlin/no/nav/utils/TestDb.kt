@@ -21,7 +21,7 @@ import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.http.client.GeografiskTilknytningKommuneNr
-import no.nav.services.KontorForGtNrFantDefaultKontor
+import domain.kontorForGt.KontorForGtNrFantDefaultKontor
 import no.nav.services.KontorTilordningService
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.batchInsert

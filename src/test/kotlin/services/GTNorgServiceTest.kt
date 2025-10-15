@@ -9,18 +9,18 @@ import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
 import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.GeografiskTilknytningLand
-import no.nav.http.client.GtForBrukerIkkeFunnet
-import no.nav.http.client.GtForBrukerOppslagFeil
-import no.nav.http.client.GtLandForBrukerFunnet
-import no.nav.http.client.GtNummerForBrukerFunnet
+import domain.gtForBruker.GtForBrukerIkkeFunnet
+import domain.gtForBruker.GtForBrukerOppslagFeil
+import domain.gtForBruker.GtLandForBrukerFunnet
+import domain.gtForBruker.GtNummerForBrukerFunnet
 import no.nav.services.GTNorgService
-import no.nav.services.KontorForBrukerMedMangelfullGtFeil
-import no.nav.services.KontorForBrukerMedMangelfullGtFunnet
-import no.nav.services.KontorForBrukerMedMangelfullGtIkkeFunnet
-import no.nav.services.KontorForGtFinnesIkke
-import no.nav.services.KontorForGtNrFantDefaultKontor
-import no.nav.services.KontorForGtFeil
-import no.nav.services.KontorForGtNrFantFallbackKontorForManglendeGt
+import domain.kontorForGt.KontorForBrukerMedMangelfullGtFeil
+import domain.kontorForGt.KontorForBrukerMedMangelfullGtFunnet
+import domain.kontorForGt.KontorForBrukerMedMangelfullGtIkkeFunnet
+import domain.kontorForGt.KontorForGtFinnesIkke
+import domain.kontorForGt.KontorForGtNrFantDefaultKontor
+import domain.kontorForGt.KontorForGtFeil
+import domain.kontorForGt.KontorForGtNrFantFallbackKontorForManglendeGt
 import org.junit.jupiter.api.Test
 
 class GTNorgServiceTest {
