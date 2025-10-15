@@ -4,7 +4,6 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
-import no.nav.domain.GT_VAR_LAND_FALLBACK
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.INGEN_GT_KONTOR_FALLBACK
@@ -30,10 +29,8 @@ import no.nav.http.client.AlderFunnet
 import no.nav.http.client.AlderIkkeFunnet
 import no.nav.http.client.AlderOppslagFeil
 import no.nav.http.client.AlderResult
-import no.nav.http.client.GtForBrukerIkkeFunnet
 import no.nav.http.client.GtForBrukerSuccess
 import no.nav.http.client.GtLandForBrukerFunnet
-import no.nav.http.client.GtNummerForBrukerFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseIkkeFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseOppslagFeil
