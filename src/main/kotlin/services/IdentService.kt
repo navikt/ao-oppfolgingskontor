@@ -59,7 +59,10 @@ class IdentService(
     suspend fun håndterEndringPåIdenter(ident: Ident): IdenterResult = hentAlleIdenterOgOppdaterMapping(ident)
 
     fun håndterEndringPåIdenter(aktorId: AktorId, nyeIdenter: List<OppdatertIdent>): Int {
-        val eksisterendeIdenter = hentIdentMappinger(aktorId, includeHistorisk = true)
+        val eksisterendeIdenter = hentIdentMappinger(
+            nyeIdenter.map { it.ident } + listOf(aktorId),
+            includeHistorisk = true
+        )
 
         val identKanIgnoreres = eksisterendeIdenter.isEmpty()
         if (identKanIgnoreres) return 0
@@ -183,8 +186,11 @@ class IdentService(
     /**
      * Henter alle koblede identer utenom historiske
      */
-    private fun hentIdentMappinger(identInput: Ident): List<Ident> = hentIdentMappinger(identInput, false).map { it.ident }
-    private fun hentIdentMappinger(identInput: Ident, includeHistorisk: Boolean): List<IdentInfo> = transaction {
+    private fun hentIdentMappinger(identInput: Ident): List<Ident>
+        = hentIdentMappinger(identInput, false).map { it.ident }
+    private fun hentIdentMappinger(identInput: Ident, includeHistorisk: Boolean): List<IdentInfo>
+        = hentIdentMappinger(listOf(identInput), includeHistorisk)
+    private fun hentIdentMappinger(identeneTilEnPerson: List<Ident>, includeHistorisk: Boolean): List<IdentInfo> = transaction {
         val identMappingAlias = IdentMappingTable.alias("ident_mapping_alias")
 
         IdentMappingTable.join(
@@ -197,7 +203,7 @@ class IdentService(
                 identMappingAlias[identType],
                 identMappingAlias[historisk],
                 identMappingAlias[internIdent])
-            .where { (IdentMappingTable.id eq identInput.value) }
+            .where { (IdentMappingTable.id inList identeneTilEnPerson.map { it.value }) }
             .let { query ->
                 if (!includeHistorisk) {
                     query.andWhere { identMappingAlias[historisk] eq false }
@@ -217,6 +223,12 @@ class IdentService(
                         .also { log.error(it.message, it) }
                 }
                 IdentInfo(ident, historisk, internIdent)
+            }
+            .also { identInfo ->
+                val internIdenter = identInfo.map { it.internIdent }.distinct()
+                if (internIdenter.size > 1) {
+                    log.error("Fant flere intern-ident-er på hentIdentMappinger, er input-idenene bare 1 person? Hvis ikke er indenter kanskje lagret feil")
+                }
             }
     }
 }
