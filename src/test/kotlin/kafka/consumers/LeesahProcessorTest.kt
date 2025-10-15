@@ -187,7 +187,12 @@ class LeesahProcessorTest {
         KontorTilordningService.tilordneKontor(
             OppfolgingsPeriodeStartetLokalKontorTilordning(
                 kontorTilordning = KontorTilordning(fnr, kontorId, oppfolgingsperiodeId),
-                sensitivitet = Sensitivitet(HarSkjerming(false), HarStrengtFortroligAdresse(false)),
+                kontorForGt = KontorForGtNrFantDefaultKontor(
+                    kontorId,
+                    HarSkjerming(false),
+                    HarStrengtFortroligAdresse(false),
+                    geografiskTilknytningNr = GeografiskTilknytningBydelNr("313121")
+                ),
             )
         )
     }

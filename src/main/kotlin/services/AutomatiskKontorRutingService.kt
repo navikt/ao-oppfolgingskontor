@@ -198,11 +198,11 @@ class AutomatiskKontorRutingService(
         return when {
             skalTilNasjonalOppfølgingsEnhet(gtResultat.sensitivitet(), profilering, alder) -> OppfolgingsperiodeStartetNoeTilordning(fnr, oppfolgingsperiodeId)
             gtResultat.erStrengtFortrolig() -> {
-                    OppfolgingsPeriodeStartetSensitivKontorTilordning(
-                        KontorTilordning(fnr, VIKAFOSSEN, oppfolgingsperiodeId),
-                        gtResultat.sensitivitet(),
-                        gtResultat
-                    )
+                OppfolgingsPeriodeStartetSensitivKontorTilordning(
+                    KontorTilordning(fnr, VIKAFOSSEN, oppfolgingsperiodeId),
+                    gtResultat.sensitivitet(),
+                    gtResultat
+                )
             }
             else -> {
                 OppfolgingsPeriodeStartetFallbackKontorTilordning(
@@ -243,7 +243,7 @@ class AutomatiskKontorRutingService(
             else -> {
                 OppfolgingsPeriodeStartetLokalKontorTilordning(
                     KontorTilordning(fnr, gtKontor.kontorId, oppfolgingsperiodeId),
-                    gtKontor.sensitivitet()
+                    gtKontor
                 )
             }
         }

@@ -97,7 +97,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                                 ungBrukerMedGodeMuligheter.gtKontor(),
                                 ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()
                             ),
-                            ingenSensitivitet
+                            ungBrukerMedGodeMuligheter.gtKontor as KontorForGtNrFantKontor
                         ),
                         gtKontorEndret = ungBrukerMedGodeMuligheter.defaultGtKontorVedOppfolgStart()
                     )
@@ -189,7 +189,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                                 ungBrukerMedbehovForVeiledning.gtKontor(),
                                 ungBrukerMedbehovForVeiledning.oppfolgingsperiodeId()
                             ),
-                            ingenSensitivitet
+                            ungBrukerMedbehovForVeiledning.gtKontor as KontorForGtNrFantKontor
                         )
                     )
                 )
@@ -207,7 +207,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                                 brukerMedFeilendeProfilering.gtKontor(),
                                 brukerMedFeilendeProfilering.oppfolgingsperiodeId()
                             ),
-                            ingenSensitivitet
+                            brukerMedFeilendeProfilering.gtKontor as KontorForGtNrFantKontor
                         )
                     )
                 )
@@ -225,7 +225,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                                 brukerMedLandskodeOgFallback.gtKontor(),
                                 brukerMedLandskodeOgFallback.oppfolgingsperiodeId()
                             ),
-                            Sensitivitet(HarSkjerming(false), HarStrengtFortroligAdresse(false))
+                            brukerMedLandskodeOgFallback.gtKontor as KontorForGtNrFantKontor
                         )
                     )
                 )
@@ -318,7 +318,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                                 ungBrukerMedGodeMuligheter.gtKontor(),
                                 ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()
                             ),
-                            ingenSensitivitet
+                            ungBrukerMedGodeMuligheter.gtKontor as KontorForGtNrFantKontor
                         ),
                         arenaKontorEndret = null
                     )
@@ -348,7 +348,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                         gtKontorEndret = ungBrukerMedGodeMuligheter.defaultGtKontorVedOppfolgStart(),
                         aoKontorEndret = OppfolgingsPeriodeStartetLokalKontorTilordning(
                             aoKontorTilordning,
-                            ingenSensitivitet
+                            ungBrukerMedGodeMuligheter.gtKontor as KontorForGtNrFantKontor
                         ),
                         arenaKontorEndret = TidligArenaKontorVedOppfolgingStart(
                             arenaKontorTilordning,
@@ -765,7 +765,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                                 brukerMedFeilendeProfilering.gtKontor(),
                                 brukerMedFeilendeProfilering.oppfolgingsperiodeId()
                             ),
-                            ingenSensitivitet
+                            brukerMedFeilendeProfilering.gtKontor as KontorForGtNrFantKontor
                         ),
                         gtKontorEndret = brukerMedFeilendeProfilering.defaultGtKontorVedOppfolgStart()
                     )
