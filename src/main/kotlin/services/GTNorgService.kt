@@ -96,7 +96,10 @@ data class KontorForGtNrFantFallbackKontorForManglendeGt(
     override val strengtFortroligAdresse: HarStrengtFortroligAdresse,
     val gtForBruker: GtSomKreverFallback
 ): KontorForGtNrFantKontor(kontorId, skjerming, strengtFortroligAdresse) {
-    override fun gt() = gtForBruker as GtForBrukerFunnet
+    override fun gt(): GtForBrukerSuccess = when (gtForBruker) {
+        is GtForBrukerIkkeFunnet -> gtForBruker
+        is GtLandForBrukerFunnet -> gtForBruker
+    }
 }
 
 data class KontorForGtFeil(val melding: String) : KontorForGtResultat()
