@@ -27,7 +27,7 @@ import no.nav.http.client.mockPoaoTilgangHost
 import no.nav.http.graphql.installGraphQl
 import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
 import no.nav.http.graphql.schemas.RegistrantTypeDto
-import domain.kontorForGt.KontorForGtNrFantDefaultKontor
+import domain.kontorForGt.KontorForGtFantDefaultKontor
 import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
 import no.nav.services.KontorTilordningService
@@ -202,7 +202,7 @@ class GraphqlApplicationTest {
         KontorTilordningService.tilordneKontor(
             OppfolgingsPeriodeStartetLokalKontorTilordning(
                 kontorTilordning = KontorTilordning(fnr, KontorId(kontorId), OppfolgingsperiodeId(UUID.randomUUID())),
-                kontorForGt = KontorForGtNrFantDefaultKontor(
+                kontorForGt = KontorForGtFantDefaultKontor(
                     KontorId(kontorId),
                     ingenSensitivitet.skjermet,
                     ingenSensitivitet.strengtFortroligAdresse,

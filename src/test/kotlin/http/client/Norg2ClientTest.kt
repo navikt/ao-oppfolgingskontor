@@ -19,7 +19,7 @@ import no.nav.http.client.mockNorg2Host
 import domain.kontorForGt.KontorForBrukerMedMangelfullGtFeil
 import domain.kontorForGt.KontorForBrukerMedMangelfullGtFunnet
 import domain.kontorForGt.KontorForBrukerMedMangelfullGtIkkeFunnet
-import domain.kontorForGt.KontorForGtNrFantDefaultKontor
+import domain.kontorForGt.KontorForGtFantDefaultKontor
 import domain.kontorForGt.KontorForGtFeil
 import org.junit.jupiter.api.Test
 
@@ -65,7 +65,7 @@ class Norg2ClientTest {
             HarSkjerming(false)
         )
 
-        response shouldBe KontorForGtNrFantDefaultKontor(
+        response shouldBe KontorForGtFantDefaultKontor(
             kontorId = KontorId(vanligKontor),
             HarSkjerming(false),
             HarStrengtFortroligAdresse(true),
@@ -82,7 +82,7 @@ class Norg2ClientTest {
             HarSkjerming(true)
         )
 
-        response shouldBe KontorForGtNrFantDefaultKontor(
+        response shouldBe KontorForGtFantDefaultKontor(
             kontorId = KontorId(vanligKontor),
             HarSkjerming(true),
             HarStrengtFortroligAdresse(false),
@@ -99,7 +99,7 @@ class Norg2ClientTest {
             HarSkjerming(false)
         )
 
-        response shouldBe KontorForGtNrFantDefaultKontor(
+        response shouldBe KontorForGtFantDefaultKontor(
             kontorId = KontorId(vanligKontor),
             HarSkjerming(false),
             HarStrengtFortroligAdresse(false),

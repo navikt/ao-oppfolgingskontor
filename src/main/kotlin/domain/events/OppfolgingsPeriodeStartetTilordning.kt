@@ -12,20 +12,22 @@ import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.Sensitivitet
 import no.nav.domain.System
 import domain.gtForBruker.GtLandForBrukerFunnet
-import domain.gtForBruker.GtSomKreverFallback
+import domain.gtForBruker.GtNummerForBrukerFunnet
 import no.nav.http.logger
-import domain.kontorForGt.KontorForGtFinnesIkke
-import domain.kontorForGt.KontorForGtNrFantDefaultKontor
+import domain.kontorForGt.KontorForGtFantIkkeKontor
+import domain.kontorForGt.KontorForGtFantDefaultKontor
 import domain.kontorForGt.KontorForGtNrFantFallbackKontorForManglendeGt
-import domain.kontorForGt.KontorForGtNrFantKontor
+import domain.kontorForGt.KontorForGtFantKontor
 import domain.kontorForGt.KontorForGtSuccess
 
 enum class RutingResultat {
     RutetTilNOE,
     FallbackIngenGTFunnet,
     FallbackLandGTFunnet,
+    FallbackIngenKontorFunnetForGT,
     RutetViaNorgFallback,
     RutetViaNorg;
+
     fun toKontorEndringsType(): KontorEndringsType {
         return when (this) {
             RutetTilNOE -> KontorEndringsType.AutomatiskRutetTilNOE
@@ -33,6 +35,7 @@ enum class RutingResultat {
             RutetViaNorgFallback -> KontorEndringsType.AutomatiskNorgRutingFallback
             FallbackIngenGTFunnet -> KontorEndringsType.AutomatiskRutetTilNavItManglerGt
             FallbackLandGTFunnet -> KontorEndringsType.AutomatiskRutetTilNavItGtErLand
+            FallbackIngenKontorFunnetForGT -> KontorEndringsType.AutomatiskRutetTilNavItGtErLand
         }
     }
 }
@@ -40,7 +43,7 @@ enum class RutingResultat {
 data class OppfolgingsperiodeStartetNoeTilordning(
     val fnr: IdentSomKanLagres,
     val oppfolgingsperiodeId: OppfolgingsperiodeId,
-): AOKontorEndret(KontorTilordning(fnr, KontorId("4154"), oppfolgingsperiodeId), System()) {
+) : AOKontorEndret(KontorTilordning(fnr, KontorId("4154"), oppfolgingsperiodeId), System()) {
     private val rutingResultat: RutingResultat = RutingResultat.RutetTilNOE
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(
@@ -60,12 +63,13 @@ data class OppfolgingsperiodeStartetNoeTilordning(
 
 data class OppfolgingsPeriodeStartetLokalKontorTilordning(
     val kontorTilordning: KontorTilordning,
-    val kontorForGt: KontorForGtNrFantKontor,
-): AOKontorEndret(kontorTilordning, System()) {
+    val kontorForGt: KontorForGtFantKontor,
+) : AOKontorEndret(kontorTilordning, System()) {
     val rutingResultat: RutingResultat = when (kontorForGt) {
-        is KontorForGtNrFantDefaultKontor -> RutingResultat.RutetViaNorg
+        is KontorForGtFantDefaultKontor -> RutingResultat.RutetViaNorg
         is KontorForGtNrFantFallbackKontorForManglendeGt -> RutingResultat.RutetViaNorgFallback
     }
+
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(
             kontorId = tilordning.kontorId,
@@ -88,16 +92,21 @@ data class OppfolgingsPeriodeStartetFallbackKontorTilordning(
     val ident: IdentSomKanLagres,
     val oppfolgingsperiodeId: OppfolgingsperiodeId,
     val sensitivitet: Sensitivitet,
-    val gt: KontorForGtFinnesIkke
-)
-    : AOKontorEndret(KontorTilordning(
-    ident,
-    INGEN_GT_KONTOR_FALLBACK,
-    oppfolgingsperiodeId), System()) {
+    val gt: KontorForGtFantIkkeKontor
+) : AOKontorEndret(
+    KontorTilordning(
+        ident,
+        INGEN_GT_KONTOR_FALLBACK,
+        oppfolgingsperiodeId
+    ), System()
+) {
     val rutingResultat: RutingResultat = when (gt.gtForBruker) {
         is GtForBrukerIkkeFunnet -> RutingResultat.FallbackIngenGTFunnet
-        is  GtLandForBrukerFunnet -> RutingResultat.FallbackLandGTFunnet
+        is GtLandForBrukerFunnet -> RutingResultat.FallbackLandGTFunnet
+        // Noen GT-er gir 404 i norg (feks kommunr i kommuner med bydeler)
+        is GtNummerForBrukerFunnet -> RutingResultat.FallbackIngenKontorFunnetForGT
     }
+
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(
             kontorId = tilordning.kontorId,
@@ -120,14 +129,15 @@ data class OppfolgingsPeriodeStartetFallbackKontorTilordning(
 data class OppfolgingsPeriodeStartetSensitivKontorTilordning(
     val kontorTilordning: KontorTilordning,
     val sensitivitet: Sensitivitet,
-    val gtKontorResultat: KontorForGtSuccess): AOKontorEndret(kontorTilordning, System()) {
+    val gtKontorResultat: KontorForGtSuccess
+) : AOKontorEndret(kontorTilordning, System()) {
 
     val rutingResultat: RutingResultat = RutingResultat.RutetViaNorg
 
     constructor(
         kontorTilordning: KontorTilordning,
-        gtKontorResultat: KontorForGtNrFantKontor
-    ): this(
+        gtKontorResultat: KontorForGtFantKontor
+    ) : this(
         kontorTilordning,
         gtKontorResultat.sensitivitet(),
         gtKontorResultat

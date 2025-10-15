@@ -24,9 +24,9 @@ import domain.kontorForGt.KontorForBrukerMedMangelfullGtFeil
 import domain.kontorForGt.KontorForBrukerMedMangelfullGtFunnet
 import domain.kontorForGt.KontorForBrukerMedMangelfullGtIkkeFunnet
 import domain.kontorForGt.KontorForBrukerMedMangelfullGtResultat
-import domain.kontorForGt.KontorForGtNrFantDefaultKontor
+import domain.kontorForGt.KontorForGtFantDefaultKontor
 import domain.kontorForGt.KontorForGtFeil
-import domain.kontorForGt.KontorForGtFinnesIkke
+import domain.kontorForGt.KontorForGtFantIkkeKontor
 import domain.kontorForGt.KontorForGtResultat
 import org.slf4j.LoggerFactory
 
@@ -77,7 +77,7 @@ class Norg2Client(
             }
 
             if (response.status == HttpStatusCode.NotFound)
-                return KontorForGtFinnesIkke(brukerErSkjermet, brukerHarStrengtFortroligAdresse,
+                return KontorForGtFantIkkeKontor(brukerErSkjermet, brukerHarStrengtFortroligAdresse,
                     GtNummerForBrukerFunnet(gt)
                 )
 
@@ -147,8 +147,8 @@ fun KontorId.toDefaultGtKontorFunnet(
     brukerHarStrengtFortroligAdresse: HarStrengtFortroligAdresse,
     brukerErSkjermet: HarSkjerming,
     geografiskTilknytningNr: GeografiskTilknytningNr,
-    ): KontorForGtNrFantDefaultKontor {
-    return KontorForGtNrFantDefaultKontor(
+    ): KontorForGtFantDefaultKontor {
+    return KontorForGtFantDefaultKontor(
         this,
         brukerErSkjermet,
         brukerHarStrengtFortroligAdresse,

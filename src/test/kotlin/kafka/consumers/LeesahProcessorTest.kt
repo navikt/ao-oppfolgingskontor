@@ -7,23 +7,18 @@ import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.GeografiskTilknyttetKontorEntity
-import no.nav.db.table.ArbeidsOppfolgingKontorTable
-import no.nav.db.table.GeografiskTilknytningKontorTable
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
-import no.nav.domain.Sensitivitet
 import no.nav.domain.events.GTKontorEndret
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.domain.externalEvents.AdressebeskyttelseEndret
 import no.nav.domain.externalEvents.BostedsadresseEndret
 import no.nav.http.client.IdentFunnet
 import no.nav.http.client.GeografiskTilknytningBydelNr
-import no.nav.http.client.GeografiskTilknytningNr
-import domain.gtForBruker.GtForBrukerSuccess
 import domain.gtForBruker.GtNummerForBrukerFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseResult
@@ -34,18 +29,16 @@ import no.nav.person.pdl.leesah.adressebeskyttelse.Gradering
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.AutomatiskKontorRutingService.Companion.VIKAFOSSEN
-import domain.kontorForGt.KontorForGtNrFantDefaultKontor
+import domain.kontorForGt.KontorForGtFantDefaultKontor
 import domain.kontorForGt.KontorForGtFeil
 import domain.kontorForGt.KontorForGtResultat
 import no.nav.services.KontorTilordningService
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.randomFnr
-import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
 import utils.Outcome
 import java.time.OffsetDateTime
-import java.time.ZonedDateTime
 import java.util.UUID
 
 class LeesahProcessorTest {
@@ -79,7 +72,7 @@ class LeesahProcessorTest {
             flywayMigrationInTest()
             gittNåværendeGtKontor(fnr, KontorId(gammeltKontorId))
             val automatiskKontorRutingService = defaultAutomatiskKontorRutingService(
-                { a, b, c -> KontorForGtNrFantDefaultKontor(KontorId(nyKontorId), c, b, GeografiskTilknytningBydelNr("3131")) },
+                { a, b, c -> KontorForGtFantDefaultKontor(KontorId(nyKontorId), c, b, GeografiskTilknytningBydelNr("3131")) },
                 { ident -> HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(true)) }
             )
             val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, { IdentFunnet(fnr) }, false)
@@ -166,7 +159,7 @@ class LeesahProcessorTest {
 
     private fun gittRutingServiceMedGtKontor(kontorId: KontorId): AutomatiskKontorRutingService {
         return defaultAutomatiskKontorRutingService(
-            { a, b, c -> KontorForGtNrFantDefaultKontor(kontorId, c, b, GeografiskTilknytningBydelNr("3131")) }
+            { a, b, c -> KontorForGtFantDefaultKontor(kontorId, c, b, GeografiskTilknytningBydelNr("3131")) }
         )
     }
 
@@ -186,7 +179,7 @@ class LeesahProcessorTest {
         KontorTilordningService.tilordneKontor(
             OppfolgingsPeriodeStartetLokalKontorTilordning(
                 kontorTilordning = KontorTilordning(fnr, kontorId, oppfolgingsperiodeId),
-                kontorForGt = KontorForGtNrFantDefaultKontor(
+                kontorForGt = KontorForGtFantDefaultKontor(
                     kontorId,
                     HarSkjerming(false),
                     HarStrengtFortroligAdresse(false),

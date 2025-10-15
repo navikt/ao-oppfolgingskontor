@@ -11,7 +11,7 @@ import domain.kontorForGt.KontorForBrukerMedMangelfullGtFunnet
 import domain.kontorForGt.KontorForBrukerMedMangelfullGtIkkeFunnet
 import domain.kontorForGt.KontorForBrukerMedMangelfullGtResultat
 import domain.kontorForGt.KontorForGtFeil
-import domain.kontorForGt.KontorForGtFinnesIkke
+import domain.kontorForGt.KontorForGtFantIkkeKontor
 import domain.kontorForGt.KontorForGtNrFantFallbackKontorForManglendeGt
 import domain.kontorForGt.KontorForGtResultat
 import no.nav.db.Ident
@@ -37,21 +37,19 @@ class GTNorgService(
             return when (gtForBruker) {
                 is GtLandForBrukerFunnet,
                 is GtForBrukerIkkeFunnet -> {
-                    when (val fallbackResult =
-                        kontorForBrukerMedMangelfullGt(gtForBruker, strengtFortroligAdresse, skjermet)) {
+                    val fallbackResult = kontorForBrukerMedMangelfullGt(gtForBruker, strengtFortroligAdresse, skjermet)
+                    when (fallbackResult) {
                         is KontorForBrukerMedMangelfullGtFunnet -> KontorForGtNrFantFallbackKontorForManglendeGt(
                             fallbackResult.kontorId,
                             skjermet,
                             strengtFortroligAdresse,
                             gtForBruker
                         )
-
-                        is KontorForBrukerMedMangelfullGtIkkeFunnet -> KontorForGtFinnesIkke(
+                        is KontorForBrukerMedMangelfullGtIkkeFunnet -> KontorForGtFantIkkeKontor(
                             skjermet,
                             strengtFortroligAdresse,
                             gtForBruker
                         )
-
                         is KontorForBrukerMedMangelfullGtFeil -> KontorForGtFeil(fallbackResult.message)
                     }
                 }

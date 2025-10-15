@@ -9,7 +9,6 @@ import kafka.retry.TestLockProvider
 import kafka.retry.library.StreamType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.db.Ident.HistoriskStatus.UKJENT
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
@@ -40,7 +39,7 @@ import no.nav.kafka.retry.library.internal.RetryableRepository
 import no.nav.kafka.retry.library.internal.RetryableProcessor
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
-import domain.kontorForGt.KontorForGtNrFantDefaultKontor
+import domain.kontorForGt.KontorForGtFantDefaultKontor
 import no.nav.services.KontorTilhorighetService
 import no.nav.services.KontorTilordningService
 import no.nav.utils.flywayMigrationInTest
@@ -60,7 +59,6 @@ import org.apache.kafka.streams.processor.api.ProcessorSupplier
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
-import services.IdentService
 import services.OppfolgingsperiodeService
 import utils.Outcome
 import java.time.OffsetDateTime
@@ -159,7 +157,7 @@ class KafkaApplicationTest {
         val automatiskKontorRutingService = AutomatiskKontorRutingService(
             KontorTilordningService::tilordneKontor,
             { _, b, a ->
-                KontorForGtNrFantDefaultKontor(
+                KontorForGtFantDefaultKontor(
                     KontorId(skjermetKontor),
                     a,
                     b,

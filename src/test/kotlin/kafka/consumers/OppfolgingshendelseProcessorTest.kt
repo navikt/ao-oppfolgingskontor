@@ -28,9 +28,7 @@ import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
 import no.nav.services.AktivOppfolgingsperiode
-import domain.kontorForGt.KontorForBrukerMedMangelfullGtFunnet
-import domain.kontorForGt.KontorForGtNrFantDefaultKontor
-import domain.kontorForGt.KontorForGtNrFantFallbackKontorForManglendeGt
+import domain.kontorForGt.KontorForGtFantDefaultKontor
 import no.nav.services.KontorTilordningService
 import no.nav.services.NotUnderOppfolging
 import no.nav.utils.flywayMigrationInTest
@@ -84,7 +82,7 @@ class OppfolgingshendelseProcessorTest {
         KontorTilordningService.tilordneKontor(
             OppfolgingsPeriodeStartetLokalKontorTilordning(
                 KontorTilordning(this.ident, kontorId, this.oppfolgingsperiodeId),
-                KontorForGtNrFantDefaultKontor(
+                KontorForGtFantDefaultKontor(
                     kontorId,
                     ingenSensitivitet.skjermet,
                     ingenSensitivitet.strengtFortroligAdresse,

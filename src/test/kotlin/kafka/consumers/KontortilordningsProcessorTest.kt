@@ -1,12 +1,9 @@
 package kafka.consumers;
 
-import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import no.nav.db.Fnr
 import no.nav.db.Ident
-import no.nav.db.table.OppfolgingsperiodeTable.oppfolgingsperiodeId
-import no.nav.db.table.OppfolgingsperiodeTable.startDato
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
@@ -24,13 +21,11 @@ import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
-import domain.kontorForGt.KontorForGtNrFantDefaultKontor
+import domain.kontorForGt.KontorForGtFantDefaultKontor
 import org.apache.kafka.streams.processor.api.Record
 import org.junit.jupiter.api.Test
 import utils.Outcome
 import java.time.Instant
-import java.time.ZoneId
-import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.util.UUID
 
@@ -104,7 +99,7 @@ class KontortilordningsProcessorTest {
     fun automatiskKontorRutingService(oppfolging: OppfolgingsperiodeStartet): AutomatiskKontorRutingService {
         return AutomatiskKontorRutingService(
             {},
-            { a, b, c -> KontorForGtNrFantDefaultKontor(KontorId("3131"), HarSkjerming(false),
+            { a, b, c -> KontorForGtFantDefaultKontor(KontorId("3131"), HarSkjerming(false),
                 HarStrengtFortroligAdresse(false), GeografiskTilknytningKommuneNr("3131")) },
             { AlderFunnet(33) },
             { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
@@ -122,7 +117,7 @@ class KontortilordningsProcessorTest {
     fun feilendeAutomatiskKontorRutingService(oppfolging: OppfolgingsperiodeStartet): AutomatiskKontorRutingService {
         return AutomatiskKontorRutingService(
             {},
-            { a, b, c -> KontorForGtNrFantDefaultKontor(KontorId("3131"), HarSkjerming(false),
+            { a, b, c -> KontorForGtFantDefaultKontor(KontorId("3131"), HarSkjerming(false),
                 HarStrengtFortroligAdresse(false), GeografiskTilknytningKommuneNr("3131")) },
             { AlderIkkeFunnet("Ingen foedselsdato i felt 'foedselsdato' fra pdl-spørring, dårlig data i dev?") },
             { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },

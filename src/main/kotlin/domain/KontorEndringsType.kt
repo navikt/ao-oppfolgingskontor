@@ -6,6 +6,7 @@ enum class KontorEndringsType {
     AutomatiskNorgRutingFallback, // /arbeidsfordeling/bestmatch
     AutomatiskRutetTilNavItManglerGt,
     AutomatiskRutetTilNavItGtErLand,
+    AutomatiskRutetTilNavItIngenKontorFunnetForGt,
     FlyttetAvVeileder,
     FikkSkjerming,
     MistetSkjerming,

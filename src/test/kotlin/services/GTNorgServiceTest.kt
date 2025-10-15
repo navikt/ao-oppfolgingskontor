@@ -17,8 +17,8 @@ import no.nav.services.GTNorgService
 import domain.kontorForGt.KontorForBrukerMedMangelfullGtFeil
 import domain.kontorForGt.KontorForBrukerMedMangelfullGtFunnet
 import domain.kontorForGt.KontorForBrukerMedMangelfullGtIkkeFunnet
-import domain.kontorForGt.KontorForGtFinnesIkke
-import domain.kontorForGt.KontorForGtNrFantDefaultKontor
+import domain.kontorForGt.KontorForGtFantIkkeKontor
+import domain.kontorForGt.KontorForGtFantDefaultKontor
 import domain.kontorForGt.KontorForGtFeil
 import domain.kontorForGt.KontorForGtNrFantFallbackKontorForManglendeGt
 import org.junit.jupiter.api.Test
@@ -41,7 +41,7 @@ class GTNorgServiceTest {
             HarSkjerming(false)
         )
 
-        kontorForGtResult shouldBe KontorForGtFinnesIkke(
+        kontorForGtResult shouldBe KontorForGtFantIkkeKontor(
             HarSkjerming(false),
             HarStrengtFortroligAdresse(false),
             gtForBruker
@@ -74,7 +74,7 @@ class GTNorgServiceTest {
         val gtForBruker = GtForBrukerIkkeFunnet("Fant ikke")
         val gtService = GTNorgService(
             { gtForBruker },
-            { a, b, c -> KontorForGtFinnesIkke(skjerming, adresse, gtForBruker) },
+            { a, b, c -> KontorForGtFantIkkeKontor(skjerming, adresse, gtForBruker) },
             { a, b, c -> KontorForBrukerMedMangelfullGtFunnet(fallbackKontor, gtForBruker) }
         )
 
@@ -90,7 +90,7 @@ class GTNorgServiceTest {
         val gtForBruker = GtForBrukerIkkeFunnet("Fant ikke")
         val gtService = GTNorgService(
             { gtForBruker },
-            { a, b, c -> KontorForGtFinnesIkke(skjerming, adresse, gtForBruker) },
+            { a, b, c -> KontorForGtFantIkkeKontor(skjerming, adresse, gtForBruker) },
             { a, b, c -> KontorForBrukerMedMangelfullGtFeil("Feil i fallback gt oppslag") }
         )
 
@@ -154,7 +154,7 @@ class GTNorgServiceTest {
         val kontor = KontorId("1234")
         val gtService = GTNorgService(
             { GtNummerForBrukerFunnet(gtNr) },
-            { a, b, c -> KontorForGtNrFantDefaultKontor(kontor, c, b, gtNr) },
+            { a, b, c -> KontorForGtFantDefaultKontor(kontor, c, b, gtNr) },
             { a, b, c -> throw IllegalStateException("Ikke implementert") },
         )
 
@@ -164,7 +164,7 @@ class GTNorgServiceTest {
             HarSkjerming(false)
         )
 
-        kontorForGtResult shouldBe KontorForGtNrFantDefaultKontor(
+        kontorForGtResult shouldBe KontorForGtFantDefaultKontor(
             kontor,
             HarSkjerming(false),
             HarStrengtFortroligAdresse(false),

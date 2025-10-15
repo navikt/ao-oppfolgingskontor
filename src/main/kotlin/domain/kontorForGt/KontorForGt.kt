@@ -12,7 +12,6 @@ import no.nav.domain.KontorId
 import no.nav.domain.Sensitivitet
 import no.nav.http.client.GeografiskTilknytningNr
 
-
 /**
  * Når vi får gt med bare land fra PDL propagerer dette videre igjennom kontor-oppslag tjenesten
  */
@@ -27,18 +26,15 @@ sealed class KontorForGtSuccess(
     abstract fun gt(): GtForBrukerSuccess
 }
 
-data class KontorForGtFinnesIkke(
+data class KontorForGtFantIkkeKontor(
     override val skjerming: HarSkjerming,
     override val strengtFortroligAdresse: HarStrengtFortroligAdresse,
-    val gtForBruker: GtSomKreverFallback
+    val gtForBruker: GtForBrukerSuccess
 ): KontorForGtSuccess(skjerming, strengtFortroligAdresse) {
-    override fun gt(): GtForBrukerSuccess = when (gtForBruker) {
-        is GtForBrukerIkkeFunnet -> gtForBruker
-        is GtLandForBrukerFunnet -> gtForBruker
-    }
+    override fun gt(): GtForBrukerSuccess = gtForBruker
 }
 
-sealed class KontorForGtNrFantKontor(
+sealed class KontorForGtFantKontor(
     open val kontorId: KontorId,
     override val skjerming: HarSkjerming,
     override val strengtFortroligAdresse: HarStrengtFortroligAdresse
@@ -47,12 +43,12 @@ sealed class KontorForGtNrFantKontor(
 /**
  * Fant match på /navkontor/{geografiskOmråde}
  * */
-data class KontorForGtNrFantDefaultKontor(
+data class KontorForGtFantDefaultKontor(
     override val kontorId: KontorId,
     override val skjerming: HarSkjerming,
     override val strengtFortroligAdresse: HarStrengtFortroligAdresse,
     val geografiskTilknytningNr: GeografiskTilknytningNr
-) : KontorForGtNrFantKontor(kontorId, skjerming, strengtFortroligAdresse) {
+) : KontorForGtFantKontor(kontorId, skjerming, strengtFortroligAdresse) {
     override fun gt(): GtForBrukerFunnet = GtNummerForBrukerFunnet(geografiskTilknytningNr)
 }
 
@@ -64,7 +60,7 @@ data class KontorForGtNrFantFallbackKontorForManglendeGt(
     override val skjerming: HarSkjerming,
     override val strengtFortroligAdresse: HarStrengtFortroligAdresse,
     val gtForBruker: GtSomKreverFallback
-) : KontorForGtNrFantKontor(kontorId, skjerming, strengtFortroligAdresse) {
+) : KontorForGtFantKontor(kontorId, skjerming, strengtFortroligAdresse) {
     override fun gt(): GtForBrukerSuccess = when (gtForBruker) {
         is GtForBrukerIkkeFunnet -> gtForBruker
         is GtLandForBrukerFunnet -> gtForBruker
@@ -72,16 +68,3 @@ data class KontorForGtNrFantFallbackKontorForManglendeGt(
 }
 
 data class KontorForGtFeil(val melding: String) : KontorForGtResultat()
-
-/**
- * Noen brukere mangler GT, andre ganger gir ikke GT noen kontor i NORG (http 404)
- * Når det skjer prøver vi arbeidsfordelings tik NORG endepunktet istedet
- */
-sealed class KontorForBrukerMedMangelfullGtResultat
-data class KontorForBrukerMedMangelfullGtFunnet(val kontorId: KontorId, val gtForBruker: GtSomKreverFallback) :
-    KontorForBrukerMedMangelfullGtResultat()
-
-data class KontorForBrukerMedMangelfullGtIkkeFunnet(val gtForBruker: GtSomKreverFallback) :
-    KontorForBrukerMedMangelfullGtResultat()
-
-data class KontorForBrukerMedMangelfullGtFeil(val message: String) : KontorForBrukerMedMangelfullGtResultat()

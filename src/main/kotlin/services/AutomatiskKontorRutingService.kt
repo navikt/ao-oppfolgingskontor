@@ -32,10 +32,10 @@ import no.nav.http.client.AlderResult
 import domain.gtForBruker.GtForBrukerSuccess
 import domain.gtForBruker.GtLandForBrukerFunnet
 import domain.kontorForGt.KontorForGtFeil
-import domain.kontorForGt.KontorForGtFinnesIkke
-import domain.kontorForGt.KontorForGtNrFantDefaultKontor
+import domain.kontorForGt.KontorForGtFantIkkeKontor
+import domain.kontorForGt.KontorForGtFantDefaultKontor
 import domain.kontorForGt.KontorForGtNrFantFallbackKontorForManglendeGt
-import domain.kontorForGt.KontorForGtNrFantKontor
+import domain.kontorForGt.KontorForGtFantKontor
 import domain.kontorForGt.KontorForGtResultat
 import domain.kontorForGt.KontorForGtSuccess
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
@@ -147,8 +147,8 @@ class AutomatiskKontorRutingService(
             }
             val gtKontorResultat = gtKontorProvider(fnr, harStrengtFortroligAdresse, erSkjermet)
             val kontorTilordning = when (gtKontorResultat) {
-                is KontorForGtFinnesIkke -> hentTilordningUtenGT(fnr, alder, profilering, oppfolgingsperiodeId, gtKontorResultat)
-                is KontorForGtNrFantKontor -> hentTilordning(fnr, gtKontorResultat, alder, profilering, oppfolgingsperiodeId)
+                is KontorForGtFantIkkeKontor -> hentTilordningUtenGtKontor(fnr, alder, profilering, oppfolgingsperiodeId, gtKontorResultat)
+                is KontorForGtFantKontor -> hentTilordning(fnr, gtKontorResultat, alder, profilering, oppfolgingsperiodeId)
                 is KontorForGtFeil -> return TilordningFeil("Feil ved henting av gt-kontor: ${gtKontorResultat.melding}")
             }
                 .let {
@@ -195,12 +195,12 @@ class AutomatiskKontorRutingService(
                 alder in 31..59
     }
 
-    private fun hentTilordningUtenGT(
+    private fun hentTilordningUtenGtKontor(
         fnr: IdentSomKanLagres,
         alder: Int,
         profilering: Profilering,
         oppfolgingsperiodeId: OppfolgingsperiodeId,
-        gtResultat: KontorForGtFinnesIkke
+        gtResultat: KontorForGtFantIkkeKontor
     ): AOKontorEndret {
         return when {
             skalTilNasjonalOppfølgingsEnhet(gtResultat.sensitivitet(), profilering, alder) -> OppfolgingsperiodeStartetNoeTilordning(fnr, oppfolgingsperiodeId)
@@ -224,7 +224,7 @@ class AutomatiskKontorRutingService(
 
     private fun hentTilordning(
         fnr: IdentSomKanLagres,
-        gtKontor: KontorForGtNrFantKontor,
+        gtKontor: KontorForGtFantKontor,
         alder: Int,
         profilering: Profilering,
         oppfolgingsperiodeId: OppfolgingsperiodeId,
@@ -297,8 +297,8 @@ class AutomatiskKontorRutingService(
             return when (gtKontorResultat) {
                 is KontorForGtSuccess -> {
                     val kontorId = when (gtKontorResultat) {
-                        is KontorForGtFinnesIkke -> INGEN_GT_KONTOR_FALLBACK
-                        is KontorForGtNrFantDefaultKontor -> gtKontorResultat.kontorId
+                        is KontorForGtFantIkkeKontor -> INGEN_GT_KONTOR_FALLBACK
+                        is KontorForGtFantDefaultKontor -> gtKontorResultat.kontorId
                         is KontorForGtNrFantFallbackKontorForManglendeGt -> gtKontorResultat.kontorId
                     }
                     val gtKontorEndring = GTKontorEndret.endretPgaBostedsadresseEndret(
@@ -463,14 +463,14 @@ class AutomatiskKontorRutingService(
     fun getGTKontorOrFallback(gtKontorResultat: KontorForGtSuccess): KontorId {
         return when (gtKontorResultat) {
             // Enten default-kontor eller fallback-kontor (arbeidsfordeling/bestmatch)
-            is KontorForGtNrFantKontor -> {
+            is KontorForGtFantKontor -> {
                 if (gtKontorResultat.sensitivitet().strengtFortroligAdresse.value) {
                     VIKAFOSSEN
                 } else {
                     gtKontorResultat.kontorId
                 }
             }
-            is KontorForGtFinnesIkke -> {
+            is KontorForGtFantIkkeKontor -> {
                 if (gtKontorResultat.sensitivitet().strengtFortroligAdresse.value) {
                     VIKAFOSSEN
                 } else if (gtKontorResultat.sensitivitet().skjermet.value) {
@@ -521,9 +521,9 @@ fun KontorForGtSuccess.toGtKontorEndret(ident: IdentSomKanLagres, oppfolgingsper
     }
 
     val kontorId = when (this) {
-        is KontorForGtNrFantDefaultKontor -> this.kontorId
+        is KontorForGtFantDefaultKontor -> this.kontorId
         is KontorForGtNrFantFallbackKontorForManglendeGt -> this.kontorId
-        is KontorForGtFinnesIkke -> null
+        is KontorForGtFantIkkeKontor -> null
     }
 
     return when {

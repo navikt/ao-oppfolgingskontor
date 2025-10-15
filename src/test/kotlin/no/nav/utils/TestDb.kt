@@ -21,7 +21,7 @@ import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.http.client.GeografiskTilknytningKommuneNr
-import domain.kontorForGt.KontorForGtNrFantDefaultKontor
+import domain.kontorForGt.KontorForGtFantDefaultKontor
 import no.nav.services.KontorTilordningService
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.batchInsert
@@ -97,7 +97,7 @@ fun gittIdentMedKontor(ident: IdentSomKanLagres, kontorId: KontorId) {
                 kontorId,
                 OppfolgingsperiodeId(UUID.randomUUID())
             ),
-            kontorForGt = KontorForGtNrFantDefaultKontor(
+            kontorForGt = KontorForGtFantDefaultKontor(
                 kontorId,
                 ingenSensitivitet.skjermet,
                 ingenSensitivitet.strengtFortroligAdresse,
