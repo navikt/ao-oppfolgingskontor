@@ -23,22 +23,35 @@ class GTNorgService(
 ) {
     val log = LoggerFactory.getLogger(this::class.java)
 
-    suspend fun hentGtKontorForBruker(fnr: Ident, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming): KontorForGtResultat {
+    suspend fun hentGtKontorForBruker(
+        fnr: Ident,
+        strengtFortroligAdresse: HarStrengtFortroligAdresse,
+        skjermet: HarSkjerming
+    ): KontorForGtResultat {
         try {
             val gtForBruker = gtForBrukerProvider(fnr)
             return when (gtForBruker) {
                 is GtLandForBrukerFunnet,
                 is GtForBrukerIkkeFunnet -> {
-                    when (val fallbackResult = kontorForBrukerMedMangelfullGt(gtForBruker, strengtFortroligAdresse, skjermet)) {
+                    when (val fallbackResult =
+                        kontorForBrukerMedMangelfullGt(gtForBruker, strengtFortroligAdresse, skjermet)) {
                         is KontorForBrukerMedMangelfullGtFunnet -> KontorForGtNrFantFallbackKontorForManglendeGt(
                             fallbackResult.kontorId,
                             skjermet,
                             strengtFortroligAdresse,
-                            gtForBruker)
-                        is KontorForBrukerMedMangelfullGtIkkeFunnet -> KontorForGtFinnesIkke(skjermet, strengtFortroligAdresse, gtForBruker)
+                            gtForBruker
+                        )
+
+                        is KontorForBrukerMedMangelfullGtIkkeFunnet -> KontorForGtFinnesIkke(
+                            skjermet,
+                            strengtFortroligAdresse,
+                            gtForBruker
+                        )
+
                         is KontorForBrukerMedMangelfullGtFeil -> KontorForGtFeil(fallbackResult.message)
                     }
                 }
+
                 is GtForBrukerOppslagFeil -> KontorForGtFeil(gtForBruker.message)
                 is GtNummerForBrukerFunnet -> kontorForGtProvider(gtForBruker.gtNr, strengtFortroligAdresse, skjermet)
             }
@@ -48,14 +61,16 @@ class GTNorgService(
         }
     }
 }
+
 /**
-* Når vi får gt med bare land fra PDL propagerer dette videre igjennom kontor-oppslag tjenesten
-*/
+ * Når vi får gt med bare land fra PDL propagerer dette videre igjennom kontor-oppslag tjenesten
+ */
 sealed class KontorForGtResultat
 
 sealed class KontorForGtSuccess(
     open val skjerming: HarSkjerming,
-    open val strengtFortroligAdresse: HarStrengtFortroligAdresse) : KontorForGtResultat() {
+    open val strengtFortroligAdresse: HarStrengtFortroligAdresse
+) : KontorForGtResultat() {
     fun erStrengtFortrolig(): Boolean = strengtFortroligAdresse.value
     fun sensitivitet() = Sensitivitet(this.skjerming, this.strengtFortroligAdresse)
     abstract fun gt(): GtForBrukerSuccess
@@ -76,8 +91,8 @@ sealed class KontorForGtNrFantKontor(
 ) : KontorForGtSuccess(skjerming, strengtFortroligAdresse)
 
 /**
-* Fant match på /navkontor/{geografiskOmråde}
-* */
+ * Fant match på /navkontor/{geografiskOmråde}
+ * */
 data class KontorForGtNrFantDefaultKontor(
     override val kontorId: KontorId,
     override val skjerming: HarSkjerming,
@@ -95,7 +110,7 @@ data class KontorForGtNrFantFallbackKontorForManglendeGt(
     override val skjerming: HarSkjerming,
     override val strengtFortroligAdresse: HarStrengtFortroligAdresse,
     val gtForBruker: GtSomKreverFallback
-): KontorForGtNrFantKontor(kontorId, skjerming, strengtFortroligAdresse) {
+) : KontorForGtNrFantKontor(kontorId, skjerming, strengtFortroligAdresse) {
     override fun gt(): GtForBrukerSuccess = when (gtForBruker) {
         is GtForBrukerIkkeFunnet -> gtForBruker
         is GtLandForBrukerFunnet -> gtForBruker
@@ -105,10 +120,14 @@ data class KontorForGtNrFantFallbackKontorForManglendeGt(
 data class KontorForGtFeil(val melding: String) : KontorForGtResultat()
 
 /**
-* Noen brukere mangler GT, andre ganger gir ikke GT noen kontor i NORG (http 404)
+ * Noen brukere mangler GT, andre ganger gir ikke GT noen kontor i NORG (http 404)
  * Når det skjer prøver vi arbeidsfordelings tik NORG endepunktet istedet
  */
 sealed class KontorForBrukerMedMangelfullGtResultat
-data class KontorForBrukerMedMangelfullGtFunnet(val kontorId: KontorId, val gtForBruker: GtSomKreverFallback): KontorForBrukerMedMangelfullGtResultat()
-data class KontorForBrukerMedMangelfullGtIkkeFunnet(val gtForBruker: GtSomKreverFallback): KontorForBrukerMedMangelfullGtResultat()
-data class KontorForBrukerMedMangelfullGtFeil(val message: String): KontorForBrukerMedMangelfullGtResultat()
+data class KontorForBrukerMedMangelfullGtFunnet(val kontorId: KontorId, val gtForBruker: GtSomKreverFallback) :
+    KontorForBrukerMedMangelfullGtResultat()
+
+data class KontorForBrukerMedMangelfullGtIkkeFunnet(val gtForBruker: GtSomKreverFallback) :
+    KontorForBrukerMedMangelfullGtResultat()
+
+data class KontorForBrukerMedMangelfullGtFeil(val message: String) : KontorForBrukerMedMangelfullGtResultat()
