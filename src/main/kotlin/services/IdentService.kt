@@ -58,20 +58,11 @@ class IdentService(
     /* Tenkt kalt ved endring på aktor-v2 topic (endring i identer) */
     suspend fun håndterEndringPåIdenter(ident: Ident): IdenterResult = hentAlleIdenterOgOppdaterMapping(ident)
 
-    suspend fun håndterEndringPåIdenter(aktorId: AktorId, nyeIdenter: List<OppdatertIdent>): Int {
+    fun håndterEndringPåIdenter(aktorId: AktorId, nyeIdenter: List<OppdatertIdent>): Int {
         val eksisterendeIdenter = hentIdentMappinger(aktorId, includeHistorisk = true)
-            .let { eksisterende ->
-                eksisterende.ifEmpty {
-                    val pdlIdenter = hentAlleIdenterSynkrontFraPdl(aktorId.value)
-                    when (pdlIdenter) {
-                        is IdenterFunnet -> hentEksisterendeIdenter(pdlIdenter.identer)
-                        is IdenterIkkeFunnet -> emptyList()
-                        is IdenterOppslagFeil -> throw Exception("Klarte ikke hente identer fra PDL: ${pdlIdenter.message}")
-                    }
-                }
-            }
 
-        if (eksisterendeIdenter.isEmpty()) return 0
+        val identKanIgnoreres = eksisterendeIdenter.isEmpty()
+        if (identKanIgnoreres) return 0
 
         val endringer = eksisterendeIdenter.finnEndringer(nyeIdenter)
         return transaction {
