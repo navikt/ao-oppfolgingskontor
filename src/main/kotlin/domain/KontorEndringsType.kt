@@ -2,9 +2,10 @@ package no.nav.domain
 
 enum class KontorEndringsType {
     AutomatiskRutetTilNOE,
-    AutomatiskRutetTilLokalkontor,
-    AutomatiskRutetTilLokalkontorFallback,
+    AutomatiskNorgRuting, // navkontor/{{geografisk-tilhørighet}}
+    AutomatiskNorgRutingFallback, // /arbeidsfordeling/bestmatch
     AutomatiskRutetTilNavItManglerGt,
+    AutomatiskRutetTilNavItGtErLand,
     FlyttetAvVeileder,
     FikkSkjerming,
     MistetSkjerming,
@@ -18,5 +19,5 @@ enum class KontorEndringsType {
     EndretBostedsadresse,
     GTKontorVedOppfolgingStart,
     MIGRERING,
-    ArenaMigrering
+    ArenaMigrering,
 }

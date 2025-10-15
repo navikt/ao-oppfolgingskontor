@@ -19,6 +19,7 @@ import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.events.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
+import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.IdentFunnet
 import no.nav.http.client.IdenterFunnet
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
@@ -27,6 +28,9 @@ import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
 import no.nav.services.AktivOppfolgingsperiode
+import no.nav.services.KontorForBrukerMedMangelfullGtFunnet
+import no.nav.services.KontorForGtNrFantDefaultKontor
+import no.nav.services.KontorForGtNrFantFallbackKontorForManglendeGt
 import no.nav.services.KontorTilordningService
 import no.nav.services.NotUnderOppfolging
 import no.nav.utils.flywayMigrationInTest
@@ -79,7 +83,13 @@ class OppfolgingshendelseProcessorTest {
     fun Bruker.gittAOKontorTilordning(kontorId: KontorId) {
         KontorTilordningService.tilordneKontor(
             OppfolgingsPeriodeStartetLokalKontorTilordning(
-                KontorTilordning(this.ident, kontorId, this.oppfolgingsperiodeId), ingenSensitivitet
+                KontorTilordning(this.ident, kontorId, this.oppfolgingsperiodeId),
+                KontorForGtNrFantDefaultKontor(
+                    kontorId,
+                    ingenSensitivitet.skjermet,
+                    ingenSensitivitet.strengtFortroligAdresse,
+                    geografiskTilknytningNr = GeografiskTilknytningBydelNr("313131")
+                )
             )
         )
     }

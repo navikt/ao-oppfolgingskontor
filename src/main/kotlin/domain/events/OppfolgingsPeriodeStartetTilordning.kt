@@ -10,21 +10,29 @@ import no.nav.domain.KontorType
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.Sensitivitet
 import no.nav.domain.System
+import no.nav.http.client.GtForBrukerIkkeFunnet
+import no.nav.http.client.GtLandForBrukerFunnet
+import no.nav.http.client.GtSomKreverFallback
 import no.nav.http.logger
-import no.nav.services.KontorForGtFantLandEllerKontor
+import no.nav.services.KontorForGtFinnesIkke
+import no.nav.services.KontorForGtNrFantDefaultKontor
+import no.nav.services.KontorForGtNrFantFallbackKontorForManglendeGt
+import no.nav.services.KontorForGtNrFantKontor
 import no.nav.services.KontorForGtSuccess
 
 enum class RutingResultat {
     RutetTilNOE,
     FallbackIngenGTFunnet,
-    RutetTilLokalkontorFallback,
-    RutetTilLokalkontor;
+    FallbackLandGTFunnet,
+    RutetViaNorgFallback,
+    RutetViaNorg;
     fun toKontorEndringsType(): KontorEndringsType {
         return when (this) {
             RutetTilNOE -> KontorEndringsType.AutomatiskRutetTilNOE
-            RutetTilLokalkontor -> KontorEndringsType.AutomatiskRutetTilLokalkontor
-            RutetTilLokalkontorFallback -> KontorEndringsType.AutomatiskRutetTilLokalkontorFallback
+            RutetViaNorg -> KontorEndringsType.AutomatiskNorgRuting
+            RutetViaNorgFallback -> KontorEndringsType.AutomatiskNorgRutingFallback
             FallbackIngenGTFunnet -> KontorEndringsType.AutomatiskRutetTilNavItManglerGt
+            FallbackLandGTFunnet -> KontorEndringsType.AutomatiskRutetTilNavItGtErLand
         }
     }
 }
@@ -52,9 +60,12 @@ data class OppfolgingsperiodeStartetNoeTilordning(
 
 data class OppfolgingsPeriodeStartetLokalKontorTilordning(
     val kontorTilordning: KontorTilordning,
-    val sensitivitet: Sensitivitet
+    val kontorForGt: KontorForGtNrFantKontor,
 ): AOKontorEndret(kontorTilordning, System()) {
-    val rutingResultat: RutingResultat = RutingResultat.RutetTilLokalkontor
+    val rutingResultat: RutingResultat = when (kontorForGt) {
+        is KontorForGtNrFantDefaultKontor -> RutingResultat.RutetViaNorg
+        is KontorForGtNrFantFallbackKontorForManglendeGt -> RutingResultat.RutetViaNorgFallback
+    }
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(
             kontorId = tilordning.kontorId,
@@ -73,8 +84,20 @@ data class OppfolgingsPeriodeStartetLokalKontorTilordning(
     }
 }
 
-data class OppfolgingsPeriodeStartetFallbackKontorTilordning(val ident: IdentSomKanLagres, val oppfolgingsperiodeId: OppfolgingsperiodeId, val sensitivitet: Sensitivitet) : AOKontorEndret(KontorTilordning(ident, INGEN_GT_KONTOR_FALLBACK, oppfolgingsperiodeId), System()) {
-    val rutingResultat: RutingResultat = RutingResultat.RutetTilLokalkontorFallback
+data class OppfolgingsPeriodeStartetFallbackKontorTilordning(
+    val ident: IdentSomKanLagres,
+    val oppfolgingsperiodeId: OppfolgingsperiodeId,
+    val sensitivitet: Sensitivitet,
+    val gt: KontorForGtFinnesIkke
+)
+    : AOKontorEndret(KontorTilordning(
+    ident,
+    INGEN_GT_KONTOR_FALLBACK,
+    oppfolgingsperiodeId), System()) {
+    val rutingResultat: RutingResultat = when (gt.gtForBruker as GtSomKreverFallback) {
+        is GtForBrukerIkkeFunnet -> RutingResultat.FallbackIngenGTFunnet
+        is  GtLandForBrukerFunnet -> RutingResultat.FallbackLandGTFunnet
+    }
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(
             kontorId = tilordning.kontorId,
@@ -99,11 +122,11 @@ data class OppfolgingsPeriodeStartetSensitivKontorTilordning(
     val sensitivitet: Sensitivitet,
     val gtKontorResultat: KontorForGtSuccess): AOKontorEndret(kontorTilordning, System()) {
 
-    val rutingResultat: RutingResultat = RutingResultat .RutetTilLokalkontor
+    val rutingResultat: RutingResultat = RutingResultat.RutetViaNorg
 
     constructor(
         kontorTilordning: KontorTilordning,
-        gtKontorResultat: KontorForGtFantLandEllerKontor
+        gtKontorResultat: KontorForGtNrFantKontor
     ): this(
         kontorTilordning,
         gtKontorResultat.sensitivitet(),
