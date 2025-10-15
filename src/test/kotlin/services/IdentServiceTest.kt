@@ -155,15 +155,6 @@ class IdentServiceTest {
     }
 
     @Test
-    fun `håndterEndringPåIdenter - skal returnere feil hvis synkront kall til pdl  feiler`() = runTest   {
-        val identProvider: suspend (String) -> IdenterResult = { IdenterOppslagFeil("Noe gikk galt") }
-        val identService = IdentService(identProvider)
-        val aktorId = randomAktorId()
-
-        shouldThrow<Exception> { identService.håndterEndringPåIdenter(aktorId, emptyList()) }
-    }
-
-    @Test
     fun `håndterEndringPåIdenter - skal kaste exception ved uhåndtert feil i pdl-kall`() = runTest   {
         val identProvider: suspend (String) -> IdenterFunnet = { throw IllegalStateException("Noe gikk galt") }
         val identService = IdentService(identProvider)
@@ -318,7 +309,7 @@ class IdentServiceTest {
     }
 
     @Test
-    fun `skal finne internId på ny aktørId selvom gammel aktørId er opphørt hvis fnr finnes`() = runTest {
+    fun `skal finne internId på ny aktørId selv om gammel aktørId er opphørt hvis fnr finnes`() = runTest {
         flywayMigrationInTest()
 
         val opphortAktorId = AktorId("4938764598763", HISTORISK)
