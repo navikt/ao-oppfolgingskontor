@@ -7,7 +7,6 @@ import no.nav.db.Fnr
 import no.nav.db.Ident.HistoriskStatus.AKTIV
 import no.nav.db.Ident.HistoriskStatus.UKJENT
 import no.nav.db.IdentSomKanLagres
-import no.nav.domain.GT_VAR_LAND_FALLBACK
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.INGEN_GT_KONTOR_FALLBACK

@@ -460,10 +460,6 @@ class AutomatiskKontorRutingService(
             is KontorForGtNrFantKontor -> {
                 if (gtKontorResultat.sensitivitet().strengtFortroligAdresse.value) {
                     VIKAFOSSEN
-                } else if (gtKontorResultat.sensitivitet().skjermet.value) {
-                    throw IllegalStateException(
-                        "Skjermede brukere uten geografisk tilknytning eller med land som GT kan ikke tilordnes kontor"
-                    )
                 } else {
                     gtKontorResultat.kontorId
                 }
