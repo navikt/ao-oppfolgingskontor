@@ -229,11 +229,13 @@ class AutomatiskKontorRutingService(
                 if (gtKontor.erStrengtFortrolig()) {
                     OppfolgingsPeriodeStartetSensitivKontorTilordning(
                         KontorTilordning(fnr, VIKAFOSSEN, oppfolgingsperiodeId),
+                        gtKontor.sensitivitet(),
                         gtKontor
                     )
                 } else {
                     OppfolgingsPeriodeStartetSensitivKontorTilordning(
                         KontorTilordning(fnr, gtKontor.kontorId, oppfolgingsperiodeId),
+                        gtKontor.sensitivitet(),
                         gtKontor
                     )
                 }

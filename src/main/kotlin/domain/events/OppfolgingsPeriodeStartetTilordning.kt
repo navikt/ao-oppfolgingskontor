@@ -117,16 +117,7 @@ data class OppfolgingsPeriodeStartetSensitivKontorTilordning(
     val sensitivitet: Sensitivitet,
     val gtKontorResultat: KontorForGtSuccess): AOKontorEndret(kontorTilordning, System()) {
 
-    val rutingResultat: RutingResultat = RutingResultat .RutetTilLokalkontor
-
-    constructor(
-        kontorTilordning: KontorTilordning,
-        gtKontorResultat: KontorForGtNrFantKontor
-    ): this(
-        kontorTilordning,
-        gtKontorResultat.sensitivitet(),
-        gtKontorResultat
-    )
+    val rutingResultat: RutingResultat = RutingResultat.RutetTilLokalkontor
 
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(
