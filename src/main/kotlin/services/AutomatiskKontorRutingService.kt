@@ -192,7 +192,7 @@ class AutomatiskKontorRutingService(
         return !sensitivitet.erSensitiv() &&
                 profilering is ProfileringFunnet &&
                 profilering.profilering == ProfileringsResultat.ANTATT_GODE_MULIGHETER &&
-                alder in 31..59
+                alder in 30..66
     }
 
     private fun hentTilordningUtenGtKontor(

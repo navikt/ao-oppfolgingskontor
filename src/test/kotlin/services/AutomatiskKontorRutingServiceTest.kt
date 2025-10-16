@@ -959,7 +959,7 @@ val brukerMedArenaKontorIStartOppfolging = Bruker(
 )
 val eldreBrukerMedGodeMuligheter = Bruker(
     IdentFunnet(Fnr("22345678901", AKTIV)),
-    AlderFunnet(31),
+    AlderFunnet(30),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
     KontorForGtFantDefaultKontor(
         KontorId("1234"),
