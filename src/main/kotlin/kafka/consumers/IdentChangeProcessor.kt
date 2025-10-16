@@ -8,13 +8,13 @@ import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
 import no.nav.person.pdl.aktor.v2.Aktor
+import no.nav.person.pdl.aktor.v2.Identifikator
 import org.apache.kafka.streams.processor.api.Record
 import org.slf4j.LoggerFactory
 import services.IdentService
 
 class IdentChangeProcessor(
-    val identService: IdentService,
-    val skipPersonIkkeFunnet: Boolean = false,
+    val identService: IdentService
 ) {
     val log = LoggerFactory.getLogger(IdentChangeProcessor::class.java)
 
@@ -27,30 +27,28 @@ class IdentChangeProcessor(
                         identService.markerAktorIdSomSlettet(aktorId)
                         Commit()
                     } else {
-                        val nyeIdenter = payload.identifikatorer
-                            .map { OppdatertIdent(
-                                Ident.validateOrThrow(
-                                    it.idnummer,
-                                    if (!it.gjeldende) Ident.HistoriskStatus.HISTORISK else Ident.HistoriskStatus.AKTIV
-                                ),
-                                !it.gjeldende)
-                            }
+                        val nyeIdenter = payload.identifikatorer.map { it.toOppdatertIdent() }
                         identService.håndterEndringPåIdenter(aktorId, nyeIdenter)
                         Commit<String, Aktor>()
                     }
                 }
                 .getOrElse { error ->
-                    if (skipPersonIkkeFunnet && (error.message?.endsWith("Fant ikke person: not_found") ?: false)) {
-                        log.info("Fant ikke person i dev - hopper over melding")
-                        Skip<String, Aktor>()
-                    } else {
-                        val message = "Kunne ikke behandle endring i identer: ${error.message}"
-                        log.error(message, error)
-                        Retry(message)
-                    }
+                    val message = "Kunne ikke behandle endring i identer: ${error.message}"
+                    log.error(message, error)
+                    Retry(message)
                 }
         }
     }
+}
+
+fun Identifikator.toOppdatertIdent(): OppdatertIdent {
+    return OppdatertIdent(
+        Ident.validateOrThrow(
+        this.idnummer,
+        if (!this.gjeldende) Ident.HistoriskStatus.HISTORISK else Ident.HistoriskStatus.AKTIV
+        ),
+    !this.gjeldende
+    )
 }
 
 data class OppdatertIdent(

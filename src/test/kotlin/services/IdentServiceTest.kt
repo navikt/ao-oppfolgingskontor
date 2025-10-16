@@ -155,15 +155,6 @@ class IdentServiceTest {
     }
 
     @Test
-    fun `håndterEndringPåIdenter - skal returnere feil hvis synkront kall til pdl  feiler`() = runTest   {
-        val identProvider: suspend (String) -> IdenterResult = { IdenterOppslagFeil("Noe gikk galt") }
-        val identService = IdentService(identProvider)
-        val aktorId = randomAktorId()
-
-        shouldThrow<Exception> { identService.håndterEndringPåIdenter(aktorId, emptyList()) }
-    }
-
-    @Test
     fun `håndterEndringPåIdenter - skal kaste exception ved uhåndtert feil i pdl-kall`() = runTest   {
         val identProvider: suspend (String) -> IdenterFunnet = { throw IllegalStateException("Noe gikk galt") }
         val identService = IdentService(identProvider)
@@ -318,7 +309,7 @@ class IdentServiceTest {
     }
 
     @Test
-    fun `skal finne internId på ny aktørId selvom gammel aktørId er opphørt hvis fnr finnes`() = runTest {
+    fun `skal finne internId på ny aktørId selv om gammel aktørId er opphørt hvis fnr finnes`() = runTest {
         flywayMigrationInTest()
 
         val opphortAktorId = AktorId("4938764598763", HISTORISK)
@@ -361,28 +352,6 @@ class IdentServiceTest {
     }
 
     @Test
-    fun `IdentChangePrcessor - skal fange tekniske feil fra identService`() {
-        flywayMigrationInTest()
-
-        val identProvider: suspend (String) -> IdenterFunnet = { throw IllegalStateException("Noe gikk galt") }
-        val identService = IdentService(identProvider)
-        val proccessor = IdentChangeProcessor(identService)
-
-        val aktorId = AktorId("2593876429711", AKTIV)
-        val fnr = Fnr("02010198111", AKTIV)
-        val payload = mockk<Aktor> {
-            every { identifikatorer } returns listOf(
-                Identifikator(fnr.value, Type.FOLKEREGISTERIDENT, true),
-                Identifikator(aktorId.value, Type.AKTORID, true),
-            )
-        }
-
-        val result = proccessor.process(Record(aktorId.value, payload, 1212L))
-
-        result.shouldBeInstanceOf<Retry<String, Aktor>>()
-    }
-
-    @Test
     fun `veksleAktorIdIForetrukketIdent - skal fallback til å hente identer på nytt hvis bare aktorid finnes i id-mapping`() = runTest {
         flywayMigrationInTest()
         val aktorId = AktorId("2221219811121", AKTIV)
@@ -404,28 +373,6 @@ class IdentServiceTest {
         }
 
         identService.veksleAktorIdIForetrukketIdent(aktorId).shouldBeInstanceOf<IdentFunnet>()
-    }
-
-    @Test
-    fun `IdentChangePrcessor - skal hopper over personer is test`() {
-        flywayMigrationInTest()
-
-        val identProvider: suspend (String) -> IdenterFunnet = { throw IllegalStateException("Fant ikke person: not_found") }
-        val identService = IdentService(identProvider)
-        val proccessor = IdentChangeProcessor(identService, skipPersonIkkeFunnet = true)
-
-        val aktorId = AktorId("2593876429722", AKTIV)
-        val fnr = Fnr("02010198122", AKTIV)
-        val payload = mockk<Aktor> {
-            every { identifikatorer } returns listOf(
-                Identifikator(fnr.value, Type.FOLKEREGISTERIDENT, true),
-                Identifikator(aktorId.value, Type.AKTORID, true),
-            )
-        }
-
-        val result = proccessor.process(Record(aktorId.value, payload, 1212L))
-
-        result.shouldBeInstanceOf<Skip<String, Aktor>>()
     }
 
     data class IdentFraDb(

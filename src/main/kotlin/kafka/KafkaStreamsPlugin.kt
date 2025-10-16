@@ -17,7 +17,6 @@ import kafka.consumers.OppfolgingsHendelseProcessor
 import java.time.Duration
 import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
 import no.nav.db.AktorId
-import no.nav.db.entity.ArenaKontorEntity
 import no.nav.http.client.IdentResult
 import no.nav.isProduction
 import no.nav.kafka.config.kafkaStreamsProps
@@ -103,7 +102,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     )
     val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, fnrProvider, isProduction)
     val skjermingProcessor = SkjermingProcessor(automatiskKontorRutingService)
-    val identEndringProcessor = IdentChangeProcessor(identService, skipPersonIkkeFunnet = !isProduction)
+    val identEndringProcessor = IdentChangeProcessor(identService)
     val oppfolgingsHendelseProcessor = OppfolgingsHendelseProcessor(oppfolgingsperiodeService)
 
 
