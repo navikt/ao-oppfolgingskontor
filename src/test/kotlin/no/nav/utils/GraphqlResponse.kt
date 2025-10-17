@@ -95,9 +95,9 @@ suspend fun HttpClient.kontorHistorikk(fnr: Fnr, bearerToken: String? = null): H
         setBody(kontorHistorikkQuery(fnr))
     }
 }
-suspend fun HttpClient.alleKontor(bearerToken: String? = null): HttpResponse {
+suspend fun HttpClient.alleKontor(ident: Ident?, bearerToken: String? = null): HttpResponse {
     return graphqlRequest(bearerToken) {
-        setBody(alleKontorQuery())
+        setBody(alleKontorQuery(ident))
     }
 }
 
@@ -126,9 +126,9 @@ fun alleKontorTilhorigheterQuery(ident: Ident): String {
             }
         """.replace("\n", "").trimIndent())
 }
-private fun alleKontorQuery(): String {
-    return graphqlPayload(null, """
-            { alleKontor { kontorId , kontorNavn } }
+private fun alleKontorQuery(ident: Ident?): String {
+    return graphqlPayload(ident, """
+           query alleKontorQuery($identArg: String) { alleKontor(ident: $identArg) { kontorId , kontorNavn } }
         """.trimIndent())
 }
 private fun graphqlPayload(ident: Ident?, query: String): String {

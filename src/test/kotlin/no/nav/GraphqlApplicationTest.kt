@@ -113,7 +113,7 @@ class GraphqlApplicationTest {
             gittBrukerMedKontorIArena(fnr, kontorId)
         }
 
-        val response = client.alleKontor()
+        val response = client.alleKontor(fnr)
 
         response.status shouldBe OK
         val payload = response.body<GraphqlResponse<AlleKontor>>()
