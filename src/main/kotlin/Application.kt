@@ -22,6 +22,7 @@ import no.nav.http.graphql.getNorg2Url
 import no.nav.http.graphql.getPDLUrl
 import no.nav.http.graphql.getPoaoTilgangUrl
 import no.nav.kafka.KafkaStreamsPlugin
+import no.nav.kafka.config.createKafkaProducer
 import no.nav.kafka.config.toKafkaEnv
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.GTNorgService
@@ -80,8 +81,8 @@ fun Application.module() {
         { _, oppfolgingsperiodeId -> OppfolgingsperiodeDao.finnesAoKontorPåPeriode(oppfolgingsperiodeId) },
     )
     val kontorProducer = KontorProducer(
-        config = this.environment.config.toKafkaEnv(),
-        topics = this.environment.topics(),
+        producer = createKafkaProducer(this.environment.config.toKafkaEnv()),
+        kontorTopicNavn = this.environment.topics().ut.arbeidsoppfolgingskontortilordninger.name,
         kontorNavnProvider = { kontorId -> kontorNavnService.getKontorNavn(kontorId) },
         aktorIdProvider = { identSomKanLagres -> identService.hentAktorId(identSomKanLagres) }
     )
@@ -102,7 +103,13 @@ fun Application.module() {
     val authenticateRequest: AuthenticateRequest = { req -> req.call.authenticateCall(issuer) }
     configureGraphQlModule(norg2Client, kontorTilhorighetService, authenticateRequest, identService::hentAlleIdenter)
     configureContentNegotiation()
-    configureArbeidsoppfolgingskontorModule(kontorNavnService, kontorTilhorighetService, poaoTilgangHttpClient, oppfolgingsperiodeService)
+    configureArbeidsoppfolgingskontorModule(
+        kontorNavnService,
+        kontorTilhorighetService,
+        poaoTilgangHttpClient,
+        oppfolgingsperiodeService,
+        { kontorProducer.publiserEndringPåKontor(it) }
+    )
     configureHentArbeidsoppfolgingskontorBulkModule(KontorTilhorighetBulkService)
 }
 

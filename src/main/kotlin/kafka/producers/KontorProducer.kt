@@ -1,5 +1,6 @@
 package kafka.producers
 
+import Topic
 import Topics
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -8,33 +9,31 @@ import no.nav.db.IdentSomKanLagres
 import no.nav.domain.KontorId
 import no.nav.domain.KontorNavn
 import no.nav.domain.events.KontorSattAvVeileder
-import no.nav.kafka.config.NaisKafkaEnv
-import no.nav.kafka.config.createKafkaProducer
+import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.clients.producer.ProducerRecord
 import kotlin.String
 
 class KontorProducer(
-    config: NaisKafkaEnv,
-    topics: Topics,
+    val producer: Producer<String, String>,
+    val kontorTopicNavn: String,
     val kontorNavnProvider: suspend (kontorId: KontorId) -> KontorNavn,
-    val aktorIdProvider: suspend (ident: IdentSomKanLagres) -> AktorId?
+    val aktorIdProvider: suspend (ident: IdentSomKanLagres) -> AktorId?,
 ) {
 
-    val kontorTopic = topics.ut.arbeidsoppfolgingskontortilordninger
-    val producer = createKafkaProducer(config)
-
-    suspend fun publiserEndringPåKontor(event: KontorSattAvVeileder) {
-        val key = event.tilordning.fnr
-        val value = event.toKontorTilordningMeldingDto(
-            aktorIdProvider(event.tilordning.fnr) ?: throw RuntimeException("Finner ikke aktorId for ident ${event.tilordning.fnr.value}"),
-            kontorNavnProvider(event.tilordning.kontorId)
-        )
-        val record = ProducerRecord(
-            kontorTopic.name,
-            key.value,
-            Json.encodeToString(value)
-        )
-        producer.send(record)
+    suspend fun publiserEndringPåKontor(event: KontorSattAvVeileder): Result<Unit> {
+        return runCatching {
+            val key = event.tilordning.fnr
+            val value = event.toKontorTilordningMeldingDto(
+                aktorIdProvider(event.tilordning.fnr) ?: throw RuntimeException("Finner ikke aktorId for ident ${event.tilordning.fnr.value}"),
+                kontorNavnProvider(event.tilordning.kontorId)
+            )
+            val record = ProducerRecord(
+                kontorTopicNavn,
+                key.value,
+                Json.encodeToString(value)
+            )
+            producer.send(record)
+        }
     }
 }
 
