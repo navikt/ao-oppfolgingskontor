@@ -29,7 +29,7 @@ class Topics(
         val aktorV2: Topic<String, Aktor>,
     )
     class Ut(
-        val arbeidsoppfolgingskontortilordninger: String,
+        val arbeidsoppfolgingskontortilordninger: Topic<String, String?>,
     )
 }
 
@@ -62,7 +62,11 @@ fun ApplicationEnvironment.topics(): Topics {
             aktorV2Name = this.config.property("topics.inn.aktor-v2").getString()
         ),
         Topics.Ut(
-            this.config.property("topics.ut.arbeidsoppfolgingskontortilordninger").getString()
+            Topic(
+                this.config.property("topics.ut.arbeidsoppfolgingskontortilordninger").getString(),
+                Serdes.String(),
+                Serdes.String()
+            )
         )
     )
 }
