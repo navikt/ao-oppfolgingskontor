@@ -1,13 +1,14 @@
 package kafka.producers
 
 import Topics
+import no.nav.kafka.config.NaisKafkaEnv
 import no.nav.kafka.config.createKafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
 
-class KontorProducer(val topics: Topics) {
+class KontorProducer(config: NaisKafkaEnv, val topics: Topics) {
 
     val kontorTopic = topics.ut.arbeidsoppfolgingskontortilordninger
-    val producer = createKafkaProducer()
+    val producer = createKafkaProducer(config)
 
     fun publiserEndringPåKontor(input: String) {
         val key = "123"
