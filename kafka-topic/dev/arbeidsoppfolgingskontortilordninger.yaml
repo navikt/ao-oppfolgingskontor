@@ -10,10 +10,10 @@ metadata:
 spec:
   pool: nav-dev
   config:
-    cleanupPolicy: delete # delete = ingen compaction
+    cleanupPolicy: compact
     retentionHours: -1 # evig retention
     minimumInSyncReplicas: 1
-    partitions: 2
+    partitions: 8
   acl:
     - team: dab
       application: ao-oppfolgingskontor
