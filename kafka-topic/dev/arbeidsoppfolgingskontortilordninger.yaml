@@ -12,6 +12,7 @@ spec:
   config:
     cleanupPolicy: delete # delete = ingen compaction
     retentionHours: -1 # evig retention
+    deleteRetentionHours: 24
     minimumInSyncReplicas: 1
     partitions: 2
   acl:
