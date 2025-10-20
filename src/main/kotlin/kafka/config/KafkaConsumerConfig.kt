@@ -188,7 +188,7 @@ fun Properties.streamsErrorHandlerConfig(): Properties {
     return this
 }
 
-private fun Properties.securityConfig(config: NaisKafkaEnv): Properties {
+fun Properties.securityConfig(config: NaisKafkaEnv): Properties {
     put(SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG, "JKS")
     put(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, config.KAFKA_TRUSTSTORE_PATH)
     put(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, config.KAFKA_CREDSTORE_PASSWORD)

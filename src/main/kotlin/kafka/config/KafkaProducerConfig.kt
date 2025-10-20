@@ -11,7 +11,7 @@ fun createKafkaProducer(config: NaisKafkaEnv): KafkaProducer<String, String> {
         put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer::class.java.name)
         put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer::class.java.name)
         put(ProducerConfig.RETRIES_CONFIG, "5") // Enable retries
-    }
+    }.securityConfig(config)
     return KafkaProducer(producerConfig)
 }
 
