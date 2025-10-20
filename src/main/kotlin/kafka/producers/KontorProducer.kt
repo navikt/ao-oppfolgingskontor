@@ -16,17 +16,17 @@ import kotlin.String
 class KontorProducer(
     config: NaisKafkaEnv,
     topics: Topics,
-    val kontorNavnProvider: (kontorId: KontorId) -> KontorNavn,
-    val aktorIdProvider: (ident: IdentSomKanLagres) -> AktorId
+    val kontorNavnProvider: suspend (kontorId: KontorId) -> KontorNavn,
+    val aktorIdProvider: suspend (ident: IdentSomKanLagres) -> AktorId?
 ) {
 
     val kontorTopic = topics.ut.arbeidsoppfolgingskontortilordninger
     val producer = createKafkaProducer(config)
 
-    fun publiserEndringPåKontor(event: KontorSattAvVeileder) {
+    suspend fun publiserEndringPåKontor(event: KontorSattAvVeileder) {
         val key = event.tilordning.fnr
         val value = event.toKontorTilordningMeldingDto(
-            aktorIdProvider(event.tilordning.fnr),
+            aktorIdProvider(event.tilordning.fnr) ?: throw RuntimeException("Finner ikke aktorId for ident ${event.tilordning.fnr.value}"),
             kontorNavnProvider(event.tilordning.kontorId)
         )
         val record = ProducerRecord(

@@ -13,6 +13,7 @@ import no.nav.db.AktorId
 import no.nav.db.Dnr
 import no.nav.db.Fnr
 import no.nav.db.Ident
+import no.nav.db.IdentSomKanLagres
 import no.nav.db.Npid
 import no.nav.db.finnForetrukketIdent
 import no.nav.http.client.IdentFunnet
@@ -180,6 +181,33 @@ class IdentService(
         } catch (e: Throwable) {
             log.error("Feil ved henting av alle identer for input-ident", e)
             return IdenterOppslagFeil("Feil ved henting av alle identer for input-ident: ${e.message}")
+        }
+    }
+
+    suspend fun hentAktorId(ident: IdentSomKanLagres): AktorId? {
+        return transaction {
+            val identMappingAlias = IdentMappingTable.alias("ident_mapping_alias")
+
+            IdentMappingTable.join(
+                identMappingAlias,
+                JoinType.INNER,
+                onColumn = internIdent,
+                otherColumn = identMappingAlias[internIdent]
+            )
+                .select(identMappingAlias[IdentMappingTable.id],
+                    identMappingAlias[identType],
+                    identMappingAlias[historisk],
+                    identMappingAlias[internIdent])
+                .where { (IdentMappingTable.id eq ident.value) }
+                .andWhere { identMappingAlias[historisk] eq false }
+                .andWhere { identMappingAlias[identType] eq "AKTOR_ID" }
+                .map {
+                    val id = it[identMappingAlias[IdentMappingTable.id]]
+                    val historisk = it[identMappingAlias[historisk]]
+                    val historiskStatus = historisk.toKnownHistoriskStatus()
+                    AktorId(id.value, historiskStatus)
+                }
+                .firstOrNull()
         }
     }
 

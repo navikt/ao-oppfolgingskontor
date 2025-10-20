@@ -5,6 +5,7 @@ import http.configureContentNegotiation
 import http.configureHentArbeidsoppfolgingskontorBulkModule
 import io.ktor.server.application.*
 import io.ktor.server.netty.*
+import kafka.producers.KontorProducer
 import no.nav.db.configureDatabase
 import no.nav.http.client.*
 import no.nav.http.client.arbeidssogerregisteret.ArbeidssokerregisterClient
@@ -21,6 +22,7 @@ import no.nav.http.graphql.getNorg2Url
 import no.nav.http.graphql.getPDLUrl
 import no.nav.http.graphql.getPoaoTilgangUrl
 import no.nav.kafka.KafkaStreamsPlugin
+import no.nav.kafka.config.toKafkaEnv
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.GTNorgService
 import no.nav.services.KontorNavnService
@@ -30,6 +32,7 @@ import no.nav.services.OppfolgingsperiodeDao
 import services.IdentService
 import services.KontorTilhorighetBulkService
 import services.OppfolgingsperiodeService
+import topics
 
 fun main(args: Array<String>) {
     EngineMain.main(args)
@@ -75,6 +78,12 @@ fun Application.module() {
         { pdlClient.harStrengtFortroligAdresse(it) },
         { oppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) },
         { _, oppfolgingsperiodeId -> OppfolgingsperiodeDao.finnesAoKontorPåPeriode(oppfolgingsperiodeId) },
+    )
+    val kontorProducer = KontorProducer(
+        config = this.environment.config.toKafkaEnv(),
+        topics = this.environment.topics(),
+        kontorNavnProvider = { kontorId -> kontorNavnService.getKontorNavn(kontorId) },
+        aktorIdProvider = { identSomKanLagres -> identService.hentAktorId(identSomKanLagres) }
     )
 
     install(KafkaStreamsPlugin) {
