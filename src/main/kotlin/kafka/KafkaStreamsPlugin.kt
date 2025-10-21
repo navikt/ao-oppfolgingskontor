@@ -110,7 +110,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val skjermingProcessor = SkjermingProcessor(automatiskKontorRutingService)
     val identEndringProcessor = IdentChangeProcessor(identService)
     val oppfolgingsHendelseProcessor = OppfolgingsHendelseProcessor(oppfolgingsperiodeService)
-    val publiserKontorTilordningProcessor = PubliserKontorTilordningProcessor({ kontorProducer.publiserEndringPåKontor(it) })
+    val publiserKontorTilordningProcessor = PubliserKontorTilordningProcessor(identService, { kontorProducer.publiserEndringPåKontor(it) }, {kontorProducer.publiserTombstone(it)})
 
 
     val topology = configureTopology(

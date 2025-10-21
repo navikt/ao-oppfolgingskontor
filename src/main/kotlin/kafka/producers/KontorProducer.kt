@@ -9,12 +9,13 @@ import no.nav.domain.KontorId
 import no.nav.domain.KontorNavn
 import no.nav.domain.events.AOKontorEndret
 import no.nav.domain.events.KontorSattAvVeileder
+import no.nav.http.client.IdenterFunnet
 import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.clients.producer.ProducerRecord
 import kotlin.String
 
 class KontorProducer(
-    val producer: Producer<String, String>,
+    val producer: Producer<String, String?>,
     val kontorTopicNavn: String,
     val kontorNavnProvider: suspend (kontorId: KontorId) -> KontorNavn,
     val aktorIdProvider: suspend (ident: IdentSomKanLagres) -> AktorId?,
@@ -23,7 +24,8 @@ class KontorProducer(
     suspend fun publiserEndringPåKontor(event: KontorSattAvVeileder): Result<Unit> {
         return runCatching {
             val value = event.toKontorTilordningMeldingDto(
-                aktorIdProvider(event.tilordning.fnr) ?: throw RuntimeException("Finner ikke aktorId for ident ${event.tilordning.fnr.value}"),
+                aktorIdProvider(event.tilordning.fnr)
+                    ?: throw RuntimeException("Finner ikke aktorId for ident ${event.tilordning.fnr.value}"),
                 kontorNavnProvider(event.tilordning.kontorId)
             )
             publiserEndringPåKontor(value)
@@ -34,14 +36,16 @@ class KontorProducer(
         return runCatching {
             val ident = Ident.validateOrThrow(event.ident, Ident.HistoriskStatus.UKJENT) as? IdentSomKanLagres
                 ?: throw IllegalArgumentException("Kan ikke publisere kontor-endring på aktørid, trenger annen ident")
-            publiserEndringPåKontor(KontorTilordningMeldingDto(
-                kontorId = event.kontorId,
-                kontorNavn = kontorNavnProvider(KontorId(event.kontorId)).navn,
-                oppfolgingsPeriodeId = event.oppfolgingsPeriodeId,
-                aktorId = aktorIdProvider(ident)?.value
-                    ?: throw RuntimeException("Finner ikke aktorId for ident ${event.ident}"),
-                ident = event.ident
-            ))
+            publiserEndringPåKontor(
+                KontorTilordningMeldingDto(
+                    kontorId = event.kontorId,
+                    kontorNavn = kontorNavnProvider(KontorId(event.kontorId)).navn,
+                    oppfolgingsPeriodeId = event.oppfolgingsPeriodeId,
+                    aktorId = aktorIdProvider(ident)?.value
+                        ?: throw RuntimeException("Finner ikke aktorId for ident ${event.ident}"),
+                    ident = event.ident
+                )
+            )
         }
     }
 
@@ -53,6 +57,19 @@ class KontorProducer(
                 Json.encodeToString(event)
             )
             producer.send(record)
+        }
+    }
+
+    suspend fun publiserTombstone(identer: IdenterFunnet): Result<Unit> {
+        return runCatching {
+            identer.identer.forEach {
+                val record: ProducerRecord<String,String?> = ProducerRecord(
+                    kontorTopicNavn,
+                    it.value,
+                    null
+                )
+                producer.send(record)
+            }
         }
     }
 }
@@ -88,10 +105,10 @@ data class KontorTilordningMeldingDto(
 )
 
 /**
-* Same as KontorTilordningMeldingDto but without AktorId and kontorNavn.
+ * Same as KontorTilordningMeldingDto but without AktorId and kontorNavn.
  * Needed to avoid fetching aktorId and kontorNavn in KontortilordningsProcessor
  * but still have a serilizable data-transfer-object to pass it to the next processing step
-* */
+ * */
 @Serializable
 data class KontorTilordningMelding(
     val kontorId: String,
