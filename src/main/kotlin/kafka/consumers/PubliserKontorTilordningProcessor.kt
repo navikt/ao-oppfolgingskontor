@@ -19,7 +19,7 @@ class PubliserKontorTilordningProcessor(
     companion object {
         const val processorName = "PubliserKontorTilordningProcessor"
         val identSerde: Serde<Ident> = KontortilordningsProcessor.identSerde
-        val oppfolgingsperiodeStartetSerde = jsonSerde<KontorTilordningMelding>()
+        val kontortilordningSerde = jsonSerde<KontorTilordningMelding>()
     }
 
     fun process(

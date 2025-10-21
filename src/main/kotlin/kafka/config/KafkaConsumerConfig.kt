@@ -117,7 +117,7 @@ fun configureTopology(
     )
     val publiserKontorTilordningProcessorSupplier = wrapInRetryProcessor(
         keyInSerde = PubliserKontorTilordningProcessor.identSerde,
-        valueInSerde = PubliserKontorTilordningProcessor.oppfolgingsperiodeStartetSerde,
+        valueInSerde = PubliserKontorTilordningProcessor.kontortilordningSerde,
         topic = PubliserKontorTilordningProcessor.processorName,
         streamType = StreamType.INTERNAL,
         businessLogic = publiserKontorTilordningProcessor::process,
@@ -140,7 +140,7 @@ fun configureTopology(
         .process(endringPaOppfolgingsBrukerProcessorSupplier, Named.`as`(processorName(topics.inn.endringPaOppfolgingsbruker.name)))
 
     /*
-    * Endirng i Skjerming (egen ansatt)
+    * Endring i Skjerming (egen ansatt)
     * */
     val skjermingProcessorSupplier = wrapInRetryProcessor(
         topic = topics.inn.skjerming,

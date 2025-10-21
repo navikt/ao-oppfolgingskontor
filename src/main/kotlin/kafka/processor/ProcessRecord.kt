@@ -7,7 +7,7 @@ sealed class RecordProcessingResult<KOut, VOut>
 class Forward<K, V>(
     val forwardedRecord: Record<K, V>,
     /* Hvis denne ikke oppgis går melding videre til neste prosessor i "chain"-en */
-    val topic: String?
+    val topic: String? = null
 ): RecordProcessingResult<K, V>()
 class Commit<K, V>: RecordProcessingResult<K, V>()
 class Skip<K, V>: RecordProcessingResult<K, V>()

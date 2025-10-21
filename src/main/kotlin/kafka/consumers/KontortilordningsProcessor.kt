@@ -86,8 +86,7 @@ class KontortilordningsProcessor(
                                                     on domain-classes if it can be avoided */
                                                     aoKontor.toKontorTilordningMelding(),
                                                     ZonedDateTime.now().toEpochSecond()
-                                                ),
-                                                arbeidsoppfolgingkontorSinkName
+                                                )
                                             )
                                     }
                                 }
