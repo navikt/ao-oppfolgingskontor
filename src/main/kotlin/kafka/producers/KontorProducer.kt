@@ -1,13 +1,13 @@
 package kafka.producers
 
-import Topic
-import Topics
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import no.nav.db.AktorId
+import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
 import no.nav.domain.KontorId
 import no.nav.domain.KontorNavn
+import no.nav.domain.events.AOKontorEndret
 import no.nav.domain.events.KontorSattAvVeileder
 import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -22,22 +22,42 @@ class KontorProducer(
 
     suspend fun publiserEndringPåKontor(event: KontorSattAvVeileder): Result<Unit> {
         return runCatching {
-            val key = event.tilordning.fnr
             val value = event.toKontorTilordningMeldingDto(
                 aktorIdProvider(event.tilordning.fnr) ?: throw RuntimeException("Finner ikke aktorId for ident ${event.tilordning.fnr.value}"),
                 kontorNavnProvider(event.tilordning.kontorId)
             )
+            publiserEndringPåKontor(value)
+        }
+    }
+
+    suspend fun publiserEndringPåKontor(event: KontorTilordningMelding): Result<Unit> {
+        return runCatching {
+            val ident = Ident.validateOrThrow(event.ident, Ident.HistoriskStatus.UKJENT) as? IdentSomKanLagres
+                ?: throw IllegalArgumentException("Kan ikke publisere kontor-endring på aktørid, trenger annen ident")
+            publiserEndringPåKontor(KontorTilordningMeldingDto(
+                kontorId = event.kontorId,
+                kontorNavn = kontorNavnProvider(KontorId(event.kontorId)).navn,
+                oppfolgingsPeriodeId = event.oppfolgingsPeriodeId,
+                aktorId = aktorIdProvider(ident)?.value
+                    ?: throw RuntimeException("Finner ikke aktorId for ident ${event.ident}"),
+                ident = event.ident
+            ))
+        }
+    }
+
+    suspend fun publiserEndringPåKontor(event: KontorTilordningMeldingDto): Result<Unit> {
+        return runCatching {
             val record = ProducerRecord(
                 kontorTopicNavn,
-                key.value,
-                Json.encodeToString(value)
+                event.ident,
+                Json.encodeToString(event)
             )
             producer.send(record)
         }
     }
 }
 
-fun KontorSattAvVeileder.toKontorTilordningMeldingDto(
+fun AOKontorEndret.toKontorTilordningMeldingDto(
     aktorId: AktorId,
     kontorNavn: KontorNavn
 ): KontorTilordningMeldingDto {
@@ -50,11 +70,31 @@ fun KontorSattAvVeileder.toKontorTilordningMeldingDto(
     )
 }
 
+fun AOKontorEndret.toKontorTilordningMelding(): KontorTilordningMelding {
+    return KontorTilordningMelding(
+        kontorId = this.tilordning.kontorId.id,
+        oppfolgingsPeriodeId = this.tilordning.oppfolgingsperiodeId.value.toString(),
+        ident = this.tilordning.fnr.value
+    )
+}
+
 @Serializable
 data class KontorTilordningMeldingDto(
     val kontorId: String,
     val kontorNavn: String,
     val oppfolgingsPeriodeId: String,
     val aktorId: String,
+    val ident: String
+)
+
+/**
+* Same as KontorTilordningMeldingDto but without AktorId and kontorNavn.
+ * Needed to avoid fetching aktorId and kontorNavn in KontortilordningsProcessor
+ * but still have a serilizable data-transfer-object to pass it to the next processing step
+* */
+@Serializable
+data class KontorTilordningMelding(
+    val kontorId: String,
+    val oppfolgingsPeriodeId: String,
     val ident: String
 )

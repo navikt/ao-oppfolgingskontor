@@ -99,11 +99,13 @@ class BigAppTest {
             )
             val identService = IdentService { IdenterFunnet(emptyList(), fnr) }
             val identendringsProcessor = IdentChangeProcessor(identService)
+            val publiserKontorTilordningProcessor = PubliserKontorTilordningProcessor({ Result.success(Unit) })
             val topology = configureTopology(
                 this.environment,
                 TestLockProvider,
                 CoroutineScope(Dispatchers.IO),
                 tilordningProcessor,
+                publiserKontorTilordningProcessor,
                 leesahProcessor,
                 skjermingProcessor,
                 endringPaaOppfolgingsBrukerProcessor,

@@ -14,6 +14,8 @@ import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.binder.kafka.KafkaStreamsMetrics
 import kafka.consumers.IdentChangeProcessor
 import kafka.consumers.OppfolgingsHendelseProcessor
+import kafka.consumers.PubliserKontorTilordningProcessor
+import kafka.producers.KontorProducer
 import java.time.Duration
 import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
 import no.nav.db.AktorId
@@ -53,7 +55,8 @@ class KafkaStreamsPluginConfig(
     var oppfolgingsperiodeDao: OppfolgingsperiodeDao? = null,
     var identService: IdentService? = null,
     var criticalErrorNotificationFunction: CriticalErrorNotificationFunction? = null,
-    var kontorTilhorighetService: KontorTilhorighetService? = null
+    var kontorTilhorighetService: KontorTilhorighetService? = null,
+    var kontorProducer: KontorProducer? = null
 )
 
 const val arbeidsoppfolgingkontorSinkName = "endring-pa-arbeidsoppfolgingskontor"
@@ -86,6 +89,9 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val kontorTilhorighetService = requireNotNull(this.pluginConfig.kontorTilhorighetService) {
         "KontorTilhorighetService must be configured for KafkaStreamsPlugin"
     }
+    val kontorProducer = requireNotNull(this.pluginConfig.kontorProducer) {
+        "KontorTilhorighetService must be configured for KafkaStreamsPlugin"
+    }
 
     val isProduction = environment.isProduction()
     if (isProduction) logger.info("Kjører i produksjonsmodus. Konsumerer kun siste-oppfølgingsperiode.")
@@ -104,6 +110,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val skjermingProcessor = SkjermingProcessor(automatiskKontorRutingService)
     val identEndringProcessor = IdentChangeProcessor(identService)
     val oppfolgingsHendelseProcessor = OppfolgingsHendelseProcessor(oppfolgingsperiodeService)
+    val publiserKontorTilordningProcessor = PubliserKontorTilordningProcessor({ kontorProducer.publiserEndringPåKontor(it) })
 
 
     val topology = configureTopology(
@@ -114,7 +121,8 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         skjermingProcessor = skjermingProcessor,
         endringPaOppfolgingsBrukerProcessor = endringPaOppfolgingsBrukerProcessor,
         identEndringsProcessor = identEndringProcessor,
-        oppfolgingsHendelseProcessor = oppfolgingsHendelseProcessor
+        oppfolgingsHendelseProcessor = oppfolgingsHendelseProcessor,
+        publiserKontorTilordningProcessor = publiserKontorTilordningProcessor
     )
     val kafkaStream = KafkaStreams(topology, kafkaStreamsProps(environment.config))
 
