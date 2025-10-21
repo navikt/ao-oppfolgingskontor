@@ -136,7 +136,7 @@ class SettArbeidsoppfolgingsKontorTest {
             kontorResponse.data?.kontorTilhorighet?.registrantType shouldBe RegistrantTypeDto.VEILEDER
             kontorResponse.data?.kontorTilhorighet?.kontorType shouldBe KontorType.ARBEIDSOPPFOLGING
             producer.history().first().value() shouldBe """
-                {"kontorId":"4444","kontorNavn":"Test KontorNavn","oppfolgingsPeriodeId":"${oppfolgingsperiodeId.value}","aktorId":"3050449454179","ident":"10108020762"}
+                {"kontorId":"${kontorId}","kontorNavn":"Test KontorNavn","oppfolgingsPeriodeId":"${oppfolgingsperiodeId.value}","aktorId":"${aktorId.value}","ident":"${fnr.value}"}
             """.trimIndent()
         }
     }
