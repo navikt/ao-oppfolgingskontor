@@ -3,9 +3,7 @@ package kafka.consumers
 import kafka.producers.KontorTilordningMelding
 import kotlinx.coroutines.runBlocking
 import no.nav.db.Ident
-import no.nav.http.client.IdenterFunnet
-import no.nav.http.client.IdenterIkkeFunnet
-import no.nav.http.client.IdenterOppslagFeil
+import no.nav.domain.OppfolgingsperiodeId
 import no.nav.http.client.IdenterResult
 import no.nav.kafka.consumers.KontortilordningsProcessor
 import no.nav.kafka.processor.Commit
@@ -18,7 +16,7 @@ import org.slf4j.LoggerFactory
 class PubliserKontorTilordningProcessor(
     val hentAlleIdenter: suspend (Ident) -> IdenterResult,
     val publiserKontorTilordning: suspend (kontorEndring: KontorTilordningMelding) -> Result<Unit>,
-    val publiserTombstone: suspend(identer: IdenterFunnet) -> Result<Unit>,
+    val publiserTombstone: (periode: OppfolgingsperiodeId) -> Result<Unit>,
 ) {
     val log = LoggerFactory.getLogger(this.javaClass)
 
@@ -29,17 +27,10 @@ class PubliserKontorTilordningProcessor(
     }
 
     fun process(
-        record: Record<Ident, KontorTilordningMelding>
+        record: Record<OppfolgingsperiodeId, KontorTilordningMelding>
     ): RecordProcessingResult<String, String> {
         val result =
-            if(record.value() == null) {
-                val identerResult = runBlocking { hentAlleIdenter(record.key()) }
-                when(identerResult) {
-                    is IdenterFunnet -> runBlocking { publiserTombstone(identerResult) }
-                    is IdenterIkkeFunnet -> TODO()
-                    is IdenterOppslagFeil -> return Retry("Kunne ikke publisere tombstone på ao-kontor til kafka: ${identerResult.message}")
-                }
-            }
+            if (record.value() == null) publiserTombstone(record.key())
             else runBlocking { publiserKontorTilordning(record.value()) }
 
         return when (result.isSuccess) {

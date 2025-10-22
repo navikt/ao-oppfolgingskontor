@@ -7,14 +7,14 @@ import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
 import no.nav.domain.KontorId
 import no.nav.domain.KontorNavn
+import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.events.AOKontorEndret
 import no.nav.domain.events.KontorSattAvVeileder
-import no.nav.http.client.IdenterFunnet
 import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.clients.producer.ProducerRecord
 import kotlin.String
 
-class KontorProducer(
+class KontorEndringProducer(
     val producer: Producer<String, String?>,
     val kontorTopicNavn: String,
     val kontorNavnProvider: suspend (kontorId: KontorId) -> KontorNavn,
@@ -53,23 +53,21 @@ class KontorProducer(
         return runCatching {
             val record = ProducerRecord(
                 kontorTopicNavn,
-                event.ident,
+                event.oppfolgingsPeriodeId,
                 Json.encodeToString(event)
             )
             producer.send(record)
         }
     }
 
-    suspend fun publiserTombstone(identer: IdenterFunnet): Result<Unit> {
+    fun publiserTombstone(oppfolgingPeriodeId: OppfolgingsperiodeId): Result<Unit> {
         return runCatching {
-            identer.identer.forEach {
-                val record: ProducerRecord<String,String?> = ProducerRecord(
-                    kontorTopicNavn,
-                    it.value,
-                    null
-                )
-                producer.send(record)
-            }
+            val record: ProducerRecord<String,String?> = ProducerRecord(
+                kontorTopicNavn,
+                oppfolgingPeriodeId.value.toString(),
+                null
+            )
+            producer.send(record)
         }
     }
 }
@@ -107,7 +105,7 @@ data class KontorTilordningMeldingDto(
 /**
  * Same as KontorTilordningMeldingDto but without AktorId and kontorNavn.
  * Needed to avoid fetching aktorId and kontorNavn in KontortilordningsProcessor
- * but still have a serilizable data-transfer-object to pass it to the next processing step
+ * but still have a serializable data-transfer-object to pass it to the next processing step
  * */
 @Serializable
 data class KontorTilordningMelding(

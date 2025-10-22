@@ -5,7 +5,7 @@ import http.configureContentNegotiation
 import http.configureHentArbeidsoppfolgingskontorBulkModule
 import io.ktor.server.application.*
 import io.ktor.server.netty.*
-import kafka.producers.KontorProducer
+import kafka.producers.KontorEndringProducer
 import no.nav.db.configureDatabase
 import no.nav.http.client.*
 import no.nav.http.client.arbeidssogerregisteret.ArbeidssokerregisterClient
@@ -80,7 +80,7 @@ fun Application.module() {
         { oppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) },
         { _, oppfolgingsperiodeId -> OppfolgingsperiodeDao.finnesAoKontorPåPeriode(oppfolgingsperiodeId) },
     )
-    val kontorProducer = KontorProducer(
+    val kontorEndringProducer = KontorEndringProducer(
         producer = createKafkaProducer(this.environment.config.toKafkaEnv()),
         kontorTopicNavn = this.environment.topics().ut.arbeidsoppfolgingskontortilordninger.name,
         kontorNavnProvider = { kontorId -> kontorNavnService.getKontorNavn(kontorId) },
@@ -108,7 +108,7 @@ fun Application.module() {
         kontorTilhorighetService,
         poaoTilgangHttpClient,
         oppfolgingsperiodeService,
-        { kontorProducer.publiserEndringPåKontor(it) }
+        { kontorEndringProducer.publiserEndringPåKontor(it) }
     )
     configureHentArbeidsoppfolgingskontorBulkModule(KontorTilhorighetBulkService)
 }

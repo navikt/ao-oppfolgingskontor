@@ -10,7 +10,7 @@ import io.ktor.server.auth.authenticate
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
-import kafka.producers.KontorProducer
+import kafka.producers.KontorEndringProducer
 import no.nav.db.AktorId
 import no.nav.db.Ident.HistoriskStatus.UKJENT
 import no.nav.db.IdentSomKanLagres
@@ -81,7 +81,7 @@ class SettArbeidsoppfolgingsKontorTest {
         val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangClient, identService::hentAlleIdenter)
         val oppfolgingsperiodeService = OppfolgingsperiodeService(identService::hentAlleIdenter)
         val producer = MockProducer(true, partitioner, StringSerializer(), StringSerializer())
-        val kontorProducer = KontorProducer(
+        val kontorEndringProducer = KontorEndringProducer(
             producer,
             "arbeidsoppfolgingskontortilordninger",
             { KontorNavn("Test KontorNavn") },
@@ -98,7 +98,7 @@ class SettArbeidsoppfolgingsKontorTest {
                 kontorTilhorighetService,
                 poaoTilgangClient,
                 oppfolgingsperiodeService,
-                { kontorProducer.publiserEndringPåKontor(it) }
+                { kontorEndringProducer.publiserEndringPåKontor(it) }
             )
             routing {
                 authenticate("EntraAD") {

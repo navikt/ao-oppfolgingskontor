@@ -15,7 +15,7 @@ import io.micrometer.core.instrument.binder.kafka.KafkaStreamsMetrics
 import kafka.consumers.IdentChangeProcessor
 import kafka.consumers.OppfolgingsHendelseProcessor
 import kafka.consumers.PubliserKontorTilordningProcessor
-import kafka.producers.KontorProducer
+import kafka.producers.KontorEndringProducer
 import java.time.Duration
 import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
 import no.nav.db.AktorId
@@ -56,7 +56,7 @@ class KafkaStreamsPluginConfig(
     var identService: IdentService? = null,
     var criticalErrorNotificationFunction: CriticalErrorNotificationFunction? = null,
     var kontorTilhorighetService: KontorTilhorighetService? = null,
-    var kontorProducer: KontorProducer? = null
+    var kontorEndringProducer: KontorEndringProducer? = null
 )
 
 const val arbeidsoppfolgingkontorSinkName = "endring-pa-arbeidsoppfolgingskontor"
@@ -89,7 +89,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val kontorTilhorighetService = requireNotNull(this.pluginConfig.kontorTilhorighetService) {
         "KontorTilhorighetService must be configured for KafkaStreamsPlugin"
     }
-    val kontorProducer = requireNotNull(this.pluginConfig.kontorProducer) {
+    val kontorProducer = requireNotNull(this.pluginConfig.kontorEndringProducer) {
         "KontorTilhorighetService must be configured for KafkaStreamsPlugin"
     }
 
@@ -110,7 +110,11 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val skjermingProcessor = SkjermingProcessor(automatiskKontorRutingService)
     val identEndringProcessor = IdentChangeProcessor(identService)
     val oppfolgingsHendelseProcessor = OppfolgingsHendelseProcessor(oppfolgingsperiodeService)
-    val publiserKontorTilordningProcessor = PubliserKontorTilordningProcessor(identService::hentAlleIdenter, { kontorProducer.publiserEndringPåKontor(it) }, {kontorProducer.publiserTombstone(it)})
+    val publiserKontorTilordningProcessor = PubliserKontorTilordningProcessor(
+        identService::hentAlleIdenter,
+        { kontorProducer.publiserEndringPåKontor(it) },
+        { periode -> kontorProducer.publiserTombstone(periode) }
+    )
 
 
     val topology = configureTopology(
