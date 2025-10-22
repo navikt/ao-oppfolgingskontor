@@ -40,7 +40,7 @@ class KontorEndringProducer(
                 KontorTilordningMeldingDto(
                     kontorId = event.kontorId,
                     kontorNavn = kontorNavnProvider(KontorId(event.kontorId)).navn,
-                    oppfolgingsPeriodeId = event.oppfolgingsPeriodeId,
+                    oppfolgingsperiodeId = event.oppfolgingsperiodeId,
                     aktorId = aktorIdProvider(ident)?.value
                         ?: throw RuntimeException("Finner ikke aktorId for ident ${event.ident}"),
                     ident = event.ident
@@ -53,7 +53,7 @@ class KontorEndringProducer(
         return runCatching {
             val record = ProducerRecord(
                 kontorTopicNavn,
-                event.oppfolgingsPeriodeId,
+                event.oppfolgingsperiodeId,
                 Json.encodeToString(event)
             )
             producer.send(record)
@@ -79,7 +79,7 @@ fun AOKontorEndret.toKontorTilordningMeldingDto(
     return KontorTilordningMeldingDto(
         kontorId = this.tilordning.kontorId.id,
         kontorNavn = kontorNavn.navn,
-        oppfolgingsPeriodeId = this.tilordning.oppfolgingsperiodeId.value.toString(),
+        oppfolgingsperiodeId = this.tilordning.oppfolgingsperiodeId.value.toString(),
         aktorId = aktorId.value,
         ident = this.tilordning.fnr.value
     )
@@ -88,7 +88,7 @@ fun AOKontorEndret.toKontorTilordningMeldingDto(
 fun AOKontorEndret.toKontorTilordningMelding(): KontorTilordningMelding {
     return KontorTilordningMelding(
         kontorId = this.tilordning.kontorId.id,
-        oppfolgingsPeriodeId = this.tilordning.oppfolgingsperiodeId.value.toString(),
+        oppfolgingsperiodeId = this.tilordning.oppfolgingsperiodeId.value.toString(),
         ident = this.tilordning.fnr.value
     )
 }
@@ -97,7 +97,7 @@ fun AOKontorEndret.toKontorTilordningMelding(): KontorTilordningMelding {
 data class KontorTilordningMeldingDto(
     val kontorId: String,
     val kontorNavn: String,
-    val oppfolgingsPeriodeId: String,
+    val oppfolgingsperiodeId: String,
     val aktorId: String,
     val ident: String
 )
@@ -110,6 +110,6 @@ data class KontorTilordningMeldingDto(
 @Serializable
 data class KontorTilordningMelding(
     val kontorId: String,
-    val oppfolgingsPeriodeId: String,
+    val oppfolgingsperiodeId: String,
     val ident: String
 )

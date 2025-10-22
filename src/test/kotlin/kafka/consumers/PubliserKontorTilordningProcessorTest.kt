@@ -23,11 +23,11 @@ class PubliserKontorTilordningProcessorTest {
         val ident: Ident = randomFnr()
         val tilordningMelding = KontorTilordningMelding(
             kontorId = "3131",
-            oppfolgingsPeriodeId = UUID.randomUUID().toString(),
+            oppfolgingsperiodeId = UUID.randomUUID().toString(),
             ident = ident.value
         )
         val record = Record(
-            OppfolgingsperiodeId(UUID.fromString(tilordningMelding.oppfolgingsPeriodeId)),
+            OppfolgingsperiodeId(UUID.fromString(tilordningMelding.oppfolgingsperiodeId)),
             tilordningMelding,
             ZonedDateTime.now().toEpochSecond()
         )
