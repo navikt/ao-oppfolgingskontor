@@ -121,7 +121,8 @@ class OppfolgingshendelseProcessorTest {
     /* Mock at oppslag for å hente alle mappede identer bare returnerer 1 ident (happu path)  */
     fun Bruker.defaultOppfolgingsHendelseProcessor(): OppfolgingsHendelseProcessor {
         return OppfolgingsHendelseProcessor(
-            OppfolgingsperiodeService { IdenterFunnet(listOf(this.ident, AktorId(this.aktorId, AKTIV)), this.ident) }
+            OppfolgingsperiodeService { IdenterFunnet(listOf(this.ident, AktorId(this.aktorId, AKTIV)), this.ident) },
+            { _ -> Result.success(Unit)}
         )
     }
 
@@ -468,7 +469,7 @@ class OppfolgingshendelseProcessorTest {
             }
             val identChangeProcessor = IdentChangeProcessor(identService)
             val oppfolgingsPeriodeService = OppfolgingsperiodeService(identService::hentAlleIdenter)
-            val oppfolgingshendelseProcessor = OppfolgingsHendelseProcessor(oppfolgingsPeriodeService)
+            val oppfolgingshendelseProcessor = OppfolgingsHendelseProcessor(oppfolgingsPeriodeService, { _ -> Result.success(Unit) })
             val startResult = oppfolgingshendelseProcessor
                 .process(oppfolgingStartetMelding(brukerMedDnr))
             startResult.shouldBeInstanceOf<Forward<*, *>>()

@@ -116,7 +116,7 @@ fun configureTopology(
         businessLogic = kontortilordningsProcessor::process,
     )
     val publiserKontorTilordningProcessorSupplier = wrapInRetryProcessor(
-        keyInSerde = PubliserKontorTilordningProcessor.identSerde,
+        keyInSerde = PubliserKontorTilordningProcessor.oppfolgingsperiodeIdSerde,
         valueInSerde = PubliserKontorTilordningProcessor.kontortilordningSerde,
         topic = PubliserKontorTilordningProcessor.processorName,
         streamType = StreamType.INTERNAL,

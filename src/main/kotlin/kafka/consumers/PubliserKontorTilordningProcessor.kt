@@ -9,29 +9,34 @@ import no.nav.kafka.consumers.KontortilordningsProcessor
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
+import org.apache.kafka.common.serialization.Deserializer
 import org.apache.kafka.common.serialization.Serde
+import org.apache.kafka.common.serialization.Serializer
 import org.apache.kafka.streams.processor.api.Record
 import org.slf4j.LoggerFactory
+import java.util.UUID
 
 class PubliserKontorTilordningProcessor(
     val hentAlleIdenter: suspend (Ident) -> IdenterResult,
     val publiserKontorTilordning: suspend (kontorEndring: KontorTilordningMelding) -> Result<Unit>,
-    val publiserTombstone: (periode: OppfolgingsperiodeId) -> Result<Unit>,
 ) {
     val log = LoggerFactory.getLogger(this.javaClass)
 
     companion object {
         const val processorName = "PubliserKontorTilordningProcessor"
-        val identSerde: Serde<Ident> = KontortilordningsProcessor.identSerde
+        val oppfolgingsperiodeIdSerde: Serde<OppfolgingsperiodeId> = object : Serde<OppfolgingsperiodeId> {
+            override fun serializer(): Serializer<OppfolgingsperiodeId> =
+                Serializer<OppfolgingsperiodeId> { topic, data -> data.toString().toByteArray() }
+            override fun deserializer(): Deserializer<OppfolgingsperiodeId> =
+                Deserializer<OppfolgingsperiodeId> { topic, data -> OppfolgingsperiodeId(UUID.fromString(data.decodeToString())) }
+        }
         val kontortilordningSerde = jsonSerde<KontorTilordningMelding>()
     }
 
     fun process(
         record: Record<OppfolgingsperiodeId, KontorTilordningMelding>
     ): RecordProcessingResult<String, String> {
-        val result =
-            if (record.value() == null) publiserTombstone(record.key())
-            else runBlocking { publiserKontorTilordning(record.value()) }
+        val result = runBlocking { publiserKontorTilordning(record.value()) }
 
         return when (result.isSuccess) {
             true -> Commit()

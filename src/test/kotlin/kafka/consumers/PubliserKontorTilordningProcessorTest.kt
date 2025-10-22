@@ -22,7 +22,6 @@ class PubliserKontorTilordningProcessorTest {
         val processor = PubliserKontorTilordningProcessor(
             hentAlleIdenter = { IdenterOppslagFeil("PDL feiler") },
             publiserKontorTilordning = { Result.failure(Exception("Feilet")) },
-            publiserTombstone = { Result.success(Unit) }
         )
         val ident: Ident = randomFnr()
         val record = Record(

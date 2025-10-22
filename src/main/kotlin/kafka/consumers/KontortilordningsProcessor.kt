@@ -6,6 +6,7 @@ import kafka.producers.toKontorTilordningMelding
 import kotlinx.coroutines.runBlocking
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
+import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.OppfolgingsperiodeEndret
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.kafka.arbeidsoppfolgingkontorSinkName
@@ -46,7 +47,7 @@ class KontortilordningsProcessor(
     private val log = LoggerFactory.getLogger(this::class.java)
     fun process(
             record: Record<Ident, OppfolgingsperiodeEndret>
-    ): RecordProcessingResult<IdentSomKanLagres, KontorTilordningMelding> {
+    ): RecordProcessingResult<OppfolgingsperiodeId, KontorTilordningMelding> {
         try {
             val periodeStartet = record.value() as OppfolgingsperiodeStartet ?: return Skip()
 
@@ -84,7 +85,7 @@ class KontortilordningsProcessor(
                                              send the record to default next step which is configured in the topology */
                                             return@let Forward(
                                                 Record(
-                                                    aoKontor.tilordning.fnr,
+                                                    aoKontor.tilordning.oppfolgingsperiodeId,
                                                     /* Records need to be serializable and don't want to slap @Serializable
                                                     on domain-classes if it can be avoided */
                                                     aoKontor.toKontorTilordningMelding(),

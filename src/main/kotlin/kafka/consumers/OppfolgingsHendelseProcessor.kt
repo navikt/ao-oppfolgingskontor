@@ -30,6 +30,7 @@ import java.util.*
 
 class OppfolgingsHendelseProcessor(
     val oppfolgingsPeriodeService: OppfolgingsperiodeService,
+    val publiserTombstone: (oppfolgingsperiodeId: OppfolgingsperiodeId) -> Result<Unit>,
 ) {
     val log = LoggerFactory.getLogger(javaClass)
 
@@ -78,6 +79,16 @@ class OppfolgingsHendelseProcessor(
                 log.error(feilmelding, error)
                 Retry<Ident, OppfolgingsperiodeEndret>(feilmelding)
             }
+    }
+
+    fun HandterPeriodeAvsluttetResultat.toRecordResult(event: OppfolgingsperiodeAvsluttet): RecordProcessingResult<Ident, OppfolgingsperiodeEndret> {
+        return when (this) {
+            IngenPeriodeAvsluttet -> Skip()
+            GammelPeriodeAvsluttet, InnkommendePeriodeAvsluttet -> {
+                publiserTombstone(event.periodeId)
+                Commit()
+            }
+        }
     }
 
     fun OppfolgingsperiodeStartet.enrichWithTidligArenaKontor(): OppfolgingsperiodeStartet {
@@ -136,23 +147,3 @@ fun OppfolgingsAvsluttetHendelseDto.toDomainObject() = OppfolgingsperiodeAvslutt
     this.startetTidspunkt,
     OppfolgingsperiodeId(UUID.fromString(this.oppfolgingsPeriodeId))
 )
-
-fun HandterPeriodeAvsluttetResultat.toRecordResult(event: OppfolgingsperiodeAvsluttet): RecordProcessingResult<OppfolgingsperiodeId, Unit> {
-    return when (this) {
-        IngenPeriodeAvsluttet -> Skip()
-        GammelPeriodeAvsluttet -> Forward(
-            Record(
-                event.periodeId,
-                Unit,
-                Instant.now().toEpochMilli()
-            ), PubliserKontorTilordningProcessor.processorName
-        )
-        InnkommendePeriodeAvsluttet -> Forward(
-            Record(
-                event.periodeId,
-                Unit,
-                Instant.now().toEpochMilli()
-            ), PubliserKontorTilordningProcessor.processorName
-        )
-    }
-}

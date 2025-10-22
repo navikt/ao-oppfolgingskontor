@@ -109,11 +109,12 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, fnrProvider, isProduction)
     val skjermingProcessor = SkjermingProcessor(automatiskKontorRutingService)
     val identEndringProcessor = IdentChangeProcessor(identService)
-    val oppfolgingsHendelseProcessor = OppfolgingsHendelseProcessor(oppfolgingsperiodeService)
+    val oppfolgingsHendelseProcessor = OppfolgingsHendelseProcessor(
+        oppfolgingsperiodeService,
+        { periode -> kontorProducer.publiserTombstone(periode) })
     val publiserKontorTilordningProcessor = PubliserKontorTilordningProcessor(
         identService::hentAlleIdenter,
-        { kontorProducer.publiserEndringPåKontor(it) },
-        { periode -> kontorProducer.publiserTombstone(periode) }
+        { kontorProducer.publiserEndringPåKontor(it) }
     )
 
 

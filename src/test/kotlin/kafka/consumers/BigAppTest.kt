@@ -111,7 +111,6 @@ class BigAppTest {
             val publiserKontorTilordningProcessor = PubliserKontorTilordningProcessor(
                 identService::hentAlleIdenter,
                 kontorEndringProducer::publiserEndringPåKontor,
-                kontorEndringProducer::publiserTombstone
             )
             val topology = configureTopology(
                 this.environment,
@@ -123,7 +122,7 @@ class BigAppTest {
                 skjermingProcessor,
                 endringPaaOppfolgingsBrukerProcessor,
                 identendringsProcessor,
-                OppfolgingsHendelseProcessor(OppfolgingsperiodeService(identService::hentAlleIdenter ))
+                OppfolgingsHendelseProcessor(OppfolgingsperiodeService(identService::hentAlleIdenter ), kontorEndringProducer::publiserTombstone)
             )
             val (driver, inputTopics, _) = setupKafkaMock(topology,
                 listOf(topics.inn.oppfolgingsHendelser.name), null
