@@ -137,17 +137,22 @@ fun OppfolgingsAvsluttetHendelseDto.toDomainObject() = OppfolgingsperiodeAvslutt
     OppfolgingsperiodeId(UUID.fromString(this.oppfolgingsPeriodeId))
 )
 
-fun HandterPeriodeAvsluttetResultat.toRecordResult(event: OppfolgingsperiodeAvsluttet): RecordProcessingResult<Ident, OppfolgingsperiodeEndret> {
+fun HandterPeriodeAvsluttetResultat.toRecordResult(event: OppfolgingsperiodeAvsluttet): RecordProcessingResult<OppfolgingsperiodeId, Unit> {
     return when (this) {
+        IngenPeriodeAvsluttet -> Skip()
         GammelPeriodeAvsluttet -> Forward(
             Record(
-                event.fnr,
-                event,
+                event.periodeId,
+                Unit,
                 Instant.now().toEpochMilli()
-            ), null
+            ), PubliserKontorTilordningProcessor.processorName
         )
-
-        IngenPeriodeAvsluttet -> Skip()
-        InnkommendePeriodeAvsluttet -> Commit()
+        InnkommendePeriodeAvsluttet -> Forward(
+            Record(
+                event.periodeId,
+                Unit,
+                Instant.now().toEpochMilli()
+            ), PubliserKontorTilordningProcessor.processorName
+        )
     }
 }
