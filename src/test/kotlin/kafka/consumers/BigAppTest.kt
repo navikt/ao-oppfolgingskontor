@@ -37,9 +37,17 @@ import no.nav.kafka.consumers.SkjermingProcessor
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
 import domain.kontorForGt.KontorForGtFantDefaultKontor
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.verify
+import kafka.producers.KontorProducer
+import kafka.producers.KontorTilordningMelding
 import no.nav.services.KontorTilordningService
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.randomFnr
+import org.apache.kafka.clients.producer.MockProducer
 import org.jetbrains.exposed.sql.deleteAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.BeforeEach
@@ -99,7 +107,15 @@ class BigAppTest {
             )
             val identService = IdentService { IdenterFunnet(emptyList(), fnr) }
             val identendringsProcessor = IdentChangeProcessor(identService)
-            val publiserKontorTilordningProcessor = PubliserKontorTilordningProcessor(identService::hentAlleIdenter,{ Result.success(Unit) }, { Result.success(Unit)})
+
+            val kontorProducer = mockk<KontorProducer>()
+            coEvery { kontorProducer.publiserEndringPåKontor(any<KontorTilordningMelding>()) } returns Result.success(Unit)
+
+            val publiserKontorTilordningProcessor = PubliserKontorTilordningProcessor(
+                identService::hentAlleIdenter,
+                kontorProducer::publiserEndringPåKontor,
+                kontorProducer::publiserTombstone
+            )
             val topology = configureTopology(
                 this.environment,
                 TestLockProvider,
@@ -142,6 +158,11 @@ class BigAppTest {
             withClue("Skal finnes 2 historikkinnslag på bruker men var $antallHistorikkRader") {
                 antallHistorikkRader shouldBe 2
             }
+            coVerify { kontorProducer.publiserEndringPåKontor(KontorTilordningMelding(
+                "4154",
+                oppfolgingsperiodeId.value.toString(),
+                fnr.value
+            )) }
         }
     }
 }

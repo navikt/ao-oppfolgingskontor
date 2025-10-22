@@ -1,16 +1,9 @@
 package kafka.consumers
 
-import io.kotest.common.runBlocking
-import io.kotest.matchers.equals.shouldBeEqual
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.mockk.coEvery
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.mockkStatic
 import kafka.producers.KontorTilordningMelding
 import no.nav.db.Ident
-import no.nav.http.client.IdentFunnet
 import no.nav.http.client.IdenterFunnet
 import no.nav.http.client.IdenterOppslagFeil
 import no.nav.kafka.processor.Commit
