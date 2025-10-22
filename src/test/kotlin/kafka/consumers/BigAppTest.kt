@@ -99,7 +99,7 @@ class BigAppTest {
             )
             val identService = IdentService { IdenterFunnet(emptyList(), fnr) }
             val identendringsProcessor = IdentChangeProcessor(identService)
-            val publiserKontorTilordningProcessor = PubliserKontorTilordningProcessor(identService,{ Result.success(Unit) }, { Result.success(Unit)})
+            val publiserKontorTilordningProcessor = PubliserKontorTilordningProcessor(identService::hentAlleIdenter,{ Result.success(Unit) }, { Result.success(Unit)})
             val topology = configureTopology(
                 this.environment,
                 TestLockProvider,

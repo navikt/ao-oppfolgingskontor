@@ -12,7 +12,6 @@ import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import kafka.producers.KontorProducer
 import no.nav.db.AktorId
-import no.nav.db.Ident
 import no.nav.db.Ident.HistoriskStatus.UKJENT
 import no.nav.db.IdentSomKanLagres
 import no.nav.domain.KontorNavn

@@ -49,7 +49,7 @@ class KontorProducer(
         }
     }
 
-    suspend fun publiserEndringPåKontor(event: KontorTilordningMeldingDto): Result<Unit> {
+    private fun publiserEndringPåKontor(event: KontorTilordningMeldingDto): Result<Unit> {
         return runCatching {
             val record = ProducerRecord(
                 kontorTopicNavn,

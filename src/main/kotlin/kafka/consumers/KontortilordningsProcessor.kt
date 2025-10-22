@@ -40,18 +40,20 @@ class KontortilordningsProcessor(
             override fun deserializer(): Deserializer<Ident> =
                 Deserializer<Ident> { topic, data -> Ident.validateOrThrow(data.decodeToString(), Ident.HistoriskStatus.UKJENT) }
         }
-        val oppfolgingsperiodeStartetSerde = jsonSerde<OppfolgingsperiodeStartet>()
+        val oppfolgingsperiodeStartetSerde = jsonSerde<OppfolgingsperiodeEndret>()
     }
 
     private val log = LoggerFactory.getLogger(this::class.java)
     fun process(
-            record: Record<Ident, OppfolgingsperiodeStartet>
+            record: Record<Ident, OppfolgingsperiodeEndret>
     ): RecordProcessingResult<IdentSomKanLagres, KontorTilordningMelding> {
         try {
+            val periodeStartet = record.value() as OppfolgingsperiodeStartet ?: return Skip()
+
             return runBlocking {
                 val oppfolgingsperiode = record.value()
                 return@runBlocking automatiskKontorRutingService
-                    .tilordneKontorAutomatisk(oppfolgingsperiode)
+                    .tilordneKontorAutomatisk(periodeStartet)
                     .let { tilordningResultat ->
                         when (tilordningResultat) {
                             is TilordningRetry -> {

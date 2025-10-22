@@ -22,6 +22,7 @@ import no.nav.kafka.processor.Skip
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
 import domain.kontorForGt.KontorForGtFantDefaultKontor
+import no.nav.domain.externalEvents.OppfolgingsperiodeEndret
 import org.apache.kafka.streams.processor.api.Record
 import org.junit.jupiter.api.Test
 import utils.Outcome
@@ -38,7 +39,7 @@ class KontortilordningsProcessorTest {
             hardtFeilendeAutomatiskKontorRutingService(),
             false
         )
-        val record = Record(
+        val record: Record<Ident, OppfolgingsperiodeEndret> = Record(
             oppfolgingsperiode.fnr as Ident,
             oppfolgingsperiode,
             Instant.now().toEpochMilli(),
@@ -57,7 +58,7 @@ class KontortilordningsProcessorTest {
             feilendeAutomatiskKontorRutingService(oppfolgingsperiode),
             false
         )
-        val record = Record(
+        val record: Record<Ident, OppfolgingsperiodeEndret> = Record(
             oppfolgingsperiode.fnr as Ident,
             oppfolgingsperiode,
             Instant.now().toEpochMilli(),
@@ -75,7 +76,7 @@ class KontortilordningsProcessorTest {
             feilendeAutomatiskKontorRutingService(oppfolgingsperiode),
             true
         )
-        val record = Record(
+        val record: Record<Ident, OppfolgingsperiodeEndret> = Record(
             oppfolgingsperiode.fnr as Ident,
             oppfolgingsperiode,
             Instant.now().toEpochMilli(),
