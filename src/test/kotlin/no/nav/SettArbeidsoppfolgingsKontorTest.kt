@@ -135,7 +135,7 @@ class SettArbeidsoppfolgingsKontorTest {
             kontorResponse.data?.kontorTilhorighet?.registrantType shouldBe RegistrantTypeDto.VEILEDER
             kontorResponse.data?.kontorTilhorighet?.kontorType shouldBe KontorType.ARBEIDSOPPFOLGING
             val firstRecord = producer.history().first()
-            firstRecord.key() shouldBe oppfolgingsperiodeId.value
+            firstRecord.key() shouldBe oppfolgingsperiodeId.value.toString()
             firstRecord.value() shouldBe """
                 {"kontorId":"${kontorId}","kontorNavn":"Test KontorNavn","oppfolgingsPeriodeId":"${oppfolgingsperiodeId.value}","aktorId":"${aktorId.value}","ident":"${fnr.value}"}
             """.trimIndent()

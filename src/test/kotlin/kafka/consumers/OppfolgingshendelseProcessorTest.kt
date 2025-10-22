@@ -119,10 +119,10 @@ class OppfolgingshendelseProcessorTest {
     )
 
     /* Mock at oppslag for å hente alle mappede identer bare returnerer 1 ident (happu path)  */
-    fun Bruker.defaultOppfolgingsHendelseProcessor(): OppfolgingsHendelseProcessor {
+    fun Bruker.defaultOppfolgingsHendelseProcessor(publiserTombstone: (oppfolgingsperiodeId: OppfolgingsperiodeId) -> Result<Unit> = { _ -> Result.success(Unit) }): OppfolgingsHendelseProcessor {
         return OppfolgingsHendelseProcessor(
             OppfolgingsperiodeService { IdenterFunnet(listOf(this.ident, AktorId(this.aktorId, AKTIV)), this.ident) },
-            { _ -> Result.success(Unit)}
+            publiserTombstone
         )
     }
 
@@ -169,7 +169,11 @@ class OppfolgingshendelseProcessorTest {
         val bruker = testBruker()
         val periodeSlutt = ZonedDateTime.now().minusDays(1)
 
-        val consumer = bruker.defaultOppfolgingsHendelseProcessor()
+        val publiserteTombstones = mutableSetOf<OppfolgingsperiodeId>()
+        val consumer = bruker.defaultOppfolgingsHendelseProcessor({ periode ->
+            publiserteTombstones.add(periode)
+            Result.success(Unit)
+        })
         val startPeriodeRecord = oppfolgingStartetMelding(bruker)
         val avsluttetNyerePeriodeRecord = oppfolgingAvsluttetMelding(
             bruker.copy(periodeStart = bruker.periodeStart.plusSeconds(1)), sluttDato = periodeSlutt
@@ -180,6 +184,9 @@ class OppfolgingshendelseProcessorTest {
 
         result.shouldBeInstanceOf<Commit<*, *>>()
         bruker.skalIkkeVæreUnderOppfølging()
+        withClue("Forventet å ha publisert tombstone på oppfolgingsperiode med id: ${bruker.oppfolgingsperiodeId.value}") {
+            publiserteTombstones shouldBe setOf(bruker.oppfolgingsperiodeId)
+        }
     }
 
     @Test
