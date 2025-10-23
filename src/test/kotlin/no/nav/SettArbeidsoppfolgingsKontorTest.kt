@@ -137,7 +137,7 @@ class SettArbeidsoppfolgingsKontorTest {
             val firstRecord = producer.history().first()
             firstRecord.key() shouldBe oppfolgingsperiodeId.value.toString()
             firstRecord.value() shouldBe """
-                {"kontorId":"${kontorId}","kontorNavn":"Test KontorNavn","oppfolgingsperiodeId":"${oppfolgingsperiodeId.value}","aktorId":"${aktorId.value}","ident":"${fnr.value}"}
+                {"kontorId":"${kontorId}","kontorNavn":"Test KontorNavn","oppfolgingsperiodeId":"${oppfolgingsperiodeId.value}","aktorId":"${aktorId.value}","ident":"${fnr.value}", "tilordningstype":"ENDRET_KONTOR"}
             """.trimIndent()
         }
     }
