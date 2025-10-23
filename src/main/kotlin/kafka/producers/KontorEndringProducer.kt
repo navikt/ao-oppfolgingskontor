@@ -5,6 +5,7 @@ import kotlinx.serialization.json.Json
 import no.nav.db.AktorId
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
+import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorId
 import no.nav.domain.KontorNavn
 import no.nav.domain.OppfolgingsperiodeId
@@ -32,7 +33,7 @@ class KontorEndringProducer(
         }
     }
 
-    suspend fun publiserEndringPåKontor(event: KontorTilordningMelding): Result<Unit> {
+    suspend fun publiserEndringPåKontor(event: OppfolgingEndretTilordningMelding): Result<Unit> {
         return runCatching {
             val ident = Ident.validateOrThrow(event.ident, Ident.HistoriskStatus.UKJENT) as? IdentSomKanLagres
                 ?: throw IllegalArgumentException("Kan ikke publisere kontor-endring på aktørid, trenger annen ident")
@@ -43,7 +44,8 @@ class KontorEndringProducer(
                     oppfolgingsperiodeId = event.oppfolgingsperiodeId,
                     aktorId = aktorIdProvider(ident)?.value
                         ?: throw RuntimeException("Finner ikke aktorId for ident ${event.ident}"),
-                    ident = event.ident
+                    ident = event.ident,
+                    tilordningstype = Tilordningstype.fraKontorEndringsType(event.kontorEndringsType)
                 )
             )
         }
@@ -81,15 +83,17 @@ fun AOKontorEndret.toKontorTilordningMeldingDto(
         kontorNavn = kontorNavn.navn,
         oppfolgingsperiodeId = this.tilordning.oppfolgingsperiodeId.value.toString(),
         aktorId = aktorId.value,
-        ident = this.tilordning.fnr.value
+        ident = this.tilordning.fnr.value,
+        tilordningstype = Tilordningstype.fraKontorEndringsType(this.kontorEndringsType())
     )
 }
 
-fun AOKontorEndret.toKontorTilordningMelding(): KontorTilordningMelding {
-    return KontorTilordningMelding(
+fun AOKontorEndret.toKontorTilordningMelding(): OppfolgingEndretTilordningMelding {
+    return OppfolgingEndretTilordningMelding(
         kontorId = this.tilordning.kontorId.id,
         oppfolgingsperiodeId = this.tilordning.oppfolgingsperiodeId.value.toString(),
-        ident = this.tilordning.fnr.value
+        ident = this.tilordning.fnr.value,
+        kontorEndringsType = this.kontorEndringsType()
     )
 }
 
@@ -99,8 +103,45 @@ data class KontorTilordningMeldingDto(
     val kontorNavn: String,
     val oppfolgingsperiodeId: String,
     val aktorId: String,
-    val ident: String
+    val ident: String,
+    val tilordningstype: Tilordningstype,
 )
+
+enum class Tilordningstype {
+    KONTOR_VED_OPPFOLGINGSPERIODE_START,
+    ENDRET_KONTOR;
+
+    companion object {
+        fun fraKontorEndringsType(kontorEndringsType: KontorEndringsType): Tilordningstype {
+            return when (kontorEndringsType) {
+                KontorEndringsType.AutomatiskRutetTilNOE,
+                KontorEndringsType.AutomatiskNorgRuting,
+                KontorEndringsType.AutomatiskNorgRutingFallback,
+                KontorEndringsType.AutomatiskRutetTilNavItManglerGt,
+                KontorEndringsType.AutomatiskRutetTilNavItGtErLand,
+                KontorEndringsType.AutomatiskRutetTilNavItIngenKontorFunnetForGt -> KONTOR_VED_OPPFOLGINGSPERIODE_START
+
+                KontorEndringsType.FikkAddressebeskyttelse,
+                KontorEndringsType.AddressebeskyttelseMistet,
+                KontorEndringsType.FikkSkjerming,
+                KontorEndringsType.MistetSkjerming,
+                KontorEndringsType.FlyttetAvVeileder -> ENDRET_KONTOR
+
+                /* Endringer som bare skal skje på GT-kontor eller Arena-kontor */
+                KontorEndringsType.GTKontorVedOppfolgingStart,
+                KontorEndringsType.EndretBostedsadresse,
+                KontorEndringsType.EndretIArena,
+                KontorEndringsType.ArenaKontorVedOppfolgingsStart,
+                KontorEndringsType.TidligArenaKontorVedOppfolgingStart,
+                KontorEndringsType.ArenaKontorVedOppfolgingStartMedEtterslep,
+                KontorEndringsType.MIGRERING,
+                KontorEndringsType.ArenaMigrering -> {
+                    throw RuntimeException("Vi skal ikke publisere kontorendringer på kontor-endring av type $kontorEndringsType")
+                }
+            }
+        }
+    }
+}
 
 /**
  * Same as KontorTilordningMeldingDto but without AktorId and kontorNavn.
@@ -108,8 +149,9 @@ data class KontorTilordningMeldingDto(
  * but still have a serializable data-transfer-object to pass it to the next processing step
  * */
 @Serializable
-data class KontorTilordningMelding(
+data class OppfolgingEndretTilordningMelding(
     val kontorId: String,
     val oppfolgingsperiodeId: String,
-    val ident: String
+    val ident: String,
+    val kontorEndringsType: KontorEndringsType
 )

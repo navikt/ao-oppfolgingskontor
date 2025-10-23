@@ -7,15 +7,16 @@ import no.nav.domain.KontorType
 import no.nav.domain.System
 import org.slf4j.LoggerFactory
 
-class AOKontorEndretPgaSkjermingEndret(kontorTilordning: KontorTilordning): AOKontorEndret(kontorTilordning, System()) {
+class AOKontorEndretPgaSkjermingEndret(kontorTilordning: KontorTilordning): AOKontorEndret(kontorTilordning, System(), ) {
     val log = LoggerFactory.getLogger(this::class.java)
 
+    override fun kontorEndringsType(): KontorEndringsType = KontorEndringsType.FikkSkjerming
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(
             kontorId = this.tilordning.kontorId,
             ident = this.tilordning.fnr,
             registrant = System(),
-            kontorendringstype = KontorEndringsType.FikkSkjerming,
+            kontorendringstype = this.kontorEndringsType(),
             kontorType = KontorType.ARBEIDSOPPFOLGING,
             oppfolgingId = this.tilordning.oppfolgingsperiodeId
         )

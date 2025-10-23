@@ -1,15 +1,13 @@
 package no.nav.kafka.consumers
 
 import kafka.consumers.jsonSerde
-import kafka.producers.KontorTilordningMelding
+import kafka.producers.OppfolgingEndretTilordningMelding
 import kafka.producers.toKontorTilordningMelding
 import kotlinx.coroutines.runBlocking
 import no.nav.db.Ident
-import no.nav.db.IdentSomKanLagres
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.OppfolgingsperiodeEndret
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
-import no.nav.kafka.arbeidsoppfolgingkontorSinkName
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.RecordProcessingResult
@@ -47,7 +45,7 @@ class KontortilordningsProcessor(
     private val log = LoggerFactory.getLogger(this::class.java)
     fun process(
             record: Record<Ident, OppfolgingsperiodeEndret>
-    ): RecordProcessingResult<OppfolgingsperiodeId, KontorTilordningMelding> {
+    ): RecordProcessingResult<OppfolgingsperiodeId, OppfolgingEndretTilordningMelding> {
         try {
             val periodeStartet = record.value() as OppfolgingsperiodeStartet ?: return Skip()
 
