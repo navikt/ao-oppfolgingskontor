@@ -5,6 +5,7 @@ import kotlinx.serialization.json.Json
 import no.nav.db.AktorId
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
+import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorId
 import no.nav.domain.KontorNavn
 import no.nav.domain.OppfolgingsperiodeId
@@ -89,7 +90,8 @@ fun AOKontorEndret.toKontorTilordningMelding(): KontorTilordningMelding {
     return KontorTilordningMelding(
         kontorId = this.tilordning.kontorId.id,
         oppfolgingsperiodeId = this.tilordning.oppfolgingsperiodeId.value.toString(),
-        ident = this.tilordning.fnr.value
+        ident = this.tilordning.fnr.value,
+        kontorEndringsType = this.tilordning.
     )
 }
 
@@ -111,5 +113,6 @@ data class KontorTilordningMeldingDto(
 data class KontorTilordningMelding(
     val kontorId: String,
     val oppfolgingsperiodeId: String,
-    val ident: String
+    val ident: String,
+    val kontorEndringsType: KontorEndringsType
 )
