@@ -97,6 +97,7 @@ fun Application.module() {
         this.identService = identService
         this.criticalErrorNotificationFunction = setCriticalError
         this.kontorTilhorighetService = kontorTilhorighetService
+        this.kontorEndringProducer = kontorEndringProducer
     }
 
     val issuer = environment.getIssuer()
