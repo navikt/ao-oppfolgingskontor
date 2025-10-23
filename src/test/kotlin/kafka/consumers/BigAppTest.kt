@@ -37,6 +37,11 @@ import no.nav.kafka.consumers.SkjermingProcessor
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
 import domain.kontorForGt.KontorForGtFantDefaultKontor
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.mockk
+import kafka.producers.KontorEndringProducer
+import kafka.producers.KontorTilordningMelding
 import no.nav.services.KontorTilordningService
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.randomFnr
@@ -99,16 +104,25 @@ class BigAppTest {
             )
             val identService = IdentService { IdenterFunnet(emptyList(), fnr) }
             val identendringsProcessor = IdentChangeProcessor(identService)
+
+            val kontorEndringProducer = mockk<KontorEndringProducer>()
+            coEvery { kontorEndringProducer.publiserEndringPåKontor(any<KontorTilordningMelding>()) } returns Result.success(Unit)
+
+            val publiserKontorTilordningProcessor = PubliserKontorTilordningProcessor(
+                identService::hentAlleIdenter,
+                kontorEndringProducer::publiserEndringPåKontor,
+            )
             val topology = configureTopology(
                 this.environment,
                 TestLockProvider,
                 CoroutineScope(Dispatchers.IO),
                 tilordningProcessor,
+                publiserKontorTilordningProcessor,
                 leesahProcessor,
                 skjermingProcessor,
                 endringPaaOppfolgingsBrukerProcessor,
                 identendringsProcessor,
-                OppfolgingsHendelseProcessor(OppfolgingsperiodeService(identService::hentAlleIdenter ))
+                OppfolgingsHendelseProcessor(OppfolgingsperiodeService(identService::hentAlleIdenter ), kontorEndringProducer::publiserTombstone)
             )
             val (driver, inputTopics, _) = setupKafkaMock(topology,
                 listOf(topics.inn.oppfolgingsHendelser.name), null
@@ -140,6 +154,11 @@ class BigAppTest {
             withClue("Skal finnes 2 historikkinnslag på bruker men var $antallHistorikkRader") {
                 antallHistorikkRader shouldBe 2
             }
+            coVerify { kontorEndringProducer.publiserEndringPåKontor(KontorTilordningMelding(
+                "4154",
+                oppfolgingsperiodeId.value.toString(),
+                fnr.value
+            )) }
         }
     }
 }

@@ -44,7 +44,8 @@ fun Application.configureArbeidsoppfolgingskontorModule(
     kontorTilhorighetService: KontorTilhorighetService,
     poaoTilgangClient: PoaoTilgangKtorHttpClient,
     oppfolgingsperiodeService: OppfolgingsperiodeService,
-    authenticateRequest: AuthenticateRequest = { req -> req.call.authenticateCall(environment.getIssuer()) }
+    publiserKontorEndring: suspend (KontorSattAvVeileder) -> Result<Unit>,
+    authenticateRequest: AuthenticateRequest = { req -> req.call.authenticateCall(environment.getIssuer()) },
 ) {
     val log = LoggerFactory.getLogger("Application.configureArbeidsoppfolgingskontorModule")
 
@@ -100,16 +101,17 @@ fun Application.configureArbeidsoppfolgingskontorModule(
                         }
                     }
 
-                    KontorTilordningService.tilordneKontor(
-                        KontorSattAvVeileder(
-                            tilhorighet = KontorTilordning(
-                                fnr = ident,
-                                kontorId = kontorId,
-                                oppfolgingsperiodeId
-                            ),
-                            registrant = principal.toRegistrant()
-                        )
+                    val kontorEndring = KontorSattAvVeileder(
+                        tilhorighet = KontorTilordning(
+                            fnr = ident,
+                            kontorId = kontorId,
+                            oppfolgingsperiodeId
+                        ),
+                        registrant = principal.toRegistrant()
                     )
+                    KontorTilordningService.tilordneKontor(kontorEndring)
+                    val result = publiserKontorEndring(kontorEndring)
+                    if (result.isFailure) throw result.exceptionOrNull()!!
                     kontorId to gammeltKontor
                 }
                     .onSuccess { (kontorId, gammeltKontor) ->

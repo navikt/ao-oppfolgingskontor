@@ -1,10 +1,17 @@
 package no.nav.kafka.consumers
 
 import kafka.consumers.jsonSerde
+import kafka.producers.KontorTilordningMelding
+import kafka.producers.toKontorTilordningMelding
 import kotlinx.coroutines.runBlocking
 import no.nav.db.Ident
+import no.nav.db.IdentSomKanLagres
+import no.nav.domain.OppfolgingsperiodeId
+import no.nav.domain.externalEvents.OppfolgingsperiodeEndret
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
+import no.nav.kafka.arbeidsoppfolgingkontorSinkName
 import no.nav.kafka.processor.Commit
+import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
@@ -19,10 +26,11 @@ import org.apache.kafka.common.serialization.Serde
 import org.apache.kafka.common.serialization.Serializer
 import org.apache.kafka.streams.processor.api.Record
 import org.slf4j.LoggerFactory
+import java.time.ZonedDateTime
 
 class KontortilordningsProcessor(
-        private val automatiskKontorRutingService: AutomatiskKontorRutingService,
-        private val skipPersonIkkeFunnet: Boolean = false,
+    private val automatiskKontorRutingService: AutomatiskKontorRutingService,
+    private val skipPersonIkkeFunnet: Boolean = false,
 ) {
     companion object {
         const val processorName = "KontortilordningsProcessor"
@@ -33,18 +41,20 @@ class KontortilordningsProcessor(
             override fun deserializer(): Deserializer<Ident> =
                 Deserializer<Ident> { topic, data -> Ident.validateOrThrow(data.decodeToString(), Ident.HistoriskStatus.UKJENT) }
         }
-        val oppfolgingsperiodeStartetSerde = jsonSerde<OppfolgingsperiodeStartet>()
+        val oppfolgingsperiodeStartetSerde = jsonSerde<OppfolgingsperiodeEndret>()
     }
 
     private val log = LoggerFactory.getLogger(this::class.java)
     fun process(
-            record: Record<Ident, OppfolgingsperiodeStartet>
-    ): RecordProcessingResult<String, String> {
+            record: Record<Ident, OppfolgingsperiodeEndret>
+    ): RecordProcessingResult<OppfolgingsperiodeId, KontorTilordningMelding> {
         try {
+            val periodeStartet = record.value() as OppfolgingsperiodeStartet ?: return Skip()
+
             return runBlocking {
                 val oppfolgingsperiode = record.value()
                 return@runBlocking automatiskKontorRutingService
-                    .tilordneKontorAutomatisk(oppfolgingsperiode)
+                    .tilordneKontorAutomatisk(periodeStartet)
                     .let { tilordningResultat ->
                         when (tilordningResultat) {
                             is TilordningRetry -> {
@@ -68,13 +78,20 @@ class KontortilordningsProcessor(
                                         log.info("Behandlet start oppfølging uten at noen kontor ble endret")
                                     }
                                     is TilordningSuccessKontorEndret -> {
-                                        val arenaKontor = tilordningResultat.kontorEndretEvent.arenaKontorEndret
                                         val aoKontor = tilordningResultat.kontorEndretEvent.aoKontorEndret
-                                        if (arenaKontor?.tilordning?.kontorId != aoKontor?.tilordning?.kontorId) {
-                                            log.warn("Behandlet start oppfølging men fikk forskjelling kontor i arena og ao, arena: ${arenaKontor?.tilordning?.kontorId} - ao: ${aoKontor?.tilordning?.kontorId}")
-                                        } else {
-                                            log.info("Behandlet start oppfølging og fikk samme kontor i arena og ao: ${arenaKontor?.tilordning?.kontorId}")
-                                        }
+                                        if (aoKontor != null)
+                                            /* Publishing it done in its own processor to avoid re-setting kontor and creating
+                                            extra-history if the publishing to kafka part fails. Forwarding without topicname
+                                             send the record to default next step which is configured in the topology */
+                                            return@let Forward(
+                                                Record(
+                                                    aoKontor.tilordning.oppfolgingsperiodeId,
+                                                    /* Records need to be serializable and don't want to slap @Serializable
+                                                    on domain-classes if it can be avoided */
+                                                    aoKontor.toKontorTilordningMelding(),
+                                                    ZonedDateTime.now().toEpochSecond()
+                                                )
+                                            )
                                     }
                                 }
                                 Commit()

@@ -13,6 +13,7 @@ import no.nav.db.IdentSomKanLagres
 import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
+import no.nav.domain.externalEvents.OppfolgingsperiodeEndret
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.domain.externalEvents.TidligArenaKontor
 import no.nav.kafka.processor.*
@@ -29,12 +30,13 @@ import java.util.*
 
 class OppfolgingsHendelseProcessor(
     val oppfolgingsPeriodeService: OppfolgingsperiodeService,
+    val publiserTombstone: (oppfolgingsperiodeId: OppfolgingsperiodeId) -> Result<Unit>,
 ) {
     val log = LoggerFactory.getLogger(javaClass)
 
     fun process(
         record: Record<String, String>
-    ): RecordProcessingResult<Ident, OppfolgingsperiodeStartet> {
+    ): RecordProcessingResult<Ident, OppfolgingsperiodeEndret> {
         var hendelseType = "<Ukjent hendelsetype>"
         val ident = Ident.validateOrThrow(record.key(), Ident.HistoriskStatus.UKJENT)
         return runCatching {
@@ -66,16 +68,27 @@ class OppfolgingsHendelseProcessor(
 
                 is OppfolgingsAvsluttetHendelseDto -> {
                     hendelseType = oppfolgingsperiodeEvent.hendelseType.name
-                    oppfolgingsPeriodeService.handterPeriodeAvsluttet(oppfolgingsperiodeEvent.toDomainObject())
-                        .toRecordResult()
+                    val oppfolgingsPeriodeAvsluttet = oppfolgingsperiodeEvent.toDomainObject()
+                    oppfolgingsPeriodeService.handterPeriodeAvsluttet(oppfolgingsPeriodeAvsluttet)
+                        .toRecordResult(oppfolgingsPeriodeAvsluttet)
                 }
             }
         }
             .getOrElse { error ->
                 val feilmelding = "Kunne ikke behandle oppfolgingshendelse - ${hendelseType}: ${error.message}"
                 log.error(feilmelding, error)
-                Retry<Ident, OppfolgingsperiodeStartet>(feilmelding)
+                Retry<Ident, OppfolgingsperiodeEndret>(feilmelding)
             }
+    }
+
+    fun HandterPeriodeAvsluttetResultat.toRecordResult(event: OppfolgingsperiodeAvsluttet): RecordProcessingResult<Ident, OppfolgingsperiodeEndret> {
+        return when (this) {
+            IngenPeriodeAvsluttet -> Skip()
+            GammelPeriodeAvsluttet, InnkommendePeriodeAvsluttet -> {
+                publiserTombstone(event.periodeId)
+                Commit()
+            }
+        }
     }
 
     fun OppfolgingsperiodeStartet.enrichWithTidligArenaKontor(): OppfolgingsperiodeStartet {
@@ -88,8 +101,17 @@ class OppfolgingsHendelseProcessor(
             val alleIdenter = IdentMappingTable.alias("alleIdenter")
             val tidligArenaKontorOgIdent = IdentMappingTable
                 .join(alleIdenter, INNER, onColumn = internIdent, otherColumn = alleIdenter[internIdent])
-                .join(TidligArenaKontorTable, INNER, onColumn = alleIdenter[IdentMappingTable.id], otherColumn = TidligArenaKontorTable.id)
-                .select(TidligArenaKontorTable.id, TidligArenaKontorTable.kontorId, TidligArenaKontorTable.sisteEndretDato)
+                .join(
+                    TidligArenaKontorTable,
+                    INNER,
+                    onColumn = alleIdenter[IdentMappingTable.id],
+                    otherColumn = TidligArenaKontorTable.id
+                )
+                .select(
+                    TidligArenaKontorTable.id,
+                    TidligArenaKontorTable.kontorId,
+                    TidligArenaKontorTable.sisteEndretDato
+                )
                 .where { IdentMappingTable.id eq ident.value }
                 .map { row ->
                     TidligArenaKontor(
@@ -125,11 +147,3 @@ fun OppfolgingsAvsluttetHendelseDto.toDomainObject() = OppfolgingsperiodeAvslutt
     this.startetTidspunkt,
     OppfolgingsperiodeId(UUID.fromString(this.oppfolgingsPeriodeId))
 )
-
-fun HandterPeriodeAvsluttetResultat.toRecordResult(): RecordProcessingResult<Ident, OppfolgingsperiodeStartet> {
-    return when (this) {
-        GammelPeriodeAvsluttet -> Commit()
-        IngenPeriodeAvsluttet -> Skip()
-        InnkommendePeriodeAvsluttet -> Commit()
-    }
-}

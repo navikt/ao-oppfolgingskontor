@@ -5,7 +5,7 @@ import http.configureContentNegotiation
 import http.configureHentArbeidsoppfolgingskontorBulkModule
 import io.ktor.server.application.*
 import io.ktor.server.netty.*
-import kafka.producers.KontorProducer
+import kafka.producers.KontorEndringProducer
 import no.nav.db.configureDatabase
 import no.nav.http.client.*
 import no.nav.http.client.arbeidssogerregisteret.ArbeidssokerregisterClient
@@ -22,6 +22,7 @@ import no.nav.http.graphql.getNorg2Url
 import no.nav.http.graphql.getPDLUrl
 import no.nav.http.graphql.getPoaoTilgangUrl
 import no.nav.kafka.KafkaStreamsPlugin
+import no.nav.kafka.config.createKafkaProducer
 import no.nav.kafka.config.toKafkaEnv
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.GTNorgService
@@ -79,9 +80,9 @@ fun Application.module() {
         { oppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) },
         { _, oppfolgingsperiodeId -> OppfolgingsperiodeDao.finnesAoKontorPåPeriode(oppfolgingsperiodeId) },
     )
-    val kontorProducer = KontorProducer(
-        config = this.environment.config.toKafkaEnv(),
-        topics = this.environment.topics(),
+    val kontorEndringProducer = KontorEndringProducer(
+        producer = createKafkaProducer(this.environment.config.toKafkaEnv()),
+        kontorTopicNavn = this.environment.topics().ut.arbeidsoppfolgingskontortilordninger.name,
         kontorNavnProvider = { kontorId -> kontorNavnService.getKontorNavn(kontorId) },
         aktorIdProvider = { identSomKanLagres -> identService.hentAktorId(identSomKanLagres) }
     )
@@ -96,13 +97,20 @@ fun Application.module() {
         this.identService = identService
         this.criticalErrorNotificationFunction = setCriticalError
         this.kontorTilhorighetService = kontorTilhorighetService
+        this.kontorEndringProducer = kontorEndringProducer
     }
 
     val issuer = environment.getIssuer()
     val authenticateRequest: AuthenticateRequest = { req -> req.call.authenticateCall(issuer) }
     configureGraphQlModule(norg2Client, kontorTilhorighetService, authenticateRequest, identService::hentAlleIdenter)
     configureContentNegotiation()
-    configureArbeidsoppfolgingskontorModule(kontorNavnService, kontorTilhorighetService, poaoTilgangHttpClient, oppfolgingsperiodeService)
+    configureArbeidsoppfolgingskontorModule(
+        kontorNavnService,
+        kontorTilhorighetService,
+        poaoTilgangHttpClient,
+        oppfolgingsperiodeService,
+        { kontorEndringProducer.publiserEndringPåKontor(it) }
+    )
     configureHentArbeidsoppfolgingskontorBulkModule(KontorTilhorighetBulkService)
 }
 

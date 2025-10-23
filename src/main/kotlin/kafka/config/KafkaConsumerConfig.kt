@@ -5,13 +5,12 @@ import io.ktor.server.application.ApplicationEnvironment
 import io.ktor.server.config.*
 import kafka.consumers.IdentChangeProcessor
 import kafka.consumers.OppfolgingsHendelseProcessor
+import kafka.consumers.PubliserKontorTilordningProcessor
 import kafka.retry.library.RetryProcessorWrapper
 import kafka.retry.library.StreamType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import net.javacrumbs.shedlock.core.LockProvider
-import no.nav.db.IdentSomKanLagres
-import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
 import no.nav.kafka.consumers.KontortilordningsProcessor
 import no.nav.kafka.consumers.LeesahProcessor
@@ -69,6 +68,7 @@ fun configureTopology(
     lockProvider: LockProvider,
     punctuationCoroutineScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
     kontortilordningsProcessor: KontortilordningsProcessor,
+    publiserKontorTilordningProcessor: PubliserKontorTilordningProcessor,
     leesahProcessor: LeesahProcessor,
     skjermingProcessor: SkjermingProcessor,
     endringPaOppfolgingsBrukerProcessor: EndringPaOppfolgingsBrukerProcessor,
@@ -100,6 +100,9 @@ fun configureTopology(
     fun <KIn, VIn, KOut, VOut> wrapInRetryProcessor(topic: Topic<KIn, VIn>, streamType: StreamType, businessLogic: (Record<KIn, VIn>) -> RecordProcessingResult<KOut, VOut>)
         = wrapInRetryProcessor(topic.keySerde, topic.valSerde, topic.name, streamType, businessLogic)
 
+    /*
+    * Oppfølgingsperiode startet / avsluttet
+    * */
     val oppfolgingHendelseProcessorSupplier = wrapInRetryProcessor(
         topic = topics.inn.oppfolgingsHendelser,
         streamType = StreamType.SOURCE,
@@ -112,10 +115,18 @@ fun configureTopology(
         streamType = StreamType.INTERNAL,
         businessLogic = kontortilordningsProcessor::process,
     )
+    val publiserKontorTilordningProcessorSupplier = wrapInRetryProcessor(
+        keyInSerde = PubliserKontorTilordningProcessor.oppfolgingsperiodeIdSerde,
+        valueInSerde = PubliserKontorTilordningProcessor.kontortilordningSerde,
+        topic = PubliserKontorTilordningProcessor.processorName,
+        streamType = StreamType.INTERNAL,
+        businessLogic = publiserKontorTilordningProcessor::process,
+    )
 
     builder.stream(topics.inn.oppfolgingsHendelser.name, topics.inn.oppfolgingsHendelser.consumedWith())
         .process(oppfolgingHendelseProcessorSupplier, Named.`as`(processorName(topics.inn.oppfolgingsHendelser.name)))
         .process(kontortilordningProcessorSupplier, Named.`as`(KontortilordningsProcessor.processorName))
+        .process(publiserKontorTilordningProcessorSupplier, Named.`as`(PubliserKontorTilordningProcessor.processorName))
 
     /*
     * Endring på oppfølgingsbruker (Arena)
@@ -129,7 +140,7 @@ fun configureTopology(
         .process(endringPaOppfolgingsBrukerProcessorSupplier, Named.`as`(processorName(topics.inn.endringPaOppfolgingsbruker.name)))
 
     /*
-    * Skjerming
+    * Endring i Skjerming (egen ansatt)
     * */
     val skjermingProcessorSupplier = wrapInRetryProcessor(
         topic = topics.inn.skjerming,
