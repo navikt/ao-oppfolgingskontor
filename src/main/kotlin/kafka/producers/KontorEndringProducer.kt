@@ -33,7 +33,7 @@ class KontorEndringProducer(
         }
     }
 
-    suspend fun publiserEndringPåKontor(event: KontorTilordningMelding): Result<Unit> {
+    suspend fun publiserEndringPåKontor(event: OppfolgingEndretTilordningMelding): Result<Unit> {
         return runCatching {
             val ident = Ident.validateOrThrow(event.ident, Ident.HistoriskStatus.UKJENT) as? IdentSomKanLagres
                 ?: throw IllegalArgumentException("Kan ikke publisere kontor-endring på aktørid, trenger annen ident")
@@ -44,7 +44,8 @@ class KontorEndringProducer(
                     oppfolgingsperiodeId = event.oppfolgingsperiodeId,
                     aktorId = aktorIdProvider(ident)?.value
                         ?: throw RuntimeException("Finner ikke aktorId for ident ${event.ident}"),
-                    ident = event.ident
+                    ident = event.ident,
+                    tilordningstype = Tilordningstype.fraKontorEndringsType(event.kontorEndringsType)
                 )
             )
         }
@@ -82,12 +83,13 @@ fun AOKontorEndret.toKontorTilordningMeldingDto(
         kontorNavn = kontorNavn.navn,
         oppfolgingsperiodeId = this.tilordning.oppfolgingsperiodeId.value.toString(),
         aktorId = aktorId.value,
-        ident = this.tilordning.fnr.value
+        ident = this.tilordning.fnr.value,
+        tilordningstype = Tilordningstype.fraKontorEndringsType(this.kontorEndringsType())
     )
 }
 
-fun AOKontorEndret.toKontorTilordningMelding(): KontorTilordningMelding {
-    return KontorTilordningMelding(
+fun AOKontorEndret.toKontorTilordningMelding(): OppfolgingEndretTilordningMelding {
+    return OppfolgingEndretTilordningMelding(
         kontorId = this.tilordning.kontorId.id,
         oppfolgingsperiodeId = this.tilordning.oppfolgingsperiodeId.value.toString(),
         ident = this.tilordning.fnr.value,
@@ -113,28 +115,29 @@ enum class Tilordningstype {
         fun fraKontorEndringsType(kontorEndringsType: KontorEndringsType): Tilordningstype {
             return when (kontorEndringsType) {
                 KontorEndringsType.AutomatiskRutetTilNOE,
-
-
-
+                KontorEndringsType.AutomatiskNorgRuting,
+                KontorEndringsType.AutomatiskNorgRutingFallback,
+                KontorEndringsType.AutomatiskRutetTilNavItManglerGt,
+                KontorEndringsType.AutomatiskRutetTilNavItGtErLand,
+                KontorEndringsType.AutomatiskRutetTilNavItIngenKontorFunnetForGt -> KONTOR_VED_OPPFOLGINGSPERIODE_START
 
                 KontorEndringsType.FikkAddressebeskyttelse,
                 KontorEndringsType.AddressebeskyttelseMistet,
                 KontorEndringsType.FikkSkjerming,
-                KontorEndringsType.MistetSkjerming -> KONTOR_VED_OPPFOLGINGSPERIODE_START
-                KontorEndringsType.AutomatiskNorgRuting -> TODO()
-                KontorEndringsType.AutomatiskNorgRutingFallback -> TODO()
-                KontorEndringsType.AutomatiskRutetTilNavItManglerGt -> TODO()
-                KontorEndringsType.AutomatiskRutetTilNavItGtErLand -> TODO()
-                KontorEndringsType.AutomatiskRutetTilNavItIngenKontorFunnetForGt -> TODO()
-                KontorEndringsType.FlyttetAvVeileder -> TODO()
-                KontorEndringsType.GTKontorVedOppfolgingStart -> TODO()
-                KontorEndringsType.EndretBostedsadresse -> TODO()
-                KontorEndringsType.EndretIArena -> TODO()
-                KontorEndringsType.ArenaKontorVedOppfolgingsStart -> TODO()
-                KontorEndringsType.TidligArenaKontorVedOppfolgingStart -> TODO()
-                KontorEndringsType.ArenaKontorVedOppfolgingStartMedEtterslep -> TODO()
-                KontorEndringsType.MIGRERING -> TODO()
-                KontorEndringsType.ArenaMigrering -> TODO()
+                KontorEndringsType.MistetSkjerming,
+                KontorEndringsType.FlyttetAvVeileder -> ENDRET_KONTOR
+
+                /* Endringer som bare skal skje på GT-kontor eller Arena-kontor */
+                KontorEndringsType.GTKontorVedOppfolgingStart,
+                KontorEndringsType.EndretBostedsadresse,
+                KontorEndringsType.EndretIArena,
+                KontorEndringsType.ArenaKontorVedOppfolgingsStart,
+                KontorEndringsType.TidligArenaKontorVedOppfolgingStart,
+                KontorEndringsType.ArenaKontorVedOppfolgingStartMedEtterslep,
+                KontorEndringsType.MIGRERING,
+                KontorEndringsType.ArenaMigrering -> {
+                    throw RuntimeException("Vi skal ikke publisere kontorendringer på kontor-endring av type $kontorEndringsType")
+                }
             }
         }
     }
@@ -146,7 +149,7 @@ enum class Tilordningstype {
  * but still have a serializable data-transfer-object to pass it to the next processing step
  * */
 @Serializable
-data class KontorTilordningMelding(
+data class OppfolgingEndretTilordningMelding(
     val kontorId: String,
     val oppfolgingsperiodeId: String,
     val ident: String,

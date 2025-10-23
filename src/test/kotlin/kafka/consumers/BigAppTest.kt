@@ -41,7 +41,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import kafka.producers.KontorEndringProducer
-import kafka.producers.KontorTilordningMelding
+import kafka.producers.OppfolgingEndretTilordningMelding
 import no.nav.domain.KontorEndringsType
 import no.nav.services.KontorTilordningService
 import no.nav.utils.flywayMigrationInTest
@@ -107,7 +107,7 @@ class BigAppTest {
             val identendringsProcessor = IdentChangeProcessor(identService)
 
             val kontorEndringProducer = mockk<KontorEndringProducer>()
-            coEvery { kontorEndringProducer.publiserEndringPåKontor(any<KontorTilordningMelding>()) } returns Result.success(Unit)
+            coEvery { kontorEndringProducer.publiserEndringPåKontor(any<OppfolgingEndretTilordningMelding>()) } returns Result.success(Unit)
 
             val publiserKontorTilordningProcessor = PubliserKontorTilordningProcessor(
                 identService::hentAlleIdenter,
@@ -155,7 +155,7 @@ class BigAppTest {
             withClue("Skal finnes 2 historikkinnslag på bruker men var $antallHistorikkRader") {
                 antallHistorikkRader shouldBe 2
             }
-            coVerify { kontorEndringProducer.publiserEndringPåKontor(KontorTilordningMelding(
+            coVerify { kontorEndringProducer.publiserEndringPåKontor(OppfolgingEndretTilordningMelding(
                 "4154",
                 oppfolgingsperiodeId.value.toString(),
                 fnr.value,
