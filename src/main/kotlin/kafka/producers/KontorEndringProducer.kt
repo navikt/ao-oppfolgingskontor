@@ -91,7 +91,7 @@ fun AOKontorEndret.toKontorTilordningMelding(): KontorTilordningMelding {
         kontorId = this.tilordning.kontorId.id,
         oppfolgingsperiodeId = this.tilordning.oppfolgingsperiodeId.value.toString(),
         ident = this.tilordning.fnr.value,
-        kontorEndringsType = this.tilordning.
+        kontorEndringsType = this.kontorEndringsType()
     )
 }
 

@@ -8,12 +8,13 @@ import no.nav.domain.Registrant
 import no.nav.http.logger
 
 class KontorSattAvVeileder(tilhorighet: KontorTilordning, registrant: Registrant): AOKontorEndret(tilhorighet, registrant) {
+    override fun kontorEndringsType(): KontorEndringsType = KontorEndringsType.FlyttetAvVeileder
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(
             kontorId = tilordning.kontorId,
             ident = tilordning.fnr,
             registrant = registrant,
-            kontorendringstype = KontorEndringsType.FlyttetAvVeileder,
+            kontorendringstype = this.kontorEndringsType(),
             kontorType = KontorType.ARBEIDSOPPFOLGING,
             oppfolgingId = tilordning.oppfolgingsperiodeId
         )

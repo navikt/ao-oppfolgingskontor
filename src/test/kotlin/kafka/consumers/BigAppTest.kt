@@ -42,6 +42,7 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import kafka.producers.KontorEndringProducer
 import kafka.producers.KontorTilordningMelding
+import no.nav.domain.KontorEndringsType
 import no.nav.services.KontorTilordningService
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.randomFnr
@@ -157,7 +158,8 @@ class BigAppTest {
             coVerify { kontorEndringProducer.publiserEndringPåKontor(KontorTilordningMelding(
                 "4154",
                 oppfolgingsperiodeId.value.toString(),
-                fnr.value
+                fnr.value,
+                KontorEndringsType.AutomatiskRutetTilNOE
             )) }
         }
     }

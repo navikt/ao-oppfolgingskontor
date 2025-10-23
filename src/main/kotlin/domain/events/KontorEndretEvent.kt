@@ -87,7 +87,12 @@ data class GTKontorEndret(val kontorTilordning: KontorTilordning, val kontorEndr
             gt)
     }
 }
-sealed class AOKontorEndret(tilordning: KontorTilordning, val registrant: Registrant) : KontorEndretEvent(tilordning)
+sealed class AOKontorEndret(
+    tilordning: KontorTilordning,
+    val registrant: Registrant,
+) : KontorEndretEvent(tilordning) {
+    abstract fun kontorEndringsType(): KontorEndringsType
+}
 sealed class ArenaKontorEndret(tilordning: KontorTilordning, val sistEndretDatoArena: OffsetDateTime) : KontorEndretEvent(tilordning) {
     override fun logg() {
         logger.info("${this::class.simpleName}: kontorId=${tilordning.kontorId}, oppfolginsperiode=${tilordning.oppfolgingsperiodeId}")

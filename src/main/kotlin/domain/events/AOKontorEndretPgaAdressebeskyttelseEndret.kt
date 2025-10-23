@@ -10,12 +10,13 @@ import org.slf4j.LoggerFactory
 class AOKontorEndretPgaAdressebeskyttelseEndret(tilordning: KontorTilordning): AOKontorEndret(tilordning, System()) {
     val logger = LoggerFactory.getLogger(this::class.java)
 
+    override fun kontorEndringsType(): KontorEndringsType = KontorEndringsType.FikkAddressebeskyttelse
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(
             kontorId = tilordning.kontorId,
             ident = tilordning.fnr,
             registrant = System(),
-            kontorendringstype = KontorEndringsType.FikkAddressebeskyttelse,
+            kontorendringstype = this.kontorEndringsType(),
             kontorType = KontorType.ARBEIDSOPPFOLGING,
             oppfolgingId = tilordning.oppfolgingsperiodeId
         )

@@ -3,6 +3,7 @@ package kafka.consumers
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kafka.producers.KontorTilordningMelding
 import no.nav.db.Ident
+import no.nav.domain.KontorEndringsType
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.http.client.IdenterOppslagFeil
 import no.nav.kafka.processor.Retry
@@ -24,7 +25,8 @@ class PubliserKontorTilordningProcessorTest {
         val tilordningMelding = KontorTilordningMelding(
             kontorId = "3131",
             oppfolgingsperiodeId = UUID.randomUUID().toString(),
-            ident = ident.value
+            ident = ident.value,
+            kontorEndringsType = KontorEndringsType.AutomatiskNorgRuting
         )
         val record = Record(
             OppfolgingsperiodeId(UUID.fromString(tilordningMelding.oppfolgingsperiodeId)),

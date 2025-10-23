@@ -45,6 +45,7 @@ data class OppfolgingsperiodeStartetNoeTilordning(
     val oppfolgingsperiodeId: OppfolgingsperiodeId,
 ) : AOKontorEndret(KontorTilordning(fnr, KontorId("4154"), oppfolgingsperiodeId), System()) {
     private val rutingResultat: RutingResultat = RutingResultat.RutetTilNOE
+    override fun kontorEndringsType(): KontorEndringsType = rutingResultat.toKontorEndringsType()
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(
             kontorId = tilordning.kontorId,
@@ -70,12 +71,13 @@ data class OppfolgingsPeriodeStartetLokalKontorTilordning(
         is KontorForGtNrFantFallbackKontorForManglendeGt -> RutingResultat.RutetViaNorgFallback
     }
 
+    override fun kontorEndringsType(): KontorEndringsType = rutingResultat.toKontorEndringsType()
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(
             kontorId = tilordning.kontorId,
             ident = tilordning.fnr,
             registrant = registrant,
-            kontorendringstype = rutingResultat.toKontorEndringsType(),
+            kontorendringstype = this.kontorEndringsType(),
             kontorType = KontorType.ARBEIDSOPPFOLGING,
             oppfolgingId = tilordning.oppfolgingsperiodeId
         )
@@ -106,6 +108,7 @@ data class OppfolgingsPeriodeStartetFallbackKontorTilordning(
         // Noen GT-er gir 404 i norg (feks kommunr i kommuner med bydeler)
         is GtNummerForBrukerFunnet -> RutingResultat.FallbackIngenKontorFunnetForGT
     }
+    override fun kontorEndringsType(): KontorEndringsType = rutingResultat.toKontorEndringsType()
 
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(
@@ -133,6 +136,7 @@ data class OppfolgingsPeriodeStartetSensitivKontorTilordning(
 ) : AOKontorEndret(kontorTilordning, System()) {
 
     val rutingResultat: RutingResultat = RutingResultat.RutetViaNorg
+    override fun kontorEndringsType(): KontorEndringsType = rutingResultat.toKontorEndringsType()
 
     constructor(
         kontorTilordning: KontorTilordning,
