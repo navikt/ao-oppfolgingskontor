@@ -101,8 +101,44 @@ data class KontorTilordningMeldingDto(
     val kontorNavn: String,
     val oppfolgingsperiodeId: String,
     val aktorId: String,
-    val ident: String
+    val ident: String,
+    val tilordningstype: Tilordningstype,
 )
+
+enum class Tilordningstype {
+    KONTOR_VED_OPPFOLGINGSPERIODE_START,
+    ENDRET_KONTOR;
+
+    companion object {
+        fun fraKontorEndringsType(kontorEndringsType: KontorEndringsType): Tilordningstype {
+            return when (kontorEndringsType) {
+                KontorEndringsType.AutomatiskRutetTilNOE,
+
+
+
+
+                KontorEndringsType.FikkAddressebeskyttelse,
+                KontorEndringsType.AddressebeskyttelseMistet,
+                KontorEndringsType.FikkSkjerming,
+                KontorEndringsType.MistetSkjerming -> KONTOR_VED_OPPFOLGINGSPERIODE_START
+                KontorEndringsType.AutomatiskNorgRuting -> TODO()
+                KontorEndringsType.AutomatiskNorgRutingFallback -> TODO()
+                KontorEndringsType.AutomatiskRutetTilNavItManglerGt -> TODO()
+                KontorEndringsType.AutomatiskRutetTilNavItGtErLand -> TODO()
+                KontorEndringsType.AutomatiskRutetTilNavItIngenKontorFunnetForGt -> TODO()
+                KontorEndringsType.FlyttetAvVeileder -> TODO()
+                KontorEndringsType.GTKontorVedOppfolgingStart -> TODO()
+                KontorEndringsType.EndretBostedsadresse -> TODO()
+                KontorEndringsType.EndretIArena -> TODO()
+                KontorEndringsType.ArenaKontorVedOppfolgingsStart -> TODO()
+                KontorEndringsType.TidligArenaKontorVedOppfolgingStart -> TODO()
+                KontorEndringsType.ArenaKontorVedOppfolgingStartMedEtterslep -> TODO()
+                KontorEndringsType.MIGRERING -> TODO()
+                KontorEndringsType.ArenaMigrering -> TODO()
+            }
+        }
+    }
+}
 
 /**
  * Same as KontorTilordningMeldingDto but without AktorId and kontorNavn.
