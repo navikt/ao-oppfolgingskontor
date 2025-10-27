@@ -131,14 +131,9 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     )
     val kafkaStream = KafkaStreams(topology, kafkaStreamsProps(environment.config))
 
-    kafkaStream.setStateListener { _, newState ->
-        if (newState == KafkaStreams.State.ERROR) {
-            setHasCriticalError()
-        }
-    }
-
     kafkaStream.setUncaughtExceptionHandler {
         logger.error("Uncaught exception in Kafka Streams. Shutting down client", it)
+        setHasCriticalError()
         StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.SHUTDOWN_CLIENT
     }
 
