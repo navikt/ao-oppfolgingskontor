@@ -5,11 +5,11 @@ import kafka.producers.KontorEndringProducer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import no.nav.db.Ident
-import no.nav.db.Ident.Companion.validateOrThrow
+import no.nav.db.Ident.Companion.validateIdentSomKanLagres
 import no.nav.db.IdentSomKanLagres
-import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.OppfolgingsperiodeEntity
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
+import no.nav.db.table.KontorhistorikkTable
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
@@ -66,10 +66,17 @@ class KontorRepubliseringService(
                 onColumn = alleIdenter[IdentMappingTable.id],
                 otherColumn = ArbeidsOppfolgingKontorTable.id
             )
+            .join(
+                KontorhistorikkTable,
+                JoinType.INNER,
+                onColumn = ArbeidsOppfolgingKontorTable.historikkEntry,
+                otherColumn = KontorhistorikkTable.id
+            )
             .select(
                 ArbeidsOppfolgingKontorTable.id,
                 ArbeidsOppfolgingKontorTable.kontorId,
-                ArbeidsOppfolgingKontorTable.updatedAt
+                ArbeidsOppfolgingKontorTable.updatedAt,
+                KontorhistorikkTable.kontorendringstype
             )
             .where { IdentMappingTable.id inList oppfolgingsperioder.map { it.fnr } }
             .orderBy(ArbeidsOppfolgingKontorTable.updatedAt, SortOrder.DESC)
@@ -82,10 +89,11 @@ class KontorRepubliseringService(
         oppfolgingsperioder.mapNotNull { periode ->
             kontorRows[periode.fnr]?.let { row ->
                 KontorSomSkalRepubliseres(
-                    ident = validateOrThrow(row[ArbeidsOppfolgingKontorTable.id].value, Ident.HistoriskStatus.UKJENT),
+                    ident = validateIdentSomKanLagres(row[ArbeidsOppfolgingKontorTable.id].value, Ident.HistoriskStatus.UKJENT),
                     kontorId = KontorId(row[ArbeidsOppfolgingKontorTable.kontorId]),
                     updatedAt = row[ArbeidsOppfolgingKontorTable.updatedAt].toZonedDateTime(),
-                    oppfolgingsperiodeId = OppfolgingsperiodeId(periode.oppfolgingsperiodeId)
+                    oppfolgingsperiodeId = OppfolgingsperiodeId(periode.oppfolgingsperiodeId),
+                    kontorEndringsType = KontorEndringsType.valueOf(row[KontorhistorikkTable.kontorendringstype])
                 )
             }
         }
@@ -93,7 +101,7 @@ class KontorRepubliseringService(
 }
 
 data class KontorSomSkalRepubliseres(
-    val ident: Ident,
+    val ident: IdentSomKanLagres,
     val kontorId: KontorId,
     val updatedAt: ZonedDateTime,
     val oppfolgingsperiodeId: OppfolgingsperiodeId,
