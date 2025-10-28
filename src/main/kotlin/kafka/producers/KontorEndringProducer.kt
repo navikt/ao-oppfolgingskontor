@@ -56,8 +56,8 @@ class KontorEndringProducer(
         return runCatching {
             val value = kontorSomSkalRepubliseres.toKontorTilordningMeldingDto(
                 aktorIdProvider(kontorSomSkalRepubliseres.ident)
-                    ?: throw RuntimeException("Finner ikke aktorId for ident ${event.tilordning.fnr.value}"),
-                kontorNavnProvider(event.tilordning.kontorId)
+                    ?: throw RuntimeException("Finner ikke aktorId for ident ${kontorSomSkalRepubliseres.ident.value}"),
+                kontorNavnProvider(kontorSomSkalRepubliseres.kontorId)
             )
             publiserEndringPåKontor(value)
         }
@@ -108,8 +108,8 @@ fun KontorSomSkalRepubliseres.toKontorTilordningMeldingDto(
         kontorNavn = kontorNavn.navn,
         oppfolgingsperiodeId = this.oppfolgingsperiodeId.value.toString(),
         aktorId = aktorId.value,
-        ident = this.ident,
-        tilordningstype = Tilordningstype.fraKontorEndringsType(this.kontorEndringsType())
+        ident = this.ident.value,
+        tilordningstype = Tilordningstype.fraKontorEndringsType(this.kontorEndringsType)
     )
 }
 

@@ -4,9 +4,13 @@ import db.table.IdentMappingTable
 import kafka.producers.KontorEndringProducer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import no.nav.db.Ident
+import no.nav.db.Ident.Companion.validateOrThrow
 import no.nav.db.IdentSomKanLagres
+import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.OppfolgingsperiodeEntity
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
+import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
 import org.jetbrains.exposed.sql.JoinType
@@ -78,7 +82,7 @@ class KontorRepubliseringService(
         oppfolgingsperioder.mapNotNull { periode ->
             kontorRows[periode.fnr]?.let { row ->
                 KontorSomSkalRepubliseres(
-                    ident = row[ArbeidsOppfolgingKontorTable.id].value,
+                    ident = validateOrThrow(row[ArbeidsOppfolgingKontorTable.id].value, Ident.HistoriskStatus.UKJENT),
                     kontorId = KontorId(row[ArbeidsOppfolgingKontorTable.kontorId]),
                     updatedAt = row[ArbeidsOppfolgingKontorTable.updatedAt].toZonedDateTime(),
                     oppfolgingsperiodeId = OppfolgingsperiodeId(periode.oppfolgingsperiodeId)
@@ -89,8 +93,9 @@ class KontorRepubliseringService(
 }
 
 data class KontorSomSkalRepubliseres(
-    val ident: String,
+    val ident: Ident,
     val kontorId: KontorId,
     val updatedAt: ZonedDateTime,
     val oppfolgingsperiodeId: OppfolgingsperiodeId,
+    val kontorEndringsType: KontorEndringsType,
 )

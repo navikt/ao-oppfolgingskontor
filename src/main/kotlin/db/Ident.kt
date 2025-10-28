@@ -52,6 +52,14 @@ sealed class Ident {
                 is ValidIdent -> res.ident
             }
         }
+
+        fun validateIdentSomKanLagres(value: String, historisk: HistoriskStatus): IdentSomKanLagres {
+            val ident = validateOrThrow(value, historisk)
+            return when (ident) {
+                is AktorId -> throw Exception("Forventet IdentSomKanLagres, men fikk AktorId")
+                is Dnr, is Fnr, is Npid -> ident
+            }
+        }
     }
 
 
