@@ -15,8 +15,8 @@ fun Application.configureKontorRepubliseringModule(
     val log = LoggerFactory.getLogger("Application.configureKontorRepubliseringModule")
 
     routing {
-        authenticate("EntraAD") {
-            post("/internal/republiser-kontorer") {
+        authenticate("EntraAD") { // TODO: Fix admintilgang
+            post("/admin/republiser-arbeidsoppfolgingskontorendret") {
                 runCatching {
                     launch {
                         log.info("Starter republisering av kontorer...")
