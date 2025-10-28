@@ -13,7 +13,6 @@ import no.nav.domain.events.AOKontorEndret
 import no.nav.domain.events.KontorSattAvVeileder
 import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.clients.producer.ProducerRecord
-import services.KontorRepubliseringService
 import services.KontorSomSkalRepubliseres
 import kotlin.String
 
