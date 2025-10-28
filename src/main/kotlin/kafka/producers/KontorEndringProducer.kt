@@ -13,6 +13,8 @@ import no.nav.domain.events.AOKontorEndret
 import no.nav.domain.events.KontorSattAvVeileder
 import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.clients.producer.ProducerRecord
+import services.KontorRepubliseringService
+import services.KontorSomSkalRepubliseres
 import kotlin.String
 
 class KontorEndringProducer(
@@ -48,6 +50,17 @@ class KontorEndringProducer(
                     tilordningstype = Tilordningstype.fraKontorEndringsType(event.kontorEndringsType)
                 )
             )
+        }
+    }
+
+    suspend fun republiserKontor(kontorSomSkalRepubliseres: KontorSomSkalRepubliseres): Result<Unit> {
+        return runCatching {
+            val value = kontorSomSkalRepubliseres.toKontorTilordningMeldingDto(
+                aktorIdProvider(kontorSomSkalRepubliseres.ident)
+                    ?: throw RuntimeException("Finner ikke aktorId for ident ${event.tilordning.fnr.value}"),
+                kontorNavnProvider(event.tilordning.kontorId)
+            )
+            publiserEndringPåKontor(value)
         }
     }
 
@@ -87,6 +100,20 @@ fun AOKontorEndret.toKontorTilordningMeldingDto(
         tilordningstype = Tilordningstype.fraKontorEndringsType(this.kontorEndringsType())
     )
 }
+fun KontorSomSkalRepubliseres.toKontorTilordningMeldingDto(
+    aktorId: AktorId,
+    kontorNavn: KontorNavn
+): KontorTilordningMeldingDto {
+    return KontorTilordningMeldingDto(
+        kontorId = this.kontorId.id,
+        kontorNavn = kontorNavn.navn,
+        oppfolgingsperiodeId = this.oppfolgingsperiodeId.value.toString(),
+        aktorId = aktorId.value,
+        ident = this.ident,
+        tilordningstype = Tilordningstype.fraKontorEndringsType(this.kontorEndringsType())
+    )
+}
+
 
 fun AOKontorEndret.toKontorTilordningMelding(): OppfolgingEndretTilordningMelding {
     return OppfolgingEndretTilordningMelding(
