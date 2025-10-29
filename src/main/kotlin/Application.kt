@@ -126,5 +126,3 @@ fun ApplicationEnvironment.isProduction(): Boolean {
         ?.getString()
         ?.contentEquals("prod-gcp") ?: false
 }
-
-val teamLogsMarker = MarkerFactory.getMarker("TEAM_LOGS")
