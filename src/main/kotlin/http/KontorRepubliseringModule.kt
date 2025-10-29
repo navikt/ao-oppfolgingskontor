@@ -35,7 +35,7 @@ fun Application.configureKontorRepubliseringModule(
             ?: install(Authentication) { setUpKontorRepubliseringAuth() }
 
         authenticate("poaoAdmin") {
-            post("/admin/republiser-arbeidsoppfolgingskontorendret") {
+            get("/admin/republiser-arbeidsoppfolgingskontorendret") {
                 runCatching {
                     launch {
                         log.info("Starter republisering av kontorer...")
