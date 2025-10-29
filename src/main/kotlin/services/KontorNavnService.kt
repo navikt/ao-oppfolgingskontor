@@ -1,11 +1,9 @@
 package no.nav.services
 
-import no.nav.db.table.ArenaKontorTable.sistEndretDatoArena
 import no.nav.db.table.KontorNavnTable
 import no.nav.domain.KontorId
 import no.nav.domain.KontorNavn
 import no.nav.http.client.Norg2Client
-import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.batchUpsert
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -24,9 +22,9 @@ class KontorNavnService(
         val kontorer = norg2Client.hentAlleEnheter()
         transaction {
             KontorNavnTable.batchUpsert(kontorer) { kontoret ->
-                this[KontorNavnTable.kontorId] = kontoret.kontorId
+                this[KontorNavnTable.id] = kontoret.kontorId
                 this[KontorNavnTable.kontorNavn] = kontoret.navn
-                this[sistEndretDatoArena] = OffsetDateTime.now()
+                this[KontorNavnTable.updatedAt] = OffsetDateTime.now()
             }
         }
     }
@@ -36,7 +34,7 @@ class KontorNavnService(
             KontorNavnTable.insert {
                 it[id] = kontorId.id
                 it[KontorNavnTable.kontorNavn] = kontorNavn.navn
-                it[sistEndretDatoArena] = OffsetDateTime.now()
+                it[KontorNavnTable.updatedAt] = OffsetDateTime.now()
             }
         }
     }
@@ -44,12 +42,12 @@ class KontorNavnService(
     private fun hentLagretKontorNavn(kontorId: KontorId): KontorMedNavn? {
         return transaction {
             KontorNavnTable
-                .select(KontorNavnTable.kontorNavn, KontorNavnTable.kontorId)
-                .where { KontorNavnTable.kontorId eq kontorId.id }
+                .select(KontorNavnTable.kontorNavn, KontorNavnTable.id)
+                .where { KontorNavnTable.id eq kontorId.id }
                 .map { row ->
                     KontorMedNavn(
                         KontorNavn(row[KontorNavnTable.kontorNavn]),
-                        KontorId(row[KontorNavnTable.kontorId]),
+                        KontorId(row[KontorNavnTable.id].value),
                     )
                 }
                 .firstOrNull()
