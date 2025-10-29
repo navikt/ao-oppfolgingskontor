@@ -102,17 +102,19 @@ class IdentService(
                         .finnForetrukketIdent() ?: throw Exception("Fant ingen 'ikke-aktorid'-identer i databasen")
                     return Result.success(IdentFunnet(foretrukketIdent))
                 }
+
                 else -> return Result.success(null)
             }
         }
     }
 
     private suspend fun hentAlleIdenterOgOppdaterMapping(ident: Ident): IdenterResult {
-        return when(val identer = hentAlleIdenterSynkrontFraPdl(ident.value)) {
+        return when (val identer = hentAlleIdenterSynkrontFraPdl(ident.value)) {
             is IdenterFunnet -> {
                 oppdaterAlleIdentMappinger(identer)
                 identer
             }
+
             else -> identer
         }
     }
@@ -130,7 +132,7 @@ class IdentService(
     private fun hentEksisterendeIdenter(identer: List<Ident>): List<IdentInfo> = transaction {
         IdentMappingTable
             .select(internIdent, historisk, identType, IdentMappingTable.id)
-            .where { IdentMappingTable.id inList(identer.map { it.value }) }
+            .where { IdentMappingTable.id inList (identer.map { it.value }) }
             .map {
                 IdentInfo(
                     Ident.validateOrThrow(it[IdentMappingTable.id].value, it[historisk].toKnownHistoriskStatus()),
@@ -166,8 +168,8 @@ class IdentService(
     }
 
     /**
-    * Henter alle tilhørende identer på en bruker, inkl historiske
-    */
+     * Henter alle tilhørende identer på en bruker, inkl historiske
+     */
     public suspend fun hentAlleIdenter(identInput: Ident): IdenterResult {
         try {
             val alleIdenter = hentIdentMappinger(identInput, true)
@@ -196,10 +198,12 @@ class IdentService(
                 onColumn = internIdent,
                 otherColumn = identMappingAlias[internIdent]
             )
-                .select(identMappingAlias[IdentMappingTable.id],
+                .select(
+                    identMappingAlias[IdentMappingTable.id],
                     identMappingAlias[identType],
                     identMappingAlias[historisk],
-                    identMappingAlias[internIdent])
+                    identMappingAlias[internIdent]
+                )
                 .where { (IdentMappingTable.id eq ident.value) }
                 .andWhere { identMappingAlias[historisk] eq false }
                 .andWhere { identMappingAlias[identType] eq "AKTOR_ID" }
@@ -216,57 +220,61 @@ class IdentService(
     /**
      * Henter alle koblede identer utenom historiske
      */
-    private fun hentIdentMappinger(identInput: Ident): List<Ident>
-        = hentIdentMappinger(identInput, false).map { it.ident }
-    private fun hentIdentMappinger(identInput: Ident, includeHistorisk: Boolean): List<IdentInfo>
-        = hentIdentMappinger(listOf(identInput), includeHistorisk)
-    private fun hentIdentMappinger(identeneTilEnPerson: List<Ident>, includeHistorisk: Boolean): List<IdentInfo> = transaction {
-        val identMappingAlias = IdentMappingTable.alias("ident_mapping_alias")
+    private fun hentIdentMappinger(identInput: Ident): List<Ident> =
+        hentIdentMappinger(identInput, false).map { it.ident }
 
-        IdentMappingTable.join(
-            identMappingAlias,
-            JoinType.INNER,
-            onColumn = internIdent,
-            otherColumn = identMappingAlias[internIdent]
-        )
-            .select(identMappingAlias[IdentMappingTable.id],
-                identMappingAlias[identType],
-                identMappingAlias[historisk],
-                identMappingAlias[internIdent])
-            .where { (IdentMappingTable.id inList identeneTilEnPerson.map { it.value }) }
-            .let { query ->
-                if (!includeHistorisk) {
-                    query.andWhere { identMappingAlias[historisk] eq false }
-                } else query
-            }
-            .map {
-                val id = it[identMappingAlias[IdentMappingTable.id]]
-                val historisk = it[identMappingAlias[historisk]]
-                val historiskStatus = historisk.toKnownHistoriskStatus()
-                val internIdent = it[identMappingAlias[internIdent]]
-                val ident = when (val identType = it[identMappingAlias[identType]]) {
-                    "FNR" -> Fnr(id.value, historiskStatus)
-                    "NPID" -> Npid(id.value, historiskStatus)
-                    "DNR" -> Dnr(id.value, historiskStatus)
-                    "AKTOR_ID" -> AktorId(id.value, historiskStatus)
-                    else -> throw IllegalArgumentException("Ukjent identType: $identType")
-                        .also { log.error(it.message, it) }
+    private fun hentIdentMappinger(identInput: Ident, includeHistorisk: Boolean): List<IdentInfo> =
+        hentIdentMappinger(listOf(identInput), includeHistorisk)
+
+    private fun hentIdentMappinger(identeneTilEnPerson: List<Ident>, includeHistorisk: Boolean): List<IdentInfo> =
+        transaction {
+            val identMappingAlias = IdentMappingTable.alias("ident_mapping_alias")
+
+            IdentMappingTable.join(
+                identMappingAlias,
+                JoinType.INNER,
+                onColumn = internIdent,
+                otherColumn = identMappingAlias[internIdent]
+            )
+                .select(
+                    identMappingAlias[IdentMappingTable.id],
+                    identMappingAlias[identType],
+                    identMappingAlias[historisk],
+                    identMappingAlias[internIdent]
+                )
+                .where { (IdentMappingTable.id inList identeneTilEnPerson.map { it.value }) }
+                .let { query ->
+                    if (!includeHistorisk) {
+                        query.andWhere { identMappingAlias[historisk] eq false }
+                    } else query
                 }
-                IdentInfo(ident, historisk, internIdent)
-            }
-            .also { identInfo ->
-                val internIdenter = identInfo.map { it.internIdent }.distinct()
-                if (internIdenter.size > 1) {
-                    log.error("Fant flere intern-ident-er på hentIdentMappinger, er input-idenene bare 1 person? Hvis ikke er indenter kanskje lagret feil")
+                .map {
+                    val id = it[identMappingAlias[IdentMappingTable.id]]
+                    val historisk = it[identMappingAlias[historisk]]
+                    val historiskStatus = historisk.toKnownHistoriskStatus()
+                    val internIdent = it[identMappingAlias[internIdent]]
+                    val ident = when (val identType = it[identMappingAlias[identType]]) {
+                        "FNR" -> Fnr(id.value, historiskStatus)
+                        "NPID" -> Npid(id.value, historiskStatus)
+                        "DNR" -> Dnr(id.value, historiskStatus)
+                        "AKTOR_ID" -> AktorId(id.value, historiskStatus)
+                        else -> throw IllegalArgumentException("Ukjent identType: $identType")
+                            .also { log.error(it.message, it) }
+                    }
+                    IdentInfo(ident, historisk, internIdent)
                 }
-            }
-    }
+                .also { identInfo ->
+                    val internIdenter = identInfo.map { it.internIdent }.distinct()
+                    if (internIdenter.size > 1) {
+                        log.error("Fant flere intern-ident-er på hentIdentMappinger, er input-idenene bare 1 person? Hvis ikke er indenter kanskje lagret feil")
+                    }
+                }
+        }
 
     fun List<IdentInfo>.finnEndringer(oppdaterteIdenter: List<OppdatertIdent>): List<IdentEndring> {
         val internIdent = this.map { it.internIdent }.distinct()
-            .also { require(it.size == 1) {
-                "Fant ${it.size} forskjellige intern-identer ved oppdatering av identer-endringer" }
-                log.error(teamLogsMarker, "Fant forksjellige intern-identer for samme person. Alle identer: $this, oppdaterte identer: $oppdaterteIdenter")
+            .also {
+                require(it.size == 1) { "Fant ${it.size} forskjellige intern-identer ved oppdatering av identer-endringer" }
             }
             .first()
 
@@ -274,7 +282,11 @@ class IdentService(
             val identMatch = oppdaterteIdenter.find { eksisterendeIdent.ident == it.ident }
             when {
                 identMatch == null -> BleSlettet(eksisterendeIdent.ident, eksisterendeIdent.historisk, internIdent)
-                !eksisterendeIdent.historisk && identMatch.historisk -> BleHistorisk(eksisterendeIdent.ident, internIdent)
+                !eksisterendeIdent.historisk && identMatch.historisk -> BleHistorisk(
+                    eksisterendeIdent.ident,
+                    internIdent
+                )
+
                 else -> IngenEndring(eksisterendeIdent.ident, identMatch.historisk, internIdent)
             }
         }
@@ -305,15 +317,16 @@ data class IdentInfo(
 )
 
 sealed class IdentEndring(val ident: Ident, val historisk: Boolean, val internIdent: Long)
-class NyIdent(ident: Ident, historisk: Boolean, internIdent: Long): IdentEndring(ident, historisk, internIdent)
-class BleHistorisk(ident: Ident, internIdent: Long): IdentEndring(ident, true, internIdent)
-class BleSlettet(ident: Ident, historisk: Boolean, internIdent: Long): IdentEndring(ident, historisk, internIdent)
-class IngenEndring(ident: Ident, historisk: Boolean, internIdent: Long): IdentEndring(ident, historisk, internIdent)
+class NyIdent(ident: Ident, historisk: Boolean, internIdent: Long) : IdentEndring(ident, historisk, internIdent)
+class BleHistorisk(ident: Ident, internIdent: Long) : IdentEndring(ident, true, internIdent)
+class BleSlettet(ident: Ident, historisk: Boolean, internIdent: Long) : IdentEndring(ident, historisk, internIdent)
+class IngenEndring(ident: Ident, historisk: Boolean, internIdent: Long) : IdentEndring(ident, historisk, internIdent)
 
 fun IdenterResult.finnForetrukketIdent(): IdentResult {
     return when (this) {
         is IdenterFunnet -> this.identer.finnForetrukketIdent()?.let { IdentFunnet(it) }
             ?: IdentIkkeFunnet("Fant ingen foretrukket ident")
+
         is IdenterIkkeFunnet -> IdentIkkeFunnet(this.message)
         is IdenterOppslagFeil -> IdentOppslagFeil(this.message)
     }
