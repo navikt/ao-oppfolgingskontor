@@ -37,6 +37,7 @@ fun Application.configureKontorRepubliseringModule(
         authenticate("poaoAdmin") {
             post("/admin/republiser-arbeidsoppfolgingskontorendret") {
                 runCatching {
+                    log.info("Setter i gang async republisering av kontorer")
                     launch {
                         log.info("Starter republisering av kontorer...")
                         kontorRepubliseringService.republiserKontorer()
@@ -49,6 +50,8 @@ fun Application.configureKontorRepubliseringModule(
                         HttpStatusCode.InternalServerError,
                         "Klarte ikke starte republisering av kontorer"
                     )
+                }.onSuccess {
+                    log.info("Republisering av kontorer fullført.")
                 }
             }
         }
