@@ -53,9 +53,9 @@ class KontorRepubliseringService(
                 historikk.kontorendringstype,
                 kontornavn.kontor_navn
             from oppfolgingsperiode
-                join ident_mapping input_ident on oppfolgingsperiode.fnr = input_ident
-                join ident_mapping alle_identer on input_ident.intern_ident = alle_identer.intern_ident and != 'AKTOR_ID'
-                join ident_mapping aktorId on input_ident.intern_ident = alle_identer.intern_ident and ident_type = 'AKTOR_ID'
+                join ident_mapping input_ident on oppfolgingsperiode.fnr = input_ident.ident
+                join ident_mapping alle_identer on input_ident.intern_ident = alle_identer.intern_ident and alle_identer.ident_type != 'AKTOR_ID'
+                join ident_mapping aktorId on input_ident.intern_ident = alle_identer.intern_ident and aktorId.ident_type = 'AKTOR_ID'
                 join arbeidsoppfolgingskontor on alle_identer.ident = arbeidsoppfolgingskontor.fnr
                 join kontorhistorikk historikk on arbeidsoppfolgingskontor.historikk_entry = historikk.id
                 join kontornavn on arbeidsoppfolgingskontor.kontor_id = kontornavn.kontor_id
