@@ -1,7 +1,5 @@
 package services
 
-import db.table.IdentMappingTable
-import io.ktor.server.util.toZonedDateTime
 import kafka.producers.KontorEndringProducer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -9,23 +7,13 @@ import no.nav.db.AktorId
 import no.nav.db.Ident
 import no.nav.db.Ident.Companion.validateIdentSomKanLagres
 import no.nav.db.IdentSomKanLagres
-import no.nav.db.PostgresDataSource
-import no.nav.db.entity.OppfolgingsperiodeEntity
-import no.nav.db.table.ArbeidsOppfolgingKontorTable
-import no.nav.db.table.KontorhistorikkTable
-import no.nav.db.table.OppfolgingsperiodeTable
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.JoinType
-import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.UUIDColumnType
-import org.jetbrains.exposed.sql.alias
-import org.jetbrains.exposed.sql.transactions.transaction
+import no.nav.services.KontorNavnService
 import org.slf4j.LoggerFactory
 import java.time.ZonedDateTime
-import java.util.UUID
+import java.util.*
 import javax.sql.DataSource
 
 
@@ -34,9 +22,12 @@ val logger = LoggerFactory.getLogger("Application.KontorRepubliseringService")
 class KontorRepubliseringService(
     val kafkaProducer: KontorEndringProducer,
     val datasource: DataSource,
+    val kontorNavnService: KontorNavnService,
 ) {
 
     suspend fun republiserKontorer(): Unit = withContext(Dispatchers.IO) {
+        kontorNavnService.friskOppAlleKontorNavn()
+
         var antallPubliserte = 0;
         hentAlleKontorerSomSkalRepubliseres {
             kafkaProducer.republiserKontor(it)

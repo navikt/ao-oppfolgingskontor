@@ -5,6 +5,8 @@ import no.nav.db.table.KontorNavnTable
 import no.nav.domain.KontorId
 import no.nav.domain.KontorNavn
 import no.nav.http.client.Norg2Client
+import org.jetbrains.exposed.sql.batchInsert
+import org.jetbrains.exposed.sql.batchUpsert
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.OffsetDateTime
@@ -16,6 +18,17 @@ class KontorNavnService(
         return hentLagretKontorNavn(kontorId)?.kontorNavn ?:
             norg2Client.hentKontor(kontorId).let { KontorNavn(it.navn) }
                 .also { kontorNavn -> lagreKontorNavn(kontorId, kontorNavn) }
+    }
+
+    suspend fun friskOppAlleKontorNavn() {
+        val kontorer = norg2Client.hentAlleEnheter()
+        transaction {
+            KontorNavnTable.batchUpsert(kontorer) { kontoret ->
+                this[KontorNavnTable.kontorId] = kontoret.kontorId
+                this[KontorNavnTable.kontorNavn] = kontoret.navn
+                this[sistEndretDatoArena] = OffsetDateTime.now()
+            }
+        }
     }
 
     private fun lagreKontorNavn(kontorId: KontorId, kontorNavn: KontorNavn) {
