@@ -45,7 +45,7 @@ fun Application.module() {
     val meterRegistry = configureMonitoring()
     val setCriticalError: CriticalErrorNotificationFunction = configureHealthAndCompression()
     configureSecurity()
-    val database = configureDatabase()
+    val (datasource, database) = configureDatabase()
 
     val norg2Client = Norg2Client(environment.getNorg2Url())
 
@@ -88,7 +88,7 @@ fun Application.module() {
         kontorNavnProvider = { kontorId -> kontorNavnService.getKontorNavn(kontorId) },
         aktorIdProvider = { identSomKanLagres -> identService.hentAktorId(identSomKanLagres) }
     )
-    val republiseringService = KontorRepubliseringService(kontorEndringProducer)
+    val republiseringService = KontorRepubliseringService(kontorEndringProducer, datasource)
 
     install(KafkaStreamsPlugin) {
         this.automatiskKontorRutingService = automatiskKontorRutingService

@@ -1,5 +1,6 @@
 package kafka.producers
 
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import no.nav.db.AktorId
@@ -52,13 +53,10 @@ class KontorEndringProducer(
         }
     }
 
-    suspend fun republiserKontor(kontorSomSkalRepubliseres: KontorSomSkalRepubliseres): Result<Unit> {
+    fun republiserKontor(kontorSomSkalRepubliseres: KontorSomSkalRepubliseres): Result<Unit> {
         return runCatching {
-            val value = kontorSomSkalRepubliseres.toKontorTilordningMeldingDto(
-                aktorIdProvider(kontorSomSkalRepubliseres.ident)
-                    ?: throw RuntimeException("Finner ikke aktorId for ident ${kontorSomSkalRepubliseres.ident.value}"),
-                kontorNavnProvider(kontorSomSkalRepubliseres.kontorId)
-            )
+            val kontorNavn = runBlocking { kontorNavnProvider(kontorSomSkalRepubliseres.kontorId) }
+            val value = kontorSomSkalRepubliseres.toKontorTilordningMeldingDto(kontorNavn)
             publiserEndringPåKontor(value)
         }
     }
@@ -100,14 +98,13 @@ fun AOKontorEndret.toKontorTilordningMeldingDto(
     )
 }
 fun KontorSomSkalRepubliseres.toKontorTilordningMeldingDto(
-    aktorId: AktorId,
     kontorNavn: KontorNavn
 ): KontorTilordningMeldingDto {
     return KontorTilordningMeldingDto(
         kontorId = this.kontorId.id,
         kontorNavn = kontorNavn.navn,
         oppfolgingsperiodeId = this.oppfolgingsperiodeId.value.toString(),
-        aktorId = aktorId.value,
+        aktorId = this.aktorId.value,
         ident = this.ident.value,
         tilordningstype = Tilordningstype.fraKontorEndringsType(this.kontorEndringsType)
     )
