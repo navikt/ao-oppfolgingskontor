@@ -88,7 +88,7 @@ fun Application.module() {
         kontorNavnProvider = { kontorId -> kontorNavnService.getKontorNavn(kontorId) },
         aktorIdProvider = { identSomKanLagres -> identService.hentAktorId(identSomKanLagres) }
     )
-    val republiseringService = KontorRepubliseringService(kontorEndringProducer, datasource)
+    val republiseringService = KontorRepubliseringService(kontorEndringProducer, datasource, kontorNavnService)
 
     install(KafkaStreamsPlugin) {
         this.automatiskKontorRutingService = automatiskKontorRutingService

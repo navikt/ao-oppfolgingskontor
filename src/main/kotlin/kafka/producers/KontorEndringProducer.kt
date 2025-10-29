@@ -1,6 +1,5 @@
 package kafka.producers
 
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import no.nav.db.AktorId
@@ -55,8 +54,7 @@ class KontorEndringProducer(
 
     fun republiserKontor(kontorSomSkalRepubliseres: KontorSomSkalRepubliseres): Result<Unit> {
         return runCatching {
-            val kontorNavn = runBlocking { kontorNavnProvider(kontorSomSkalRepubliseres.kontorId) }
-            val value = kontorSomSkalRepubliseres.toKontorTilordningMeldingDto(kontorNavn)
+            val value = kontorSomSkalRepubliseres.toKontorTilordningMeldingDto()
             publiserEndringPåKontor(value)
         }
     }
@@ -97,12 +95,10 @@ fun AOKontorEndret.toKontorTilordningMeldingDto(
         tilordningstype = Tilordningstype.fraKontorEndringsType(this.kontorEndringsType())
     )
 }
-fun KontorSomSkalRepubliseres.toKontorTilordningMeldingDto(
-    kontorNavn: KontorNavn
-): KontorTilordningMeldingDto {
+fun KontorSomSkalRepubliseres.toKontorTilordningMeldingDto(): KontorTilordningMeldingDto {
     return KontorTilordningMeldingDto(
         kontorId = this.kontorId.id,
-        kontorNavn = kontorNavn.navn,
+        kontorNavn = this.kontorNavn.navn,
         oppfolgingsperiodeId = this.oppfolgingsperiodeId.value.toString(),
         aktorId = this.aktorId.value,
         ident = this.ident.value,
