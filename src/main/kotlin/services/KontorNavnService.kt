@@ -1,10 +1,8 @@
 package no.nav.services
 
-import no.nav.db.table.ArenaKontorTable
-import no.nav.db.table.ArenaKontorTable.id
-import no.nav.db.table.ArenaKontorTable.kontorId
 import no.nav.db.table.ArenaKontorTable.sistEndretDatoArena
 import no.nav.db.table.KontorNavnTable
+import no.nav.domain.Kontor
 import no.nav.domain.KontorId
 import no.nav.domain.KontorNavn
 import no.nav.http.client.Norg2Client
@@ -24,11 +22,30 @@ class KontorNavnService(
         transaction {
             KontorNavnTable.insert {
                 it[id] = kontorId.id
-                it[KontorNavnTable.na] = kontorNavn.navn
+                it[KontorNavnTable.kontorNavn] = kontorNavn.navn
                 it[sistEndretDatoArena] = OffsetDateTime.now()
             }
         }
     }
 
-    private fun hentLagretKontorNavn() {}
+    private fun hentLagretKontorNavn(kontorId: KontorId): KontorMedNavn? {
+        transaction {
+            KontorNavnTable
+                .select(KontorNavnTable.kontorNavn, KontorNavnTable.kontorId)
+                .where { KontorNavnTable.kontorId eq kontorId.id }
+                .map { row ->
+                    KontorMedNavn(
+                        KontorNavn(row[KontorNavnTable.kontorNavn]),
+                        KontorId(row[KontorNavnTable.kontorId]),
+                    )
+                }
+                .firstOrNull()
+        }
+    }
+
+    data class KontorMedNavn(
+        val kontorNavn: KontorNavn,
+        val kontorId: KontorId,
+    )
 }
+
