@@ -54,7 +54,7 @@ spec:
         - application: poao-admin
           namespace: poao
           permissions:
-            roles:
+            scopes:
               - "republiser-kontor"
         - application: azure-token-generator
           namespace: nais
@@ -62,7 +62,6 @@ spec:
           permissions:
             roles:
               - "bulk-hent-kontor"
-              - "republiser-kontor"
         - application: populasjonstilgangskontroll
           namespace: tilgangsmaskin
           permissions:
