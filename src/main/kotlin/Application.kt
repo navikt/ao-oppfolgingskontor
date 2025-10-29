@@ -31,6 +31,7 @@ import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
 import no.nav.services.KontorTilordningService
 import no.nav.services.OppfolgingsperiodeDao
+import org.slf4j.MarkerFactory
 import services.IdentService
 import services.KontorRepubliseringService
 import services.KontorTilhorighetBulkService
@@ -129,3 +130,5 @@ fun ApplicationEnvironment.isProduction(): Boolean {
         ?.getString()
         ?.contentEquals("prod-gcp") ?: false
 }
+
+val teamLogsMarker = MarkerFactory.getMarker("TEAM_LOGS")
