@@ -9,6 +9,7 @@ import no.nav.db.Ident.Companion.validateIdentSomKanLagres
 import no.nav.db.IdentSomKanLagres
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorId
+import no.nav.domain.KontorNavn
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.services.KontorNavnService
 import org.slf4j.LoggerFactory
@@ -49,13 +50,15 @@ class KontorRepubliseringService(
                 arbeidsoppfolgingskontor.updated_at,
                 aktorId.ident as aktorId, -- aktørid
                 oppfolgingsperiode.oppfolgingsperiode_id,
-                historikk.kontorendringstype
+                historikk.kontorendringstype,
+                kontornavn.kontor_navn
             from oppfolgingsperiode
                 join ident_mapping input_ident on oppfolgingsperiode.fnr = input_ident
                 join ident_mapping alle_identer on input_ident.intern_ident = alle_identer.intern_ident and != 'AKTOR_ID'
                 join ident_mapping aktorId on input_ident.intern_ident = alle_identer.intern_ident and ident_type = 'AKTOR_ID'
                 join arbeidsoppfolgingskontor on alle_identer.ident = arbeidsoppfolgingskontor.fnr
-                join public.kontorhistorikk historikk on arbeidsoppfolgingskontor.historikk_entry = historikk.id
+                join kontorhistorikk historikk on arbeidsoppfolgingskontor.historikk_entry = historikk.id
+                join kontornavn on arbeidsoppfolgingskontor.kontor_id = kontornavn.kontor_id
             where alle_identer.historisk = false and aktorId.historisk = false
         """.trimIndent()
 
@@ -73,11 +76,13 @@ class KontorRepubliseringService(
             val updatedAt = resultSet.getObject("updated_at", ZonedDateTime::class.java)
             val oppfolgingsperiodeId = OppfolgingsperiodeId(resultSet.getObject("oppfolgingsperiode_id", UUID::class.java))
             val kontorEndringsType = KontorEndringsType.valueOf(resultSet.getString("kontorendringstype"))
+            val kontorNavn = KontorNavn(resultSet.getString("kontor_navn"))
             publiserEndringPaaKafka(
                 KontorSomSkalRepubliseres(
                     ident = ident,
                     aktorId = aktorId,
                     kontorId = kontorId,
+                    kontorNavn = kontorNavn,
                     updatedAt = updatedAt,
                     oppfolgingsperiodeId = oppfolgingsperiodeId,
                     kontorEndringsType = kontorEndringsType,
@@ -93,6 +98,7 @@ data class KontorSomSkalRepubliseres(
     val ident: IdentSomKanLagres,
     val aktorId: AktorId,
     val kontorId: KontorId,
+    val kontorNavn: KontorNavn,
     val updatedAt: ZonedDateTime,
     val oppfolgingsperiodeId: OppfolgingsperiodeId,
     val kontorEndringsType: KontorEndringsType,
