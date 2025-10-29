@@ -24,7 +24,6 @@ import no.nav.http.client.IdenterFunnet
 import no.nav.http.client.IdenterIkkeFunnet
 import no.nav.http.client.IdenterOppslagFeil
 import no.nav.http.client.IdenterResult
-import no.nav.teamLogsMarker
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.alias
@@ -33,7 +32,6 @@ import org.jetbrains.exposed.sql.batchUpsert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import org.slf4j.LoggerFactory
-import org.slf4j.MarkerFactory
 import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 
