@@ -24,6 +24,7 @@ import no.nav.http.client.IdenterFunnet
 import no.nav.http.client.IdenterIkkeFunnet
 import no.nav.http.client.IdenterOppslagFeil
 import no.nav.http.client.IdenterResult
+import no.nav.teamLogsMarker
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.alias
@@ -32,6 +33,7 @@ import org.jetbrains.exposed.sql.batchUpsert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import org.slf4j.LoggerFactory
+import org.slf4j.MarkerFactory
 import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 
@@ -259,6 +261,28 @@ class IdentService(
                 }
             }
     }
+
+    fun List<IdentInfo>.finnEndringer(oppdaterteIdenter: List<OppdatertIdent>): List<IdentEndring> {
+        val internIdent = this.map { it.internIdent }.distinct()
+            .also { require(it.size == 1) {
+                "Fant ${it.size} forskjellige intern-identer ved oppdatering av identer-endringer" }
+                log.error(teamLogsMarker, "Fant forksjellige intern-identer for samme person. Alle identer: $this, oppdaterte identer: $oppdaterteIdenter")
+            }
+            .first()
+
+        val endringerPåEksiterendeIdenter = this.map { eksisterendeIdent ->
+            val identMatch = oppdaterteIdenter.find { eksisterendeIdent.ident == it.ident }
+            when {
+                identMatch == null -> BleSlettet(eksisterendeIdent.ident, eksisterendeIdent.historisk, internIdent)
+                !eksisterendeIdent.historisk && identMatch.historisk -> BleHistorisk(eksisterendeIdent.ident, internIdent)
+                else -> IngenEndring(eksisterendeIdent.ident, identMatch.historisk, internIdent)
+            }
+        }
+
+        val innkommendeIdenter = oppdaterteIdenter.toSet().map { IdentInfo(it.ident, it.historisk, internIdent) }
+        val nyeIdenter = (innkommendeIdenter - this.toSet()).map { NyIdent(it.ident, it.historisk, internIdent) }
+        return endringerPåEksiterendeIdenter + nyeIdenter
+    }
 }
 
 fun Boolean.toKnownHistoriskStatus(): Ident.HistoriskStatus {
@@ -285,25 +309,6 @@ class NyIdent(ident: Ident, historisk: Boolean, internIdent: Long): IdentEndring
 class BleHistorisk(ident: Ident, internIdent: Long): IdentEndring(ident, true, internIdent)
 class BleSlettet(ident: Ident, historisk: Boolean, internIdent: Long): IdentEndring(ident, historisk, internIdent)
 class IngenEndring(ident: Ident, historisk: Boolean, internIdent: Long): IdentEndring(ident, historisk, internIdent)
-
-fun List<IdentInfo>.finnEndringer(oppdaterteIdenter: List<OppdatertIdent>): List<IdentEndring> {
-    val internIdent = this.map { it.internIdent }.distinct()
-        .also { require(it.size == 1) { "Fant ${it.size} forskjellige intern-identer ved oppdatering av identer-endringer" } }
-        .first()
-
-    val endringerPåEksiterendeIdenter = this.map { eksisterendeIdent ->
-        val identMatch = oppdaterteIdenter.find { eksisterendeIdent.ident == it.ident }
-        when {
-            identMatch == null -> BleSlettet(eksisterendeIdent.ident, eksisterendeIdent.historisk, internIdent)
-            !eksisterendeIdent.historisk && identMatch.historisk -> BleHistorisk(eksisterendeIdent.ident, internIdent)
-            else -> IngenEndring(eksisterendeIdent.ident, identMatch.historisk, internIdent)
-        }
-    }
-
-    val innkommendeIdenter = oppdaterteIdenter.toSet().map { IdentInfo(it.ident, it.historisk, internIdent) }
-    val nyeIdenter = (innkommendeIdenter - this.toSet()).map { NyIdent(it.ident, it.historisk, internIdent) }
-    return endringerPåEksiterendeIdenter + nyeIdenter
-}
 
 fun IdenterResult.finnForetrukketIdent(): IdentResult {
     return when (this) {
