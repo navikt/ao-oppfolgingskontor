@@ -115,8 +115,8 @@ fun Application.module() {
         oppfolgingsperiodeService,
         { kontorEndringProducer.publiserEndringPåKontor(it) }
     )
-    configureHentArbeidsoppfolgingskontorBulkModule(KontorTilhorighetBulkService)
     configureKontorRepubliseringModule(republiseringService)
+    configureHentArbeidsoppfolgingskontorBulkModule(KontorTilhorighetBulkService)
 }
 
 fun ApplicationEnvironment.getIssuer(): String {
