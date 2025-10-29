@@ -15,7 +15,7 @@ import services.KontorRepubliseringService
 fun Application.configureKontorRepubliseringModule(
     kontorRepubliseringService: KontorRepubliseringService
 ) {
-    val log = LoggerFactory.getLogger("KontorRepubliseringModule")
+    val log = LoggerFactory.getLogger("Application.configureKontorRepubliseringModule")
     val config = environment.config
 
     routing {
