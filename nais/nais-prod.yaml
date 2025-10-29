@@ -55,6 +55,9 @@ spec:
           namespace: poao
         - application: poao-admin
           namespace: poao
+          permissions:
+            roles:
+              - "republiser-kontor"
         - application: populasjonstilgangskontroll
           namespace: tilgangsmaskin
           permissions:

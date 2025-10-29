@@ -1,21 +1,40 @@
 package no.nav.http
 
+import com.nimbusds.jose.util.DefaultResourceRetriever
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.launch
+import no.nav.security.token.support.v3.RequiredClaims
+import no.nav.security.token.support.v3.tokenValidationSupport
 import org.slf4j.LoggerFactory
 import services.KontorRepubliseringService
 
 fun Application.configureKontorRepubliseringModule(
     kontorRepubliseringService: KontorRepubliseringService
 ) {
-    val log = LoggerFactory.getLogger("Application.configureKontorRepubliseringModule")
+    val log = LoggerFactory.getLogger("KontorRepubliseringModule")
+    val config = environment.config
 
     routing {
-        authenticate("EntraAD") { // TODO: Fix admintilgang
+        fun AuthenticationConfig.setUpKontorRepubliseringAuth() {
+            tokenValidationSupport(
+                config = config,
+                requiredClaims = RequiredClaims(
+                    issuer = config.configList("no.nav.security.jwt.issuers").first().property("issuer_name").getString(),
+                    claimMap = arrayOf("roles=republiser-kontor")
+                ),
+                resourceRetriever = DefaultResourceRetriever(),
+                name = "poaoAdmin"
+            )
+        }
+
+        pluginOrNull(Authentication)?.configure { setUpKontorRepubliseringAuth() }
+            ?: install(Authentication) { setUpKontorRepubliseringAuth() }
+
+        authenticate("poaoAdmin") {
             post("/admin/republiser-arbeidsoppfolgingskontorendret") {
                 runCatching {
                     launch {
