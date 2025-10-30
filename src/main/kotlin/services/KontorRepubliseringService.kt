@@ -1,9 +1,5 @@
 package services
 
-import io.ktor.server.util.toZonedDateTime
-import kafka.producers.KontorEndringProducer
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import no.nav.db.AktorId
 import no.nav.db.Ident
 import no.nav.db.Ident.Companion.validateIdentSomKanLagres
@@ -12,7 +8,6 @@ import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorId
 import no.nav.domain.KontorNavn
 import no.nav.domain.OppfolgingsperiodeId
-import no.nav.services.KontorNavnService
 import org.slf4j.LoggerFactory
 import java.sql.ResultSet
 import java.time.ZoneId
@@ -57,7 +52,7 @@ class KontorRepubliseringService(
             from oppfolgingsperiode
                 join ident_mapping input_ident on oppfolgingsperiode.fnr = input_ident.ident
                 join ident_mapping alle_identer on input_ident.intern_ident = alle_identer.intern_ident and alle_identer.ident_type != 'AKTOR_ID'
-                join ident_mapping aktorId on input_ident.intern_ident = alle_identer.intern_ident and aktorId.ident_type = 'AKTOR_ID'
+                join ident_mapping aktorId on input_ident.intern_ident = aktorId.intern_ident and aktorId.ident_type = 'AKTOR_ID'
                 join arbeidsoppfolgingskontor on alle_identer.ident = arbeidsoppfolgingskontor.fnr
                 join kontorhistorikk historikk on arbeidsoppfolgingskontor.historikk_entry = historikk.id
                 join kontornavn on arbeidsoppfolgingskontor.kontor_id = kontornavn.kontor_id
@@ -72,7 +67,6 @@ class KontorRepubliseringService(
 
         val resultSet = statement.executeQuery()
         while (resultSet.next()) {
-            log.debug("Samler inn data fra ResultSet")
             publiserEndringPaaKafka(resultSet.toKontorSomSkalRepubliseres())
         }
         resultSet.close()
