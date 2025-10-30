@@ -1,10 +1,16 @@
 package services
 
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.test.runTest
+import no.nav.db.AktorId
+import no.nav.db.Fnr
+import no.nav.db.Ident
 import no.nav.db.table.KontorNavnTable.kontorNavn
+import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorId
 import no.nav.domain.KontorNavn
+import no.nav.domain.OppfolgingsperiodeId
 import no.nav.utils.TestDb
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.gittBrukerUnderOppfolging
@@ -52,7 +58,18 @@ class KontorRepubliseringServiceTest {
 
         kontorRepubliseringService.republiserKontorer()
 
-        republiserteKontorer shouldHaveSize 1
+        val updatedAt = republiserteKontorer.first().updatedAt
+        republiserteKontorer shouldBe mutableListOf<KontorSomSkalRepubliseres>(
+            KontorSomSkalRepubliseres(
+                ident = Fnr("18117623396", Ident.HistoriskStatus.UKJENT),
+                aktorId = AktorId("7319053121892", Ident.HistoriskStatus.UKJENT),
+                kontorId = KontorId("2121"),
+                kontorNavn = KontorNavn("Nav Helsfyr"),
+                updatedAt = updatedAt,
+                oppfolgingsperiodeId = periode,
+                kontorEndringsType = KontorEndringsType.AutomatiskNorgRuting
+            )
+        )
     }
 
 
