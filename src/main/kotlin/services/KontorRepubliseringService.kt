@@ -20,9 +20,6 @@ import java.time.ZonedDateTime
 import java.util.*
 import javax.sql.DataSource
 
-
-
-
 class KontorRepubliseringService(
     val republiserKontor: (KontorSomSkalRepubliseres) -> Unit,
     val datasource: DataSource,
