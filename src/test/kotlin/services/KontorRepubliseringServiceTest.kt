@@ -13,6 +13,7 @@ import no.nav.utils.gittIdentMedKontor
 import no.nav.utils.gittKontorNavn
 import no.nav.utils.randomAktorId
 import no.nav.utils.randomFnr
+import no.nav.utils.*
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 
@@ -52,10 +53,10 @@ class KontorRepubliseringServiceTest {
 
         kontorRepubliseringService.republiserKontorer()
 
-        val updatedAt = republiserteKontorer.first().updatedAt
+        val updatedAt = republiserteKontorer.first().updatedAt // TODO: Les updatedAt fra kontorTilordningen
         republiserteKontorer shouldBe mutableListOf(
             KontorSomSkalRepubliseres(
-                ident = fnr,
+                ident =  fnr,
                 aktorId = aktorId,
                 kontorId = kontorId,
                 kontorNavn = kontorNavn,
@@ -65,6 +66,4 @@ class KontorRepubliseringServiceTest {
             )
         )
     }
-
-
 }
