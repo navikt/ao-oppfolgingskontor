@@ -38,6 +38,7 @@ class KontorRepubliseringService(
                 logger.info("Antall publiserte: $antallPubliserte")
             }
         }
+        logger.info("Totalt antall publiserte: $antallPubliserte")
     }
 
     fun hentAlleKontorerSomSkalRepubliseres(
