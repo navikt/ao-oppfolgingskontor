@@ -22,18 +22,18 @@ import javax.sql.DataSource
 
 
 class KontorRepubliseringService(
-    val kafkaProducer: KontorEndringProducer,
+    val republiserKontor: (KontorSomSkalRepubliseres) -> Unit,
     val datasource: DataSource,
-    val kontorNavnService: KontorNavnService,
+    val friskOppAlleKontorNavn: suspend () -> Unit,
 ) {
     val log = LoggerFactory.getLogger(this::class.java)
 
-    suspend fun republiserKontorer(): Unit = withContext(Dispatchers.IO) {
-        kontorNavnService.friskOppAlleKontorNavn()
+    suspend fun republiserKontorer() {
+        friskOppAlleKontorNavn()
 
-        var antallPubliserte = 0;
+        var antallPubliserte = 0
         hentAlleKontorerSomSkalRepubliseres {
-            kafkaProducer.republiserKontor(it)
+            republiserKontor(it)
 
             antallPubliserte++
             if (antallPubliserte % 5000 == 0) {
