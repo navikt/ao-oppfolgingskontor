@@ -60,7 +60,8 @@ class KontorRepubliseringServiceTest {
         kontorRepubliseringService.republiserKontorer()
 
         val updatedAt = republiserteKontorer.first().updatedAt // TODO: Les updatedAt fra kontorTilordningen
-        val testKontor = republiserteKontorer.find { it.oppfolgingsperiodeId.value.toString() == periode.value.toString() }
+        val testKontor = republiserteKontorer
+            .find { it.oppfolgingsperiodeId == periode && it.aktorId == aktorId  }
         testKontor shouldBe KontorSomSkalRepubliseres(
             ident =  fnr,
             aktorId = aktorId,
