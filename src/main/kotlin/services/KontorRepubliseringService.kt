@@ -13,18 +13,20 @@ import no.nav.domain.KontorNavn
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.services.KontorNavnService
 import org.slf4j.LoggerFactory
+import java.sql.ResultSet
 import java.time.ZonedDateTime
 import java.util.*
 import javax.sql.DataSource
 
 
-val logger = LoggerFactory.getLogger("Application.KontorRepubliseringService")
+
 
 class KontorRepubliseringService(
     val kafkaProducer: KontorEndringProducer,
     val datasource: DataSource,
     val kontorNavnService: KontorNavnService,
 ) {
+    val log = LoggerFactory.getLogger(this::class.java)
 
     suspend fun republiserKontorer(): Unit = withContext(Dispatchers.IO) {
         kontorNavnService.friskOppAlleKontorNavn()
@@ -35,10 +37,10 @@ class KontorRepubliseringService(
 
             antallPubliserte++
             if (antallPubliserte % 5000 == 0) {
-                logger.info("Antall publiserte: $antallPubliserte")
+                log.info("Antall publiserte: $antallPubliserte")
             }
         }
-        logger.info("Totalt antall publiserte: $antallPubliserte")
+        log.info("Totalt antall publiserte: $antallPubliserte")
     }
 
     fun hentAlleKontorerSomSkalRepubliseres(
@@ -66,33 +68,36 @@ class KontorRepubliseringService(
         // Use streaming / cursor mode
         val conn = datasource.connection
         conn.autoCommit = false
-        val statement = conn.createStatement()
+        val statement = conn.prepareStatement(query)
         statement.fetchSize = 500
 
-        val resultSet = statement.executeQuery(query)
+        val resultSet = statement.executeQuery()
         while (resultSet.next()) {
-            val ident = validateIdentSomKanLagres(resultSet.getString("fnr"), Ident.HistoriskStatus.UKJENT)
-            val aktorId = AktorId(resultSet.getString("aktorId"), Ident.HistoriskStatus.UKJENT)
-            val kontorId = KontorId(resultSet.getString("kontor_id"))
-            val updatedAt = resultSet.getObject("updated_at", ZonedDateTime::class.java)
-            val oppfolgingsperiodeId = OppfolgingsperiodeId(resultSet.getObject("oppfolgingsperiode_id", UUID::class.java))
-            val kontorEndringsType = KontorEndringsType.valueOf(resultSet.getString("kontorendringstype"))
-            val kontorNavn = KontorNavn(resultSet.getString("kontor_navn"))
-            publiserEndringPaaKafka(
-                KontorSomSkalRepubliseres(
-                    ident = ident,
-                    aktorId = aktorId,
-                    kontorId = kontorId,
-                    kontorNavn = kontorNavn,
-                    updatedAt = updatedAt,
-                    oppfolgingsperiodeId = oppfolgingsperiodeId,
-                    kontorEndringsType = kontorEndringsType,
-                )
-            )
+            log.debug("Samler inn data fra ResultSet")
+            publiserEndringPaaKafka(resultSet.toKontorSomSkalRepubliseres())
         }
         resultSet.close()
         statement.close()
     }
+}
+
+fun ResultSet.toKontorSomSkalRepubliseres(): KontorSomSkalRepubliseres {
+    val ident = validateIdentSomKanLagres(this.getString("fnr"), Ident.HistoriskStatus.UKJENT)
+    val aktorId = AktorId(this.getString("aktorId"), Ident.HistoriskStatus.UKJENT)
+    val kontorId = KontorId(this.getString("kontor_id"))
+    val updatedAt = this.getObject("updated_at", ZonedDateTime::class.java)
+    val oppfolgingsperiodeId = OppfolgingsperiodeId(this.getObject("oppfolgingsperiode_id", UUID::class.java))
+    val kontorEndringsType = KontorEndringsType.valueOf(this.getString("kontorendringstype"))
+    val kontorNavn = KontorNavn(this.getString("kontor_navn"))
+    return KontorSomSkalRepubliseres(
+        ident = ident,
+        aktorId = aktorId,
+        kontorId = kontorId,
+        kontorNavn = kontorNavn,
+        updatedAt = updatedAt,
+        oppfolgingsperiodeId = oppfolgingsperiodeId,
+        kontorEndringsType = kontorEndringsType,
+    )
 }
 
 data class KontorSomSkalRepubliseres(
