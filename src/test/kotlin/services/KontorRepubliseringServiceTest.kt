@@ -2,6 +2,7 @@ package services
 
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.test.runTest
+import no.nav.db.table.OppfolgingsperiodeTable
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorId
 import no.nav.domain.KontorNavn
@@ -13,7 +14,8 @@ import no.nav.utils.gittIdentMedKontor
 import no.nav.utils.gittKontorNavn
 import no.nav.utils.randomAktorId
 import no.nav.utils.randomFnr
-import no.nav.utils.*
+import org.jetbrains.exposed.sql.deleteAll
+import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 
@@ -25,13 +27,16 @@ class KontorRepubliseringServiceTest {
         @JvmStatic
         fun setup() {
             flywayMigrationInTest()
+            transaction {
+                OppfolgingsperiodeTable.deleteAll()
+            }
         }
     }
 
 
     @Test
     fun `Skal kunne republisere kontor uten feil`() = runTest {
-        var republiserteKontorer = mutableListOf<KontorSomSkalRepubliseres>()
+        val republiserteKontorer = mutableListOf<KontorSomSkalRepubliseres>()
 
         val kontorRepubliseringService = KontorRepubliseringService(
             { republiserteKontorer.add(it) },
