@@ -24,7 +24,7 @@ fun Application.configureKontorRepubliseringModule(
                 config = config,
                 requiredClaims = RequiredClaims(
                     issuer = config.configList("no.nav.security.jwt.issuers").first().property("issuer_name").getString(),
-                    claimMap = arrayOf("scp=defaultaccess republiser-kontor"),
+                    claimMap = arrayOf("scp=republiser-kontor"),
                 ),
                 resourceRetriever = DefaultResourceRetriever(),
                 name = "poaoAdmin"
