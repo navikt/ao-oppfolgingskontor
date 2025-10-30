@@ -12,6 +12,7 @@
 <!--    <logger name="net.javacrumbs.shedlock.core" level="DEBUG"/>-->
     <logger name="no.nav" level="DEBUG"/>
 <!--    <logger name="org.apache.kafka.clients.consumer.internals.ConsumerCoordinator" level="DEBUG"/>-->
+    <logger name="no.nav.security.token.support" level="WARN"/>
 <!--    <logger name="org.apache.kafka.clients.consumer.internals.Heartbeat" level="DEBUG"/>-->
 <!--    <logger name="org.apache.kafka.streams.processor.internals.StreamThread" level="DEBUG"/>-->
 </configuration>
