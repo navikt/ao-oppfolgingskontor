@@ -1,5 +1,6 @@
 package services
 
+import io.ktor.server.util.toZonedDateTime
 import kafka.producers.KontorEndringProducer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -14,6 +15,7 @@ import no.nav.domain.OppfolgingsperiodeId
 import no.nav.services.KontorNavnService
 import org.slf4j.LoggerFactory
 import java.sql.ResultSet
+import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.*
 import javax.sql.DataSource
@@ -78,6 +80,8 @@ class KontorRepubliseringService(
         }
         resultSet.close()
         statement.close()
+    }.onFailure {
+        log.error("Republisering av kontor feilet", it)
     }
 }
 
@@ -85,7 +89,7 @@ fun ResultSet.toKontorSomSkalRepubliseres(): KontorSomSkalRepubliseres {
     val ident = validateIdentSomKanLagres(this.getString("fnr"), Ident.HistoriskStatus.UKJENT)
     val aktorId = AktorId(this.getString("aktorId"), Ident.HistoriskStatus.UKJENT)
     val kontorId = KontorId(this.getString("kontor_id"))
-    val updatedAt = this.getObject("updated_at", ZonedDateTime::class.java)
+    val updatedAt = this.getTimestamp("updated_at").toInstant().atZone(ZoneId.systemDefault())
     val oppfolgingsperiodeId = OppfolgingsperiodeId(this.getObject("oppfolgingsperiode_id", UUID::class.java))
     val kontorEndringsType = KontorEndringsType.valueOf(this.getString("kontorendringstype"))
     val kontorNavn = KontorNavn(this.getString("kontor_navn"))
