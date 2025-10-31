@@ -16,6 +16,7 @@ import no.nav.http.client.poaoTilgang.getPoaoTilgangScope
 import no.nav.http.client.tokenexchange.TexasSystemTokenClient
 import no.nav.http.client.tokenexchange.getNaisTokenEndpoint
 import no.nav.http.configureArbeidsoppfolgingskontorModule
+import no.nav.http.configureKontorRepubliseringModule
 import no.nav.http.graphql.AuthenticateRequest
 import no.nav.http.graphql.configureGraphQlModule
 import no.nav.http.graphql.getNorg2Url
@@ -32,6 +33,7 @@ import no.nav.services.KontorTilordningService
 import no.nav.services.OppfolgingsperiodeDao
 import org.slf4j.MarkerFactory
 import services.IdentService
+import services.KontorRepubliseringService
 import services.KontorTilhorighetBulkService
 import services.OppfolgingsperiodeService
 import topics
@@ -44,7 +46,7 @@ fun Application.module() {
     val meterRegistry = configureMonitoring()
     val setCriticalError: CriticalErrorNotificationFunction = configureHealthAndCompression()
     configureSecurity()
-    val database = configureDatabase()
+    val (datasource, database) = configureDatabase()
 
     val norg2Client = Norg2Client(environment.getNorg2Url())
 
@@ -87,6 +89,7 @@ fun Application.module() {
         kontorNavnProvider = { kontorId -> kontorNavnService.getKontorNavn(kontorId) },
         aktorIdProvider = { identSomKanLagres -> identService.hentAktorId(identSomKanLagres) }
     )
+    val republiseringService = KontorRepubliseringService(kontorEndringProducer::republiserKontor, datasource, kontorNavnService::friskOppAlleKontorNavn)
 
     install(KafkaStreamsPlugin) {
         this.automatiskKontorRutingService = automatiskKontorRutingService
@@ -112,6 +115,7 @@ fun Application.module() {
         oppfolgingsperiodeService,
         { kontorEndringProducer.publiserEndringPåKontor(it) }
     )
+    configureKontorRepubliseringModule(republiseringService)
     configureHentArbeidsoppfolgingskontorBulkModule(KontorTilhorighetBulkService)
 }
 

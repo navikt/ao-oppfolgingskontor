@@ -5,6 +5,7 @@ import com.zaxxer.hikari.HikariDataSource
 import io.ktor.server.application.*
 import io.ktor.server.config.ApplicationConfig
 import org.jetbrains.exposed.sql.Database
+import javax.sql.DataSource
 
 object PostgresDataSource {
     private var dataSource: HikariDataSource? = null
@@ -35,7 +36,7 @@ private fun configureDb(config: ApplicationConfig): HikariDataSource {
     })
 }
 
-fun Application.configureDatabase() : Database {
+fun Application.configureDatabase() : Pair<DataSource, Database> {
     val dataSource = PostgresDataSource.getDataSource(environment.config)
     val database = Database.connect(dataSource)
     install(FlywayPlugin) {
@@ -45,5 +46,5 @@ fun Application.configureDatabase() : Database {
 //    {
 //        dataSource.close()
 //    }
-    return database
+    return dataSource to database
 }

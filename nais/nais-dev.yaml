@@ -53,12 +53,17 @@ spec:
           namespace: poao
         - application: poao-admin
           namespace: poao
+          permissions:
+            scopes:
+              - "republiser-kontor"
         - application: azure-token-generator
           namespace: nais
           cluster: dev-gcp
           permissions:
             roles:
               - "bulk-hent-kontor"
+            scopes:
+              - "republiser-kontor"
         - application: populasjonstilgangskontroll
           namespace: tilgangsmaskin
           permissions:

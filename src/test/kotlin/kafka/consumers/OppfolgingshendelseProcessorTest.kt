@@ -34,6 +34,7 @@ import no.nav.services.NotUnderOppfolging
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.hentInternId
 import no.nav.utils.gittIdentIMapping
+import no.nav.utils.randomAktorId
 import no.nav.utils.randomFnr
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.insert
@@ -113,7 +114,7 @@ class OppfolgingshendelseProcessorTest {
 
     fun testBruker() = Bruker(
         ident = randomFnr(),
-        aktorId = "1234567890123",
+        aktorId = randomAktorId().toString(),
         periodeStart = ZonedDateTime.now(ZoneId.of("Europe/Oslo")).minusDays(2),
         oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
     )

@@ -13,6 +13,7 @@ import no.nav.domain.events.AOKontorEndret
 import no.nav.domain.events.KontorSattAvVeileder
 import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.clients.producer.ProducerRecord
+import services.KontorSomSkalRepubliseres
 import kotlin.String
 
 class KontorEndringProducer(
@@ -48,6 +49,13 @@ class KontorEndringProducer(
                     tilordningstype = Tilordningstype.fraKontorEndringsType(event.kontorEndringsType)
                 )
             )
+        }
+    }
+
+    fun republiserKontor(kontorSomSkalRepubliseres: KontorSomSkalRepubliseres): Result<Unit> {
+        return runCatching {
+            val value = kontorSomSkalRepubliseres.toKontorTilordningMeldingDto()
+            publiserEndringPåKontor(value)
         }
     }
 
@@ -87,6 +95,17 @@ fun AOKontorEndret.toKontorTilordningMeldingDto(
         tilordningstype = Tilordningstype.fraKontorEndringsType(this.kontorEndringsType())
     )
 }
+fun KontorSomSkalRepubliseres.toKontorTilordningMeldingDto(): KontorTilordningMeldingDto {
+    return KontorTilordningMeldingDto(
+        kontorId = this.kontorId.id,
+        kontorNavn = this.kontorNavn.navn,
+        oppfolgingsperiodeId = this.oppfolgingsperiodeId.value.toString(),
+        aktorId = this.aktorId.value,
+        ident = this.ident.value,
+        tilordningstype = Tilordningstype.fraKontorEndringsType(this.kontorEndringsType)
+    )
+}
+
 
 fun AOKontorEndret.toKontorTilordningMelding(): OppfolgingEndretTilordningMelding {
     return OppfolgingEndretTilordningMelding(

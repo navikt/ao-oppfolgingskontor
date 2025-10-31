@@ -22,6 +22,8 @@ import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.http.client.GeografiskTilknytningKommuneNr
 import domain.kontorForGt.KontorForGtFantDefaultKontor
+import no.nav.db.table.KontorNavnTable
+import no.nav.domain.KontorNavn
 import no.nav.services.KontorTilordningService
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.batchInsert
@@ -89,13 +91,13 @@ fun hentInternId(ident: Ident): Long {
     }
 }
 
-fun gittIdentMedKontor(ident: IdentSomKanLagres, kontorId: KontorId) {
+fun gittIdentMedKontor(ident: IdentSomKanLagres, kontorId: KontorId, oppfolgingsperiodeId: OppfolgingsperiodeId? = null) {
     KontorTilordningService.tilordneKontor(
         OppfolgingsPeriodeStartetLokalKontorTilordning(
             KontorTilordning(
                 ident,
                 kontorId,
-                OppfolgingsperiodeId(UUID.randomUUID())
+                oppfolgingsperiodeId ?: OppfolgingsperiodeId(UUID.randomUUID())
             ),
             kontorForGt = KontorForGtFantDefaultKontor(
                 kontorId,
@@ -106,4 +108,13 @@ fun gittIdentMedKontor(ident: IdentSomKanLagres, kontorId: KontorId) {
 
         )
     )
+}
+
+fun gittKontorNavn(kontorNavn: KontorNavn, kontorId: KontorId) {
+    transaction {
+        KontorNavnTable.insert {
+            it[KontorNavnTable.kontorNavn] = kontorNavn.navn
+            it[id] = kontorId.id
+        }
+    }
 }
