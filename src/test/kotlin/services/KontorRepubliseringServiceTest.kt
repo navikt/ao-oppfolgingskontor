@@ -1,6 +1,5 @@
 package services
 
-import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.test.runTest
 import no.nav.db.table.OppfolgingsperiodeTable

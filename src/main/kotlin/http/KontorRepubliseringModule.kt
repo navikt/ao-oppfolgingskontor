@@ -12,14 +12,15 @@ import no.nav.security.token.support.v3.tokenValidationSupport
 import org.slf4j.LoggerFactory
 import services.KontorRepubliseringService
 
+val log = LoggerFactory.getLogger("KontorRepubliseringModule")
+
 fun Application.configureKontorRepubliseringModule(
     kontorRepubliseringService: KontorRepubliseringService
 ) {
-    val log = LoggerFactory.getLogger("Application.configureKontorRepubliseringModule")
-    val config = environment.config
-
     routing {
-        fun AuthenticationConfig.setUpKontorRepubliseringAuth() {
+        val config = environment.config
+
+        fun AuthenticationConfig.setUpKontorRepubliseringAuth () {
             tokenValidationSupport(
                 config = config,
                 requiredClaims = RequiredClaims(
@@ -48,7 +49,7 @@ fun Application.configureKontorRepubliseringModule(
                     log.error("Feil ved republisering av kontorer", e)
                     call.respond(
                         HttpStatusCode.InternalServerError,
-                        "Klarte ikke starte republisering av kontorer"
+                        "Klarte ikke starte republisering av kontorer: ${e.message} \n" + e.stackTraceToString()
                     )
                 }.onSuccess {
                     log.info("Republisering av kontorer fullført.")
