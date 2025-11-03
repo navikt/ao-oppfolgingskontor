@@ -31,18 +31,19 @@ import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
 import no.nav.services.KontorTilordningService
 import no.nav.services.OppfolgingsperiodeDao
-import org.slf4j.MarkerFactory
 import services.IdentService
 import services.KontorRepubliseringService
 import services.KontorTilhorighetBulkService
 import services.OppfolgingsperiodeService
 import topics
+import utils.KontorToggleValue
 
 fun main(args: Array<String>) {
     EngineMain.main(args)
 }
 
 fun Application.module() {
+    val kontorTypeSomSkalPubliseres = KontorToggleValue.ARENA
     val meterRegistry = configureMonitoring()
     val setCriticalError: CriticalErrorNotificationFunction = configureHealthAndCompression()
     configureSecurity()
@@ -87,9 +88,10 @@ fun Application.module() {
         producer = createKafkaProducer(this.environment.config.toKafkaEnv()),
         kontorTopicNavn = this.environment.topics().ut.arbeidsoppfolgingskontortilordninger.name,
         kontorNavnProvider = { kontorId -> kontorNavnService.getKontorNavn(kontorId) },
-        aktorIdProvider = { identSomKanLagres -> identService.hentAktorId(identSomKanLagres) }
+        aktorIdProvider = { identSomKanLagres -> identService.hentAktorId(identSomKanLagres) },
+        kontorTypeSomSkalPubliseres = kontorTypeSomSkalPubliseres
     )
-    val republiseringService = KontorRepubliseringService(kontorEndringProducer::republiserKontor, datasource, kontorNavnService::friskOppAlleKontorNavn)
+    val republiseringService = KontorRepubliseringService(kontorEndringProducer::republiserKontor, datasource, kontorNavnService::friskOppAlleKontorNavn, kontorTypeSomSkalPubliseres)
 
     install(KafkaStreamsPlugin) {
         this.automatiskKontorRutingService = automatiskKontorRutingService
@@ -113,7 +115,8 @@ fun Application.module() {
         kontorTilhorighetService,
         poaoTilgangHttpClient,
         oppfolgingsperiodeService,
-        { kontorEndringProducer.publiserEndringPåKontor(it) }
+        { kontorEndringProducer.publiserEndringPåKontor(it) },
+        kontorTypeSomSkalPubliseres,
     )
     configureKontorRepubliseringModule(republiseringService)
     configureHentArbeidsoppfolgingskontorBulkModule(KontorTilhorighetBulkService)

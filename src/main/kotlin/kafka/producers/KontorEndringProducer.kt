@@ -14,6 +14,7 @@ import no.nav.domain.events.KontorSattAvVeileder
 import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.clients.producer.ProducerRecord
 import services.KontorSomSkalRepubliseres
+import utils.KontorToggleValue
 import kotlin.String
 
 class KontorEndringProducer(
@@ -21,9 +22,14 @@ class KontorEndringProducer(
     val kontorTopicNavn: String,
     val kontorNavnProvider: suspend (kontorId: KontorId) -> KontorNavn,
     val aktorIdProvider: suspend (ident: IdentSomKanLagres) -> AktorId?,
+    val kontorTypeSomSkalPubliseres: KontorToggleValue
 ) {
 
     suspend fun publiserEndringPåKontor(event: KontorSattAvVeileder): Result<Unit> {
+        if (kontorTypeSomSkalPubliseres == KontorToggleValue.ARENA) {
+            // Ikke publiser endringer hvis AO-kontor ikke skal være eksponert
+            return Result.success(Unit)
+        }
         return runCatching {
             val value = event.toKontorTilordningMeldingDto(
                 aktorIdProvider(event.tilordning.fnr)

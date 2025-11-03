@@ -36,6 +36,7 @@ import no.nav.services.OppfolgingperiodeOppslagFeil
 import no.nav.toRegistrant
 import org.slf4j.LoggerFactory
 import services.OppfolgingsperiodeService
+import utils.KontorToggleValue
 
 val logger = LoggerFactory.getLogger("Application.configureArbeidsoppfolgingskontorModule")
 
@@ -45,6 +46,7 @@ fun Application.configureArbeidsoppfolgingskontorModule(
     poaoTilgangClient: PoaoTilgangKtorHttpClient,
     oppfolgingsperiodeService: OppfolgingsperiodeService,
     publiserKontorEndring: suspend (KontorSattAvVeileder) -> Result<Unit>,
+    kontorTypeSomSkalPubliseres: KontorToggleValue,
     authenticateRequest: AuthenticateRequest = { req -> req.call.authenticateCall(environment.getIssuer()) },
 ) {
     val log = LoggerFactory.getLogger("Application.configureArbeidsoppfolgingskontorModule")
@@ -53,6 +55,12 @@ fun Application.configureArbeidsoppfolgingskontorModule(
         authenticate("EntraAD") {
             post("/api/kontor") {
                 runCatching {
+                    if (kontorTypeSomSkalPubliseres == KontorToggleValue.ARENA) {
+                        log.warn("Prøvde å endre ao-kontor men var i ARENA modus")
+                        call.respond(HttpStatusCode.Conflict, "Kan ikke endre arbeidsoppfolgingskontor når app er i Arena modus (bare eksponerer Arena-kontor)")
+                        return@post
+                    }
+
                     val kontorTilordning = call.receive<ArbeidsoppfolgingsKontorTilordningDTO>()
                     val principal = when(val authresult = authenticateRequest(call.request)) {
                         is Authenticated -> authresult.principal

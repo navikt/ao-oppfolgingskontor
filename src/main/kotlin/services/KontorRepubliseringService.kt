@@ -9,6 +9,7 @@ import no.nav.domain.KontorId
 import no.nav.domain.KontorNavn
 import no.nav.domain.OppfolgingsperiodeId
 import org.slf4j.LoggerFactory
+import utils.KontorToggleValue
 import java.sql.ResultSet
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -19,6 +20,7 @@ class KontorRepubliseringService(
     val republiserKontor: (KontorSomSkalRepubliseres) -> Unit,
     val datasource: DataSource,
     val friskOppAlleKontorNavn: suspend () -> Unit,
+    val kontorTypeSomSkalPubliseres: KontorToggleValue
 ) {
     val log = LoggerFactory.getLogger(this::class.java)
 
@@ -26,7 +28,7 @@ class KontorRepubliseringService(
         friskOppAlleKontorNavn()
 
         var antallPubliserte = 0
-        hentAlleKontorerSomSkalRepubliseres {
+        hentAlleKontorerSomSkalRepubliseres(kontorTypeSomSkalPubliseres) {
             republiserKontor(it)
 
             antallPubliserte++
@@ -38,26 +40,47 @@ class KontorRepubliseringService(
     }
 
     fun hentAlleKontorerSomSkalRepubliseres(
-        publiserEndringPaaKafka: (KontorSomSkalRepubliseres) -> Unit
+        kontorTypeSomSkalPubliseres: KontorToggleValue,
+        publiserEndringPaaKafka: (KontorSomSkalRepubliseres) -> Unit,
     ): Result<Unit> = runCatching {
-        val query = """
-            select
-                arbeidsoppfolgingskontor.fnr,
-                arbeidsoppfolgingskontor.kontor_id,
-                arbeidsoppfolgingskontor.updated_at,
-                aktorId.ident as aktorId, -- aktørid
-                oppfolgingsperiode.oppfolgingsperiode_id,
-                historikk.kontorendringstype,
-                kontornavn.kontor_navn
-            from oppfolgingsperiode
-                join ident_mapping input_ident on oppfolgingsperiode.fnr = input_ident.ident
-                join ident_mapping alle_identer on input_ident.intern_ident = alle_identer.intern_ident and alle_identer.ident_type != 'AKTOR_ID'
-                join ident_mapping aktorId on input_ident.intern_ident = aktorId.intern_ident and aktorId.ident_type = 'AKTOR_ID'
-                join arbeidsoppfolgingskontor on alle_identer.ident = arbeidsoppfolgingskontor.fnr
-                join kontorhistorikk historikk on arbeidsoppfolgingskontor.historikk_entry = historikk.id
-                join kontornavn on arbeidsoppfolgingskontor.kontor_id = kontornavn.kontor_id
-            where alle_identer.historisk = false and aktorId.historisk = false
+        val query = when (kontorTypeSomSkalPubliseres) {
+            KontorToggleValue.ARENA -> """
+                select
+                    arenakontor.fnr,
+                    arenakontor.kontor_id,
+                    arenakontor.updated_at,
+                    aktorId.ident as aktorId, -- aktørid
+                    oppfolgingsperiode.oppfolgingsperiode_id,
+                    historikk.kontorendringstype,
+                    kontornavn.kontor_navn
+                from oppfolgingsperiode
+                    join ident_mapping input_ident on oppfolgingsperiode.fnr = input_ident.ident
+                    join ident_mapping alle_identer on input_ident.intern_ident = alle_identer.intern_ident and alle_identer.ident_type != 'AKTOR_ID'
+                    join ident_mapping aktorId on input_ident.intern_ident = aktorId.intern_ident and aktorId.ident_type = 'AKTOR_ID'
+                    join arenakontor on alle_identer.ident = arenakontor.fnr
+                    join kontorhistorikk historikk on arenakontor.historikk_entry = historikk.id
+                    join kontornavn on arenakontor.kontor_id = kontornavn.kontor_id
+                where alle_identer.historisk = false and aktorId.historisk = false
         """.trimIndent()
+            KontorToggleValue.ARBEIDSOPPFOLGINGKONTOR -> """
+                select
+                    arbeidsoppfolgingskontor.fnr,
+                    arbeidsoppfolgingskontor.kontor_id,
+                    arbeidsoppfolgingskontor.updated_at,
+                    aktorId.ident as aktorId, -- aktørid
+                    oppfolgingsperiode.oppfolgingsperiode_id,
+                    historikk.kontorendringstype,
+                    kontornavn.kontor_navn
+                from oppfolgingsperiode
+                    join ident_mapping input_ident on oppfolgingsperiode.fnr = input_ident.ident
+                    join ident_mapping alle_identer on input_ident.intern_ident = alle_identer.intern_ident and alle_identer.ident_type != 'AKTOR_ID'
+                    join ident_mapping aktorId on input_ident.intern_ident = aktorId.intern_ident and aktorId.ident_type = 'AKTOR_ID'
+                    join arbeidsoppfolgingskontor on alle_identer.ident = arbeidsoppfolgingskontor.fnr
+                    join kontorhistorikk historikk on arbeidsoppfolgingskontor.historikk_entry = historikk.id
+                    join kontornavn on arbeidsoppfolgingskontor.kontor_id = kontornavn.kontor_id
+                where alle_identer.historisk = false and aktorId.historisk = false
+        """.trimIndent()
+        }
 
         // Use streaming / cursor mode
         val conn = datasource.connection

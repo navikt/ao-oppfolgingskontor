@@ -2,6 +2,8 @@ package no.nav.kafka.consumers
 
 import db.table.TidligArenaKontorTable
 import domain.ArenaKontorUtvidet
+import kafka.consumers.PubliserKontorTilordningProcessor
+import kafka.producers.OppfolgingEndretTilordningMelding
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -13,6 +15,7 @@ import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.events.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep
 import no.nav.domain.events.EndringPaaOppfolgingsBrukerFraArena
 import no.nav.kafka.processor.Commit
+import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
@@ -25,6 +28,7 @@ import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.upsert
 import org.slf4j.LoggerFactory
+import utils.KontorToggleValue
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
@@ -32,12 +36,13 @@ import java.time.ZonedDateTime
 class EndringPaOppfolgingsBrukerProcessor(
     val oppfolgingsperiodeProvider: suspend (IdentSomKanLagres) -> OppfolgingsperiodeOppslagResult,
     val arenaKontorProvider: suspend (IdentSomKanLagres) -> ArenaKontorUtvidet?,
+    val kontortypeSomSkalRepubliseres: KontorToggleValue,
 ) {
     val log = LoggerFactory.getLogger(EndringPaOppfolgingsBrukerProcessor::class.java)
 
     val json = Json { ignoreUnknownKeys = true }
 
-    fun handleResult(result: EndringPaaOppfolgingsBrukerResult): RecordProcessingResult<String, String> {
+    fun handleResult(result: EndringPaaOppfolgingsBrukerResult): RecordProcessingResult<OppfolgingsperiodeId, OppfolgingEndretTilordningMelding> {
         return when (result) {
             is BeforeCutoff -> {
                 log.info("Endring på oppfolgingsbruker var fra før cutoff, hopper over")
@@ -58,6 +63,11 @@ class EndringPaOppfolgingsBrukerProcessor(
             is IkkeUnderOppfolging -> {
                 log.info("Bruker er ikke under oppfølging, hopper over melding om endring på oppfølgingsbruker")
                 Skip()
+            }
+            is UnderOppfolgingIArenaMenIkkeLokalt -> {
+                log.info("Lagrer kontor fra arena før? melding om oppfølging startet")
+                lagreTidligArenaKontor(result)
+                Commit()
             }
             is IngenEndring -> {
                 log.info("Kontor har ikke blitt endret, hopper over melding om endring på oppfølgingsbruker")
@@ -82,12 +92,16 @@ class EndringPaOppfolgingsBrukerProcessor(
                         )
                     }
                 )
-                Commit()
-            }
-            is UnderOppfolgingIArenaMenIkkeLokalt -> {
-                log.info("Lagrer kontor fra arena før? melding om oppfølging startet")
-                lagreTidligArenaKontor(result)
-                Commit()
+                val record: Record<OppfolgingsperiodeId, OppfolgingEndretTilordningMelding> = Record("lol", "lol")
+                when (kontortypeSomSkalRepubliseres) {
+                    KontorToggleValue.ARENA -> {
+                        Forward(
+                            record,
+                            PubliserKontorTilordningProcessor.processorName
+                        )
+                    }
+                    KontorToggleValue.ARBEIDSOPPFOLGINGKONTOR -> { Commit() }
+                }
             }
         }
     }
@@ -103,7 +117,7 @@ class EndringPaOppfolgingsBrukerProcessor(
         }
     }
 
-    fun process(record: Record<String, String>): RecordProcessingResult<String, String> {
+    fun process(record: Record<String, String>): RecordProcessingResult<OppfolgingsperiodeId, OppfolgingEndretTilordningMelding> {
         try {
             val result = internalProcess(record)
             return handleResult(result)
@@ -215,7 +229,7 @@ class SkalLagre(
 
 class IngenEndring : EndringPaaOppfolgingsBrukerResult()
 class Feil(
-    val retry: Retry<String, String>
+    val retry: Retry<OppfolgingsperiodeId, OppfolgingEndretTilordningMelding>
 ) : EndringPaaOppfolgingsBrukerResult()
 
 /*
