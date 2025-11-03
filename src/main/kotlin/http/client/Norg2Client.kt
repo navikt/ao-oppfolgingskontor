@@ -51,7 +51,6 @@ class Norg2Client(
             accept(ContentType.Application.Json)
         }
         return response.body<List<NorgKontor>>()
-            .filter { it.type == "LOKAL" }
             .map { it.toMinimaltKontor() }
     }
 
@@ -158,7 +157,8 @@ fun KontorId.toDefaultGtKontorFunnet(
 
 data class MinimaltNorgKontor(
     val kontorId: String,
-    val navn: String
+    val navn: String,
+    val type: KontorType
 )
 
 enum class GtType {
@@ -173,7 +173,8 @@ data class GeografiskTilknytningLand(val value: String)
 
 fun NorgKontor.toMinimaltKontor() = MinimaltNorgKontor(
     kontorId = this.enhetNr,
-    navn = this.navn
+    navn = this.navn,
+    KontorType.valueOf(this.type),
 )
 
 @Serializable
@@ -196,3 +197,8 @@ data class NorgKontor(
     val kanalstrategi: String?,
     val orgNrTilKommunaltNavKontor: String?
 )
+
+enum class KontorType {
+    KO,
+    LOKAL,
+}
