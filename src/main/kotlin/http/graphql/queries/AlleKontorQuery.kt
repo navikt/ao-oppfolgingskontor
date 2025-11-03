@@ -23,7 +23,7 @@ class AlleKontorQuery(
                 .let {
                     if (gtKontor == null) { it }
                     else {
-                        it.sortedWith { o1, o2 -> if (o1.kontorId == gtKontor.kontorId) 1 else -1 }
+                        it.sortedWith { o1, o2 -> if (o1.kontorId == gtKontor.kontorId) -1 else 1 }
                     }
                 }
             listOf(
