@@ -28,4 +28,5 @@ enum class KontorEndringsType {
     ArenaKontorVedOppfolgingStartMedEtterslep,
     MIGRERING,
     ArenaMigrering,
+    PATCH
 }

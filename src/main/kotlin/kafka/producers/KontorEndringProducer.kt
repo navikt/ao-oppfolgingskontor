@@ -154,6 +154,7 @@ enum class Tilordningstype {
                 KontorEndringsType.TidligArenaKontorVedOppfolgingStart,
                 KontorEndringsType.ArenaKontorVedOppfolgingStartMedEtterslep,
                 KontorEndringsType.MIGRERING,
+                KontorEndringsType.PATCH,
                 KontorEndringsType.ArenaMigrering -> {
                     throw RuntimeException("Vi skal ikke publisere kontorendringer på kontor-endring av type $kontorEndringsType")
                 }
