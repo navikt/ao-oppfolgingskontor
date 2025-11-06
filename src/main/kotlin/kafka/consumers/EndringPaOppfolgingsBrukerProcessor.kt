@@ -55,10 +55,6 @@ class EndringPaOppfolgingsBrukerProcessor(
                 log.warn("Mottok endring på oppfølgingsbruker uten gyldig kontorId")
                 Skip()
             }
-            is IkkeUnderOppfolging -> {
-                log.info("Bruker er ikke under oppfølging, hopper over melding om endring på oppfølgingsbruker")
-                Skip()
-            }
             is IngenEndring -> {
                 log.info("Kontor har ikke blitt endret, hopper over melding om endring på oppfølgingsbruker")
                 Skip()
@@ -149,29 +145,17 @@ class EndringPaOppfolgingsBrukerProcessor(
                         }
                     }
                     NotUnderOppfolging -> {
-                        if (endringPaOppfolgingsBruker.erUnderOppfolgingIArena()) {
-                            SkalKanskjeUnderOppfolging(
-                                KontorId(endringPaOppfolgingsBruker.oppfolgingsenhet),
-                                endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime(),
-                                ident
-                            )
-                        } else {
-                            IkkeUnderOppfolging()
-                        }
+                        SkalKanskjeUnderOppfolging(
+                            KontorId(endringPaOppfolgingsBruker.oppfolgingsenhet),
+                            endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime(),
+                            ident
+                        )
                     }
                     is OppfolgingperiodeOppslagFeil -> Feil(
                         Retry("Feil ved oppslag på oppfølgingsperiode: ${periode.message}"),
                     )
                 }
             }
-        }
-    }
-
-    fun EndringPaOppfolgingsBrukerDto.erUnderOppfolgingIArena(): Boolean {
-        return when (this.formidlingsgruppe) {
-            FormidlingsGruppe.ISERV -> false
-            FormidlingsGruppe.ARBS -> true
-            FormidlingsGruppe.IARBS -> kvalifiseringsgrupperUnderOppfolging.contains(this.kvalifiseringsgruppe)
         }
     }
 }
@@ -254,10 +238,6 @@ enum class Kvalifiseringsgruppe {
     VURDI, // Sykmeldt, oppfølging på arbeidsplassen:	    Sykmeldt, oppfølging på arbeidsplassen
     VURDU; // Sykmeldt uten arbeidsgiver:	                Sykmeldt uten arbeidsgiver
 }
-
-val kvalifiseringsgrupperUnderOppfolging = listOf(
-    Kvalifiseringsgruppe.BATT, Kvalifiseringsgruppe.BFORM, Kvalifiseringsgruppe.IKVAL, Kvalifiseringsgruppe.VURDU, Kvalifiseringsgruppe.OPPFI, Kvalifiseringsgruppe.VARIG
-)
 
 @Serializable
 data class EndringPaOppfolgingsBrukerDto(

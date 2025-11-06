@@ -13,7 +13,6 @@ import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
 import no.nav.kafka.consumers.Feil
 import no.nav.kafka.consumers.FormidlingsGruppe
 import no.nav.kafka.consumers.HaddeNyereEndring
-import no.nav.kafka.consumers.IkkeUnderOppfolging
 import no.nav.kafka.consumers.IngenEndring
 import no.nav.kafka.consumers.Kvalifiseringsgruppe
 import no.nav.kafka.consumers.SkalLagre
@@ -79,20 +78,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
     }
 
     @Test
-    fun `skal ikke behandle melding hvis bruker ikke er under oppfølging`() {
-        val fnr = randomFnr()
-        val processor = EndringPaOppfolgingsBrukerProcessor(
-            { NotUnderOppfolging },
-            { arenaKontor(etterCutoffMenAnnenTidssone) })
-        val result = processor.internalProcess(testRecord(fnr, sistEndretDato = etterCutoffMenAnnenTidssone, formidlingsGruppe = FormidlingsGruppe.ISERV))
-        withClue("forventer IkkeUnderOppfolging men var ${result.javaClass.simpleName}") {
-            result.shouldBeInstanceOf<IkkeUnderOppfolging>()
-        }
-    }
-
-
-    @Test
-    fun `skal behandle melding selvom bruker ikke har oppfølgingsperiode hvis hen er under oppfølging i arena`() {
+    fun `skal behandle melding selvom bruker ikke har oppfølgingsperiode fordi vi kanskje ikke vet om den ennå`() {
         val fnr = randomFnr()
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { NotUnderOppfolging },
