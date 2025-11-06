@@ -15,9 +15,11 @@ import no.nav.kafka.consumers.FormidlingsGruppe
 import no.nav.kafka.consumers.HaddeNyereEndring
 import no.nav.kafka.consumers.IngenEndring
 import no.nav.kafka.consumers.Kvalifiseringsgruppe
+import no.nav.kafka.consumers.MeldingManglerEnhet
 import no.nav.kafka.consumers.SkalLagre
 import no.nav.kafka.consumers.SkalKanskjeUnderOppfolging
 import no.nav.kafka.consumers.harKontorBlittEndret
+import no.nav.kafka.processor.Retry
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingperiodeOppslagFeil
@@ -254,7 +256,31 @@ class EndringPaOppfolgingsBrukerProcessorTest {
 
     @Test
     fun `Skal aldri lagre tidligArenaKontor hvis prosesseringsresultat ikke er SkalKanskjeUnderOppfolging`() {
+        var harKaltPåLagreTidligArenaKontor = false
+        val fnr = randomFnr()
+        val processor = EndringPaOppfolgingsBrukerProcessor(
+            { NotUnderOppfolging },
+            { arenaKontor() },
+            { harKaltPåLagreTidligArenaKontor = true }
+        )
+        processor.handleResult(BeforeCutoff())
+        processor.handleResult(HaddeNyereEndring())
+        processor.handleResult(MeldingManglerEnhet())
+        processor.handleResult(
+            SkalLagre(
+                oppfolgingsenhet = "en oppfolgingsenhet",
+                fnr = fnr,
+                endretTidspunkt = OffsetDateTime.now(),
+                oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
+                erFørsteArenaKontorIOppfolgingsperiode = true
+            )
+        )
+        processor.handleResult(IngenEndring())
+        processor.handleResult(Feil(Retry("random reason")))
 
+        withClue("Skal kun lagre i tidlig-arena-kontor hvis bruker kanksje skal komme under oppfølging") {
+            harKaltPåLagreTidligArenaKontor shouldBe false
+        }
     }
 
     fun testRecord(
