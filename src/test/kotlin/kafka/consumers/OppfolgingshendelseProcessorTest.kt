@@ -375,7 +375,8 @@ class OppfolgingshendelseProcessorTest {
         )
         val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
             { NotUnderOppfolging },
-            { sistLagreArenaKontor })
+            { sistLagreArenaKontor },
+            {})
         endringPaOppfolgingsBrukerProcessor.process(
             TopicUtils.endringPaaOppfolgingsBrukerMessage(
                 ident,

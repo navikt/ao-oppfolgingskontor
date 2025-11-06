@@ -82,9 +82,12 @@ class EndringPaOppfolgingsBrukerProcessorTest {
     @Test
     fun `skal behandle melding selvom bruker ikke har oppfølgingsperiode fordi vi kanskje ikke vet om den ennå`() {
         val fnr = randomFnr()
+        var harKaltPåLagreTidligArenakontor = false
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { NotUnderOppfolging },
-            { arenaKontorFørCutoff() }, {})
+            { arenaKontorFørCutoff() },
+            { harKaltPåLagreTidligArenakontor = true }
+        )
         val result = processor.internalProcess(
             testRecord(
                 fnr,
@@ -94,6 +97,9 @@ class EndringPaOppfolgingsBrukerProcessorTest {
         )
         withClue("forventer UnderOppfolgingIArenaMenIkkeLokalt men var ${result.javaClass.simpleName}") {
             result.shouldBeInstanceOf<SkalKanskjeUnderOppfolging>()
+        }
+        withClue("skulle ha kalt på lagreTidligArenakontor") {
+            harKaltPåLagreTidligArenakontor shouldBe true
         }
     }
 
@@ -113,7 +119,8 @@ class EndringPaOppfolgingsBrukerProcessorTest {
                     kontor = kontorId,
                     oppfolgingsperiodeId = oppfolgingsperiodeId
                 )
-            })
+            },
+            {})
 
         val result = processor.internalProcess(
             testRecord(
@@ -138,7 +145,8 @@ class EndringPaOppfolgingsBrukerProcessorTest {
         val fnr = randomFnr()
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, oppfolgingsStartet) },
-            { arenaKontor(sisteLagreMeldingTidspunkt) })
+            { arenaKontor(sisteLagreMeldingTidspunkt) },
+            {})
 
         val result = processor.internalProcess(testRecord(fnr, sistEndretDato = innkommendeMeldingEndretTidspunkt))
 
@@ -155,7 +163,8 @@ class EndringPaOppfolgingsBrukerProcessorTest {
         val kontorId = KontorId("3333")
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, oppfolgingStartet) },
-            { arenaKontor(kontor = kontorId, endret = oppfolgingStartet, oppfolgingsperiodeId = oppfolgingsperiodeId) })
+            { arenaKontor(kontor = kontorId, endret = oppfolgingStartet, oppfolgingsperiodeId = oppfolgingsperiodeId) },
+            {})
 
         val result = processor.internalProcess(testRecord(fnr, kontor = kontorId))
 
@@ -171,7 +180,8 @@ class EndringPaOppfolgingsBrukerProcessorTest {
         val arenaKontorMedAnnenOppfolgingsperiode = arenaKontor(kontor = kontorId, endret = oppfolgingStartet)
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, oppfolgingStartet) },
-            { arenaKontorMedAnnenOppfolgingsperiode })
+            { arenaKontorMedAnnenOppfolgingsperiode },
+            {})
 
         val result = processor.internalProcess(testRecord(fnr, kontor = kontorId))
 
@@ -184,7 +194,8 @@ class EndringPaOppfolgingsBrukerProcessorTest {
         val fnr = randomFnr()
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { OppfolgingperiodeOppslagFeil("Feil med perioder!?") },
-            { null })
+            { null },
+            {})
         val result = processor.internalProcess(testRecord(fnr, sistEndretDato = etterCutoffMenAnnenTidssone))
         withClue("forventer Feil men var ${result.javaClass.simpleName}") {
             result.shouldBeInstanceOf<Feil>()
