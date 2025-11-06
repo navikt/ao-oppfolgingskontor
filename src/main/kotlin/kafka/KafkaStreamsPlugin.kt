@@ -12,6 +12,7 @@ import io.ktor.server.application.log
 import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.binder.kafka.KafkaStreamsMetrics
+import kafka.consumers.ArenakontorProcessor
 import kafka.consumers.IdentChangeProcessor
 import kafka.consumers.OppfolgingsHendelseProcessor
 import kafka.consumers.PubliserKontorTilordningProcessor
@@ -126,6 +127,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         identService::hentAlleIdenter,
         { kontorProducer.publiserEndringPåKontor(it) }
     )
+    val arenakontorProcessor = ArenakontorProcessor()
 
 
     val topology = configureTopology(
@@ -137,7 +139,8 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         endringPaOppfolgingsBrukerProcessor = endringPaOppfolgingsBrukerProcessor,
         identEndringsProcessor = identEndringProcessor,
         oppfolgingsHendelseProcessor = oppfolgingsHendelseProcessor,
-        publiserKontorTilordningProcessor = publiserKontorTilordningProcessor
+        publiserKontorTilordningProcessor = publiserKontorTilordningProcessor,
+        arenakontorProcessor = arenakontorProcessor,
     )
     val kafkaStream = KafkaStreams(topology, kafkaStreamsProps(environment.config))
 

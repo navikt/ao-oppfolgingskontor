@@ -132,6 +132,7 @@ class BigAppTest {
                     kontorEndringProducer::publiserTombstone,
                     tidligArenakontorService::hentArenaKontorOgSlettHvisFunnet
                 ),
+                ArenakontorProcessor()
             )
             val (driver, inputTopics, _) = setupKafkaMock(topology,
                 listOf(topics.inn.oppfolgingsHendelser.name), null

@@ -3,6 +3,7 @@ package no.nav.kafka.config
 import Topic
 import io.ktor.server.application.ApplicationEnvironment
 import io.ktor.server.config.*
+import kafka.consumers.ArenakontorProcessor
 import kafka.consumers.IdentChangeProcessor
 import kafka.consumers.OppfolgingsHendelseProcessor
 import kafka.consumers.PubliserKontorTilordningProcessor
@@ -73,7 +74,8 @@ fun configureTopology(
     skjermingProcessor: SkjermingProcessor,
     endringPaOppfolgingsBrukerProcessor: EndringPaOppfolgingsBrukerProcessor,
     identEndringsProcessor: IdentChangeProcessor,
-    oppfolgingsHendelseProcessor: OppfolgingsHendelseProcessor
+    oppfolgingsHendelseProcessor: OppfolgingsHendelseProcessor,
+    arenakontorProcessor: ArenakontorProcessor
 ): Topology {
     val topics = environment.topics()
     val builder = StreamsBuilder()
@@ -122,6 +124,13 @@ fun configureTopology(
         streamType = StreamType.INTERNAL,
         businessLogic = publiserKontorTilordningProcessor::process,
     )
+    val arenakontorProcessorSupplier = wrapInRetryProcessor(
+        keyInSerde = ArenakontorProcessor.identSerde,
+        valueInSerde = ArenakontorProcessor.oppfolgingsperiodeEndretSerde,
+        topic = ArenakontorProcessor.processorName,
+        streamType = StreamType.INTERNAL,
+        businessLogic = arenakontorProcessor::process
+    )
 
     val oppfolgingHendelser = builder.stream(topics.inn.oppfolgingsHendelser.name, topics.inn.oppfolgingsHendelser.consumedWith())
         .process(oppfolgingHendelseProcessorSupplier, Named.`as`(processorName(topics.inn.oppfolgingsHendelser.name)))
@@ -130,8 +139,8 @@ fun configureTopology(
         .process(kontortilordningProcessorSupplier, Named.`as`(KontortilordningsProcessor.processorName))
         .process(publiserKontorTilordningProcessorSupplier, Named.`as`(PubliserKontorTilordningProcessor.processorName))
 
-//    oppfolgingHendelser
-//        .process(arenaKontorProcessorSupplier, Named.as("arena-kontor-processor"))
+    oppfolgingHendelser
+        .process(arenakontorProcessorSupplier, Named.`as`(ArenakontorProcessor.processorName))
 
     /*
     * Endring på oppfølgingsbruker (Arena)
