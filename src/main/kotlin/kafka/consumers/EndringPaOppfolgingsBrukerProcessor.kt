@@ -105,7 +105,7 @@ class EndringPaOppfolgingsBrukerProcessor(
 
     fun process(record: Record<String, String>): RecordProcessingResult<String, String> {
         try {
-            val result = internalProcess(record)
+            val result: EndringPaaOppfolgingsBrukerResult = internalProcess(record)
             return handleResult(result)
         } catch (e: Throwable) {
             val message = "Uhåndtert feil ved behandling av endring på oppfolgingsbruker fra Arena: ${e.message}"
