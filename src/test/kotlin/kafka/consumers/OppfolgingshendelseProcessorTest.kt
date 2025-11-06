@@ -44,6 +44,7 @@ import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import services.IdentService
 import services.OppfolgingsperiodeService
+import services.TidligArenakontorService
 import services.ingenSensitivitet
 import java.time.Instant
 import java.time.OffsetDateTime
@@ -373,9 +374,11 @@ class OppfolgingshendelseProcessorTest {
             oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
             sistEndretDatoArena = OffsetDateTime.now().minusSeconds(1)
         )
+        val tidligArenakontorService = TidligArenakontorService()
         val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
             { NotUnderOppfolging },
             { sistLagreArenaKontor },
+            { tidligArenakontorService.lagreTidligArenaKontor(it) },
             {})
         endringPaOppfolgingsBrukerProcessor.process(
             TopicUtils.endringPaaOppfolgingsBrukerMessage(
