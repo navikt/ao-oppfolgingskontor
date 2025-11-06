@@ -16,6 +16,7 @@ data class TidligArenaKontorVedOppfolgingStart(
     )
 }
 
+// TODO: Denne skal vel fjernes? Enten henter vi synkront ved oppfølgingStart, ellers er det en ordinær endring
 data class ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep(
     private val kontorTilordning: KontorTilordning,
     private val sistEndretIArena: OffsetDateTime,
@@ -26,7 +27,6 @@ data class ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep(
     override fun toHistorikkInnslag() = lagKontorHistorikkInnslag(KontorEndringsType.ArenaKontorVedOppfolgingStartMedEtterslep)
 }
 
-// TODO: Skal vi ha klassen over
 data class ArenaKontorVedOppfolgingStart(
     private val kontorTilordning: KontorTilordning,
     private val sistEndretIArena: OffsetDateTime,
