@@ -17,7 +17,7 @@ import no.nav.kafka.consumers.IkkeUnderOppfolging
 import no.nav.kafka.consumers.IngenEndring
 import no.nav.kafka.consumers.Kvalifiseringsgruppe
 import no.nav.kafka.consumers.SkalLagre
-import no.nav.kafka.consumers.UnderOppfolgingIArenaMenIkkeLokalt
+import no.nav.kafka.consumers.SkalKanskjeUnderOppfolging
 import no.nav.kafka.consumers.harKontorBlittEndret
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.NotUnderOppfolging
@@ -99,7 +99,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
             { arenaKontorFørCutoff() })
         val result = processor.internalProcess(testRecord(fnr, sistEndretDato = etterCutoffMenAnnenTidssone, formidlingsGruppe = FormidlingsGruppe.ARBS))
         withClue("forventer UnderOppfolgingIArenaMenIkkeLokalt men var ${result.javaClass.simpleName}") {
-            result.shouldBeInstanceOf<UnderOppfolgingIArenaMenIkkeLokalt>()
+            result.shouldBeInstanceOf<SkalKanskjeUnderOppfolging>()
         }
     }
 

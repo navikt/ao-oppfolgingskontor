@@ -84,7 +84,7 @@ class EndringPaOppfolgingsBrukerProcessor(
                 )
                 Commit()
             }
-            is UnderOppfolgingIArenaMenIkkeLokalt -> {
+            is SkalKanskjeUnderOppfolging -> {
                 log.info("Lagrer kontor fra arena før? melding om oppfølging startet")
                 lagreTidligArenaKontor(result)
                 Commit()
@@ -92,7 +92,7 @@ class EndringPaOppfolgingsBrukerProcessor(
         }
     }
 
-    fun lagreTidligArenaKontor(result: UnderOppfolgingIArenaMenIkkeLokalt) {
+    fun lagreTidligArenaKontor(result: SkalKanskjeUnderOppfolging) {
         transaction {
             TidligArenaKontorTable.upsert {
                 it[id] = result.ident.value
@@ -150,7 +150,7 @@ class EndringPaOppfolgingsBrukerProcessor(
                     }
                     NotUnderOppfolging -> {
                         if (endringPaOppfolgingsBruker.erUnderOppfolgingIArena()) {
-                            UnderOppfolgingIArenaMenIkkeLokalt(
+                            SkalKanskjeUnderOppfolging(
                                 KontorId(endringPaOppfolgingsBruker.oppfolgingsenhet),
                                 endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime(),
                                 ident
@@ -198,8 +198,7 @@ fun harKontorBlittEndret(arenaKontorUtvidet: ArenaKontorUtvidet?, oppfolgingsEnh
 sealed class EndringPaaOppfolgingsBrukerResult
 class BeforeCutoff : EndringPaaOppfolgingsBrukerResult()
 class HaddeNyereEndring : EndringPaaOppfolgingsBrukerResult()
-class IkkeUnderOppfolging : EndringPaaOppfolgingsBrukerResult()
-class UnderOppfolgingIArenaMenIkkeLokalt(
+class SkalKanskjeUnderOppfolging(
     val kontorId: KontorId,
     val sistEndretDatoArena: OffsetDateTime,
     val ident: Ident,
