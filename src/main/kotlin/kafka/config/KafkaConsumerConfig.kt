@@ -123,10 +123,15 @@ fun configureTopology(
         businessLogic = publiserKontorTilordningProcessor::process,
     )
 
-    builder.stream(topics.inn.oppfolgingsHendelser.name, topics.inn.oppfolgingsHendelser.consumedWith())
+    val oppfolgingHendelser = builder.stream(topics.inn.oppfolgingsHendelser.name, topics.inn.oppfolgingsHendelser.consumedWith())
         .process(oppfolgingHendelseProcessorSupplier, Named.`as`(processorName(topics.inn.oppfolgingsHendelser.name)))
+
+    oppfolgingHendelser
         .process(kontortilordningProcessorSupplier, Named.`as`(KontortilordningsProcessor.processorName))
         .process(publiserKontorTilordningProcessorSupplier, Named.`as`(PubliserKontorTilordningProcessor.processorName))
+
+//    oppfolgingHendelser
+//        .process(arenaKontorProcessorSupplier, Named.as("arena-kontor-processor"))
 
     /*
     * Endring på oppfølgingsbruker (Arena)
