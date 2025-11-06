@@ -3,6 +3,12 @@ package services
 import db.table.IdentMappingTable
 import db.table.IdentMappingTable.internIdent
 import db.table.TidligArenaKontorTable
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.supervisorScope
 import no.nav.db.Ident
 import no.nav.domain.KontorId
 import no.nav.domain.externalEvents.TidligArenaKontor
@@ -13,9 +19,13 @@ import org.jetbrains.exposed.sql.alias
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.upsert
+import org.slf4j.LoggerFactory
 import java.time.ZonedDateTime
+import kotlin.time.Duration.Companion.minutes
 
 class TidligArenakontorService {
+    private val logger = LoggerFactory.getLogger(this::class.java)
+
     fun lagreTidligArenaKontor(skalKanskjeUnderOppfolging: SkalKanskjeUnderOppfolging) {
         transaction {
             TidligArenaKontorTable.upsert {
@@ -27,8 +37,14 @@ class TidligArenakontorService {
         }
     }
 
-    fun slettKontor() {
+    suspend fun slettTidligArenakontor() = supervisorScope {
+        delay(2.minutes)
 
+        while (true) {
+            logger.info("Starter periodisk sletting av tidlig arenakontor")
+
+            delay(5.minutes)
+        }
     }
 
     fun hentArenaKontorOgSlettHvisFunnet(ident: Ident): TidligArenaKontor? {
