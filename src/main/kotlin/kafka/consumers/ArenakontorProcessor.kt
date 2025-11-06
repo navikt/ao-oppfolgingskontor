@@ -8,7 +8,6 @@ import kotlinx.coroutines.runBlocking
 import no.nav.db.Ident
 import no.nav.domain.KontorTilordning
 import no.nav.domain.events.ArenaKontorVedOppfolgingStart
-import no.nav.domain.events.KontorEndretEvent
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeEndret
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
@@ -55,7 +54,7 @@ class ArenakontorProcessor(
                     when (arenakontorOppslag) {
                         is ArenakontorOppslagFeilet -> Retry("Arenakontor-oppslag feilet, må prøve igjen")
                         is FantArenakontor -> {
-                            ArenaKontorVedOppfolgingStart(
+                            val kontorTilordning = ArenaKontorVedOppfolgingStart(
                                 kontorTilordning = KontorTilordning(
                                     fnr = fnr,
                                     kontorId = arenakontorOppslag.kontorId,
@@ -63,6 +62,7 @@ class ArenakontorProcessor(
                                 ),
                                 sistEndretIArena = arenakontorOppslag.sistEndret.toOffsetDateTime()
                             )
+                            lagreKontortilordning(kontorTilordning)
                             Commit()
                         }
                         is FantIkkeArenakontor -> {
