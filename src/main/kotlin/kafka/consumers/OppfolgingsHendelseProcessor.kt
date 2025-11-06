@@ -1,8 +1,5 @@
 package kafka.consumers
 
-import db.table.IdentMappingTable
-import db.table.IdentMappingTable.internIdent
-import db.table.TidligArenaKontorTable
 import kafka.consumers.oppfolgingsHendelser.OppfolgingStartBegrunnelse.ARBEIDSSOKER_REGISTRERING
 import kafka.consumers.oppfolgingsHendelser.OppfolgingStartetHendelseDto
 import kafka.consumers.oppfolgingsHendelser.OppfolgingsAvsluttetHendelseDto
@@ -10,7 +7,6 @@ import kafka.consumers.oppfolgingsHendelser.OppfolgingsHendelseDto
 import kafka.consumers.oppfolgingsHendelser.oppfolgingsHendelseJson
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
-import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeEndret
@@ -18,11 +14,6 @@ import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.domain.externalEvents.TidligArenaKontor
 import no.nav.kafka.processor.*
 import org.apache.kafka.streams.processor.api.Record
-import org.jetbrains.exposed.sql.JoinType.INNER
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.alias
-import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import services.*
 import java.time.Instant
@@ -31,6 +22,7 @@ import java.util.*
 class OppfolgingsHendelseProcessor(
     val oppfolgingsPeriodeService: OppfolgingsperiodeService,
     val publiserTombstone: (oppfolgingsperiodeId: OppfolgingsperiodeId) -> Result<Unit>,
+    val hentTidligArenaKontorOgSlettHvisFunnet: (ident: Ident) -> TidligArenaKontor?
 ) {
     val log = LoggerFactory.getLogger(javaClass)
 
@@ -92,43 +84,8 @@ class OppfolgingsHendelseProcessor(
     }
 
     fun OppfolgingsperiodeStartet.enrichWithTidligArenaKontor(): OppfolgingsperiodeStartet {
-        val forhåndslagretArenaKontor = hentSisteArenaKontorFraOppfolgingsBrukerOgSlettHvisFunnet(this.fnr)
+        val forhåndslagretArenaKontor = hentTidligArenaKontorOgSlettHvisFunnet(this.fnr)
         return this.copy(arenaKontorFraOppfolgingsbrukerTopic = forhåndslagretArenaKontor)
-    }
-
-    fun hentSisteArenaKontorFraOppfolgingsBrukerOgSlettHvisFunnet(ident: Ident): TidligArenaKontor? {
-        return transaction {
-            val alleIdenter = IdentMappingTable.alias("alleIdenter")
-            val tidligArenaKontorOgIdent = IdentMappingTable
-                .join(alleIdenter, INNER, onColumn = internIdent, otherColumn = alleIdenter[internIdent])
-                .join(
-                    TidligArenaKontorTable,
-                    INNER,
-                    onColumn = alleIdenter[IdentMappingTable.id],
-                    otherColumn = TidligArenaKontorTable.id
-                )
-                .select(
-                    TidligArenaKontorTable.id,
-                    TidligArenaKontorTable.kontorId,
-                    TidligArenaKontorTable.sisteEndretDato
-                )
-                .where { IdentMappingTable.id eq ident.value }
-                .map { row ->
-                    TidligArenaKontor(
-                        kontor = KontorId(row[TidligArenaKontorTable.kontorId]),
-                        sistEndretDato = row[TidligArenaKontorTable.sisteEndretDato]
-                    ) to row[TidligArenaKontorTable.id]
-                }.firstOrNull()
-
-            val identSomKontorErLagretPå = tidligArenaKontorOgIdent?.second
-            val tidligArenaKontor = tidligArenaKontorOgIdent?.first
-
-            identSomKontorErLagretPå?.let {
-                TidligArenaKontorTable.deleteWhere { TidligArenaKontorTable.id eq identSomKontorErLagretPå.value }
-            }
-
-            tidligArenaKontor
-        }
     }
 }
 

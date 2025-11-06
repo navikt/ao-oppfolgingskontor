@@ -119,7 +119,9 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val identEndringProcessor = IdentChangeProcessor(identService)
     val oppfolgingsHendelseProcessor = OppfolgingsHendelseProcessor(
         oppfolgingsperiodeService,
-        { periode -> kontorProducer.publiserTombstone(periode) })
+        { periode -> kontorProducer.publiserTombstone(periode) },
+        { tidligArenakontorService.hentArenaKontorOgSlettHvisFunnet(it) }
+    )
     val publiserKontorTilordningProcessor = PubliserKontorTilordningProcessor(
         identService::hentAlleIdenter,
         { kontorProducer.publiserEndringPåKontor(it) }

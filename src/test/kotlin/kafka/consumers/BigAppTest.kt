@@ -52,6 +52,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import services.IdentService
 import services.OppfolgingsperiodeService
+import services.TidligArenakontorService
 import topics
 import utils.Outcome
 import java.time.OffsetDateTime
@@ -107,6 +108,7 @@ class BigAppTest {
             )
             val identService = IdentService { IdenterFunnet(emptyList(), fnr) }
             val identendringsProcessor = IdentChangeProcessor(identService)
+            val tidligArenakontorService = TidligArenakontorService()
 
             val kontorEndringProducer = mockk<KontorEndringProducer>()
             coEvery { kontorEndringProducer.publiserEndringPåKontor(any<OppfolgingEndretTilordningMelding>()) } returns Result.success(Unit)
@@ -125,7 +127,11 @@ class BigAppTest {
                 skjermingProcessor,
                 endringPaaOppfolgingsBrukerProcessor,
                 identendringsProcessor,
-                OppfolgingsHendelseProcessor(OppfolgingsperiodeService(identService::hentAlleIdenter ), kontorEndringProducer::publiserTombstone)
+                OppfolgingsHendelseProcessor(
+                    OppfolgingsperiodeService(identService::hentAlleIdenter ),
+                    kontorEndringProducer::publiserTombstone,
+                    tidligArenakontorService::hentArenaKontorOgSlettHvisFunnet
+                ),
             )
             val (driver, inputTopics, _) = setupKafkaMock(topology,
                 listOf(topics.inn.oppfolgingsHendelser.name), null
