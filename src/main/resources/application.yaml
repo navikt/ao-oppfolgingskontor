@@ -19,7 +19,7 @@ no:
                 issuers:
                     - discoveryurl: "$AZURE_APP_WELL_KNOWN_URL:null"
                       accepted_audience: "$AZURE_APP_CLIENT_ID:null"
-                      issuer_name: "EntraAD"@
+                      issuer_name: "EntraAD"
 
 apis:
   norg2:
