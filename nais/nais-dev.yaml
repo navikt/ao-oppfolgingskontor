@@ -108,3 +108,7 @@ spec:
       value: http://skjermede-personer-pip.nom
     - name: SKJERMEDE_PERSONER_PIP_SCOPE
       value: api://dev-gcp.nom.skjermede-personer-pip/.default
+    - name: VEILARBARENA_URL
+      value: https://veilarbarena.dev-fss-pub.nais.io
+    - name: VEILARBARENA_SCOPE
+      value: api://dev-fss.pto.veilarbarena/.default

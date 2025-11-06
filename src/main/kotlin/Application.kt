@@ -1,6 +1,7 @@
 package no.nav
 
 import dab.poao.nav.no.health.CriticalErrorNotificationFunction
+import http.client.VeilarbArenaClient
 import http.configureContentNegotiation
 import http.configureHentArbeidsoppfolgingskontorBulkModule
 import io.ktor.server.application.*
@@ -27,6 +28,7 @@ import no.nav.http.graphql.configureGraphQlModule
 import no.nav.http.graphql.getNorg2Url
 import no.nav.http.graphql.getPDLUrl
 import no.nav.http.graphql.getPoaoTilgangUrl
+import no.nav.http.graphql.getVeilarbArenaUrl
 import no.nav.kafka.KafkaStreamsPlugin
 import no.nav.kafka.config.createKafkaProducer
 import no.nav.kafka.config.toKafkaEnv
@@ -68,6 +70,10 @@ fun Application.module() {
     val poaoTilgangHttpClient = PoaoTilgangKtorHttpClient(
         environment.getPoaoTilgangUrl(),
         texasClient.tokenProvider(environment.getPoaoTilgangScope())
+    )
+    val veilarbArenaClient = VeilarbArenaClient(
+        baseUrl = environment.getVeilarbArenaUrl(),
+        azureTokenProvider = texasClient.tokenProvider(environment.getPoaoTilgangScope())
     )
 
     val identService = IdentService({ pdlClient.hentIdenterFor(it) })

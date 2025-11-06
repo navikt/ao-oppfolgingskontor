@@ -25,5 +25,4 @@ class ArenakontorProcessor {
     fun process(record: Record<Ident, OppfolgingsperiodeEndret>): RecordProcessingResult<String, String> {
         return Commit()
     }
-
 }
