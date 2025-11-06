@@ -32,6 +32,7 @@ import java.time.ZonedDateTime
 class EndringPaOppfolgingsBrukerProcessor(
     val oppfolgingsperiodeProvider: suspend (IdentSomKanLagres) -> OppfolgingsperiodeOppslagResult,
     val arenaKontorProvider: suspend (IdentSomKanLagres) -> ArenaKontorUtvidet?,
+    val lagreTidligArenakontor: (SkalKanskjeUnderOppfolging) -> Unit
 ) {
     val log = LoggerFactory.getLogger(EndringPaOppfolgingsBrukerProcessor::class.java)
 
@@ -82,19 +83,8 @@ class EndringPaOppfolgingsBrukerProcessor(
             }
             is SkalKanskjeUnderOppfolging -> {
                 log.info("Lagrer kontor fra arena før? melding om oppfølging startet")
-                lagreTidligArenaKontor(result)
+                lagreTidligArenakontor(result)
                 Commit()
-            }
-        }
-    }
-
-    fun lagreTidligArenaKontor(result: SkalKanskjeUnderOppfolging) {
-        transaction {
-            TidligArenaKontorTable.upsert {
-                it[id] = result.ident.value
-                it[kontorId] = result.kontorId.id
-                it[sisteEndretDato] = result.sistEndretDatoArena
-                it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
             }
         }
     }

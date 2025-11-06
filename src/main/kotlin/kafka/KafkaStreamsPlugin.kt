@@ -36,6 +36,7 @@ import org.jetbrains.exposed.sql.Database
 import org.slf4j.LoggerFactory
 import services.IdentService
 import services.OppfolgingsperiodeService
+import services.TidligArenakontorService
 import java.util.concurrent.atomic.AtomicInteger
 
 val KafkaStreamsStarting: EventDefinition<Application> = EventDefinition()
@@ -56,7 +57,8 @@ class KafkaStreamsPluginConfig(
     var identService: IdentService? = null,
     var criticalErrorNotificationFunction: CriticalErrorNotificationFunction? = null,
     var kontorTilhorighetService: KontorTilhorighetService? = null,
-    var kontorEndringProducer: KontorEndringProducer? = null
+    var kontorEndringProducer: KontorEndringProducer? = null,
+    var tidligArenakontorService: TidligArenakontorService? = null,
 )
 
 const val arbeidsoppfolgingkontorSinkName = "endring-pa-arbeidsoppfolgingskontor"
@@ -92,13 +94,17 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val kontorProducer = requireNotNull(this.pluginConfig.kontorEndringProducer) {
         "KontorTilhorighetService must be configured for KafkaStreamsPlugin"
     }
+    val tidligArenakontorService = requireNotNull(this.pluginConfig.tidligArenakontorService) {
+        "TidligArenakontorService must be configured for KafkaStreamPlugin"
+    }
 
     val isProduction = environment.isProduction()
     if (isProduction) logger.info("Kjører i produksjonsmodus. Konsumerer kun siste-oppfølgingsperiode.")
 
     val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
         { oppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) },
-        { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) }
+        { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },
+        {tidligArenakontorService.lagreTidligArenaKontor(it)},
     )
 
     val kontorTilordningsProcessor = KontortilordningsProcessor(

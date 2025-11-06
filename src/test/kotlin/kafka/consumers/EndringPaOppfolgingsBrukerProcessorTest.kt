@@ -56,7 +56,9 @@ class EndringPaOppfolgingsBrukerProcessorTest {
         val oppfolgingsperiode = OppfolgingsperiodeId(UUID.randomUUID())
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { AktivOppfolgingsperiode(fnr, oppfolgingsperiode, OffsetDateTime.now().minusDays(2)) },
-            { arenaKontor() })
+            { arenaKontor() },
+            {}
+        )
         val result = processor.internalProcess(testRecord(fnr, sistEndretDato = rettFørCutoff))
         withClue("forventer BeforeCutoff men var ${result.javaClass.simpleName}") {
             result.shouldBeInstanceOf<BeforeCutoff>()
@@ -69,7 +71,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
         val oppfolgingsperiode = OppfolgingsperiodeId(UUID.randomUUID())
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { AktivOppfolgingsperiode(fnr, oppfolgingsperiode, OffsetDateTime.now().minusDays(2)) },
-            { arenaKontor(endret = etterCutoffMenAnnenTidssone.minusSeconds(1)) })
+            { arenaKontor(endret = etterCutoffMenAnnenTidssone.minusSeconds(1)) }, {})
         val result = processor.internalProcess(testRecord(fnr, sistEndretDato = etterCutoffMenAnnenTidssone))
         withClue("forventer SkalLagre men var ${result.javaClass.simpleName}") {
             result.shouldBeInstanceOf<SkalLagre>()
@@ -82,8 +84,14 @@ class EndringPaOppfolgingsBrukerProcessorTest {
         val fnr = randomFnr()
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { NotUnderOppfolging },
-            { arenaKontorFørCutoff() })
-        val result = processor.internalProcess(testRecord(fnr, sistEndretDato = etterCutoffMenAnnenTidssone, formidlingsGruppe = FormidlingsGruppe.ARBS))
+            { arenaKontorFørCutoff() }, {})
+        val result = processor.internalProcess(
+            testRecord(
+                fnr,
+                sistEndretDato = etterCutoffMenAnnenTidssone,
+                formidlingsGruppe = FormidlingsGruppe.ARBS
+            )
+        )
         withClue("forventer UnderOppfolgingIArenaMenIkkeLokalt men var ${result.javaClass.simpleName}") {
             result.shouldBeInstanceOf<SkalKanskjeUnderOppfolging>()
         }
@@ -99,9 +107,21 @@ class EndringPaOppfolgingsBrukerProcessorTest {
         val fnr = randomFnr()
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, oppfolgingsStartet) },
-            { arenaKontor(endret = sisteLagreMeldingTidspunkt, kontor = kontorId, oppfolgingsperiodeId = oppfolgingsperiodeId) })
+            {
+                arenaKontor(
+                    endret = sisteLagreMeldingTidspunkt,
+                    kontor = kontorId,
+                    oppfolgingsperiodeId = oppfolgingsperiodeId
+                )
+            })
 
-        val result = processor.internalProcess(testRecord(fnr, sistEndretDato = innkommendeMeldingEndretTidspunkt, kontor = KontorId("3132")))
+        val result = processor.internalProcess(
+            testRecord(
+                fnr,
+                sistEndretDato = innkommendeMeldingEndretTidspunkt,
+                kontor = KontorId("3132")
+            )
+        )
 
         withClue("forventer SkalLagre men var ${result.javaClass.simpleName}") {
             result.shouldBeInstanceOf<SkalLagre>()
@@ -118,7 +138,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
         val fnr = randomFnr()
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, oppfolgingsStartet) },
-            { arenaKontor( sisteLagreMeldingTidspunkt) })
+            { arenaKontor(sisteLagreMeldingTidspunkt) })
 
         val result = processor.internalProcess(testRecord(fnr, sistEndretDato = innkommendeMeldingEndretTidspunkt))
 
@@ -180,6 +200,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
             oppfolgingsperiodeId,
         ) shouldBe ArenaKontorEndringsType.IKKE_ENDRET_KONTOR
     }
+
     @Test
     fun `harKontorBlittEndret - skal gi FØRSTE_KONTOR_PÅ_BRUKER hvis kontor det ikke finnes tidligere arenakontor på bruker`() {
         val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
@@ -189,6 +210,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
             oppfolgingsperiodeId,
         ) shouldBe ArenaKontorEndringsType.FØRSTE_KONTOR_PÅ_BRUKER
     }
+
     @Test
     fun `harKontorBlittEndret - skal gi FØRSTE_KONTOR_I_PERIODE hvis kontor er likt men oppfolgingsperiode er forskjellig`() {
         harKontorBlittEndret(
@@ -197,6 +219,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
             OppfolgingsperiodeId(UUID.randomUUID()),
         ) shouldBe ArenaKontorEndringsType.FØRSTE_KONTOR_I_PERIODE
     }
+
     @Test
     fun `harKontorBlittEndret - skal gi ENDRET_I_PERIODE hvis oppfolgingsperiode er lik men kontor er forskjellig`() {
         val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
@@ -234,5 +257,6 @@ class EndringPaOppfolgingsBrukerProcessorTest {
             sistEndretDatoArena = endret
         )
     }
+
     fun arenaKontorFørCutoff() = arenaKontor(endret = rettFørCutoff)
 }
