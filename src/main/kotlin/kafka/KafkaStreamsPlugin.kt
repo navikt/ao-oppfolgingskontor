@@ -1,6 +1,7 @@
 package no.nav.kafka
 
 import dab.poao.nav.no.health.CriticalErrorNotificationFunction
+import http.client.VeilarbArenaClient
 import io.ktor.events.EventDefinition
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationPlugin
@@ -61,6 +62,7 @@ class KafkaStreamsPluginConfig(
     var kontorTilhorighetService: KontorTilhorighetService? = null,
     var kontorEndringProducer: KontorEndringProducer? = null,
     var tidligArenakontorService: TidligArenakontorService? = null,
+    var veilarbArenaClient: VeilarbArenaClient? = null,
 )
 
 const val arbeidsoppfolgingkontorSinkName = "endring-pa-arbeidsoppfolgingskontor"
@@ -99,6 +101,9 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val tidligArenakontorService = requireNotNull(this.pluginConfig.tidligArenakontorService) {
         "TidligArenakontorService must be configured for KafkaStreamPlugin"
     }
+    val veilarbArenaClient = requireNotNull(this.pluginConfig.veilarbArenaClient) {
+        "VeilarbArenaClient must be configured for KafkaStreamPlugin"
+    }
 
     val isProduction = environment.isProduction()
     if (isProduction) logger.info("Kjører i produksjonsmodus. Konsumerer kun siste-oppfølgingsperiode.")
@@ -127,7 +132,10 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         identService::hentAlleIdenter,
         { kontorProducer.publiserEndringPåKontor(it) }
     )
-    val arenakontorProcessor = ArenakontorProcessor()
+    val arenakontorProcessor = ArenakontorProcessor(
+        veilarbArenaClient::hentArenaKontor,
+        { KontorTilordningService.tilordneKontor(it) }
+    )
 
 
     val topology = configureTopology(

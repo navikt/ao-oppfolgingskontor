@@ -26,6 +26,17 @@ data class ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep(
     override fun toHistorikkInnslag() = lagKontorHistorikkInnslag(KontorEndringsType.ArenaKontorVedOppfolgingStartMedEtterslep)
 }
 
+// TODO: Skal vi ha klassen over
+data class ArenaKontorVedOppfolgingStart(
+    private val kontorTilordning: KontorTilordning,
+    private val sistEndretIArena: OffsetDateTime,
+): ArenaKontorEndret(
+    tilordning = kontorTilordning,
+    sistEndretDatoArena = sistEndretIArena
+) {
+    override fun toHistorikkInnslag() = lagKontorHistorikkInnslag(KontorEndringsType.ArenaKontorVedOppfolgingsStart)
+}
+
 data class EndringPaaOppfolgingsBrukerFraArena(
     private val kontorTilordning: KontorTilordning,
     private val sistEndretIArena: OffsetDateTime,

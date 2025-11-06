@@ -11,7 +11,7 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.serialization.kotlinx.json.*
-import no.nav.db.Fnr
+import no.nav.db.Ident
 import no.nav.domain.KontorId
 import no.nav.http.client.tokenexchange.SystemTokenPlugin
 import no.nav.http.client.tokenexchange.TexasTokenResponse
@@ -35,13 +35,18 @@ class VeilarbArenaClient(
 ) {
 
     // TODO: Vi må være whitelista i veilarboppfølging og ligge i inboundPolicy
-    suspend fun hentArenaKontor(fnr: Fnr): KontorId {
-        httpClient.post("$baseUrl/hent-oppfolgingsbruker") {
-            accept(ContentType.Application.Json)
-            setBody(FnrDto(fnr.value))
-        }.apply {
-            val dto = this.body<OppfolgingsbrukerDto>()
-            return KontorId(dto.navKontor ?: error("Fant ikke Arena-kontor for bruker"))
+    suspend fun hentArenaKontor(ident: Ident): ArenakontorResult {
+        try {
+            httpClient.post("$baseUrl/hent-oppfolgingsbruker") {
+                accept(ContentType.Application.Json)
+                setBody(FnrDto(ident.value))
+            }.apply {
+                val dto = this.body<OppfolgingsbrukerDto>()
+                return if (dto.navKontor == null) FantIkkeArenakontor()
+                else FantArenakontor(KontorId(dto.navKontor), dto.sistEndretDato)
+            }
+        } catch (e: Exception) {
+            return ArenakontorOppslagFeilet(e)
         }
     }
 
@@ -60,8 +65,13 @@ class VeilarbArenaClient(
         val sperretAnsatt: Boolean?,
         val erDoed: Boolean?,
         val doedFraDato: ZonedDateTime?,
-        val sistEndretDato: ZonedDateTime?,
+        val sistEndretDato: ZonedDateTime,
     )
 
     private data class FnrDto(val fnr: String)
 }
+
+sealed class ArenakontorResult
+class FantArenakontor(val kontorId: KontorId, val sistEndret: ZonedDateTime) : ArenakontorResult()
+class FantIkkeArenakontor : ArenakontorResult()
+class ArenakontorOppslagFeilet(val e: Exception) : ArenakontorResult()

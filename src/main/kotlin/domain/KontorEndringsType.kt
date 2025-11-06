@@ -22,7 +22,6 @@ enum class KontorEndringsType {
 
     /* ArenaKontor */
     EndretIArena,
-    @Deprecated("Alle kontor bør taes fra topic, ikke fra veilarboppfolging")
     ArenaKontorVedOppfolgingsStart,
     TidligArenaKontorVedOppfolgingStart,
     ArenaKontorVedOppfolgingStartMedEtterslep,
