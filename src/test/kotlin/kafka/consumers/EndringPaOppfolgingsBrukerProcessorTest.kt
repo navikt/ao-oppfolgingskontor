@@ -82,11 +82,10 @@ class EndringPaOppfolgingsBrukerProcessorTest {
     @Test
     fun `skal behandle melding selvom bruker ikke har oppfølgingsperiode fordi vi kanskje ikke vet om den ennå`() {
         val fnr = randomFnr()
-        var harKaltPåLagreTidligArenakontor = false
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { NotUnderOppfolging },
             { arenaKontorFørCutoff() },
-            { harKaltPåLagreTidligArenakontor = true }
+            { }
         )
         val result = processor.internalProcess(
             testRecord(
@@ -97,9 +96,6 @@ class EndringPaOppfolgingsBrukerProcessorTest {
         )
         withClue("forventer UnderOppfolgingIArenaMenIkkeLokalt men var ${result.javaClass.simpleName}") {
             result.shouldBeInstanceOf<SkalKanskjeUnderOppfolging>()
-        }
-        withClue("skulle ha kalt på lagreTidligArenakontor") {
-            harKaltPåLagreTidligArenakontor shouldBe true
         }
     }
 
@@ -239,6 +235,26 @@ class EndringPaOppfolgingsBrukerProcessorTest {
             "1213",
             oppfolgingsperiodeId,
         ) shouldBe ArenaKontorEndringsType.ENDRET_I_PERIODE
+    }
+
+    @Test
+    fun `Skal lagre tidligArenaKontor hvis bruker kanskje skal under oppfølging`() {
+        var harKaltPåLagreTidligArenaKontor = false
+        val fnr = randomFnr()
+        val processor = EndringPaOppfolgingsBrukerProcessor(
+            { NotUnderOppfolging },
+            { arenaKontor() },
+            { harKaltPåLagreTidligArenaKontor = true }
+        )
+        processor.handleResult(SkalKanskjeUnderOppfolging(KontorId("dummy"), OffsetDateTime.now(), fnr))
+        withClue("Skal lagre i tidlig-arena-kontor hvis bruker kanksje skal komme under oppfølging") {
+            harKaltPåLagreTidligArenaKontor shouldBe true
+        }
+    }
+
+    @Test
+    fun `Skal aldri lagre tidligArenaKontor hvis prosesseringsresultat ikke er SkalKanskjeUnderOppfolging`() {
+
     }
 
     fun testRecord(
