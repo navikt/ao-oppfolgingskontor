@@ -29,6 +29,7 @@ import no.nav.kafka.consumers.KontortilordningsProcessor
 import no.nav.kafka.consumers.SkjermingProcessor
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.KontorTilhorighetService
+import no.nav.services.KontorTilordningService
 import no.nav.services.OppfolgingsperiodeDao
 import org.apache.kafka.streams.KafkaStreams
 import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler
@@ -105,6 +106,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         { oppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) },
         { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },
         {tidligArenakontorService.lagreTidligArenaKontor(it)},
+        KontorTilordningService::tilordneKontor
     )
 
     val kontorTilordningsProcessor = KontortilordningsProcessor(

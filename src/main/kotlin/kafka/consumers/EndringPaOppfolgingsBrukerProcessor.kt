@@ -1,6 +1,5 @@
 package no.nav.kafka.consumers
 
-import db.table.TidligArenaKontorTable
 import domain.ArenaKontorUtvidet
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
@@ -12,27 +11,25 @@ import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.events.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep
 import no.nav.domain.events.EndringPaaOppfolgingsBrukerFraArena
+import no.nav.domain.events.KontorEndretEvent
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
 import no.nav.services.AktivOppfolgingsperiode
-import no.nav.services.KontorTilordningService
 import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingperiodeOppslagFeil
 import no.nav.services.OppfolgingsperiodeOppslagResult
 import org.apache.kafka.streams.processor.api.Record
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.upsert
 import org.slf4j.LoggerFactory
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
-import java.time.ZonedDateTime
 
 class EndringPaOppfolgingsBrukerProcessor(
     val oppfolgingsperiodeProvider: suspend (IdentSomKanLagres) -> OppfolgingsperiodeOppslagResult,
     val arenaKontorProvider: suspend (IdentSomKanLagres) -> ArenaKontorUtvidet?,
-    val lagreTidligArenakontor: (SkalKanskjeUnderOppfolging) -> Unit
+    val lagreTidligArenakontor: (SkalKanskjeUnderOppfolging) -> Unit,
+    val lagreKontorTilordninger: (KontorEndretEvent) -> Unit
 ) {
     val log = LoggerFactory.getLogger(EndringPaOppfolgingsBrukerProcessor::class.java)
 
@@ -66,7 +63,7 @@ class EndringPaOppfolgingsBrukerProcessor(
                     kontorId = KontorId(result.oppfolgingsenhet),
                     result.oppfolgingsperiodeId
                 )
-                KontorTilordningService.tilordneKontor(
+                lagreKontorTilordninger(
                     if (result.erFørsteArenaKontorIOppfolgingsperiode) {
                         ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep(
                             kontorTilordning = kontorTilordning,
