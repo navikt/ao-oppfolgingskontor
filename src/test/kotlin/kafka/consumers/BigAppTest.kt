@@ -101,7 +101,9 @@ class BigAppTest {
             )
             val endringPaaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
                 oppfolgingsperiodeProvider,
-                { null } // TODO: Mer realitisk test-oppsett
+                { null }, // TODO: Mer realitisk test-oppsett
+                {},
+                {}
             )
             val identService = IdentService { IdenterFunnet(emptyList(), fnr) }
             val identendringsProcessor = IdentChangeProcessor(identService)

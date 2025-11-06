@@ -75,7 +75,9 @@ class KafkaApplicationTest {
         val oppfolgingsperiodeService = OppfolgingsperiodeService({ IdenterFunnet(listOf(fnr), fnr) })
         val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
             oppfolgingsperiodeService::getCurrentOppfolgingsperiode,
-            { null }
+            { null },
+            {},
+            KontorTilordningService::tilordneKontor
         )
 
         application {
@@ -115,6 +117,8 @@ class KafkaApplicationTest {
         val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
             oppfolgingsperiodeService::getCurrentOppfolgingsperiode,
             { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },
+            {},
+            KontorTilordningService::tilordneKontor
         )
 
         application {
