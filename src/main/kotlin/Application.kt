@@ -121,6 +121,7 @@ fun Application.module() {
         this.kontorTilhorighetService = kontorTilhorighetService
         this.kontorEndringProducer = kontorEndringProducer
         this.tidligArenakontorService = tidligArenakontorService
+        this.veilarbArenaClient = veilarbArenaClient
     }
 
     val issuer = environment.getIssuer()
