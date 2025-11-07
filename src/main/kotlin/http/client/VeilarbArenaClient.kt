@@ -11,6 +11,7 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
 import no.nav.db.Ident
@@ -25,15 +26,9 @@ class VeilarbArenaClient(
     val baseUrl: String,
     azureTokenProvider: suspend () -> TexasTokenResponse,
     val httpClient: HttpClient = HttpClient(CIO) {
-        defaultRequest {
-            url(baseUrl)
-        }
-        install(Logging) {
-            level = LogLevel.INFO
-        }
-        install(ContentNegotiation) {
-            json()
-        }
+        defaultRequest { url(baseUrl) }
+        install(Logging) { level = LogLevel.INFO }
+        install(ContentNegotiation) { json() }
         install(SystemTokenPlugin) { this.tokenProvider = azureTokenProvider }
     }
 ) {
@@ -47,6 +42,7 @@ class VeilarbArenaClient(
         return try {
             val response = httpClient.post(url) {
                 accept(ContentType.Application.Json)
+                contentType(ContentType.Application.Json)
                 setBody(FnrDto(ident.value))
             }
 
