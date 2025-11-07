@@ -81,7 +81,14 @@ class ArenakontorProcessor(
 
                             val oppslagsresultater = identerSomOppslagKanGjøresPå.map {
                                 val arenakontorOppslag = hentArenakontor(fnr)
+                                when(arenakontorOppslag) {
+                                    is ArenakontorOppslagFeilet -> null
+                                    is FantArenakontor -> arenakontorOppslag
+                                    is FantIkkeArenakontor -> null
+                                }
                             }
+
+
 
                             Commit()
                         }
