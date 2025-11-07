@@ -16,6 +16,7 @@ import no.nav.db.Ident
 import no.nav.domain.KontorId
 import no.nav.http.client.tokenexchange.SystemTokenPlugin
 import no.nav.http.client.tokenexchange.TexasTokenResponse
+import org.slf4j.LoggerFactory
 import java.time.ZonedDateTime
 
 class VeilarbArenaClient(
@@ -35,10 +36,14 @@ class VeilarbArenaClient(
     }
 ) {
 
+    private val logger = LoggerFactory.getLogger(this::class.java)
+
     // TODO: Vi må være whitelista i veilarbarena og ligge i inboundPolicy
     suspend fun hentArenaKontor(ident: Ident): ArenakontorResult {
+        val url = "$baseUrl/api/v3/hent-oppfolgingsbruker"
+        logger.info("Henter Arenakontor fra url: $url")
         return try {
-            val response = httpClient.post("$baseUrl/hent-oppfolgingsbruker") {
+            val response = httpClient.post(url) {
                 accept(ContentType.Application.Json)
                 setBody(FnrDto(ident.value))
             }
