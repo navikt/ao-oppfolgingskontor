@@ -37,7 +37,7 @@ class VeilarbArenaClient(
 
     // TODO: Vi må være whitelista i veilarbarena og ligge i inboundPolicy
     suspend fun hentArenaKontor(ident: Ident): ArenakontorResult {
-        val url = "$baseUrl/api/v3/hent-oppfolgingsbruker"
+        val url = "$baseUrl/veilarbarena/api/v3/hent-oppfolgingsbruker"
         logger.info("Henter Arenakontor fra url: $url")
         return try {
             val response = httpClient.post(url) {
