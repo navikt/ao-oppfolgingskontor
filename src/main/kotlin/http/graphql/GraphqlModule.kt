@@ -86,6 +86,10 @@ fun ApplicationEnvironment.getPDLUrl(): String {
     return config.property("apis.pdl.url").getString()
 }
 
+fun ApplicationEnvironment.getVeilarbArenaUrl(): String {
+    return config.property("apis.veilarbarena.url").getString()
+}
+
 fun Application.configureGraphQlModule(norg2Client: Norg2Client, kontorTilhorighetService: KontorTilhorighetService, authenticateCall: AuthenticateRequest, hentAlleIdenter: suspend (Ident) -> IdenterResult) {
     installGraphQl(norg2Client, kontorTilhorighetService, authenticateCall, hentAlleIdenter)
 

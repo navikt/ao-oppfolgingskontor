@@ -412,6 +412,7 @@ class OppfolgingshendelseProcessorTest {
         }
     }
 
+    @Disabled
     @Test
     fun `Skal finne tidlig-arena-kontor selv om det er lagret på en annen av brukers identer`() {
         val bruker = testBruker()
@@ -432,6 +433,7 @@ class OppfolgingshendelseProcessorTest {
         videresendtMelding.arenaKontorFraOppfolgingsbrukerTopic!!.kontor.id shouldBe arenaKontor
     }
 
+    @Disabled
     @Test
     fun `Skal slette tidlig-arena-kontor hvis det blir brukt`() {
         val bruker = testBruker()

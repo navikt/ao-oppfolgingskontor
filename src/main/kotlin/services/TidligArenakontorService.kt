@@ -27,14 +27,14 @@ class TidligArenakontorService {
     private val logger = LoggerFactory.getLogger(this::class.java)
 
     fun lagreTidligArenaKontor(skalKanskjeUnderOppfolging: SkalKanskjeUnderOppfolging) {
-        transaction {
-            TidligArenaKontorTable.upsert {
-                it[id] = skalKanskjeUnderOppfolging.ident.value
-                it[kontorId] = skalKanskjeUnderOppfolging.kontorId.id
-                it[sisteEndretDato] = skalKanskjeUnderOppfolging.sistEndretDatoArena
-                it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
-            }
-        }
+//        transaction {
+//            TidligArenaKontorTable.upsert {
+//                it[id] = skalKanskjeUnderOppfolging.ident.value
+//                it[kontorId] = skalKanskjeUnderOppfolging.kontorId.id
+//                it[sisteEndretDato] = skalKanskjeUnderOppfolging.sistEndretDatoArena
+//                it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
+//            }
+//        }
     }
 
     suspend fun slettTidligArenakontor() = supervisorScope {

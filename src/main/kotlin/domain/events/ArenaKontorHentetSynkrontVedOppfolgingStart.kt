@@ -16,6 +16,7 @@ data class TidligArenaKontorVedOppfolgingStart(
     )
 }
 
+// TODO: Denne skal vel fjernes? Enten henter vi synkront ved oppfølgingStart, ellers er det en ordinær endring
 data class ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep(
     private val kontorTilordning: KontorTilordning,
     private val sistEndretIArena: OffsetDateTime,
@@ -24,6 +25,16 @@ data class ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep(
     sistEndretDatoArena = sistEndretIArena
 ) {
     override fun toHistorikkInnslag() = lagKontorHistorikkInnslag(KontorEndringsType.ArenaKontorVedOppfolgingStartMedEtterslep)
+}
+
+data class ArenaKontorHentetSynkrontVedOppfolgingStart(
+    private val kontorTilordning: KontorTilordning,
+    private val sistEndretIArena: OffsetDateTime,
+): ArenaKontorEndret(
+    tilordning = kontorTilordning,
+    sistEndretDatoArena = sistEndretIArena
+) {
+    override fun toHistorikkInnslag() = lagKontorHistorikkInnslag(KontorEndringsType.ArenaKontorHentetSynkrontVedOppfolgingsStart)
 }
 
 data class EndringPaaOppfolgingsBrukerFraArena(
