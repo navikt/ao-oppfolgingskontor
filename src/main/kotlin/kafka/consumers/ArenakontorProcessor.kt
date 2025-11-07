@@ -61,7 +61,10 @@ class ArenakontorProcessor(
                     val arenakontorOppslag = hentArenakontor(fnr)
 
                     when (arenakontorOppslag) {
-                        is ArenakontorOppslagFeilet -> Retry("Arenakontor-oppslag feilet, må prøve igjen")
+                        is ArenakontorOppslagFeilet -> {
+                            logger.error("Arenakontor-oppslag feilet", arenakontorOppslag.e)
+                            Retry("Arenakontor-oppslag feilet, må prøve igjen")
+                        }
                         is ArenakontorFunnet -> {
                             val kontorTilordning = ArenaKontorVedOppfolgingStart(
                                 kontorTilordning = KontorTilordning(
