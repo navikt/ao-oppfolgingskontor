@@ -1,17 +1,18 @@
 package kafka.consumers
 
+import domain.ArenaKontorUtvidet
 import http.client.ArenakontorOppslagFeilet
 import http.client.ArenakontorResult
 import http.client.ArenakontorFunnet
 import http.client.ArenakontorIkkeFunnet
 import kotlinx.coroutines.runBlocking
 import no.nav.db.Ident
+import no.nav.db.IdentSomKanLagres
 import no.nav.domain.KontorTilordning
 import no.nav.domain.events.ArenaKontorHentetSynkrontVedOppfolgingStart
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeEndret
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
-import no.nav.http.client.IdenterResult
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
@@ -25,7 +26,7 @@ import org.slf4j.LoggerFactory
 class ArenakontorProcessor(
     private val hentArenakontor: suspend (Ident) -> ArenakontorResult,
     private val lagreKontortilordning: (ArenaKontorHentetSynkrontVedOppfolgingStart) -> Unit,
-    private val hentAlleIdenter: suspend (identInput: Ident) -> IdenterResult
+    val arenaKontorProvider: suspend (IdentSomKanLagres) -> ArenaKontorUtvidet?,
 ) {
     companion object {
         const val processorName = "ArenakontorProcessor"
@@ -61,6 +62,7 @@ class ArenakontorProcessor(
                             logger.error("Arenakontor-oppslag feilet", arenakontorOppslag.e)
                             Retry("Arenakontor-oppslag feilet, må prøve igjen")
                         }
+
                         is ArenakontorFunnet -> {
                             val kontorTilordning = ArenaKontorHentetSynkrontVedOppfolgingStart(
                                 kontorTilordning = KontorTilordning(
@@ -70,10 +72,22 @@ class ArenakontorProcessor(
                                 ),
                                 sistEndretIArena = arenakontorOppslag.sistEndret.toOffsetDateTime()
                             )
-                            logger.info("Lagrer funnet arenakontor")
-                            lagreKontortilordning(kontorTilordning)
-                            Commit()
+
+                            val alleredeLagretArenaKontor = arenaKontorProvider(fnr)
+                            val lagretArenakontorErNyest =
+                                if (alleredeLagretArenaKontor?.sistEndretDatoArena == null) false
+                                else alleredeLagretArenaKontor.sistEndretDatoArena > kontorTilordning.sistEndretDatoArena
+
+                            val kontorIdErLik = alleredeLagretArenaKontor?.kontorId == kontorTilordning.tilordning.kontorId
+                            if (lagretArenakontorErNyest || kontorIdErLik) {
+                                Skip<String, String>()
+                            } else {
+                                logger.info("Lagrer funnet arenakontor")
+                                lagreKontortilordning(kontorTilordning)
+                                Commit()
+                            }
                         }
+
                         is ArenakontorIkkeFunnet -> {
                             logger.info("Fant ikke arena-kontor for mottatt ident - gjør ikke oppslag på andre identer")
                             Commit()
