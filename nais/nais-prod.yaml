@@ -76,6 +76,7 @@ spec:
       external:
         - host: norg2.prod-fss-pub.nais.io
         - host: pdl-api.prod-fss-pub.nais.io
+        - host: veilarbarena.prod-fss-pub.nais.io
   azure:
     application:
       enabled: true

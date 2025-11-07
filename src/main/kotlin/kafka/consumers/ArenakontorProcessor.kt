@@ -71,6 +71,7 @@ class ArenakontorProcessor(
                                 ),
                                 sistEndretIArena = arenakontorOppslag.sistEndret.toOffsetDateTime()
                             )
+                            logger.info("Lagrer funnet arenakontor")
                             lagreKontortilordning(kontorTilordning)
                             Commit()
                         }
