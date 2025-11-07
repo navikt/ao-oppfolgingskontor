@@ -85,13 +85,15 @@ class ArenakontorProcessor(
                                         it is Dnr || it is Fnr || it is Npid
                                     }.filter { it.value != fnr.value }
 
-                            val oppslagsresultater = identerSomOppslagKanGjøresPå.map { hentArenakontor(fnr) }
+                            val identOgOppslagsresultat = identerSomOppslagKanGjøresPå.map {
+                                it to hentArenakontor(it)
+                            }
 
-                            if (oppslagsresultater.all { it is ArenakontorOppslagFeilet }) {
+                            if (identOgOppslagsresultat.all { it is ArenakontorOppslagFeilet }) {
                                 Retry<String, String>("Alle oppslag på identer feilet")
                             }
 
-                            val arenakontorResultat = oppslagsresultater.filter { it is ArenakontorFunnet }
+                            val arenakontorResultat = identOgOppslagsresultat.filter { it is ArenakontorFunnet }
                                 .maxByOrNull { (it as ArenakontorFunnet).sistEndret }
 
                             if (arenakontorResultat == null) {
@@ -99,7 +101,7 @@ class ArenakontorProcessor(
                             } else {
                                 val kontorTilordning = ArenaKontorVedOppfolgingStart(
                                     kontorTilordning = KontorTilordning(
-                                        fnr = fnr,
+                                        fnr = identOgOppslagsresultat.first(),
                                         kontorId = (arenakontorResultat as ArenakontorFunnet).kontorId,
                                         oppfolgingsperiodeId = oppfølgingsperiodeStartet.periodeId
                                     ),
