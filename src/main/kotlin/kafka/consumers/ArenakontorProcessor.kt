@@ -80,6 +80,7 @@ class ArenakontorProcessor(
 
                             val kontorIdErLik = alleredeLagretArenaKontor?.kontorId == kontorTilordning.tilordning.kontorId
                             if (lagretArenakontorErNyest || kontorIdErLik) {
+                                logger.info("Lagrer ikke funnet arenakontor siden vi har nyere eller lik informasjon lagret")
                                 Skip<String, String>()
                             } else {
                                 logger.info("Lagrer funnet arenakontor")
