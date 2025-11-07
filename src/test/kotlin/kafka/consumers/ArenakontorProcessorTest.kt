@@ -5,6 +5,7 @@ import http.client.ArenakontorIkkeFunnet
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import no.nav.db.Dnr
 import no.nav.db.Ident
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.domain.KontorId
@@ -17,6 +18,7 @@ import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Skip
 import no.nav.services.KontorTilordningService
 import no.nav.utils.flywayMigrationInTest
+import no.nav.utils.randomDnr
 import no.nav.utils.randomFnr
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -54,6 +56,34 @@ class ArenakontorProcessorTest {
     @Test
     fun `Skal lagre arenakontor for funnet FNR`() {
         val record = oppfolgingsperiodeStartetRecord()
+        val kontorId = KontorId("1234")
+        val processor = ArenakontorProcessor(
+            { ArenakontorFunnet(kontorId, ZonedDateTime.now()) },
+            { KontorTilordningService.tilordneKontor(it) },
+            { IdenterIkkeFunnet("") })
+        val result = processor.process(record)
+        result.shouldBeInstanceOf<Commit<*, *>>()
+        transaction {
+            val arenaKontorId = ArenaKontorEntity.findById(record.value().fnr.value)!!.kontorId
+            arenaKontorId shouldBe kontorId.id
+        }
+    }
+
+    @Test
+    fun `Ved ikke funnet kontor skal vi slå opp på andre identer`() {
+        val record = oppfolgingsperiodeStartetRecord()
+        val dnr = randomDnr(identStatus = Ident.HistoriskStatus.HISTORISK)
+        val gammeltFnr = randomFnr(identStatus = Ident.HistoriskStatus.HISTORISK)
+        val gjeldendeFnr = record.value().fnr
+        val hentArenaKontor = { ident: Ident ->
+            when (ident) {
+                gjeldendeFnr -> ArenakontorIkkeFunnet()
+                gammeltFnr -> ArenakontorIkkeFunnet()
+                dnr -> ArenakontorFunnet(KontorId("1234"), ZonedDateTime.now())
+                else -> throw IllegalArgumentException("Uventet ident: ${ident.value}")
+            }
+        }
+
         val kontorId = KontorId("1234")
         val processor = ArenakontorProcessor(
             { ArenakontorFunnet(kontorId, ZonedDateTime.now()) },
