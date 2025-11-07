@@ -1,5 +1,6 @@
 package kafka.consumers
 
+import http.client.ArenakontorFunnet
 import http.client.ArenakontorIkkeFunnet
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -11,6 +12,8 @@ import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeEndret
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
+import no.nav.http.client.IdentFunnet
+import no.nav.http.client.IdenterFunnet
 import no.nav.http.client.IdenterIkkeFunnet
 import no.nav.kafka.processor.Skip
 import no.nav.services.KontorTilordningService
@@ -38,17 +41,44 @@ class ArenakontorProcessorTest {
 
     @Test
     fun `Skal ignorere OppfolgingsperiodeAvsluttet-hendelser`() {
-        val processor = ArenakontorProcessor({ ArenakontorIkkeFunnet() }, { KontorTilordningService.tilordneKontor(it) }, { IdenterIkkeFunnet("") })
+        val processor = ArenakontorProcessor(
+            { ArenakontorIkkeFunnet() },
+            { KontorTilordningService.tilordneKontor(it) },
+            { IdenterIkkeFunnet("") })
         val record = oppfolgingsperiodeAvsluttetRecord()
         val result = processor.process(record)
         result.shouldBeInstanceOf<Skip<*, *>>()
         transaction {
-            ArenaKontorEntity.findById(record.value().fnr)
+            ArenaKontorEntity.findById(record.value().fnr.value)
         }
     }
 
-    fun oppfolgingsperiodeAvsluttetRecord() : Record<Ident, OppfolgingsperiodeEndret> {
+    @Test
+    fun `Skal lagre arenakontor for funnet FNR`() {
+
+        val record = oppfolgingsperiodeAvsluttetRecord()
+        val processor = ArenakontorProcessor(
+            { ArenakontorFunnet },
+            { KontorTilordningService.tilordneKontor(it) },
+            { IdenterIkkeFunnet("") })
+        val result = processor.process(record)
+        result.shouldBeInstanceOf<Skip<*, *>>()
+        transaction {
+            ArenaKontorEntity.findById(record.value().fnr.value)
+        }
+    }
+
+    fun oppfolgingsperiodeAvsluttetRecord(): Record<Ident, OppfolgingsperiodeEndret> {
         val oppfolgingsperiode = oppfolgingsperiodeAvsluttet()
+        return Record(
+            oppfolgingsperiode.fnr as Ident,
+            oppfolgingsperiode,
+            Instant.now().toEpochMilli(),
+        )
+    }
+
+    fun oppfolgingsperiodeStartetRecord(): Record<Ident, OppfolgingsperiodeEndret> {
+        val oppfolgingsperiode = oppfolgingsperiodeStartet()
         return Record(
             oppfolgingsperiode.fnr as Ident,
             oppfolgingsperiode,
@@ -58,7 +88,7 @@ class ArenakontorProcessorTest {
 
     fun oppfolgingsperiodeStartet(): OppfolgingsperiodeStartet {
         return OppfolgingsperiodeStartet(
-            Fnr("12211221333", Ident.HistoriskStatus.AKTIV),
+            randomFnr(),
             ZonedDateTime.now(),
             OppfolgingsperiodeId(UUID.randomUUID()),
             null,
