@@ -5,7 +5,10 @@ import http.client.ArenakontorResult
 import http.client.FantArenakontor
 import http.client.FantIkkeArenakontor
 import kotlinx.coroutines.runBlocking
+import no.nav.db.Dnr
+import no.nav.db.Fnr
 import no.nav.db.Ident
+import no.nav.db.Npid
 import no.nav.domain.KontorTilordning
 import no.nav.domain.events.ArenaKontorVedOppfolgingStart
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
@@ -71,6 +74,15 @@ class ArenakontorProcessor(
                         is FantIkkeArenakontor -> {
                             val identOppslag = hentAlleIdenter(fnr)
                             if(identOppslag !is IdenterFunnet) Retry("Fant ingen identer på oppslag")
+                            val identerSomOppslagKanGjøresPå =
+                                (identOppslag as IdenterFunnet).identer.filter {
+                                    it is Dnr || it is Fnr || it is Npid
+                                }.filter { it.value != fnr.value }
+
+                            val oppslagsresultater = identerSomOppslagKanGjøresPå.map {
+                                val arenakontorOppslag = hentArenakontor(fnr)
+                            }
+
                             Commit()
                         }
                     }
