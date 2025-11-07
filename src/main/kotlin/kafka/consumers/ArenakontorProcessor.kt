@@ -11,6 +11,8 @@ import no.nav.domain.events.ArenaKontorVedOppfolgingStart
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeEndret
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
+import no.nav.http.client.IdenterFunnet
+import no.nav.http.client.IdenterResult
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
@@ -22,7 +24,8 @@ import org.apache.kafka.streams.processor.api.Record
 
 class ArenakontorProcessor(
     private val hentArenakontor: suspend (Ident) -> ArenakontorResult,
-    private val lagreKontortilordning: (ArenaKontorVedOppfolgingStart) -> Unit
+    private val lagreKontortilordning: (ArenaKontorVedOppfolgingStart) -> Unit,
+    private val hentAlleIdenter: (identInput: Ident) -> IdenterResult
 ) {
     companion object {
         const val processorName = "ArenakontorProcessor"
@@ -66,7 +69,8 @@ class ArenakontorProcessor(
                             Commit()
                         }
                         is FantIkkeArenakontor -> {
-                            // TODO: Forsøk på annen ident?
+                            val identOppslag = hentAlleIdenter(fnr)
+                            if(identOppslag !is IdenterFunnet) Retry("Fant ingen identer på oppslag")
                             Commit()
                         }
                     }
