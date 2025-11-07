@@ -74,41 +74,8 @@ class ArenakontorProcessor(
                             lagreKontortilordning(kontorTilordning)
                             Commit()
                         }
-
                         is ArenakontorIkkeFunnet -> {
-                            val identOppslag = hentAlleIdenter(fnr)
-                            if (identOppslag !is IdenterFunnet) return@runBlocking Retry<String, String>("Fant ingen identer på oppslag")
-                            val identerSomOppslagKanGjøresPå =
-                                (identOppslag as IdenterFunnet).identer
-                                    .filter { it.historisk == Ident.HistoriskStatus.AKTIV }
-                                    .filter {
-                                        it is Dnr || it is Fnr || it is Npid
-                                    }.filter { it.value != fnr.value }
-
-                            val identOgOppslagsresultat = identerSomOppslagKanGjøresPå.map {
-                                it to hentArenakontor(it)
-                            }
-
-                            if (identOgOppslagsresultat.all { it is ArenakontorOppslagFeilet }) {
-                                Retry<String, String>("Alle oppslag på identer feilet")
-                            }
-
-                            val arenakontorResultat = identOgOppslagsresultat.filter { it is ArenakontorFunnet }
-                                .maxByOrNull { (it as ArenakontorFunnet).sistEndret }
-
-                            if (arenakontorResultat == null) {
-                                logger.info("Person hadde ingen kontor i Arena ved oppslag på alle identer")
-                            } else {
-                                val kontorTilordning = ArenaKontorVedOppfolgingStart(
-                                    kontorTilordning = KontorTilordning(
-                                        fnr = identOgOppslagsresultat.first(),
-                                        kontorId = (arenakontorResultat as ArenakontorFunnet).kontorId,
-                                        oppfolgingsperiodeId = oppfølgingsperiodeStartet.periodeId
-                                    ),
-                                    sistEndretIArena = arenakontorResultat.sistEndret.toOffsetDateTime()
-                                )
-                                lagreKontortilordning(kontorTilordning)
-                            }
+                            logger.info("Fant ikke arena-kontor for mottatt ident - gjør ikke oppslag på andre identer")
                             Commit()
                         }
                     }
