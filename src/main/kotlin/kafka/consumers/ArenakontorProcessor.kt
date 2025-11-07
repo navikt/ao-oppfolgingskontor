@@ -76,7 +76,7 @@ class ArenakontorProcessor(
                         }
                         is ArenakontorIkkeFunnet -> {
                             val identOppslag = hentAlleIdenter(fnr)
-                            if(identOppslag !is IdenterFunnet) Retry("Fant ingen identer på oppslag")
+                            if(identOppslag !is IdenterFunnet) Retry<String, String>("Fant ingen identer på oppslag")
                             val identerSomOppslagKanGjøresPå =
                                 (identOppslag as IdenterFunnet).identer.filter {
                                     it is Dnr || it is Fnr || it is Npid
@@ -85,18 +85,25 @@ class ArenakontorProcessor(
                             val oppslagsresultater = identerSomOppslagKanGjøresPå.map { hentArenakontor(fnr) }
 
                             if (oppslagsresultater.all { it is ArenakontorOppslagFeilet }) {
-                                Retry("Alle oppslag på identer feilet")
+                                Retry<String, String>("Alle oppslag på identer feilet")
                             }
 
                             val arenakontorResultat = oppslagsresultater.filter { it is ArenakontorFunnet }
-                                .maxByOrNull { (it as ArenakontorFunnet).sistEndret }!!
+                                .maxByOrNull { (it as ArenakontorFunnet).sistEndret }
 
                             if(arenakontorResultat == null) {
                                 logger.info("Person hadde ingen kontor i Arena ved oppslag på alle identer")
                             } else {
-
+                                val kontorTilordning = ArenaKontorVedOppfolgingStart(
+                                    kontorTilordning = KontorTilordning(
+                                        fnr = fnr,
+                                        kontorId = (arenakontorResultat as ArenakontorFunnet).kontorId,
+                                        oppfolgingsperiodeId = oppfølgingsperiodeStartet.periodeId
+                                    ),
+                                    sistEndretIArena = arenakontorResultat.sistEndret.toOffsetDateTime()
+                                )
+                                lagreKontortilordning(kontorTilordning)
                             }
-
                             Commit()
                         }
                     }
