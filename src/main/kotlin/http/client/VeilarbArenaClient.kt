@@ -12,10 +12,12 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.*
+import kotlinx.serialization.Serializable
 import no.nav.db.Ident
 import no.nav.domain.KontorId
 import no.nav.http.client.tokenexchange.SystemTokenPlugin
 import no.nav.http.client.tokenexchange.TexasTokenResponse
+import no.nav.utils.ZonedDateTimeSerializer
 import org.slf4j.LoggerFactory
 import java.time.ZonedDateTime
 
@@ -65,9 +67,11 @@ class VeilarbArenaClient(
     }
 
     // TODO: Hvilke felter er egentlig nullable
+    @Serializable
     private data class OppfolgingsbrukerDto(
         val fodselsnr: String?,
         val formidlingsgruppekode: String?,
+        @Serializable(with = ZonedDateTimeSerializer::class)
         val iservFraDato: ZonedDateTime?,
         val navKontor: String,
         val kvalifiseringsgruppekode: String?,
@@ -78,10 +82,13 @@ class VeilarbArenaClient(
         val harOppfolgingssak: Boolean?,
         val sperretAnsatt: Boolean?,
         val erDoed: Boolean?,
+        @Serializable(with = ZonedDateTimeSerializer::class)
         val doedFraDato: ZonedDateTime?,
+        @Serializable(with = ZonedDateTimeSerializer::class)
         val sistEndretDato: ZonedDateTime,
     )
 
+    @Serializable
     private data class FnrDto(val fnr: String)
 }
 
