@@ -134,7 +134,8 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     )
     val arenakontorProcessor = ArenakontorProcessor(
         veilarbArenaClient::hentArenaKontor,
-        { KontorTilordningService.tilordneKontor(it) }
+        { KontorTilordningService.tilordneKontor(it) },
+        identService::hentAlleIdenter
     )
 
 
