@@ -2,8 +2,8 @@ package kafka.consumers
 
 import http.client.ArenakontorOppslagFeilet
 import http.client.ArenakontorResult
-import http.client.FantArenakontor
-import http.client.FantIkkeArenakontor
+import http.client.ArenakontorFunnet
+import http.client.ArenakontorIkkeFunnet
 import kotlinx.coroutines.runBlocking
 import no.nav.db.Dnr
 import no.nav.db.Fnr
@@ -59,7 +59,7 @@ class ArenakontorProcessor(
 
                     when (arenakontorOppslag) {
                         is ArenakontorOppslagFeilet -> Retry("Arenakontor-oppslag feilet, må prøve igjen")
-                        is FantArenakontor -> {
+                        is ArenakontorFunnet -> {
                             val kontorTilordning = ArenaKontorVedOppfolgingStart(
                                 kontorTilordning = KontorTilordning(
                                     fnr = fnr,
@@ -71,7 +71,7 @@ class ArenakontorProcessor(
                             lagreKontortilordning(kontorTilordning)
                             Commit()
                         }
-                        is FantIkkeArenakontor -> {
+                        is ArenakontorIkkeFunnet -> {
                             val identOppslag = hentAlleIdenter(fnr)
                             if(identOppslag !is IdenterFunnet) Retry("Fant ingen identer på oppslag")
                             val identerSomOppslagKanGjøresPå =
@@ -80,12 +80,12 @@ class ArenakontorProcessor(
                                 }.filter { it.value != fnr.value }
 
                             val oppslagsresultater = identerSomOppslagKanGjøresPå.map { hentArenakontor(fnr) }
+
                             if (oppslagsresultater.all { it is ArenakontorOppslagFeilet }) {
                                 Retry("Alle oppslag på identer feilet")
-                            } else if (oppslagsresultater.one){
-
                             }
 
+                            val
 
                             Commit()
                         }
@@ -94,8 +94,4 @@ class ArenakontorProcessor(
             }
         }
     }
-}
-
-fun List<T>.one(): T {
-
 }

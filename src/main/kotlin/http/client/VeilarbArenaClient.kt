@@ -42,8 +42,8 @@ class VeilarbArenaClient(
                 setBody(FnrDto(ident.value))
             }.apply {
                 val dto = this.body<OppfolgingsbrukerDto>()
-                return if (dto.navKontor == null) FantIkkeArenakontor()
-                else FantArenakontor(KontorId(dto.navKontor), dto.sistEndretDato)
+                return if (dto.navKontor == null) ArenakontorIkkeFunnet()
+                else ArenakontorFunnet(KontorId(dto.navKontor), dto.sistEndretDato)
             }
         } catch (e: Exception) {
             return ArenakontorOppslagFeilet(e)
@@ -72,6 +72,6 @@ class VeilarbArenaClient(
 }
 
 sealed class ArenakontorResult
-class FantArenakontor(val kontorId: KontorId, val sistEndret: ZonedDateTime) : ArenakontorResult()
-class FantIkkeArenakontor : ArenakontorResult()
+class ArenakontorFunnet(val kontorId: KontorId, val sistEndret: ZonedDateTime) : ArenakontorResult()
+class ArenakontorIkkeFunnet : ArenakontorResult()
 class ArenakontorOppslagFeilet(val e: Exception) : ArenakontorResult()

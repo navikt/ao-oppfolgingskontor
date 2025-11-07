@@ -1,6 +1,6 @@
 package kafka.consumers
 
-import http.client.FantIkkeArenakontor
+import http.client.ArenakontorIkkeFunnet
 import io.kotest.matchers.types.shouldBeInstanceOf
 import no.nav.db.Fnr
 import no.nav.db.Ident
@@ -20,7 +20,7 @@ class ArenakontorProcessorTest {
 
     @Test
     fun `Skal ignorere OppfolgingsperiodeAvsluttet-hendelser`() {
-        val processor = ArenakontorProcessor({ FantIkkeArenakontor() }, {})
+        val processor = ArenakontorProcessor({ ArenakontorIkkeFunnet() }, {})
         val record = oppfolgingsperiodeAvsluttetRecord()
         val result = processor.process(record)
         result.shouldBeInstanceOf<Skip<*, *>>()
