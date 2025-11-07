@@ -27,14 +27,14 @@ data class ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep(
     override fun toHistorikkInnslag() = lagKontorHistorikkInnslag(KontorEndringsType.ArenaKontorVedOppfolgingStartMedEtterslep)
 }
 
-data class ArenaKontorVedOppfolgingStart(
+data class ArenaKontorHentetSynkrontVedOppfolgingStart(
     private val kontorTilordning: KontorTilordning,
     private val sistEndretIArena: OffsetDateTime,
 ): ArenaKontorEndret(
     tilordning = kontorTilordning,
     sistEndretDatoArena = sistEndretIArena
 ) {
-    override fun toHistorikkInnslag() = lagKontorHistorikkInnslag(KontorEndringsType.ArenaKontorVedOppfolgingsStart)
+    override fun toHistorikkInnslag() = lagKontorHistorikkInnslag(KontorEndringsType.ArenaKontorHentetSynkrontVedOppfolgingsStart)
 }
 
 data class EndringPaaOppfolgingsBrukerFraArena(

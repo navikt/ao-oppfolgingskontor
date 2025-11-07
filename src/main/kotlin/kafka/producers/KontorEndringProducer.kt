@@ -138,6 +138,7 @@ enum class Tilordningstype {
                 KontorEndringsType.AutomatiskNorgRutingFallback,
                 KontorEndringsType.AutomatiskRutetTilNavItManglerGt,
                 KontorEndringsType.AutomatiskRutetTilNavItGtErLand,
+                KontorEndringsType.ArenaKontorHentetSynkrontVedOppfolgingsStart,
                 KontorEndringsType.AutomatiskRutetTilNavItIngenKontorFunnetForGt -> KONTOR_VED_OPPFOLGINGSPERIODE_START
 
                 KontorEndringsType.FikkAddressebeskyttelse,

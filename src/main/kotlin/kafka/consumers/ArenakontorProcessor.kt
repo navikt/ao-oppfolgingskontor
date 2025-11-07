@@ -5,16 +5,12 @@ import http.client.ArenakontorResult
 import http.client.ArenakontorFunnet
 import http.client.ArenakontorIkkeFunnet
 import kotlinx.coroutines.runBlocking
-import no.nav.db.Dnr
-import no.nav.db.Fnr
 import no.nav.db.Ident
-import no.nav.db.Npid
 import no.nav.domain.KontorTilordning
-import no.nav.domain.events.ArenaKontorVedOppfolgingStart
+import no.nav.domain.events.ArenaKontorHentetSynkrontVedOppfolgingStart
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeEndret
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
-import no.nav.http.client.IdenterFunnet
 import no.nav.http.client.IdenterResult
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.RecordProcessingResult
@@ -28,7 +24,7 @@ import org.slf4j.LoggerFactory
 
 class ArenakontorProcessor(
     private val hentArenakontor: suspend (Ident) -> ArenakontorResult,
-    private val lagreKontortilordning: (ArenaKontorVedOppfolgingStart) -> Unit,
+    private val lagreKontortilordning: (ArenaKontorHentetSynkrontVedOppfolgingStart) -> Unit,
     private val hentAlleIdenter: suspend (identInput: Ident) -> IdenterResult
 ) {
     companion object {
@@ -66,7 +62,7 @@ class ArenakontorProcessor(
                             Retry("Arenakontor-oppslag feilet, må prøve igjen")
                         }
                         is ArenakontorFunnet -> {
-                            val kontorTilordning = ArenaKontorVedOppfolgingStart(
+                            val kontorTilordning = ArenaKontorHentetSynkrontVedOppfolgingStart(
                                 kontorTilordning = KontorTilordning(
                                     fnr = fnr,
                                     kontorId = arenakontorOppslag.kontorId,
