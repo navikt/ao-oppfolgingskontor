@@ -2,31 +2,29 @@ package kafka.consumers
 
 import http.client.ArenakontorFunnet
 import http.client.ArenakontorIkkeFunnet
-import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.db.entity.ArenaKontorEntity
-import no.nav.db.table.ArenaKontorTable
+import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeEndret
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
-import no.nav.http.client.IdentFunnet
-import no.nav.http.client.IdenterFunnet
 import no.nav.http.client.IdenterIkkeFunnet
+import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Skip
 import no.nav.services.KontorTilordningService
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.randomFnr
 import org.apache.kafka.streams.processor.api.Record
-import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import java.time.Instant
 import java.time.ZonedDateTime
-import java.util.UUID
+import java.util.*
 
 
 class ArenakontorProcessorTest {
@@ -49,22 +47,23 @@ class ArenakontorProcessorTest {
         val result = processor.process(record)
         result.shouldBeInstanceOf<Skip<*, *>>()
         transaction {
-            ArenaKontorEntity.findById(record.value().fnr.value)
+            ArenaKontorEntity.findById(record.value().fnr.value) shouldBe null
         }
     }
 
     @Test
     fun `Skal lagre arenakontor for funnet FNR`() {
-
-        val record = oppfolgingsperiodeAvsluttetRecord()
+        val record = oppfolgingsperiodeStartetRecord()
+        val kontorId = KontorId("1234")
         val processor = ArenakontorProcessor(
-            { ArenakontorFunnet },
+            { ArenakontorFunnet(kontorId, ZonedDateTime.now()) },
             { KontorTilordningService.tilordneKontor(it) },
             { IdenterIkkeFunnet("") })
         val result = processor.process(record)
-        result.shouldBeInstanceOf<Skip<*, *>>()
+        result.shouldBeInstanceOf<Commit<*, *>>()
         transaction {
-            ArenaKontorEntity.findById(record.value().fnr.value)
+            val arenaKontorId = ArenaKontorEntity.findById(record.value().fnr.value)!!.kontorId
+            arenaKontorId shouldBe kontorId.id
         }
     }
 
