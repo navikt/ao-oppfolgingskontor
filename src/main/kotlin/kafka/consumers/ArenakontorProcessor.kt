@@ -24,6 +24,7 @@ import org.apache.kafka.common.serialization.Deserializer
 import org.apache.kafka.common.serialization.Serde
 import org.apache.kafka.common.serialization.Serializer
 import org.apache.kafka.streams.processor.api.Record
+import org.slf4j.LoggerFactory
 
 class ArenakontorProcessor(
     private val hentArenakontor: suspend (Ident) -> ArenakontorResult,
@@ -47,6 +48,8 @@ class ArenakontorProcessor(
         }
         val oppfolgingsperiodeEndretSerde = jsonSerde<OppfolgingsperiodeEndret>()
     }
+
+    val logger = LoggerFactory.getLogger(this::class.java)
 
     fun process(record: Record<Ident, OppfolgingsperiodeEndret>): RecordProcessingResult<String, String> {
         return runBlocking {
@@ -85,7 +88,14 @@ class ArenakontorProcessor(
                                 Retry("Alle oppslag på identer feilet")
                             }
 
-                            val
+                            val arenakontorResultat = oppslagsresultater.filter { it is ArenakontorFunnet }
+                                .maxByOrNull { (it as ArenakontorFunnet).sistEndret }!!
+
+                            if(arenakontorResultat == null) {
+                                logger.info("Person hadde ingen kontor i Arena ved oppslag på alle identer")
+                            } else {
+
+                            }
 
                             Commit()
                         }
