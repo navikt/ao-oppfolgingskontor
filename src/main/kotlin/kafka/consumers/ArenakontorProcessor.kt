@@ -79,15 +79,12 @@ class ArenakontorProcessor(
                                     it is Dnr || it is Fnr || it is Npid
                                 }.filter { it.value != fnr.value }
 
-                            val oppslagsresultater = identerSomOppslagKanGjøresPå.map {
-                                val arenakontorOppslag = hentArenakontor(fnr)
-                                when(arenakontorOppslag) {
-                                    is ArenakontorOppslagFeilet -> null
-                                    is FantArenakontor -> arenakontorOppslag
-                                    is FantIkkeArenakontor -> null
-                                }
-                            }
+                            val oppslagsresultater = identerSomOppslagKanGjøresPå.map { hentArenakontor(fnr) }
+                            if (oppslagsresultater.all { it is ArenakontorOppslagFeilet }) {
+                                Retry("Alle oppslag på identer feilet")
+                            } else if (oppslagsresultater.one){
 
+                            }
 
 
                             Commit()
@@ -97,4 +94,8 @@ class ArenakontorProcessor(
             }
         }
     }
+}
+
+fun List<T>.one(): T {
+
 }
