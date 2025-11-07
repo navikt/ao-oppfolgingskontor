@@ -2,10 +2,8 @@ package kafka.consumers
 
 import http.client.ArenakontorFunnet
 import http.client.ArenakontorIkkeFunnet
-import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import no.nav.db.Dnr
 import no.nav.db.Ident
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.domain.KontorId
@@ -72,27 +70,29 @@ class ArenakontorProcessorTest {
     @Test
     fun `Ved ikke funnet kontor skal vi slå opp på andre identer`() {
         val record = oppfolgingsperiodeStartetRecord()
-        val dnr = randomDnr(identStatus = Ident.HistoriskStatus.HISTORISK)
-        val gammeltFnr = randomFnr(identStatus = Ident.HistoriskStatus.HISTORISK)
-        val gjeldendeFnr = record.value().fnr
+        val historiskDnr = randomDnr(identStatus = Ident.HistoriskStatus.HISTORISK)
+        val fnr = randomFnr(identStatus = Ident.HistoriskStatus.AKTIV)
+        val mottattFnrSomErUtdatert = record.value().fnr
         val hentArenaKontor = { ident: Ident ->
             when (ident) {
-                gjeldendeFnr -> ArenakontorIkkeFunnet()
-                gammeltFnr -> ArenakontorIkkeFunnet()
-                dnr -> ArenakontorFunnet(KontorId("1234"), ZonedDateTime.now())
+                mottattFnrSomErUtdatert -> ArenakontorIkkeFunnet()
+                historiskDnr -> throw Exception("Skal ikke hente kontor for historisk ident som ikke er på record")
+                fnr -> ArenakontorFunnet(KontorId("1234"), ZonedDateTime.now())
                 else -> throw IllegalArgumentException("Uventet ident: ${ident.value}")
             }
         }
 
         val kontorId = KontorId("1234")
         val processor = ArenakontorProcessor(
-            { ArenakontorFunnet(kontorId, ZonedDateTime.now()) },
+            hentArenaKontor,
             { KontorTilordningService.tilordneKontor(it) },
             { IdenterIkkeFunnet("") })
         val result = processor.process(record)
         result.shouldBeInstanceOf<Commit<*, *>>()
         transaction {
-            val arenaKontorId = ArenaKontorEntity.findById(record.value().fnr.value)!!.kontorId
+            ArenaKontorEntity.findById(mottattFnrSomErUtdatert.value) shouldBe null
+
+            val arenaKontorId = ArenaKontorEntity.findById(fnr.value)!!.kontorId
             arenaKontorId shouldBe kontorId.id
         }
     }
