@@ -10,6 +10,7 @@ import io.ktor.client.request.accept
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
+import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.*
 import no.nav.db.Ident
 import no.nav.domain.KontorId
@@ -34,19 +35,27 @@ class VeilarbArenaClient(
     }
 ) {
 
-    // TODO: Vi må være whitelista i veilarboppfølging og ligge i inboundPolicy
+    // TODO: Vi må være whitelista i veilarbarena og ligge i inboundPolicy
     suspend fun hentArenaKontor(ident: Ident): ArenakontorResult {
-        try {
-            httpClient.post("$baseUrl/hent-oppfolgingsbruker") {
+        return try {
+            val response = httpClient.post("$baseUrl/hent-oppfolgingsbruker") {
                 accept(ContentType.Application.Json)
                 setBody(FnrDto(ident.value))
-            }.apply {
-                val dto = this.body<OppfolgingsbrukerDto>()
-                return if (dto.navKontor == null) ArenakontorIkkeFunnet()
-                else ArenakontorFunnet(KontorId(dto.navKontor), dto.sistEndretDato)
+            }
+
+            when (response.status) {
+                HttpStatusCode.NotFound -> ArenakontorIkkeFunnet()
+                HttpStatusCode.OK -> {
+                    val dto = response.body<OppfolgingsbrukerDto>()
+                    ArenakontorFunnet(KontorId(dto.navKontor), dto.sistEndretDato)
+                }
+
+                else -> ArenakontorOppslagFeilet(
+                    RuntimeException("Uventet HTTP-status: ${response.status}")
+                )
             }
         } catch (e: Exception) {
-            return ArenakontorOppslagFeilet(e)
+            ArenakontorOppslagFeilet(e)
         }
     }
 
@@ -55,7 +64,7 @@ class VeilarbArenaClient(
         val fodselsnr: String?,
         val formidlingsgruppekode: String?,
         val iservFraDato: ZonedDateTime?,
-        val navKontor: String?,
+        val navKontor: String,
         val kvalifiseringsgruppekode: String?,
         val rettighetsgruppekode: String?,
         val hovedmaalkode: String?,
