@@ -4,6 +4,7 @@ import http.client.ArenakontorFunnet
 import http.client.ArenakontorIkkeFunnet
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.domain.KontorId
@@ -70,10 +71,10 @@ class ArenakontorProcessorTest {
 
     @Test
     fun `Ved ikke funnet kontor skal vi slå opp på andre identer`() {
-        val record = oppfolgingsperiodeStartetRecord()
+        val mottattFnrSomErUtdatert = randomFnr(Ident.HistoriskStatus.HISTORISK)
         val historiskDnr = randomDnr(identStatus = Ident.HistoriskStatus.HISTORISK)
         val fnr = randomFnr(identStatus = Ident.HistoriskStatus.AKTIV)
-        val mottattFnrSomErUtdatert = record.value().fnr
+        val record = oppfolgingsperiodeStartetRecord(oppfolgingsperiodeStartet(fnr = mottattFnrSomErUtdatert))
         val hentArenaKontor = { ident: Ident ->
             when (ident) {
                 mottattFnrSomErUtdatert -> ArenakontorIkkeFunnet()
@@ -107,8 +108,7 @@ class ArenakontorProcessorTest {
         )
     }
 
-    fun oppfolgingsperiodeStartetRecord(): Record<Ident, OppfolgingsperiodeEndret> {
-        val oppfolgingsperiode = oppfolgingsperiodeStartet()
+    fun oppfolgingsperiodeStartetRecord(oppfolgingsperiode: OppfolgingsperiodeStartet = oppfolgingsperiodeStartet()): Record<Ident, OppfolgingsperiodeEndret> {
         return Record(
             oppfolgingsperiode.fnr as Ident,
             oppfolgingsperiode,
@@ -116,9 +116,9 @@ class ArenakontorProcessorTest {
         )
     }
 
-    fun oppfolgingsperiodeStartet(): OppfolgingsperiodeStartet {
+    fun oppfolgingsperiodeStartet(fnr: Fnr = randomFnr()): OppfolgingsperiodeStartet {
         return OppfolgingsperiodeStartet(
-            randomFnr(),
+            fnr,
             ZonedDateTime.now(),
             OppfolgingsperiodeId(UUID.randomUUID()),
             null,
