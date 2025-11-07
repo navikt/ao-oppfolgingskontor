@@ -1,5 +1,6 @@
 package kafka.consumers
 
+import domain.ArenaKontorUtvidet
 import http.client.ArenakontorFunnet
 import http.client.ArenakontorIkkeFunnet
 import io.kotest.matchers.shouldBe
@@ -12,7 +13,6 @@ import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeEndret
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
-import no.nav.http.client.IdenterIkkeFunnet
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Skip
 import no.nav.services.KontorTilordningService
@@ -23,6 +23,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import java.time.Instant
+import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 import java.util.*
 
@@ -42,7 +43,7 @@ class ArenakontorProcessorTest {
         val processor = ArenakontorProcessor(
             { ArenakontorIkkeFunnet() },
             { KontorTilordningService.tilordneKontor(it) },
-            { IdenterIkkeFunnet("") })
+            { null })
         val record = oppfolgingsperiodeAvsluttetRecord()
         val result = processor.process(record)
         result.shouldBeInstanceOf<Skip<*, *>>()
@@ -55,10 +56,17 @@ class ArenakontorProcessorTest {
     fun `Skal lagre arenakontor for funnet FNR`() {
         val record = oppfolgingsperiodeStartetRecord()
         val kontorId = KontorId("1234")
+        val gammelKontorId = KontorId("4321")
         val processor = ArenakontorProcessor(
             { ArenakontorFunnet(kontorId, ZonedDateTime.now()) },
             { KontorTilordningService.tilordneKontor(it) },
-            { IdenterIkkeFunnet("") })
+            {
+                ArenaKontorUtvidet(
+                    kontorId = gammelKontorId,
+                    oppfolgingsperiodeId = null,
+                    sistEndretDatoArena = OffsetDateTime.now().minusDays(1)
+                )
+            })
         val result = processor.process(record)
         result.shouldBeInstanceOf<Commit<*, *>>()
         transaction {
@@ -68,12 +76,53 @@ class ArenakontorProcessorTest {
     }
 
     @Test
+    fun `Skal ikke lagre arenakontor når det ikke har vært en endring`() {
+        val record = oppfolgingsperiodeStartetRecord()
+        val kontorId = KontorId("1234")
+        val gammelKontorId = KontorId("1234")
+        val processor = ArenakontorProcessor(
+            { ArenakontorFunnet(kontorId, ZonedDateTime.now()) },
+            { throw Exception("Skal ikke lagre når det ikke har vært en endring") },
+            {
+                ArenaKontorUtvidet(
+                    kontorId = gammelKontorId,
+                    oppfolgingsperiodeId = null,
+                    sistEndretDatoArena = OffsetDateTime.now().minusDays(1)
+                )
+            })
+        val result = processor.process(record)
+        result.shouldBeInstanceOf<Skip<*, *>>()
+    }
+
+    @Test
+    fun `Skal ikke lagre arenakontor når vi har lagret kontor med nyere timestamp `() {
+        val record = oppfolgingsperiodeStartetRecord()
+        val kontorIdHentetSynkront = KontorId("1234")
+        val nyereKontorId = KontorId("4321")
+        val tidspunktSynkronHenting = ZonedDateTime.now().minusSeconds(30)
+        val tidspunktKontorIdIDatabasen = OffsetDateTime.now().minusSeconds(20)
+        val processor = ArenakontorProcessor(
+            { ArenakontorFunnet(kontorIdHentetSynkront, tidspunktSynkronHenting) },
+            { throw Exception("Skal ikke lagre når det ikke har vært en endring") },
+            {
+                ArenaKontorUtvidet(
+                    kontorId = nyereKontorId,
+                    oppfolgingsperiodeId = null,
+                    sistEndretDatoArena = tidspunktKontorIdIDatabasen
+                )
+            })
+        val result = processor.process(record)
+        result.shouldBeInstanceOf<Skip<*, *>>()
+    }
+
+
+    @Test
     fun `Skal returnere commit selv om vi ikke finner arenakontor innkommen FNR`() {
         val record = oppfolgingsperiodeStartetRecord()
         val processor = ArenakontorProcessor(
             { ArenakontorIkkeFunnet() },
             { KontorTilordningService.tilordneKontor(it) },
-            { IdenterIkkeFunnet("") })
+            { null })
         val result = processor.process(record)
         result.shouldBeInstanceOf<Commit<*, *>>()
         transaction {
