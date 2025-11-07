@@ -11,6 +11,7 @@ import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeEndret
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
+import no.nav.http.client.IdenterFunnet
 import no.nav.http.client.IdenterIkkeFunnet
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Skip
@@ -86,7 +87,7 @@ class ArenakontorProcessorTest {
         val processor = ArenakontorProcessor(
             hentArenaKontor,
             { KontorTilordningService.tilordneKontor(it) },
-            { IdenterIkkeFunnet("") })
+            { IdenterFunnet(listOf(historiskDnr, fnr, mottattFnrSomErUtdatert), mottattFnrSomErUtdatert) })
         val result = processor.process(record)
         result.shouldBeInstanceOf<Commit<*, *>>()
         transaction {

@@ -77,7 +77,7 @@ class ArenakontorProcessor(
 
                         is ArenakontorIkkeFunnet -> {
                             val identOppslag = hentAlleIdenter(fnr)
-                            if (identOppslag !is IdenterFunnet) Retry<String, String>("Fant ingen identer på oppslag")
+                            if (identOppslag !is IdenterFunnet) return@runBlocking Retry<String, String>("Fant ingen identer på oppslag")
                             val identerSomOppslagKanGjøresPå =
                                 (identOppslag as IdenterFunnet).identer
                                     .filter { it.historisk == Ident.HistoriskStatus.AKTIV }
