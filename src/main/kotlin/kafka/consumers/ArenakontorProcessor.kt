@@ -77,7 +77,7 @@ class ArenakontorProcessor(
                             val alleredeLagretArenaKontor = arenaKontorProvider(fnr)
                             val lagretArenakontorErNyest =
                                 if (alleredeLagretArenaKontor?.sistEndretDatoArena == null) false
-                                else alleredeLagretArenaKontor.sistEndretDatoArena > kontorTilordning.sistEndretDatoArena
+                                else alleredeLagretArenaKontor.sistEndretDatoArena >= kontorTilordning.sistEndretDatoArena
 
                             val kontorIdErLik = alleredeLagretArenaKontor?.kontorId == kontorTilordning.tilordning.kontorId
                             if (lagretArenakontorErNyest || kontorIdErLik) {
