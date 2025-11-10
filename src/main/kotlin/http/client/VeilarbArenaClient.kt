@@ -60,7 +60,7 @@ class VeilarbArenaClient(
                 }
 
                 else -> ArenakontorOppslagFeilet(
-                    RuntimeException("Uventet HTTP-status: ${response.status}")
+                    RuntimeException("Uventet HTTP-status: ${response.status}. Body: ${response.body<String>()}")
                 )
             }
         } catch (e: Exception) {
