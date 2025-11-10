@@ -39,7 +39,6 @@ import org.jetbrains.exposed.sql.Database
 import org.slf4j.LoggerFactory
 import services.IdentService
 import services.OppfolgingsperiodeService
-import services.TidligArenakontorService
 import java.util.concurrent.atomic.AtomicInteger
 
 val KafkaStreamsStarting: EventDefinition<Application> = EventDefinition()
@@ -61,7 +60,6 @@ class KafkaStreamsPluginConfig(
     var criticalErrorNotificationFunction: CriticalErrorNotificationFunction? = null,
     var kontorTilhorighetService: KontorTilhorighetService? = null,
     var kontorEndringProducer: KontorEndringProducer? = null,
-    var tidligArenakontorService: TidligArenakontorService? = null,
     var veilarbArenaClient: VeilarbArenaClient? = null,
 )
 
@@ -98,9 +96,6 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val kontorProducer = requireNotNull(this.pluginConfig.kontorEndringProducer) {
         "KontorTilhorighetService must be configured for KafkaStreamsPlugin"
     }
-    val tidligArenakontorService = requireNotNull(this.pluginConfig.tidligArenakontorService) {
-        "TidligArenakontorService must be configured for KafkaStreamPlugin"
-    }
     val veilarbArenaClient = requireNotNull(this.pluginConfig.veilarbArenaClient) {
         "VeilarbArenaClient must be configured for KafkaStreamPlugin"
     }
@@ -111,7 +106,6 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
         { oppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) },
         { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },
-        {tidligArenakontorService.lagreTidligArenaKontor(it)},
         KontorTilordningService::tilordneKontor
     )
 
@@ -126,7 +120,6 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val oppfolgingsHendelseProcessor = OppfolgingsHendelseProcessor(
         oppfolgingsperiodeService,
         { periode -> kontorProducer.publiserTombstone(periode) },
-        { tidligArenakontorService.hentArenaKontorOgSlettHvisFunnet(it) }
     )
     val publiserKontorTilordningProcessor = PubliserKontorTilordningProcessor(
         identService::hentAlleIdenter,

@@ -43,7 +43,6 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import services.IdentService
 import services.OppfolgingsperiodeService
-import services.TidligArenakontorService
 import topics
 import utils.Outcome
 import java.time.OffsetDateTime
@@ -95,12 +94,10 @@ class BigAppTest {
             val endringPaaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
                 oppfolgingsperiodeProvider,
                 { null }, // TODO: Mer realitisk test-oppsett
-                {},
                 {}
             )
             val identService = IdentService { IdenterFunnet(emptyList(), fnr) }
             val identendringsProcessor = IdentChangeProcessor(identService)
-            val tidligArenakontorService = TidligArenakontorService()
 
             val kontorEndringProducer = mockk<KontorEndringProducer>()
             coEvery { kontorEndringProducer.publiserEndringPåKontor(any<OppfolgingEndretTilordningMelding>()) } returns Result.success(
@@ -124,7 +121,6 @@ class BigAppTest {
                 OppfolgingsHendelseProcessor(
                     OppfolgingsperiodeService(identService::hentAlleIdenter),
                     kontorEndringProducer::publiserTombstone,
-                    tidligArenakontorService::hentArenaKontorOgSlettHvisFunnet
                 ),
                 mockk<ArenakontorProcessor>()
             )

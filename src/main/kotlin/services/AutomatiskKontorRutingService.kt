@@ -154,7 +154,6 @@ class AutomatiskKontorRutingService(
                 .let {
                     KontorEndringer(
                         aoKontorEndret = it,
-                        arenaKontorEndret = arenaKontorEndring(oppfolgingsperiodeStartet, oppfolgingsperiodeId),
                         gtKontorEndret = gtKontorResultat.toGtKontorEndret(fnr, oppfolgingsperiodeId)
                     )
                 }
@@ -163,24 +162,6 @@ class AutomatiskKontorRutingService(
 
             } catch (e: Exception) {
             return TilordningFeil("Feil ved tilordning av kontor: ${e.message ?: e.toString()}")
-        }
-    }
-
-    private fun arenaKontorEndring(periodeStartetEvent: OppfolgingsperiodeStartet, oppfolgingsperiodeId: OppfolgingsperiodeId): ArenaKontorEndret? {
-        val arenaKontorFraOppfolgingsbruker = periodeStartetEvent.arenaKontorFraOppfolgingsbrukerTopic
-
-        return when {
-            arenaKontorFraOppfolgingsbruker != null -> {
-                TidligArenaKontorVedOppfolgingStart(
-                    KontorTilordning(
-                        periodeStartetEvent.fnr,
-                        arenaKontorFraOppfolgingsbruker.kontor,
-                        oppfolgingsperiodeId,
-                    ),
-                    arenaKontorFraOppfolgingsbruker.sistEndretDato
-                )
-            }
-            else -> null
         }
     }
 

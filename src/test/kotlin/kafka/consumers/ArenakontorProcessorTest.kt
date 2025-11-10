@@ -151,7 +151,6 @@ class ArenakontorProcessorTest {
             fnr,
             ZonedDateTime.now(),
             OppfolgingsperiodeId(UUID.randomUUID()),
-            null,
             true
         )
     }

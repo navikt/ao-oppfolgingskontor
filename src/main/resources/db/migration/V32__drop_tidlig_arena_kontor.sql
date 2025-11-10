@@ -1,0 +1,1 @@
+drop table tidlig_arena_kontor;

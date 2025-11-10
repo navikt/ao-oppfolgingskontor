@@ -22,7 +22,6 @@ data class OppfolgingsperiodeStartet(
     @Serializable(with = ZonedDateTimeSerializer::class)
     val startDato: ZonedDateTime,
     override val periodeId: OppfolgingsperiodeId,
-    val arenaKontorFraOppfolgingsbrukerTopic: TidligArenaKontor?,
     val erArbeidssøkerRegistrering: Boolean,
 ): OppfolgingsperiodeEndret()
 

@@ -22,7 +22,6 @@ import java.util.*
 class OppfolgingsHendelseProcessor(
     val oppfolgingsPeriodeService: OppfolgingsperiodeService,
     val publiserTombstone: (oppfolgingsperiodeId: OppfolgingsperiodeId) -> Result<Unit>,
-    val hentTidligArenaKontorOgSlettHvisFunnet: (ident: Ident) -> TidligArenaKontor?
 ) {
     val log = LoggerFactory.getLogger(javaClass)
 
@@ -50,7 +49,7 @@ class OppfolgingsHendelseProcessor(
                             Forward(
                                 Record(
                                     ident,
-                                    oppfolgingStartetInternalEvent.enrichWithTidligArenaKontor(),
+                                    oppfolgingStartetInternalEvent,
                                     Instant.now().toEpochMilli()
                                 ), null
                             )
@@ -82,11 +81,6 @@ class OppfolgingsHendelseProcessor(
             }
         }
     }
-
-    fun OppfolgingsperiodeStartet.enrichWithTidligArenaKontor(): OppfolgingsperiodeStartet {
-        val forhåndslagretArenaKontor = hentTidligArenaKontorOgSlettHvisFunnet(this.fnr)
-        return this.copy(arenaKontorFraOppfolgingsbrukerTopic = forhåndslagretArenaKontor)
-    }
 }
 
 fun OppfolgingStartetHendelseDto.toDomainObject() = OppfolgingsperiodeStartet(
@@ -94,7 +88,6 @@ fun OppfolgingStartetHendelseDto.toDomainObject() = OppfolgingsperiodeStartet(
         ?: throw IllegalStateException("Ident i oppfolgingshendelse-topic kan ikke være aktorId"),
     startDato = this.startetTidspunkt,
     periodeId = OppfolgingsperiodeId(UUID.fromString(this.oppfolgingsPeriodeId)),
-    arenaKontorFraOppfolgingsbrukerTopic = null,
     erArbeidssøkerRegistrering = startetBegrunnelse == ARBEIDSSOKER_REGISTRERING
 )
 

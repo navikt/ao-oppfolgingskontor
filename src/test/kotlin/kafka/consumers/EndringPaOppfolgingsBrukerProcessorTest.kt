@@ -7,19 +7,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import no.nav.db.Fnr
 import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
-import no.nav.kafka.consumers.ArenaKontorEndringsType
-import no.nav.kafka.consumers.BeforeCutoff
-import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
-import no.nav.kafka.consumers.Feil
-import no.nav.kafka.consumers.FormidlingsGruppe
-import no.nav.kafka.consumers.HaddeNyereEndring
-import no.nav.kafka.consumers.IngenEndring
-import no.nav.kafka.consumers.Kvalifiseringsgruppe
-import no.nav.kafka.consumers.MeldingManglerEnhet
-import no.nav.kafka.consumers.SkalLagre
-import no.nav.kafka.consumers.SkalKanskjeUnderOppfolging
-import no.nav.kafka.consumers.harKontorBlittEndret
-import no.nav.kafka.processor.Retry
+import no.nav.kafka.consumers.*
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingperiodeOppslagFeil
@@ -28,7 +16,7 @@ import org.apache.kafka.streams.processor.api.Record
 import org.junit.jupiter.api.Test
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
-import java.util.UUID
+import java.util.*
 
 class EndringPaOppfolgingsBrukerProcessorTest {
     val rettFørCutoff = OffsetDateTime.of(
@@ -59,7 +47,6 @@ class EndringPaOppfolgingsBrukerProcessorTest {
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { AktivOppfolgingsperiode(fnr, oppfolgingsperiode, OffsetDateTime.now().minusDays(2)) },
             { arenaKontor() },
-            {},
             {}
         )
         val result = processor.internalProcess(testRecord(fnr, sistEndretDato = rettFørCutoff))
@@ -75,7 +62,6 @@ class EndringPaOppfolgingsBrukerProcessorTest {
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { AktivOppfolgingsperiode(fnr, oppfolgingsperiode, OffsetDateTime.now().minusDays(2)) },
             { arenaKontor(endret = etterCutoffMenAnnenTidssone.minusSeconds(1)) },
-            {},
             {}
         )
         val result = processor.internalProcess(testRecord(fnr, sistEndretDato = etterCutoffMenAnnenTidssone))
@@ -86,12 +72,11 @@ class EndringPaOppfolgingsBrukerProcessorTest {
     }
 
     @Test
-    fun `skal behandle melding selvom bruker ikke har oppfølgingsperiode fordi vi kanskje ikke vet om den ennå`() {
+    fun `skal ikke behandle melding når bruker ikke har oppfølgingsperiode lagret`() {
         val fnr = randomFnr()
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { NotUnderOppfolging },
             { arenaKontorFørCutoff() },
-            { },
             {}
         )
         val result = processor.internalProcess(
@@ -102,7 +87,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
             )
         )
         withClue("forventer UnderOppfolgingIArenaMenIkkeLokalt men var ${result.javaClass.simpleName}") {
-            result.shouldBeInstanceOf<SkalKanskjeUnderOppfolging>()
+            result.shouldBeInstanceOf<IkkeUnderOppfølging>()
         }
     }
 
@@ -123,7 +108,6 @@ class EndringPaOppfolgingsBrukerProcessorTest {
                     oppfolgingsperiodeId = oppfolgingsperiodeId
                 )
             },
-            {},
             {}
         )
 
@@ -151,7 +135,6 @@ class EndringPaOppfolgingsBrukerProcessorTest {
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, oppfolgingsStartet) },
             { arenaKontor(sisteLagreMeldingTidspunkt) },
-            {},
             {}
         )
 
@@ -171,7 +154,6 @@ class EndringPaOppfolgingsBrukerProcessorTest {
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, oppfolgingStartet) },
             { arenaKontor(kontor = kontorId, endret = oppfolgingStartet, oppfolgingsperiodeId = oppfolgingsperiodeId) },
-            {},
             {}
         )
 
@@ -190,7 +172,6 @@ class EndringPaOppfolgingsBrukerProcessorTest {
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, oppfolgingStartet) },
             { arenaKontorMedAnnenOppfolgingsperiode },
-            {},
             {}
         )
 
@@ -206,7 +187,6 @@ class EndringPaOppfolgingsBrukerProcessorTest {
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { OppfolgingperiodeOppslagFeil("Feil med perioder!?") },
             { null },
-            {},
             {}
         )
         val result = processor.internalProcess(testRecord(fnr, sistEndretDato = etterCutoffMenAnnenTidssone))
@@ -252,52 +232,6 @@ class EndringPaOppfolgingsBrukerProcessorTest {
             "1213",
             oppfolgingsperiodeId,
         ) shouldBe ArenaKontorEndringsType.ENDRET_I_PERIODE
-    }
-
-    @Test
-    fun `Skal lagre tidligArenaKontor hvis bruker kanskje skal under oppfølging`() {
-        var harKaltPåLagreTidligArenaKontor = false
-        val fnr = randomFnr()
-        val processor = EndringPaOppfolgingsBrukerProcessor(
-            { NotUnderOppfolging },
-            { arenaKontor() },
-            { harKaltPåLagreTidligArenaKontor = true },
-            {}
-        )
-        processor.handleResult(SkalKanskjeUnderOppfolging(KontorId("dummy"), OffsetDateTime.now(), fnr))
-        withClue("Skal lagre i tidlig-arena-kontor hvis bruker kanksje skal komme under oppfølging") {
-            harKaltPåLagreTidligArenaKontor shouldBe true
-        }
-    }
-
-    @Test
-    fun `Skal aldri lagre tidligArenaKontor hvis prosesseringsresultat ikke er SkalKanskjeUnderOppfolging`() {
-        var harKaltPåLagreTidligArenaKontor = false
-        val fnr = randomFnr()
-        val processor = EndringPaOppfolgingsBrukerProcessor(
-            { NotUnderOppfolging },
-            { arenaKontor() },
-            { harKaltPåLagreTidligArenaKontor = true },
-            {}
-        )
-        processor.handleResult(BeforeCutoff())
-        processor.handleResult(HaddeNyereEndring())
-        processor.handleResult(MeldingManglerEnhet())
-        processor.handleResult(
-            SkalLagre(
-                oppfolgingsenhet = "en oppfolgingsenhet",
-                fnr = fnr,
-                endretTidspunkt = OffsetDateTime.now(),
-                oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
-                erFørsteArenaKontorIOppfolgingsperiode = true
-            )
-        )
-        processor.handleResult(IngenEndring())
-        processor.handleResult(Feil(Retry("random reason")))
-
-        withClue("Skal kun lagre i tidlig-arena-kontor hvis bruker kanksje skal komme under oppfølging") {
-            harKaltPåLagreTidligArenaKontor shouldBe false
-        }
     }
 
     fun testRecord(
