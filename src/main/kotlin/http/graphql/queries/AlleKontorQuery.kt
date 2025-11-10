@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory
 
 class AlleKontorQuery(
     val norg2Client: Norg2Client
-): Query {
+) : Query {
     val logger = LoggerFactory.getLogger(AlleKontorQuery::class.java)
 
     suspend fun alleKontor(ident: String?): List<AlleKontorQueryDto> {
@@ -19,17 +19,25 @@ class AlleKontorQuery(
                 GeografiskTilknyttetKontorEntity.find { GeografiskTilknytningKontorTable.id eq ident }.firstOrNull()
             }
             val lokalKontor = norg2Client.hentAlleEnheter()
-                .map { AlleKontorQueryDto(it.kontorId,it.navn) }
+                .map { AlleKontorQueryDto(it.kontorId, it.navn) }
                 .let {
-                    if (gtKontor == null) { it }
-                    else {
-                        it.sortedWith { o1, o2 -> if (o1.kontorId == gtKontor.kontorId) -1 else 1 }
+                    if (gtKontor == null) {
+                        it
+                    } else {
+                        it.sortedWith { o1, o2 ->
+                            when {
+                                o1.kontorId == o2.kontorId -> 0
+                                o1.kontorId == gtKontor.kontorId -> -1
+                                o2.kontorId == gtKontor.kontorId -> 1
+                                else -> o1.kontorId.compareTo(o2.kontorId)
+                            }
+                        }
                     }
                 }
             listOf(
-                AlleKontorQueryDto("4154","Nasjonal oppfølgingsenhet"),
-                AlleKontorQueryDto("0393","Nav utland og fellestjenester Oslo"),
-                AlleKontorQueryDto("2103","Nav Vikafossen"),
+                AlleKontorQueryDto("4154", "Nasjonal oppfølgingsenhet"),
+                AlleKontorQueryDto("0393", "Nav utland og fellestjenester Oslo"),
+                AlleKontorQueryDto("2103", "Nav Vikafossen"),
             ) + lokalKontor
         }
             .onSuccess { it }
