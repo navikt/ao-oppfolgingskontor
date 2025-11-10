@@ -53,6 +53,7 @@ class ArenakontorProcessor(
             when (record.value()) {
                 is OppfolgingsperiodeAvsluttet -> Skip()
                 is OppfolgingsperiodeStartet -> {
+                    logger.info("Oppfølgingsperiode har startet, skal hente Arena-kontor synkront")
                     val oppfølgingsperiodeStartet = record.value() as OppfolgingsperiodeStartet
                     val fnr = oppfølgingsperiodeStartet.fnr
                     val arenakontorOppslag = hentArenakontor(fnr)
@@ -63,6 +64,7 @@ class ArenakontorProcessor(
                         }
 
                         is ArenakontorFunnet -> {
+                            logger.info("Har funnet Arena-kontor")
                             val kontorTilordning = ArenaKontorHentetSynkrontVedOppfolgingStart(
                                 kontorTilordning = KontorTilordning(
                                     fnr = fnr,
