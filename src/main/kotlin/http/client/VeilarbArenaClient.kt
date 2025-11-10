@@ -2,6 +2,7 @@ package http.client
 
 import io.ktor.client.*
 import io.ktor.client.call.body
+import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.*
 import io.ktor.client.plugins.contentnegotiation.*
@@ -30,17 +31,17 @@ fun ApplicationEnvironment.getVeilarbarenaScope(): String {
 class VeilarbArenaClient(
     val baseUrl: String,
     azureTokenProvider: suspend () -> TexasTokenResponse,
-    val httpClient: HttpClient = HttpClient(CIO) {
+    engine: HttpClientEngine = CIO.create(),
+) {
+    val httpClient: HttpClient = HttpClient(engine) {
         defaultRequest { url(baseUrl) }
         install(Logging) { level = LogLevel.INFO }
         install(ContentNegotiation) { json() }
         install(SystemTokenPlugin) { this.tokenProvider = azureTokenProvider }
     }
-) {
 
     private val logger = LoggerFactory.getLogger(this::class.java)
 
-    // TODO: Vi må være whitelista i veilarbarena og ligge i inboundPolicy
     suspend fun hentArenaKontor(ident: Ident): ArenakontorResult {
         val url = "$baseUrl/veilarbarena/api/v3/hent-oppfolgingsbruker"
         logger.info("Henter Arenakontor fra url: $url")
