@@ -21,7 +21,6 @@ import no.nav.utils.randomFnr
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import java.time.Instant
 import java.time.OffsetDateTime
@@ -53,7 +52,6 @@ class ArenakontorProcessorTest {
         }
     }
 
-    @Disabled
     @Test
     fun `Skal lagre arenakontor for funnet FNR`() {
         val record = oppfolgingsperiodeStartetRecord()
@@ -117,7 +115,6 @@ class ArenakontorProcessorTest {
         result.shouldBeInstanceOf<Skip<*, *>>()
     }
 
-    @Disabled
     @Test
     fun `Skal returnere commit selv om vi ikke finner arenakontor innkommen FNR`() {
         val record = oppfolgingsperiodeStartetRecord()

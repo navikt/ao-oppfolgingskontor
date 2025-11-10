@@ -48,37 +48,38 @@ class TidligArenakontorService {
     }
 
     fun hentArenaKontorOgSlettHvisFunnet(ident: Ident): TidligArenaKontor? {
-        return transaction {
-            val alleIdenter = IdentMappingTable.alias("alleIdenter")
-            val tidligArenaKontorOgIdent = IdentMappingTable
-                .join(alleIdenter, INNER, onColumn = internIdent, otherColumn = alleIdenter[internIdent])
-                .join(
-                    TidligArenaKontorTable,
-                    INNER,
-                    onColumn = alleIdenter[IdentMappingTable.id],
-                    otherColumn = TidligArenaKontorTable.id
-                )
-                .select(
-                    TidligArenaKontorTable.id,
-                    TidligArenaKontorTable.kontorId,
-                    TidligArenaKontorTable.sisteEndretDato
-                )
-                .where { IdentMappingTable.id eq ident.value }
-                .map { row ->
-                    TidligArenaKontor(
-                        kontor = KontorId(row[TidligArenaKontorTable.kontorId]),
-                        sistEndretDato = row[TidligArenaKontorTable.sisteEndretDato]
-                    ) to row[TidligArenaKontorTable.id]
-                }.firstOrNull()
-
-            val identSomKontorErLagretPå = tidligArenaKontorOgIdent?.second
-            val tidligArenaKontor = tidligArenaKontorOgIdent?.first
-
-            identSomKontorErLagretPå?.let {
-                TidligArenaKontorTable.deleteWhere { TidligArenaKontorTable.id eq identSomKontorErLagretPå.value }
-            }
-
-            tidligArenaKontor
-        }
+//        return transaction {
+//            val alleIdenter = IdentMappingTable.alias("alleIdenter")
+//            val tidligArenaKontorOgIdent = IdentMappingTable
+//                .join(alleIdenter, INNER, onColumn = internIdent, otherColumn = alleIdenter[internIdent])
+//                .join(
+//                    TidligArenaKontorTable,
+//                    INNER,
+//                    onColumn = alleIdenter[IdentMappingTable.id],
+//                    otherColumn = TidligArenaKontorTable.id
+//                )
+//                .select(
+//                    TidligArenaKontorTable.id,
+//                    TidligArenaKontorTable.kontorId,
+//                    TidligArenaKontorTable.sisteEndretDato
+//                )
+//                .where { IdentMappingTable.id eq ident.value }
+//                .map { row ->
+//                    TidligArenaKontor(
+//                        kontor = KontorId(row[TidligArenaKontorTable.kontorId]),
+//                        sistEndretDato = row[TidligArenaKontorTable.sisteEndretDato]
+//                    ) to row[TidligArenaKontorTable.id]
+//                }.firstOrNull()
+//
+//            val identSomKontorErLagretPå = tidligArenaKontorOgIdent?.second
+//            val tidligArenaKontor = tidligArenaKontorOgIdent?.first
+//
+//            identSomKontorErLagretPå?.let {
+//                TidligArenaKontorTable.deleteWhere { TidligArenaKontorTable.id eq identSomKontorErLagretPå.value }
+//            }
+//
+//            tidligArenaKontor
+//        }
+        return null
     }
 }
