@@ -38,11 +38,12 @@ class VeilarbarenaClientTest {
             val result = apiClient.hentArenaKontor(fnr)
 
             result.shouldBeTypeOf<ArenakontorFunnet>()
-            result.kontorId shouldBe navKontor
+            result.kontorId.id shouldBe navKontor
         }
     }
 
     private fun jsonResponse(fnr: String, navKontor: String) = """
+        {
           "fodselsnr": "$fnr",
           "formidlingsgruppekode": "ARBS",
           "iservFraDato": "2024-04-04T00:00:00+02:00",
@@ -57,6 +58,7 @@ class VeilarbarenaClientTest {
           "erDoed": false,
           "doedFraDato": null,
           "sistEndretDato": "2024-04-04T00:00:00+02:00"
+        }
     """.trimIndent()
 
     private val tokenResponse = TexasTokenSuccessResult(
