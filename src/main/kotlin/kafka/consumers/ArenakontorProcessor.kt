@@ -52,49 +52,48 @@ class ArenakontorProcessor(
         return runBlocking {
             when (record.value()) {
                 is OppfolgingsperiodeAvsluttet -> Skip()
-                is OppfolgingsperiodeStartet -> Skip()
-//                is OppfolgingsperiodeStartet -> {
-//                    val oppfølgingsperiodeStartet = record.value() as OppfolgingsperiodeStartet
-//                    val fnr = oppfølgingsperiodeStartet.fnr
-//                    val arenakontorOppslag = hentArenakontor(fnr)
-//                    when (arenakontorOppslag) {
-//                        is ArenakontorOppslagFeilet -> {
-//                            logger.error("Arenakontor-oppslag feilet", arenakontorOppslag.e)
-//                            Retry("Arenakontor-oppslag feilet, må prøve igjen")
-//                        }
-//
-//                        is ArenakontorFunnet -> {
-//                            val kontorTilordning = ArenaKontorHentetSynkrontVedOppfolgingStart(
-//                                kontorTilordning = KontorTilordning(
-//                                    fnr = fnr,
-//                                    kontorId = arenakontorOppslag.kontorId,
-//                                    oppfolgingsperiodeId = oppfølgingsperiodeStartet.periodeId
-//                                ),
-//                                sistEndretIArena = arenakontorOppslag.sistEndret.toOffsetDateTime()
-//                            )
-//
-//                            val alleredeLagretArenaKontor = arenaKontorProvider(fnr)
-//                            val lagretArenakontorErNyest =
-//                                if (alleredeLagretArenaKontor?.sistEndretDatoArena == null) false
-//                                else alleredeLagretArenaKontor.sistEndretDatoArena > kontorTilordning.sistEndretDatoArena
-//
-//                            val kontorIdErLik = alleredeLagretArenaKontor?.kontorId == kontorTilordning.tilordning.kontorId
-//                            if (lagretArenakontorErNyest || kontorIdErLik) {
-//                                logger.info("Lagrer ikke funnet arenakontor siden vi har nyere eller lik informasjon lagret")
-//                                Skip<String, String>()
-//                            } else {
-//                                logger.info("Lagrer funnet arenakontor")
-//                                lagreKontortilordning(kontorTilordning)
-//                                Commit()
-//                            }
-//                        }
-//
-//                        is ArenakontorIkkeFunnet -> {
-//                            logger.info("Fant ikke arena-kontor for mottatt ident - gjør ikke oppslag på andre identer")
-//                            Commit()
-//                        }
-//                    }
-//                }
+                is OppfolgingsperiodeStartet -> {
+                    val oppfølgingsperiodeStartet = record.value() as OppfolgingsperiodeStartet
+                    val fnr = oppfølgingsperiodeStartet.fnr
+                    val arenakontorOppslag = hentArenakontor(fnr)
+                    when (arenakontorOppslag) {
+                        is ArenakontorOppslagFeilet -> {
+                            logger.error("Arenakontor-oppslag feilet", arenakontorOppslag.e)
+                            Retry("Arenakontor-oppslag feilet, må prøve igjen")
+                        }
+
+                        is ArenakontorFunnet -> {
+                            val kontorTilordning = ArenaKontorHentetSynkrontVedOppfolgingStart(
+                                kontorTilordning = KontorTilordning(
+                                    fnr = fnr,
+                                    kontorId = arenakontorOppslag.kontorId,
+                                    oppfolgingsperiodeId = oppfølgingsperiodeStartet.periodeId
+                                ),
+                                sistEndretIArena = arenakontorOppslag.sistEndret.toOffsetDateTime()
+                            )
+
+                            val alleredeLagretArenaKontor = arenaKontorProvider(fnr)
+                            val lagretArenakontorErNyest =
+                                if (alleredeLagretArenaKontor?.sistEndretDatoArena == null) false
+                                else alleredeLagretArenaKontor.sistEndretDatoArena > kontorTilordning.sistEndretDatoArena
+
+                            val kontorIdErLik = alleredeLagretArenaKontor?.kontorId == kontorTilordning.tilordning.kontorId
+                            if (lagretArenakontorErNyest || kontorIdErLik) {
+                                logger.info("Lagrer ikke funnet arenakontor siden vi har nyere eller lik informasjon lagret")
+                                Skip<String, String>()
+                            } else {
+                                logger.info("Lagrer funnet arenakontor")
+                                lagreKontortilordning(kontorTilordning)
+                                Commit()
+                            }
+                        }
+
+                        is ArenakontorIkkeFunnet -> {
+                            logger.info("Fant ikke arena-kontor for mottatt ident - gjør ikke oppslag på andre identer")
+                            Commit()
+                        }
+                    }
+                }
             }
         }
     }
