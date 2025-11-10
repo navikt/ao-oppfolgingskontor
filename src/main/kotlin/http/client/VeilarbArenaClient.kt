@@ -8,6 +8,7 @@ import io.ktor.client.plugins.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.logging.*
 import io.ktor.client.request.accept
+import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
@@ -47,6 +48,7 @@ class VeilarbArenaClient(
         logger.info("Henter Arenakontor fra url: $url")
         return try {
             val response = httpClient.post(url) {
+                header("Nav-Consumer-Id", "ao-oppfolgingskontor")
                 accept(ContentType.Application.Json)
                 contentType(ContentType.Application.Json)
                 setBody(FnrDto(ident.value))
