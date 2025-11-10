@@ -13,6 +13,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.*
+import io.ktor.server.application.ApplicationEnvironment
 import kotlinx.serialization.Serializable
 import no.nav.db.Ident
 import no.nav.domain.KontorId
@@ -21,6 +22,10 @@ import no.nav.http.client.tokenexchange.TexasTokenResponse
 import no.nav.utils.ZonedDateTimeSerializer
 import org.slf4j.LoggerFactory
 import java.time.ZonedDateTime
+
+fun ApplicationEnvironment.getVeilarbarenaScope(): String {
+    return config.property("apis.veilarbarena.scope").getString()
+}
 
 class VeilarbArenaClient(
     val baseUrl: String,

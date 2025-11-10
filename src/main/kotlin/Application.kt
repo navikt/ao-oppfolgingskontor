@@ -2,6 +2,7 @@ package no.nav
 
 import dab.poao.nav.no.health.CriticalErrorNotificationFunction
 import http.client.VeilarbArenaClient
+import http.client.getVeilarbarenaScope
 import http.configureContentNegotiation
 import http.configureHentArbeidsoppfolgingskontorBulkModule
 import io.ktor.server.application.*
@@ -73,7 +74,7 @@ fun Application.module() {
     )
     val veilarbArenaClient = VeilarbArenaClient(
         baseUrl = environment.getVeilarbArenaUrl(),
-        azureTokenProvider = texasClient.tokenProvider(environment.getPoaoTilgangScope())
+        azureTokenProvider = texasClient.tokenProvider(environment.getVeilarbarenaScope())
     )
 
     val identService = IdentService({ pdlClient.hentIdenterFor(it) })
