@@ -44,7 +44,6 @@ import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import services.IdentService
 import services.OppfolgingsperiodeService
-import services.TidligArenakontorService
 import services.ingenSensitivitet
 import java.time.Instant
 import java.time.OffsetDateTime
@@ -122,11 +121,9 @@ class OppfolgingshendelseProcessorTest {
 
     /* Mock at oppslag for å hente alle mappede identer bare returnerer 1 ident (happu path)  */
     fun Bruker.defaultOppfolgingsHendelseProcessor(publiserTombstone: (oppfolgingsperiodeId: OppfolgingsperiodeId) -> Result<Unit> = { _ -> Result.success(Unit) }): OppfolgingsHendelseProcessor {
-        val tidligArenakontorService = TidligArenakontorService()
         return OppfolgingsHendelseProcessor(
             OppfolgingsperiodeService { IdenterFunnet(listOf(this.ident, AktorId(this.aktorId, AKTIV)), this.ident) },
             publiserTombstone,
-            { tidligArenakontorService.hentArenaKontorOgSlettHvisFunnet(it) }
         )
     }
 
@@ -235,7 +232,6 @@ class OppfolgingshendelseProcessorTest {
             bruker.ident,
             nyereStartDato,
             OppfolgingsperiodeId(nyerePeriodeId),
-            null,
             true
         )
         processingResult.topic shouldBe null
@@ -376,11 +372,9 @@ class OppfolgingshendelseProcessorTest {
             oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
             sistEndretDatoArena = OffsetDateTime.now().minusSeconds(1)
         )
-        val tidligArenakontorService = TidligArenakontorService()
         val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
             { NotUnderOppfolging },
             { sistLagreArenaKontor },
-            { tidligArenakontorService.lagreTidligArenaKontor(it) },
             {})
         endringPaOppfolgingsBrukerProcessor.process(
             TopicUtils.endringPaaOppfolgingsBrukerMessage(
@@ -410,43 +404,6 @@ class OppfolgingshendelseProcessorTest {
         withClue("Forventet bruker skulle arenakontor: $foreventetKontor men hadde $arenaKontor") {
             arenaKontor shouldBe foreventetKontor
         }
-    }
-
-    @Disabled
-    @Test
-    fun `Skal finne tidlig-arena-kontor selv om det er lagret på en annen av brukers identer`() {
-        val bruker = testBruker()
-        gittIdentIMapping(bruker.ident)
-        val annenIdent = randomFnr()
-        val internId = hentInternId(bruker.ident)
-        gittIdentIMapping(ident = annenIdent, internIdent = internId)
-        val arenaKontorVeilarboppfolging = "4141"
-        val arenaKontor = "4142"
-        val hendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
-        gittBrukerMedTidligArenaKontor(annenIdent, arenaKontorVeilarboppfolging, arenaKontor)
-        bruker.skalHaTidligArenaKontor(arenaKontor, annenIdent)
-
-        val result = hendelseProcessor.process(TopicUtils.oppfolgingStartetMelding(bruker))
-
-        result.shouldBeInstanceOf<Forward<Ident, OppfolgingsperiodeStartet>>()
-        val videresendtMelding = result.forwardedRecord.value()
-        videresendtMelding.arenaKontorFraOppfolgingsbrukerTopic!!.kontor.id shouldBe arenaKontor
-    }
-
-    @Disabled
-    @Test
-    fun `Skal slette tidlig-arena-kontor hvis det blir brukt`() {
-        val bruker = testBruker()
-        gittIdentIMapping(bruker.ident)
-        val arenaKontorVeilarboppfolging = "4141"
-        val arenaKontor = "4142"
-        val hendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
-        gittBrukerMedTidligArenaKontor(bruker.ident, arenaKontorVeilarboppfolging, arenaKontor)
-        bruker.skalHaTidligArenaKontor(arenaKontor)
-
-        hendelseProcessor.process(TopicUtils.oppfolgingStartetMelding(bruker))
-
-        bruker.skalHaTidligArenaKontor(null)
     }
 
     class Asserts(val service: OppfolgingsperiodeService, val bruker: Bruker) {
@@ -485,7 +442,7 @@ class OppfolgingshendelseProcessorTest {
             }
             val identChangeProcessor = IdentChangeProcessor(identService)
             val oppfolgingsPeriodeService = OppfolgingsperiodeService(identService::hentAlleIdenter)
-            val oppfolgingshendelseProcessor = OppfolgingsHendelseProcessor(oppfolgingsPeriodeService, { _ -> Result.success(Unit) }, { null})
+            val oppfolgingshendelseProcessor = OppfolgingsHendelseProcessor(oppfolgingsPeriodeService, { _ -> Result.success(Unit) })
             val startResult = oppfolgingshendelseProcessor
                 .process(oppfolgingStartetMelding(brukerMedDnr))
             startResult.shouldBeInstanceOf<Forward<*, *>>()

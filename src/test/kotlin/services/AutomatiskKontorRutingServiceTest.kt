@@ -324,39 +324,6 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                     )
                 )
             }
-            it("skal bruke Arena-kontor fra oppfolgingsbruker-endret ved oppfolgingsperiodeStart") {
-                val arenaKontorId = "ARENA1111"
-                val tidligArenaKontor =
-                    TidligArenaKontor(sistEndretDato = OffsetDateTime.now(), kontor = KontorId(arenaKontorId))
-                val aoKontorTilordning = KontorTilordning(
-                    ungBrukerMedGodeMuligheter.fnr(),
-                    ungBrukerMedGodeMuligheter.gtKontor(),
-                    ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()
-                )
-                val arenaKontorTilordning = KontorTilordning(
-                    ungBrukerMedGodeMuligheter.fnr(),
-                    KontorId(arenaKontorId),
-                    ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()
-                )
-                gitt(ungBrukerMedGodeMuligheter).tilordneKontorAutomatisk(
-                    oppfolgingsperiodeStartet(
-                        bruker = ungBrukerMedGodeMuligheter,
-                        tidligArenaKontor = tidligArenaKontor
-                    )
-                ) shouldBe TilordningSuccessKontorEndret(
-                    KontorEndringer(
-                        gtKontorEndret = ungBrukerMedGodeMuligheter.defaultGtKontorVedOppfolgStart(),
-                        aoKontorEndret = OppfolgingsPeriodeStartetLokalKontorTilordning(
-                            aoKontorTilordning,
-                            ungBrukerMedGodeMuligheter.gtKontor as KontorForGtFantKontor
-                        ),
-                        arenaKontorEndret = TidligArenaKontorVedOppfolgingStart(
-                            arenaKontorTilordning,
-                            tidligArenaKontor.sistEndretDato
-                        )
-                    )
-                )
-            }
         }
     }
 
@@ -843,7 +810,6 @@ fun oppfolgingsperiodeStartet(
         fnr = fnr,
         startDato = startDato.toZonedDateTime(),
         periodeId = OppfolgingsperiodeId(UUID.randomUUID()),
-        arenaKontorFraOppfolgingsbrukerTopic = tidligArenaKontor,
         erArbeidssøkerRegistrering = true
     )
 }

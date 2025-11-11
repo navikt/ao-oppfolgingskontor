@@ -25,6 +25,7 @@ enum class KontorEndringsType {
     @Deprecated("Skal ikke lenger brukes")
     ArenaKontorVedOppfolgingsStart,
     ArenaKontorHentetSynkrontVedOppfolgingsStart,
+    @Deprecated("Skal ikke lenger brukes")
     TidligArenaKontorVedOppfolgingStart,
     ArenaKontorVedOppfolgingStartMedEtterslep,
     MIGRERING,

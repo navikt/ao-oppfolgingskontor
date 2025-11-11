@@ -28,7 +28,6 @@ import java.time.ZoneOffset
 class EndringPaOppfolgingsBrukerProcessor(
     val oppfolgingsperiodeProvider: suspend (IdentSomKanLagres) -> OppfolgingsperiodeOppslagResult,
     val arenaKontorProvider: suspend (IdentSomKanLagres) -> ArenaKontorUtvidet?,
-    val lagreTidligArenakontor: (SkalKanskjeUnderOppfolging) -> Unit,
     val lagreKontorTilordninger: (KontorEndretEvent) -> Unit
 ) {
     val log = LoggerFactory.getLogger(EndringPaOppfolgingsBrukerProcessor::class.java)
@@ -57,6 +56,10 @@ class EndringPaOppfolgingsBrukerProcessor(
                 log.info("Kontor har ikke blitt endret, hopper over melding om endring på oppfølgingsbruker")
                 Skip()
             }
+            is IkkeUnderOppfølging -> {
+                log.info("Bruker er ikke under oppfølging (ennå), hopper over melding om endring på oppfølgingsbruker")
+                Skip()
+            }
             is SkalLagre -> {
                 val kontorTilordning = KontorTilordning(
                     fnr = result.fnr,
@@ -76,11 +79,6 @@ class EndringPaOppfolgingsBrukerProcessor(
                         )
                     }
                 )
-                Commit()
-            }
-            is SkalKanskjeUnderOppfolging -> {
-                log.info("Lagrer kontor fra arena før? melding om oppfølging startet")
-                lagreTidligArenakontor(result)
                 Commit()
             }
         }
@@ -131,13 +129,7 @@ class EndringPaOppfolgingsBrukerProcessor(
                             )
                         }
                     }
-                    NotUnderOppfolging -> {
-                        SkalKanskjeUnderOppfolging(
-                            KontorId(endringPaOppfolgingsBruker.oppfolgingsenhet),
-                            endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime(),
-                            ident
-                        )
-                    }
+                    is NotUnderOppfolging -> IkkeUnderOppfølging()
                     is OppfolgingperiodeOppslagFeil -> Feil(
                         Retry("Feil ved oppslag på oppfølgingsperiode: ${periode.message}"),
                     )
@@ -169,11 +161,7 @@ fun harKontorBlittEndret(arenaKontorUtvidet: ArenaKontorUtvidet?, oppfolgingsEnh
 sealed class EndringPaaOppfolgingsBrukerResult
 class BeforeCutoff : EndringPaaOppfolgingsBrukerResult()
 class HaddeNyereEndring : EndringPaaOppfolgingsBrukerResult()
-class SkalKanskjeUnderOppfolging(
-    val kontorId: KontorId,
-    val sistEndretDatoArena: OffsetDateTime,
-    val ident: Ident,
-) : EndringPaaOppfolgingsBrukerResult()
+class IkkeUnderOppfølging : EndringPaaOppfolgingsBrukerResult()
 class MeldingManglerEnhet : EndringPaaOppfolgingsBrukerResult()
 class SkalLagre(
     val oppfolgingsenhet: String,

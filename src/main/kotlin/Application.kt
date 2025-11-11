@@ -44,7 +44,6 @@ import services.IdentService
 import services.KontorRepubliseringService
 import services.KontorTilhorighetBulkService
 import services.OppfolgingsperiodeService
-import services.TidligArenakontorService
 import topics
 
 fun main(args: Array<String>) {
@@ -103,12 +102,6 @@ fun Application.module() {
         aktorIdProvider = { identSomKanLagres -> identService.hentAktorId(identSomKanLagres) }
     )
     val republiseringService = KontorRepubliseringService(kontorEndringProducer::republiserKontor, datasource, kontorNavnService::friskOppAlleKontorNavn)
-    val tidligArenakontorService = TidligArenakontorService()
-
-    val jobScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
-    jobScope.launch {
-        tidligArenakontorService.slettTidligArenakontor()
-    }
 
     install(KafkaStreamsPlugin) {
         this.automatiskKontorRutingService = automatiskKontorRutingService
@@ -121,7 +114,6 @@ fun Application.module() {
         this.criticalErrorNotificationFunction = setCriticalError
         this.kontorTilhorighetService = kontorTilhorighetService
         this.kontorEndringProducer = kontorEndringProducer
-        this.tidligArenakontorService = tidligArenakontorService
         this.veilarbArenaClient = veilarbArenaClient
     }
 
