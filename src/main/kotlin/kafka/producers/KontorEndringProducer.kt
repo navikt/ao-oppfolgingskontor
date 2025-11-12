@@ -154,6 +154,7 @@ enum class Tilordningstype {
                 KontorEndringsType.ArenaKontorVedOppfolgingsStart,
                 KontorEndringsType.TidligArenaKontorVedOppfolgingStart,
                 KontorEndringsType.ArenaKontorVedOppfolgingStartMedEtterslep,
+                KontorEndringsType.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart,
                 KontorEndringsType.MIGRERING,
                 KontorEndringsType.PATCH,
                 KontorEndringsType.ArenaMigrering -> {
