@@ -59,16 +59,16 @@ class IdentService(
     /* Tenkt kalt ved endring på aktor-v2 topic (endring i identer) */
     suspend fun håndterEndringPåIdenter(ident: Ident): IdenterResult = hentAlleIdenterOgOppdaterMapping(ident)
 
-    fun håndterEndringPåIdenter(aktorId: AktorId, nyeIdenter: List<OppdatertIdent>): Int {
-        val eksisterendeIdenter = hentIdentMappinger(
-            nyeIdenter.map { it.ident } + listOf(aktorId),
+    fun håndterEndringPåIdenter(aktorId: AktorId, oppdaterteIdenterFraPdl: List<OppdatertIdent>): Int {
+        val lagredeIdenter = hentIdentMappinger(
+            oppdaterteIdenterFraPdl.map { it.ident } + listOf(aktorId),
             includeHistorisk = true
         )
 
-        val identKanIgnoreres = eksisterendeIdenter.isEmpty()
+        val identKanIgnoreres = lagredeIdenter.isEmpty()
         if (identKanIgnoreres) return 0
 
-        val endringer = eksisterendeIdenter.finnEndringer(nyeIdenter)
+        val endringer = finnEndringer(lagredeIdenter, oppdaterteIdenterFraPdl)
         return transaction {
             IdentMappingTable.batchUpsert(endringer) { row ->
                 this[IdentMappingTable.id] = row.ident.value
@@ -221,7 +221,7 @@ class IdentService(
     private fun hentIdentMappinger(identInput: Ident): List<Ident> =
         hentIdentMappinger(identInput, false).map { it.ident }
 
-    private fun hentIdentMappinger(identInput: Ident, includeHistorisk: Boolean): List<IdentInfo> =
+    fun hentIdentMappinger(identInput: Ident, includeHistorisk: Boolean): List<IdentInfo> =
         hentIdentMappinger(listOf(identInput), includeHistorisk)
 
     private fun hentIdentMappinger(identeneTilEnPerson: List<Ident>, includeHistorisk: Boolean): List<IdentInfo> =
@@ -269,14 +269,10 @@ class IdentService(
                 }
         }
 
-    fun List<IdentInfo>.finnEndringer(oppdaterteIdenter: List<OppdatertIdent>): List<IdentEndring> {
-        val internIdent = this.map { it.internIdent }.distinct()
-            .also {
-                require(it.size == 1) { "Fant ${it.size} forskjellige intern-identer ved oppdatering av identer-endringer" }
-            }
-            .first()
+    fun finnEndringer(lagredeIdenter: List<IdentInfo>, oppdaterteIdenter: List<OppdatertIdent>): List<IdentEndring> {
+        val internIdent = velgInternIdent(lagredeIdenter)
 
-        val endringerPåEksiterendeIdenter = this.map { eksisterendeIdent ->
+        val endringerPåEksisterendeIdenter = lagredeIdenter.map { eksisterendeIdent ->
             val identMatch = oppdaterteIdenter.find { eksisterendeIdent.ident == it.ident }
             when {
                 identMatch == null -> BleSlettet(eksisterendeIdent.ident, eksisterendeIdent.historisk, internIdent)
@@ -290,8 +286,20 @@ class IdentService(
         }
 
         val innkommendeIdenter = oppdaterteIdenter.toSet().map { IdentInfo(it.ident, it.historisk, internIdent) }
-        val nyeIdenter = (innkommendeIdenter - this.toSet()).map { NyIdent(it.ident, it.historisk, internIdent) }
-        return endringerPåEksiterendeIdenter + nyeIdenter
+        val nyeIdenter =
+            (innkommendeIdenter - lagredeIdenter.toSet()).map { NyIdent(it.ident, it.historisk, internIdent) }
+        return endringerPåEksisterendeIdenter + nyeIdenter
+    }
+
+    private fun velgInternIdent(lagredeIdenter: List<IdentInfo>): Long {
+        val antallInternIdenter = lagredeIdenter.map { it.internIdent }.distinct().size
+        return if (antallInternIdenter == 1) {
+            lagredeIdenter.first().internIdent
+        } else {
+            log.info("Håndterer merge - velger internIdent")
+            val valgtInternIdentVedMerge = lagredeIdenter.minBy { it.internIdent }.internIdent
+            return valgtInternIdentVedMerge
+        }
     }
 }
 
