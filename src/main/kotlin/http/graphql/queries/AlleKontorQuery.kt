@@ -14,8 +14,10 @@ import org.slf4j.LoggerFactory
 val velgbareKontorTyper = listOf(
     KontorType.LOKAL,
 )
+
 fun MinimaltNorgKontor.erEgenAnsattKontor() = this.navn.toLowerCasePreservingASCIIRules()
     .contains("egne ansatte")
+
 fun erValgbartKontor(kontor: MinimaltNorgKontor): Boolean {
     if (kontor.type in velgbareKontorTyper) return true
     if (kontor.erEgenAnsattKontor()) return true
@@ -36,22 +38,26 @@ class AlleKontorQuery(
             fun compareKontor(kontor: MinimaltNorgKontor, otherKontor: MinimaltNorgKontor): Int {
                 return when {
                     kontor == gtKontor -> -1
-                    kontor.erEgenAnsattKontor() && !otherKontor.erEgenAnsattKontor() -> -1
                     else -> 0
                 }
             }
+            val spesialKontorerSomSkalSorteresFørst = listOf(
+                AlleKontorQueryDto("4154","Nasjonal oppfølgingsenhet"),
+                AlleKontorQueryDto("0393","Nav utland og fellestjenester Oslo"))
+
+            val andreSpesialKontorer = listOf(
+                AlleKontorQueryDto("2103","Nav Vikafossen"),
+                AlleKontorQueryDto("2990","Nav IT-avdelingen")
+            )
 
             val lokalKontor = norg2Client.hentAlleEnheter()
                 .filter { erValgbartKontor(it) }
-                .sortedWith { o1, o2 -> compareKontor(o1, o2) }
                 .map { AlleKontorQueryDto(it.kontorId,it.navn) }
 
-            listOf(
-                AlleKontorQueryDto("4154","Nasjonal oppfølgingsenhet"),
-                AlleKontorQueryDto("0393","Nav utland og fellestjenester Oslo"),
-                AlleKontorQueryDto("2103","Nav Vikafossen"),
-                AlleKontorQueryDto("2990","Nav IT-avdelingen"),
-            ) + lokalKontor
+            val kontorerSortertPåEnhetId = (lokalKontor + andreSpesialKontorer)
+                .sortedBy { it.kontorId }
+
+            spesialKontorerSomSkalSorteresFørst + kontorerSortertPåEnhetId
         }
             .onSuccess { it }
             .onFailure {
