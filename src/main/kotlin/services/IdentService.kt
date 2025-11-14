@@ -221,7 +221,7 @@ class IdentService(
     private fun hentIdentMappinger(identInput: Ident): List<Ident> =
         hentIdentMappinger(identInput, false).map { it.ident }
 
-    private fun hentIdentMappinger(identInput: Ident, includeHistorisk: Boolean): List<IdentInfo> =
+    fun hentIdentMappinger(identInput: Ident, includeHistorisk: Boolean): List<IdentInfo> =
         hentIdentMappinger(listOf(identInput), includeHistorisk)
 
     private fun hentIdentMappinger(identeneTilEnPerson: List<Ident>, includeHistorisk: Boolean): List<IdentInfo> =

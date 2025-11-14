@@ -408,9 +408,10 @@ class IdentServiceTest {
             )
         )
 
-        val identer = (identService.hentAlleIdenter(fnr2) as IdenterFunnet).identer
+        val identer = identService.hentIdentMappinger(aktorId2, true)
         identer.size shouldBe 4
-        identer.map { it.internIdent }
+        val unikeInternIdenter = identer.map { it.internIdent }.distinct().size
+        unikeInternIdenter shouldBe 1
     }
 
     data class IdentFraDb(
