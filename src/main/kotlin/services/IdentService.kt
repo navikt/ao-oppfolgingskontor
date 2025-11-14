@@ -272,12 +272,13 @@ class IdentService(
     fun List<IdentInfo>.finnEndringer(oppdaterteIdenter: List<OppdatertIdent>): List<IdentEndring> {
         // TODO: Håndter merge hvis flere ulike intern-identer
         val antallInternIdenter = this.map { it.internIdent }.distinct().size
+        if(antallInternIdenter == 1) {
+            this.first().internIdent
+        }
+        else {
 
-        val internIdent = this.map { it.internIdent }.distinct()
-            .also {
-                require(it.size == 1) { "Fant ${it.size} forskjellige intern-identer ved oppdatering av identer-endringer" }
-            }
-            .first()
+            mergeInternIdenter(oppdaterteIdenter, lagredeIdenter)
+        }
 
         val endringerPåEksiterendeIdenter = this.map { eksisterendeIdent ->
             val identMatch = oppdaterteIdenter.find { eksisterendeIdent.ident == it.ident }
@@ -295,6 +296,10 @@ class IdentService(
         val innkommendeIdenter = oppdaterteIdenter.toSet().map { IdentInfo(it.ident, it.historisk, internIdent) }
         val nyeIdenter = (innkommendeIdenter - this.toSet()).map { NyIdent(it.ident, it.historisk, internIdent) }
         return endringerPåEksiterendeIdenter + nyeIdenter
+    }
+
+    private fun mergeInternIdenter(oppdaterteIdenter: List<OppdatertIdent>): Long {
+
     }
 }
 
