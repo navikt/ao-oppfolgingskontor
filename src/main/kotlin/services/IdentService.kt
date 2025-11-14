@@ -59,16 +59,16 @@ class IdentService(
     /* Tenkt kalt ved endring på aktor-v2 topic (endring i identer) */
     suspend fun håndterEndringPåIdenter(ident: Ident): IdenterResult = hentAlleIdenterOgOppdaterMapping(ident)
 
-    fun håndterEndringPåIdenter(aktorId: AktorId, nyeIdenter: List<OppdatertIdent>): Int {
-        val eksisterendeIdenter = hentIdentMappinger(
-            nyeIdenter.map { it.ident } + listOf(aktorId),
+    fun håndterEndringPåIdenter(aktorId: AktorId, oppdaterteIdenterFraPdl: List<OppdatertIdent>): Int {
+        val lagredeIdenter = hentIdentMappinger(
+            oppdaterteIdenterFraPdl.map { it.ident } + listOf(aktorId),
             includeHistorisk = true
         )
 
-        val identKanIgnoreres = eksisterendeIdenter.isEmpty()
+        val identKanIgnoreres = lagredeIdenter.isEmpty()
         if (identKanIgnoreres) return 0
 
-        val endringer = eksisterendeIdenter.finnEndringer(nyeIdenter)
+        val endringer = finnEndringer(lagredeIdenter, oppdaterteIdenterFraPdl)
         return transaction {
             IdentMappingTable.batchUpsert(endringer) { row ->
                 this[IdentMappingTable.id] = row.ident.value
@@ -270,17 +270,9 @@ class IdentService(
         }
 
     fun finnEndringer(lagredeIdenter: List<IdentInfo>, oppdaterteIdenter: List<OppdatertIdent>): List<IdentEndring> {
-        // TODO: Håndter merge hvis flere ulike intern-identer
-        val antallInternIdenter = lagredeIdenter.map { it.internIdent }.distinct().size
-        if(antallInternIdenter == 1) {
-            lagredeIdenter.first().internIdent
-        }
-        else {
+        val internIdent = velgInternIdent(lagredeIdenter)
 
-            mergeInternIdenter(lagredeIdenter)
-        }
-
-        val endringerPåEksiterendeIdenter = lagredeIdenter.map { eksisterendeIdent ->
+        val endringerPåEksisterendeIdenter = lagredeIdenter.map { eksisterendeIdent ->
             val identMatch = oppdaterteIdenter.find { eksisterendeIdent.ident == it.ident }
             when {
                 identMatch == null -> BleSlettet(eksisterendeIdent.ident, eksisterendeIdent.historisk, internIdent)
@@ -294,12 +286,19 @@ class IdentService(
         }
 
         val innkommendeIdenter = oppdaterteIdenter.toSet().map { IdentInfo(it.ident, it.historisk, internIdent) }
-        val nyeIdenter = (innkommendeIdenter - lagredeIdenter.toSet()).map { NyIdent(it.ident, it.historisk, internIdent) }
-        return endringerPåEksiterendeIdenter + nyeIdenter
+        val nyeIdenter =
+            (innkommendeIdenter - lagredeIdenter.toSet()).map { NyIdent(it.ident, it.historisk, internIdent) }
+        return endringerPåEksisterendeIdenter + nyeIdenter
     }
 
-    private fun mergeInternIdenter(lagredeIdenter: List<IdentInfo>): Long {
-        val internIdent = lagredeIdenter.minBy { it.internIdent }.ident
+    private fun velgInternIdent(lagredeIdenter: List<IdentInfo>): Long {
+        val antallInternIdenter = lagredeIdenter.map { it.internIdent }.distinct().size
+        return if (antallInternIdenter == 1) {
+            lagredeIdenter.first().internIdent
+        } else {
+            val valgtInternIdentVedMerge = lagredeIdenter.minBy { it.internIdent }.internIdent
+            return valgtInternIdentVedMerge
+        }
     }
 }
 
