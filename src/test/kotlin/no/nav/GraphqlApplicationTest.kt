@@ -28,6 +28,8 @@ import no.nav.http.graphql.installGraphQl
 import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
 import no.nav.http.graphql.schemas.RegistrantTypeDto
 import domain.kontorForGt.KontorForGtFantDefaultKontor
+import io.kotest.matchers.collections.shouldContainExactly
+import no.nav.http.graphql.schemas.AlleKontorQueryDto
 import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
 import no.nav.services.KontorTilordningService
@@ -115,13 +117,25 @@ class GraphqlApplicationTest {
 
         val response = client.alleKontor(fnr)
 
+        val antallSpesialkontorer = 4
+        val antallEgneAnsatteKontorer = 14
+        val antallLokalkontorer = 248
         response.status shouldBe OK
         val payload = response.body<GraphqlResponse<AlleKontor>>()
         payload.errors shouldBe null
         val kontorer = payload.data!!.alleKontor
-        kontorer shouldHaveSize (248 + 3 + 15)
+        kontorer shouldHaveSize (antallLokalkontorer + antallSpesialkontorer + antallEgneAnsatteKontorer)
         // TODO: Assert på spesialkontorer først
 
+        val expectedOrder = listOf(
+            AlleKontorQueryDto("4154","Nasjonal oppfølgingsenhet"),
+            AlleKontorQueryDto("0393","Nav utland og fellestjenester Oslo"),
+            AlleKontorQueryDto("2103","Nav Vikafossen"),
+            AlleKontorQueryDto("2990","Nav IT-avdelingen"),
+        )
+
+        kontorer.subList(0,4) shouldContainExactly expectedOrder
+        kontorer.subList(4,19).filter { it.kontorNavn.contains("egne ansatte") }.size shouldBe antallEgneAnsatteKontorer
     }
 
     @Test
