@@ -401,10 +401,16 @@ class IdentServiceTest {
         identService.håndterEndringPåIdenter(
             aktorId = aktorId2,
             oppdaterteIdenterFraPdl = listOf(
-                OppdatertIdent(fnr1, )
+                OppdatertIdent(fnr1, true),
+                OppdatertIdent(aktorId1, true),
+                OppdatertIdent(fnr2, false),
+                OppdatertIdent(aktorId2, false)
             )
         )
 
+        val identer = (identService.hentAlleIdenter(fnr2) as IdenterFunnet).identer
+        identer.size shouldBe 4
+        identer.map { it.internIdent }
     }
 
     data class IdentFraDb(
