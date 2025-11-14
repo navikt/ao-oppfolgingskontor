@@ -270,6 +270,9 @@ class IdentService(
         }
 
     fun List<IdentInfo>.finnEndringer(oppdaterteIdenter: List<OppdatertIdent>): List<IdentEndring> {
+        // TODO: Håndter merge hvis flere ulike intern-identer
+        val antallInternIdenter = this.map { it.internIdent }.distinct().size
+
         val internIdent = this.map { it.internIdent }.distinct()
             .also {
                 require(it.size == 1) { "Fant ${it.size} forskjellige intern-identer ved oppdatering av identer-endringer" }
