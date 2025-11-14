@@ -296,6 +296,7 @@ class IdentService(
         return if (antallInternIdenter == 1) {
             lagredeIdenter.first().internIdent
         } else {
+            log.info("Håndterer merge - velger internIdent")
             val valgtInternIdentVedMerge = lagredeIdenter.minBy { it.internIdent }.internIdent
             return valgtInternIdentVedMerge
         }
