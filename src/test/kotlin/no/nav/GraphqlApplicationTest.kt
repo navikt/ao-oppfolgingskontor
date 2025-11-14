@@ -104,7 +104,7 @@ class GraphqlApplicationTest {
     }
 
     @Test
-    fun `skal kunne hente alle kontor via graphql`() = testApplication {
+    fun `skal kunne hente alle kontor i riktig rekkefølge via graphql`() = testApplication {
         val fnr = randomFnr(UKJENT)
         val kontorId = "4142"
         val client = getJsonHttpClient()
@@ -118,7 +118,10 @@ class GraphqlApplicationTest {
         response.status shouldBe OK
         val payload = response.body<GraphqlResponse<AlleKontor>>()
         payload.errors shouldBe null
-        payload.data!!.alleKontor shouldHaveSize (248 + 3 + 15)
+        val kontorer = payload.data!!.alleKontor
+        kontorer shouldHaveSize (248 + 3 + 15)
+        // TODO: Assert på spesialkontorer først
+
     }
 
     @Test

@@ -45,6 +45,7 @@ class AlleKontorQuery(
                 .filter { erValgbartKontor(it) }
                 .sortedWith { o1, o2 -> compareKontor(o1, o2) }
                 .map { AlleKontorQueryDto(it.kontorId,it.navn) }
+
             listOf(
                 AlleKontorQueryDto("4154","Nasjonal oppfølgingsenhet"),
                 AlleKontorQueryDto("0393","Nav utland og fellestjenester Oslo"),
