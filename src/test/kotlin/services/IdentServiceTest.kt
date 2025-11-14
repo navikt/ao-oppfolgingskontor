@@ -1,6 +1,11 @@
 package services
 
 import db.table.IdentMappingTable
+import db.table.IdentMappingTable.historisk
+import db.table.IdentMappingTable.identType
+import db.table.IdentMappingTable.internIdent
+import db.table.IdentMappingTable.slettetHosOss
+import db.table.IdentMappingTable.updatedAt
 import db.table.InternIdentSequence
 import db.table.nextValueOf
 import io.kotest.assertions.throwables.shouldThrow
@@ -19,6 +24,7 @@ import no.nav.db.Ident
 import no.nav.db.Ident.HistoriskStatus.AKTIV
 import no.nav.db.Ident.HistoriskStatus.HISTORISK
 import no.nav.db.Ident.HistoriskStatus.UKJENT
+import no.nav.db.IdentSomKanLagres
 import no.nav.db.Npid
 import no.nav.http.client.IdentFunnet
 import no.nav.http.client.IdenterFunnet
@@ -40,6 +46,7 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
 import java.time.OffsetDateTime
+import java.time.ZonedDateTime
 
 class IdentServiceTest {
 
@@ -384,8 +391,13 @@ class IdentServiceTest {
         val fnr1 = randomFnr()
         val aktorId2 = randomAktorId()
         val fnr2 = randomFnr()
-        val irrelevantIdentProvider = suspend { IdenterIkkeFunnet("Ikke brukt") }
+        val irrelevantIdentProvider: suspend (String) -> IdenterIkkeFunnet = { input -> IdenterIkkeFunnet("Ikke brukt")
+        }
         val identService = IdentService(irrelevantIdentProvider)
+        identService.
+
+
+    }
 
     data class IdentFraDb(
         val ident: String,
@@ -404,6 +416,18 @@ class IdentServiceTest {
                     row[IdentMappingTable.historisk],
                     row[IdentMappingTable.slettetHosOss] != null
                 )  }
+        }
+    }
+
+    fun lagreIdenter(identer: List<IdentSomKanLagres>) {
+        return transaction {
+            IdentMappingTable.batchInsert(identer) { row ->
+                this[slettetHosOss] = null
+                this[historisk] = row.historisk == HISTORISK
+                this[internIdent] = row.internIdent
+                this[identType] = row.ident.toIdentType()
+                this[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
+            }.size
         }
     }
 }
