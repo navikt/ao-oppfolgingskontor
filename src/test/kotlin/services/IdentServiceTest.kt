@@ -437,6 +437,7 @@ class IdentServiceTest {
     fun lagreIdenter(identer: List<Ident>, nyInternIdent: Long) {
         return transaction {
             IdentMappingTable.batchInsert(identer) { ident ->
+                this[IdentMappingTable.id] = ident.value
                 this[slettetHosOss] = null
                 this[historisk] = ident.historisk == HISTORISK
                 this[internIdent] = nyInternIdent
