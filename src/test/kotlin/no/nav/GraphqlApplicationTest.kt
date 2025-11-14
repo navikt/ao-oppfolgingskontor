@@ -32,6 +32,7 @@ import io.kotest.matchers.collections.shouldBeMonotonicallyDecreasingWith
 import io.kotest.matchers.collections.shouldBeSortedBy
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainExactly
+import io.kotest.matchers.shouldNotBe
 import no.nav.http.graphql.schemas.AlleKontorQueryDto
 import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
@@ -112,10 +113,12 @@ class GraphqlApplicationTest {
     fun `skal kunne hente alle kontor i riktig rekkefølge via graphql`() = testApplication {
         val fnr = randomFnr(UKJENT)
         val kontorId = "4142"
+        val geografiskKontorId = "1941"
         val client = getJsonHttpClient()
         graphqlServerInTest(fnr)
         application {
             gittBrukerMedKontorIArena(fnr, kontorId)
+            gittBrukerMedGeografiskTilknyttetKontor(fnr, geografiskKontorId)
         }
 
         val response = client.alleKontor(fnr)
@@ -131,11 +134,32 @@ class GraphqlApplicationTest {
 
         kontorer[0] shouldBe AlleKontorQueryDto("4154","Nasjonal oppfølgingsenhet")
         kontorer[1] shouldBe AlleKontorQueryDto("0393","Nav utland og fellestjenester Oslo")
+        kontorer[2].kontorId shouldBe geografiskKontorId
         kontorer shouldContain AlleKontorQueryDto("2103","Nav Vikafossen")
         kontorer shouldContain AlleKontorQueryDto("2990","Nav IT-avdelingen")
-        val kontorerEtterSpesialkontor = kontorer.subList(2, kontorer.size)
-        val sorterteKontorer = kontorerEtterSpesialkontor.sortedBy { it.kontorId.toInt() }
-        kontorerEtterSpesialkontor shouldBe sorterteKontorer
+        val kontorerEtterSpesialkontorOgGtKontor = kontorer.subList(3, kontorer.size)
+        val sorterteKontorer = kontorerEtterSpesialkontorOgGtKontor.sortedBy { it.kontorId.toInt() }
+        kontorerEtterSpesialkontorOgGtKontor shouldBe sorterteKontorer
+    }
+
+    @Test
+    fun `skal ikke sortere GT-kontor hvis det er likt som ao-kontor`() = testApplication {
+        val fnr = randomFnr(UKJENT)
+        val kontorId = "4142"
+        val geografiskKontorId = "4142"
+        val client = getJsonHttpClient()
+        graphqlServerInTest(fnr)
+        application {
+            gittBrukerMedKontorIArena(fnr, kontorId)
+            gittBrukerMedGeografiskTilknyttetKontor(fnr, geografiskKontorId)
+        }
+
+        val response = client.alleKontor(fnr)
+
+        response.status shouldBe OK
+        val payload = response.body<GraphqlResponse<AlleKontor>>()
+        val kontorer = payload.data!!.alleKontor
+        kontorer[2].kontorId shouldNotBe geografiskKontorId
     }
 
     @Test

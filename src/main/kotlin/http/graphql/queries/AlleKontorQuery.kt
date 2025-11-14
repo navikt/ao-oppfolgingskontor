@@ -2,7 +2,9 @@ package no.nav.http.graphql.queries
 
 import com.expediagroup.graphql.server.operations.Query
 import io.ktor.util.toLowerCasePreservingASCIIRules
+import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.GeografiskTilknyttetKontorEntity
+import no.nav.db.table.ArenaKontorTable
 import no.nav.db.table.GeografiskTilknytningKontorTable
 import no.nav.http.client.KontorType
 import no.nav.http.client.MinimaltNorgKontor
@@ -34,13 +36,11 @@ class AlleKontorQuery(
             val gtKontor = transaction {
                 GeografiskTilknyttetKontorEntity.find { GeografiskTilknytningKontorTable.id eq ident }.firstOrNull()
             }
-
-            fun compareKontor(kontor: MinimaltNorgKontor, otherKontor: MinimaltNorgKontor): Int {
-                return when {
-                    kontor == gtKontor -> -1
-                    else -> 0
-                }
+            val aoKontor = transaction {
+                ArenaKontorEntity.find { ArenaKontorTable.id eq ident }.firstOrNull()
             }
+            val skalSortereGtKontorFørAndreLokalkontor = gtKontor != null && (aoKontor == null || aoKontor.kontorId != gtKontor.kontorId)
+
             val spesialKontorerSomSkalSorteresFørst = listOf(
                 AlleKontorQueryDto("4154","Nasjonal oppfølgingsenhet"),
                 AlleKontorQueryDto("0393","Nav utland og fellestjenester Oslo"))
@@ -50,12 +50,15 @@ class AlleKontorQuery(
                 AlleKontorQueryDto("2990","Nav IT-avdelingen")
             )
 
-            val lokalKontor = norg2Client.hentAlleEnheter()
+            val lokalKontorer = norg2Client.hentAlleEnheter()
                 .filter { erValgbartKontor(it) }
                 .map { AlleKontorQueryDto(it.kontorId,it.navn) }
 
-            val kontorerSortertPåEnhetId = (lokalKontor + andreSpesialKontorer)
-                .sortedBy { it.kontorId }
+            val kontorerSortertPåEnhetId = (lokalKontorer + andreSpesialKontorer)
+                .sortedBy {
+                    if (skalSortereGtKontorFørAndreLokalkontor && it.kontorId == gtKontor.kontorId) 0
+                    else it.kontorId.toLong()
+                }
 
             spesialKontorerSomSkalSorteresFørst + kontorerSortertPåEnhetId
         }
