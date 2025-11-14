@@ -389,13 +389,21 @@ class IdentServiceTest {
         flywayMigrationInTest()
         val aktorId1 = randomAktorId()
         val fnr1 = randomFnr()
+        val internIdent1 = 123456L
+        val internIdent2 = internIdent1 + 1
         val aktorId2 = randomAktorId()
         val fnr2 = randomFnr()
-        val irrelevantIdentProvider: suspend (String) -> IdenterIkkeFunnet = { input -> IdenterIkkeFunnet("Ikke brukt")
-        }
+        val irrelevantIdentProvider: suspend (String) -> IdenterIkkeFunnet = { input -> IdenterIkkeFunnet("Ikke brukt") }
         val identService = IdentService(irrelevantIdentProvider)
-        identService.
+        lagreIdenter(identer = listOf(aktorId1, fnr1), nyInternIdent = internIdent1)
+        lagreIdenter(identer = listOf(aktorId2, fnr2), nyInternIdent = internIdent2)
 
+        identService.håndterEndringPåIdenter(
+            aktorId = aktorId2,
+            oppdaterteIdenterFraPdl = listOf(
+                OppdatertIdent(fnr1, )
+            )
+        )
 
     }
 
@@ -419,13 +427,13 @@ class IdentServiceTest {
         }
     }
 
-    fun lagreIdenter(identer: List<IdentSomKanLagres>) {
+    fun lagreIdenter(identer: List<Ident>, nyInternIdent: Long) {
         return transaction {
-            IdentMappingTable.batchInsert(identer) { row ->
+            IdentMappingTable.batchInsert(identer) { ident ->
                 this[slettetHosOss] = null
-                this[historisk] = row.historisk == HISTORISK
-                this[internIdent] = row.internIdent
-                this[identType] = row.ident.toIdentType()
+                this[historisk] = ident.historisk == HISTORISK
+                this[internIdent] = nyInternIdent
+                this[identType] = ident.toIdentType()
                 this[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
             }.size
         }
