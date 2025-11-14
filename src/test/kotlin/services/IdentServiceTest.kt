@@ -22,6 +22,7 @@ import no.nav.db.Ident.HistoriskStatus.UKJENT
 import no.nav.db.Npid
 import no.nav.http.client.IdentFunnet
 import no.nav.http.client.IdenterFunnet
+import no.nav.http.client.IdenterIkkeFunnet
 import no.nav.http.client.IdenterOppslagFeil
 import no.nav.http.client.IdenterResult
 import no.nav.kafka.processor.Retry
@@ -31,6 +32,7 @@ import no.nav.person.pdl.aktor.v2.Identifikator
 import no.nav.person.pdl.aktor.v2.Type
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.randomAktorId
+import no.nav.utils.randomFnr
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.batchUpsert
@@ -374,6 +376,16 @@ class IdentServiceTest {
 
         identService.veksleAktorIdIForetrukketIdent(aktorId).shouldBeInstanceOf<IdentFunnet>()
     }
+
+    @Test
+    fun `skal håndtere merge`() = runTest {
+        flywayMigrationInTest()
+        val aktorId1 = randomAktorId()
+        val fnr1 = randomFnr()
+        val aktorId2 = randomAktorId()
+        val fnr2 = randomFnr()
+        val irrelevantIdentProvider = suspend { IdenterIkkeFunnet("Ikke brukt") }
+        val identService = IdentService(irrelevantIdentProvider)
 
     data class IdentFraDb(
         val ident: String,
