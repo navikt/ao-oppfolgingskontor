@@ -5,6 +5,7 @@ import kafka.consumers.oppfolgingsHendelser.OppfolgingStartetHendelseDto
 import kafka.consumers.oppfolgingsHendelser.OppfolgingsAvsluttetHendelseDto
 import kafka.consumers.oppfolgingsHendelser.OppfolgingsHendelseDto
 import kafka.consumers.oppfolgingsHendelser.oppfolgingsHendelseJson
+import no.nav.BRUK_AO_RUTING
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
 import no.nav.domain.OppfolgingsperiodeId
@@ -76,7 +77,9 @@ class OppfolgingsHendelseProcessor(
         return when (this) {
             IngenPeriodeAvsluttet -> Skip()
             GammelPeriodeAvsluttet, InnkommendePeriodeAvsluttet -> {
-                publiserTombstone(event.periodeId)
+                if (BRUK_AO_RUTING) {
+                    publiserTombstone(event.periodeId)
+                }
                 Commit()
             }
         }
