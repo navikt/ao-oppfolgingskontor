@@ -27,11 +27,11 @@ object KontorTilordningService {
         val kontorTilhorighet = kontorEndring.tilordning
         transaction {
             kontorEndring.logg()
-            val entryId = settKontorIHistorikk(kontorEndring)
             when (kontorEndring) {
                 is AOKontorEndret -> {
                 }
                 is ArenaKontorEndret -> {
+                    val entryId = settKontorIHistorikk(kontorEndring)
                     ArbeidsOppfolgingKontorTable.upsert {
                         it[kontorId] = kontorTilhorighet.kontorId.id
                         it[id] = kontorTilhorighet.fnr.value
@@ -49,6 +49,7 @@ object KontorTilordningService {
                     }
                 }
                 is GTKontorEndret -> {
+                    val entryId = settKontorIHistorikk(kontorEndring)
                     GeografiskTilknytningKontorTable.upsert {
                         it[kontorId] = kontorTilhorighet.kontorId.id
                         it[id] = kontorTilhorighet.fnr.value
