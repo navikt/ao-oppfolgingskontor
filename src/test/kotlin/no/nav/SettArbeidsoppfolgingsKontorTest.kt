@@ -145,6 +145,33 @@ class SettArbeidsoppfolgingsKontorTest {
     }
 
     @Test
+    fun `skal returnere 501 og ikke lagre noe ved setting av aokontor`() = testApplication {
+        withMockOAuth2Server {
+            val fnr = randomFnr(UKJENT)
+            val aktorId = randomAktorId()
+            val kontorId = "4444"
+            val veilederIdent = NavIdent("Z990000")
+            val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
+            val producer = setupTestAppWithAuthAndGraphql(fnr, aktorId) {
+                gittBrukerUnderOppfolging(fnr, oppfolgingsperiodeId)
+                gittIdentIMapping(fnr)
+            }
+            val httpClient = getJsonHttpClient()
+
+            val response = httpClient.settKontor(server, fnr = fnr, kontorId = kontorId, navIdent = veilederIdent)
+
+            response.status shouldBe HttpStatusCode.NotImplemented
+            val readResponse = httpClient.kontorTilhorighet(fnr, server.issueToken(veilederIdent))
+            readResponse.status shouldBe HttpStatusCode.OK
+            val kontorResponse = readResponse.body<GraphqlResponse<KontorTilhorighet>>()
+            kontorResponse.errors shouldBe null
+            kontorResponse.data?.kontorTilhorighet shouldBe null
+
+            producer.history().size shouldBe 0
+        }
+    }
+
+    @Test
     fun `skal svare med 409 når bruker ikke er under oppfølging`() = testApplication {
         withMockOAuth2Server {
             val fnr = randomFnr(UKJENT)
@@ -158,7 +185,7 @@ class SettArbeidsoppfolgingsKontorTest {
 
             val response = httpClient.settKontor(server, fnr = fnr, kontorId = kontorId, navIdent = veilederIdent)
 
-            response.status shouldBe HttpStatusCode.Conflict
+            response.status shouldBe HttpStatusCode.NotImplemented // TODO: Skal returnere conflict uten toggle
         }
     }
 

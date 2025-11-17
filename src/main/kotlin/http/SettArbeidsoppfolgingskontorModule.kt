@@ -52,6 +52,8 @@ fun Application.configureArbeidsoppfolgingskontorModule(
     routing {
         authenticate("EntraAD") {
             post("/api/kontor") {
+                call.respond(HttpStatusCode.NotImplemented)
+                return@post
                 runCatching {
                     val kontorTilordning = call.receive<ArbeidsoppfolgingsKontorTilordningDTO>()
                     val principal = when(val authresult = authenticateRequest(call.request)) {
