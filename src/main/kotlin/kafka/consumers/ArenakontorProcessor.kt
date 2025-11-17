@@ -5,9 +5,12 @@ import http.client.ArenakontorOppslagFeilet
 import http.client.ArenakontorResult
 import http.client.ArenakontorFunnet
 import http.client.ArenakontorIkkeFunnet
+import kafka.producers.OppfolgingEndretTilordningMelding
 import kotlinx.coroutines.runBlocking
+import no.nav.PUBLISER_ARENA_KONTOR
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
+import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorTilordning
 import no.nav.domain.events.ArenaKontorHentetSynkrontVedOppfolgingStart
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
@@ -27,6 +30,7 @@ class ArenakontorProcessor(
     private val hentArenakontor: suspend (Ident) -> ArenakontorResult,
     private val lagreKontortilordning: (ArenaKontorHentetSynkrontVedOppfolgingStart) -> Unit,
     val arenaKontorProvider: suspend (IdentSomKanLagres) -> ArenaKontorUtvidet?,
+    val publiserKontorTilordning: (kontorEndring: OppfolgingEndretTilordningMelding) -> Result<Unit>
 ) {
     companion object {
         const val processorName = "ArenakontorProcessor"
@@ -86,6 +90,16 @@ class ArenakontorProcessor(
                             } else {
                                 logger.info("Lagrer funnet arenakontor")
                                 lagreKontortilordning(kontorTilordning)
+                                if (PUBLISER_ARENA_KONTOR) {
+                                    publiserKontorTilordning(
+                                        OppfolgingEndretTilordningMelding(
+                                            kontorId = kontorTilordning.tilordning.kontorId.id,
+                                            oppfolgingsperiodeId = kontorTilordning.tilordning.oppfolgingsperiodeId.value.toString(),
+                                            ident =  kontorTilordning.tilordning.fnr.value,
+                                            kontorEndringsType = KontorEndringsType.ArenaKontorHentetSynkrontVedOppfolgingsStart
+                                        )
+                                    )
+                                }
                                 Commit()
                             }
                         }

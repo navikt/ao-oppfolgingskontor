@@ -145,3 +145,4 @@ fun ApplicationEnvironment.isProduction(): Boolean {
 }
 
 val BRUK_AO_RUTING: Boolean = false
+val PUBLISER_ARENA_KONTOR: Boolean = !BRUK_AO_RUTING
