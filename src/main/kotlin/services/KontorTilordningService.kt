@@ -1,10 +1,10 @@
 package no.nav.services
 
+import db.table.AlternativAoKontorTable
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.db.table.ArenaKontorTable
 import no.nav.db.table.GeografiskTilknytningKontorTable
 import no.nav.db.table.KontorhistorikkTable
-import no.nav.domain.Registrant
 import no.nav.domain.System
 import no.nav.domain.events.AOKontorEndret
 import no.nav.domain.events.ArenaKontorEndret
@@ -29,6 +29,14 @@ object KontorTilordningService {
             kontorEndring.logg()
             when (kontorEndring) {
                 is AOKontorEndret -> {
+                    AlternativAoKontorTable.insert {
+                        it[fnr] = kontorTilhorighet.fnr.value
+                        it[kontorId] = kontorTilhorighet.kontorId.id
+                        it[endretAv] = System().getIdent()
+                        it[endretAvType] = System().getType()
+                        it[kontorendringstype] = kontorEndring.kontorEndringsType().name
+                        it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
+                    }
                 }
                 is ArenaKontorEndret -> {
                     val entryId = settKontorIHistorikk(kontorEndring)
