@@ -4,6 +4,8 @@ import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.db.table.ArenaKontorTable
 import no.nav.db.table.GeografiskTilknytningKontorTable
 import no.nav.db.table.KontorhistorikkTable
+import no.nav.domain.Registrant
+import no.nav.domain.System
 import no.nav.domain.events.AOKontorEndret
 import no.nav.domain.events.ArenaKontorEndret
 import no.nav.domain.events.GTKontorEndret
@@ -28,16 +30,16 @@ object KontorTilordningService {
             val entryId = settKontorIHistorikk(kontorEndring)
             when (kontorEndring) {
                 is AOKontorEndret -> {
+                }
+                is ArenaKontorEndret -> {
                     ArbeidsOppfolgingKontorTable.upsert {
                         it[kontorId] = kontorTilhorighet.kontorId.id
                         it[id] = kontorTilhorighet.fnr.value
-                        it[endretAv] = kontorEndring.registrant.getIdent()
-                        it[endretAvType] = kontorEndring.registrant.getType()
+                        it[endretAv] = System().getIdent()
+                        it[endretAvType] = System().getType()
                         it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
                         it[historikkEntry] = entryId.value
                     }
-                }
-                is ArenaKontorEndret -> {
                     ArenaKontorTable.upsert {
                         it[kontorId] = kontorTilhorighet.kontorId.id
                         it[id] = kontorTilhorighet.fnr.value
