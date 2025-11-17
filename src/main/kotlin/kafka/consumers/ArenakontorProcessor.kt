@@ -30,7 +30,8 @@ class ArenakontorProcessor(
     private val hentArenakontor: suspend (Ident) -> ArenakontorResult,
     private val lagreKontortilordning: (ArenaKontorHentetSynkrontVedOppfolgingStart) -> Unit,
     private val arenaKontorProvider: suspend (IdentSomKanLagres) -> ArenaKontorUtvidet?,
-    private val publiserKontorTilordning: suspend (kontorEndring: OppfolgingEndretTilordningMelding) -> Result<Unit>
+    private val publiserKontorTilordning: suspend (kontorEndring: OppfolgingEndretTilordningMelding) -> Result<Unit>,
+    private val publiserArenaKontor: Boolean = PUBLISER_ARENA_KONTOR
 ) {
     companion object {
         const val processorName = "ArenakontorProcessor"
@@ -90,7 +91,7 @@ class ArenakontorProcessor(
                             } else {
                                 logger.info("Lagrer funnet arenakontor")
                                 lagreKontortilordning(kontorTilordning)
-                                if (PUBLISER_ARENA_KONTOR) {
+                                if (publiserArenaKontor) {
                                     publiserKontorTilordning(
                                         OppfolgingEndretTilordningMelding(
                                             kontorId = kontorTilordning.tilordning.kontorId.id,

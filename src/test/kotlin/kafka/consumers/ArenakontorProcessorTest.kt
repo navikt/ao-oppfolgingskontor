@@ -138,6 +138,60 @@ class ArenakontorProcessorTest {
         }
     }
 
+    @Test
+    fun `Skal publisere melding på topic når PUBLISER_ARENA_KONTOR er true`() {
+        val record = oppfolgingsperiodeStartetRecord()
+        val kontorId = KontorId("1234")
+        val gammelKontorId = KontorId("4321")
+        var harPublisertMelding = false
+        val processor = ArenakontorProcessor(
+            { ArenakontorFunnet(kontorId, ZonedDateTime.now()) },
+            { KontorTilordningService.tilordneKontor(it, true) },
+            {
+                ArenaKontorUtvidet(
+                    kontorId = gammelKontorId,
+                    oppfolgingsperiodeId = null,
+                    sistEndretDatoArena = OffsetDateTime.now().minusDays(1)
+                )
+            },
+            {
+                harPublisertMelding = true
+                Result.success(Unit)
+            },
+            publiserArenaKontor = true
+        )
+        val result = processor.process(record)
+        result.shouldBeInstanceOf<Commit<*, *>>()
+        harPublisertMelding shouldBe true
+    }
+
+    @Test
+    fun `Skal ikke publisere melding på topic når PUBLISER_ARENA_KONTOR er false`() {
+        val record = oppfolgingsperiodeStartetRecord()
+        val kontorId = KontorId("1234")
+        val gammelKontorId = KontorId("4321")
+        var harPublisertMelding = false
+        val processor = ArenakontorProcessor(
+            { ArenakontorFunnet(kontorId, ZonedDateTime.now()) },
+            { KontorTilordningService.tilordneKontor(it, true) },
+            {
+                ArenaKontorUtvidet(
+                    kontorId = gammelKontorId,
+                    oppfolgingsperiodeId = null,
+                    sistEndretDatoArena = OffsetDateTime.now().minusDays(1)
+                )
+            },
+            {
+                harPublisertMelding = true
+                Result.success(Unit)
+            },
+            publiserArenaKontor = false
+        )
+        val result = processor.process(record)
+        result.shouldBeInstanceOf<Commit<*, *>>()
+        harPublisertMelding shouldBe false
+    }
+
     fun oppfolgingsperiodeAvsluttetRecord(): Record<Ident, OppfolgingsperiodeEndret> {
         val oppfolgingsperiode = oppfolgingsperiodeAvsluttet()
         return Record(
