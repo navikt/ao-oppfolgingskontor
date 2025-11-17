@@ -1,11 +1,18 @@
 package no.nav
 
 import dab.poao.nav.no.health.CriticalErrorNotificationFunction
+import http.client.VeilarbArenaClient
+import http.client.getVeilarbarenaScope
 import http.configureContentNegotiation
 import http.configureHentArbeidsoppfolgingskontorBulkModule
 import io.ktor.server.application.*
 import io.ktor.server.netty.*
 import kafka.producers.KontorEndringProducer
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.job
+import kotlinx.coroutines.launch
 import no.nav.db.configureDatabase
 import no.nav.http.client.*
 import no.nav.http.client.arbeidssogerregisteret.ArbeidssokerregisterClient
@@ -22,6 +29,7 @@ import no.nav.http.graphql.configureGraphQlModule
 import no.nav.http.graphql.getNorg2Url
 import no.nav.http.graphql.getPDLUrl
 import no.nav.http.graphql.getPoaoTilgangUrl
+import no.nav.http.graphql.getVeilarbArenaUrl
 import no.nav.kafka.KafkaStreamsPlugin
 import no.nav.kafka.config.createKafkaProducer
 import no.nav.kafka.config.toKafkaEnv
@@ -63,6 +71,10 @@ fun Application.module() {
         environment.getPoaoTilgangUrl(),
         texasClient.tokenProvider(environment.getPoaoTilgangScope())
     )
+    val veilarbArenaClient = VeilarbArenaClient(
+        baseUrl = environment.getVeilarbArenaUrl(),
+        azureTokenProvider = texasClient.tokenProvider(environment.getVeilarbarenaScope())
+    )
 
     val identService = IdentService({ pdlClient.hentIdenterFor(it) })
     val gtNorgService = GTNorgService(
@@ -102,6 +114,7 @@ fun Application.module() {
         this.criticalErrorNotificationFunction = setCriticalError
         this.kontorTilhorighetService = kontorTilhorighetService
         this.kontorEndringProducer = kontorEndringProducer
+        this.veilarbArenaClient = veilarbArenaClient
     }
 
     val issuer = environment.getIssuer()

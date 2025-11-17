@@ -10,6 +10,7 @@ import no.nav.utils.ZonedDateTimeSerializer
 import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 
+@Serializable
 sealed class OppfolgingsperiodeEndret {
     abstract val fnr: Ident
     abstract val periodeId: OppfolgingsperiodeId
@@ -21,7 +22,6 @@ data class OppfolgingsperiodeStartet(
     @Serializable(with = ZonedDateTimeSerializer::class)
     val startDato: ZonedDateTime,
     override val periodeId: OppfolgingsperiodeId,
-    val arenaKontorFraOppfolgingsbrukerTopic: TidligArenaKontor?,
     val erArbeidssøkerRegistrering: Boolean,
 ): OppfolgingsperiodeEndret()
 

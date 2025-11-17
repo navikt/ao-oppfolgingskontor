@@ -76,6 +76,7 @@ spec:
       external:
         - host: norg2.prod-fss-pub.nais.io
         - host: pdl-api.prod-fss-pub.nais.io
+        - host: veilarbarena.prod-fss-pub.nais.io
   azure:
     application:
       enabled: true
@@ -102,3 +103,7 @@ spec:
       value: http://skjermede-personer-pip.nom
     - name: SKJERMEDE_PERSONER_PIP_SCOPE
       value: api://prod-gcp.nom.skjermede-personer-pip/.default
+    - name: VEILARBARENA_URL
+      value: https://veilarbarena.prod-fss-pub.nais.io
+    - name: VEILARBARENA_SCOPE
+      value: api://prod-fss.pto.veilarbarena/.default

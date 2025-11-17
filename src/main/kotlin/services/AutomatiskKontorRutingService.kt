@@ -84,7 +84,7 @@ class AutomatiskKontorRutingService(
     private val harStrengtFortroligAdresseProvider:
     suspend (fnr: Ident) -> HarStrengtFortroligAdresseResult,
     private val isUnderOppfolgingProvider: suspend (fnr: IdentSomKanLagres) -> OppfolgingsperiodeOppslagResult,
-    private val harTilordnetKontorForOppfolgingsperiodeStartetProvider: suspend (fnr: Ident, oppfolgingsperiodeId: OppfolgingsperiodeId) -> Outcome<Boolean>,
+    private val harAlleredeTilordnetAoKontorForOppfolgingsperiodeProvider: suspend (fnr: Ident, oppfolgingsperiodeId: OppfolgingsperiodeId) -> Outcome<Boolean>,
 ) {
     companion object {
         val VIKAFOSSEN = KontorId("2103")
@@ -102,10 +102,10 @@ class AutomatiskKontorRutingService(
                 NotUnderOppfolging -> return TilordningSuccessIngenEndring
                 is OppfolgingperiodeOppslagFeil -> return TilordningFeil("Feil ved oppslag på oppfolgingsperiode: ${underOppfolgingResult.message}")
             }
-            val harBruktOppfolgingsperiodenTidligere = harTilordnetKontorForOppfolgingsperiodeStartetProvider(fnr, oppfolgingsperiodeId)
-            when (harBruktOppfolgingsperiodenTidligere) {
-                is Outcome.Failure -> return TilordningFeil("Feil ved sjekk av om oppfølgingsperiodeStart har ført til en kontortilordning")
-                is Outcome.Success -> if (harBruktOppfolgingsperiodenTidligere.data) return TilordningSuccessIngenEndring
+            val harAlleredeTilordnetAoKontorForOppfolgingsperiode = harAlleredeTilordnetAoKontorForOppfolgingsperiodeProvider(fnr, oppfolgingsperiodeId)
+            when (harAlleredeTilordnetAoKontorForOppfolgingsperiode) {
+                is Outcome.Failure -> return TilordningFeil("Feil ved sjekk av om vi allerede har tilordnet et AO-kontor for oppfølgingsperioden")
+                is Outcome.Success -> if (harAlleredeTilordnetAoKontorForOppfolgingsperiode.data) return TilordningSuccessIngenEndring
             }
             val (skjermetResult, adressebeskyttelseResult, aldersResult) = coroutineScope {
                 val skjermetDeferred = async { erSkjermetProvider(fnr) }
@@ -154,7 +154,6 @@ class AutomatiskKontorRutingService(
                 .let {
                     KontorEndringer(
                         aoKontorEndret = it,
-                        arenaKontorEndret = arenaKontorEndring(oppfolgingsperiodeStartet, oppfolgingsperiodeId),
                         gtKontorEndret = gtKontorResultat.toGtKontorEndret(fnr, oppfolgingsperiodeId)
                     )
                 }
@@ -163,24 +162,6 @@ class AutomatiskKontorRutingService(
 
             } catch (e: Exception) {
             return TilordningFeil("Feil ved tilordning av kontor: ${e.message ?: e.toString()}")
-        }
-    }
-
-    private fun arenaKontorEndring(periodeStartetEvent: OppfolgingsperiodeStartet, oppfolgingsperiodeId: OppfolgingsperiodeId): ArenaKontorEndret? {
-        val arenaKontorFraOppfolgingsbruker = periodeStartetEvent.arenaKontorFraOppfolgingsbrukerTopic
-
-        return when {
-            arenaKontorFraOppfolgingsbruker != null -> {
-                TidligArenaKontorVedOppfolgingStart(
-                    KontorTilordning(
-                        periodeStartetEvent.fnr,
-                        arenaKontorFraOppfolgingsbruker.kontor,
-                        oppfolgingsperiodeId,
-                    ),
-                    arenaKontorFraOppfolgingsbruker.sistEndretDato
-                )
-            }
-            else -> null
         }
     }
 

@@ -1,6 +1,5 @@
 package no.nav.kafka.consumers
 
-import db.table.TidligArenaKontorTable
 import domain.ArenaKontorUtvidet
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
@@ -12,26 +11,24 @@ import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.events.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep
 import no.nav.domain.events.EndringPaaOppfolgingsBrukerFraArena
+import no.nav.domain.events.KontorEndretEvent
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
 import no.nav.services.AktivOppfolgingsperiode
-import no.nav.services.KontorTilordningService
 import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingperiodeOppslagFeil
 import no.nav.services.OppfolgingsperiodeOppslagResult
 import org.apache.kafka.streams.processor.api.Record
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.upsert
 import org.slf4j.LoggerFactory
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
-import java.time.ZonedDateTime
 
 class EndringPaOppfolgingsBrukerProcessor(
     val oppfolgingsperiodeProvider: suspend (IdentSomKanLagres) -> OppfolgingsperiodeOppslagResult,
     val arenaKontorProvider: suspend (IdentSomKanLagres) -> ArenaKontorUtvidet?,
+    val lagreKontorTilordninger: (KontorEndretEvent) -> Unit
 ) {
     val log = LoggerFactory.getLogger(EndringPaOppfolgingsBrukerProcessor::class.java)
 
@@ -55,12 +52,12 @@ class EndringPaOppfolgingsBrukerProcessor(
                 log.warn("Mottok endring på oppfølgingsbruker uten gyldig kontorId")
                 Skip()
             }
-            is IkkeUnderOppfolging -> {
-                log.info("Bruker er ikke under oppfølging, hopper over melding om endring på oppfølgingsbruker")
-                Skip()
-            }
             is IngenEndring -> {
                 log.info("Kontor har ikke blitt endret, hopper over melding om endring på oppfølgingsbruker")
+                Skip()
+            }
+            is IkkeUnderOppfølging -> {
+                log.info("Bruker er ikke under oppfølging (ennå), hopper over melding om endring på oppfølgingsbruker")
                 Skip()
             }
             is SkalLagre -> {
@@ -69,7 +66,7 @@ class EndringPaOppfolgingsBrukerProcessor(
                     kontorId = KontorId(result.oppfolgingsenhet),
                     result.oppfolgingsperiodeId
                 )
-                KontorTilordningService.tilordneKontor(
+                lagreKontorTilordninger(
                     if (result.erFørsteArenaKontorIOppfolgingsperiode) {
                         ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep(
                             kontorTilordning = kontorTilordning,
@@ -84,28 +81,12 @@ class EndringPaOppfolgingsBrukerProcessor(
                 )
                 Commit()
             }
-            is UnderOppfolgingIArenaMenIkkeLokalt -> {
-                log.info("Lagrer kontor fra arena før? melding om oppfølging startet")
-                lagreTidligArenaKontor(result)
-                Commit()
-            }
-        }
-    }
-
-    fun lagreTidligArenaKontor(result: UnderOppfolgingIArenaMenIkkeLokalt) {
-        transaction {
-            TidligArenaKontorTable.upsert {
-                it[id] = result.ident.value
-                it[kontorId] = result.kontorId.id
-                it[sisteEndretDato] = result.sistEndretDatoArena
-                it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
-            }
         }
     }
 
     fun process(record: Record<String, String>): RecordProcessingResult<String, String> {
         try {
-            val result = internalProcess(record)
+            val result: EndringPaaOppfolgingsBrukerResult = internalProcess(record)
             return handleResult(result)
         } catch (e: Throwable) {
             val message = "Uhåndtert feil ved behandling av endring på oppfolgingsbruker fra Arena: ${e.message}"
@@ -148,30 +129,12 @@ class EndringPaOppfolgingsBrukerProcessor(
                             )
                         }
                     }
-                    NotUnderOppfolging -> {
-                        if (endringPaOppfolgingsBruker.erUnderOppfolgingIArena()) {
-                            UnderOppfolgingIArenaMenIkkeLokalt(
-                                KontorId(endringPaOppfolgingsBruker.oppfolgingsenhet),
-                                endringPaOppfolgingsBruker.sistEndretDato.convertToOffsetDatetime(),
-                                ident
-                            )
-                        } else {
-                            IkkeUnderOppfolging()
-                        }
-                    }
+                    is NotUnderOppfolging -> IkkeUnderOppfølging()
                     is OppfolgingperiodeOppslagFeil -> Feil(
                         Retry("Feil ved oppslag på oppfølgingsperiode: ${periode.message}"),
                     )
                 }
             }
-        }
-    }
-
-    fun EndringPaOppfolgingsBrukerDto.erUnderOppfolgingIArena(): Boolean {
-        return when (this.formidlingsgruppe) {
-            FormidlingsGruppe.ISERV -> false
-            FormidlingsGruppe.ARBS -> true
-            FormidlingsGruppe.IARBS -> kvalifiseringsgrupperUnderOppfolging.contains(this.kvalifiseringsgruppe)
         }
     }
 }
@@ -198,12 +161,7 @@ fun harKontorBlittEndret(arenaKontorUtvidet: ArenaKontorUtvidet?, oppfolgingsEnh
 sealed class EndringPaaOppfolgingsBrukerResult
 class BeforeCutoff : EndringPaaOppfolgingsBrukerResult()
 class HaddeNyereEndring : EndringPaaOppfolgingsBrukerResult()
-class IkkeUnderOppfolging : EndringPaaOppfolgingsBrukerResult()
-class UnderOppfolgingIArenaMenIkkeLokalt(
-    val kontorId: KontorId,
-    val sistEndretDatoArena: OffsetDateTime,
-    val ident: Ident,
-) : EndringPaaOppfolgingsBrukerResult()
+class IkkeUnderOppfølging : EndringPaaOppfolgingsBrukerResult()
 class MeldingManglerEnhet : EndringPaaOppfolgingsBrukerResult()
 class SkalLagre(
     val oppfolgingsenhet: String,
@@ -255,10 +213,6 @@ enum class Kvalifiseringsgruppe {
     VURDI, // Sykmeldt, oppfølging på arbeidsplassen:	    Sykmeldt, oppfølging på arbeidsplassen
     VURDU; // Sykmeldt uten arbeidsgiver:	                Sykmeldt uten arbeidsgiver
 }
-
-val kvalifiseringsgrupperUnderOppfolging = listOf(
-    Kvalifiseringsgruppe.BATT, Kvalifiseringsgruppe.BFORM, Kvalifiseringsgruppe.IKVAL, Kvalifiseringsgruppe.VURDU, Kvalifiseringsgruppe.OPPFI, Kvalifiseringsgruppe.VARIG
-)
 
 @Serializable
 data class EndringPaOppfolgingsBrukerDto(

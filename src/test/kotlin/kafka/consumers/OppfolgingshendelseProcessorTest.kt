@@ -123,7 +123,7 @@ class OppfolgingshendelseProcessorTest {
     fun Bruker.defaultOppfolgingsHendelseProcessor(publiserTombstone: (oppfolgingsperiodeId: OppfolgingsperiodeId) -> Result<Unit> = { _ -> Result.success(Unit) }): OppfolgingsHendelseProcessor {
         return OppfolgingsHendelseProcessor(
             OppfolgingsperiodeService { IdenterFunnet(listOf(this.ident, AktorId(this.aktorId, AKTIV)), this.ident) },
-            publiserTombstone
+            publiserTombstone,
         )
     }
 
@@ -232,7 +232,6 @@ class OppfolgingshendelseProcessorTest {
             bruker.ident,
             nyereStartDato,
             OppfolgingsperiodeId(nyerePeriodeId),
-            null,
             true
         )
         processingResult.topic shouldBe null
@@ -375,7 +374,8 @@ class OppfolgingshendelseProcessorTest {
         )
         val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
             { NotUnderOppfolging },
-            { sistLagreArenaKontor })
+            { sistLagreArenaKontor },
+            {})
         endringPaOppfolgingsBrukerProcessor.process(
             TopicUtils.endringPaaOppfolgingsBrukerMessage(
                 ident,
@@ -404,41 +404,6 @@ class OppfolgingshendelseProcessorTest {
         withClue("Forventet bruker skulle arenakontor: $foreventetKontor men hadde $arenaKontor") {
             arenaKontor shouldBe foreventetKontor
         }
-    }
-
-    @Test
-    fun `Skal finne tidlig-arena-kontor selv om det er lagret på en annen av brukers identer`() {
-        val bruker = testBruker()
-        gittIdentIMapping(bruker.ident)
-        val annenIdent = randomFnr()
-        val internId = hentInternId(bruker.ident)
-        gittIdentIMapping(ident = annenIdent, internIdent = internId)
-        val arenaKontorVeilarboppfolging = "4141"
-        val arenaKontor = "4142"
-        val hendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
-        gittBrukerMedTidligArenaKontor(annenIdent, arenaKontorVeilarboppfolging, arenaKontor)
-        bruker.skalHaTidligArenaKontor(arenaKontor, annenIdent)
-
-        val result = hendelseProcessor.process(TopicUtils.oppfolgingStartetMelding(bruker))
-
-        result.shouldBeInstanceOf<Forward<Ident, OppfolgingsperiodeStartet>>()
-        val videresendtMelding = result.forwardedRecord.value()
-        videresendtMelding.arenaKontorFraOppfolgingsbrukerTopic!!.kontor.id shouldBe arenaKontor
-    }
-
-    @Test
-    fun `Skal slette tidlig-arena-kontor hvis det blir brukt`() {
-        val bruker = testBruker()
-        gittIdentIMapping(bruker.ident)
-        val arenaKontorVeilarboppfolging = "4141"
-        val arenaKontor = "4142"
-        val hendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
-        gittBrukerMedTidligArenaKontor(bruker.ident, arenaKontorVeilarboppfolging, arenaKontor)
-        bruker.skalHaTidligArenaKontor(arenaKontor)
-
-        hendelseProcessor.process(TopicUtils.oppfolgingStartetMelding(bruker))
-
-        bruker.skalHaTidligArenaKontor(null)
     }
 
     class Asserts(val service: OppfolgingsperiodeService, val bruker: Bruker) {

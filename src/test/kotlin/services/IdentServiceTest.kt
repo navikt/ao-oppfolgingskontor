@@ -1,6 +1,11 @@
 package services
 
 import db.table.IdentMappingTable
+import db.table.IdentMappingTable.historisk
+import db.table.IdentMappingTable.identType
+import db.table.IdentMappingTable.internIdent
+import db.table.IdentMappingTable.slettetHosOss
+import db.table.IdentMappingTable.updatedAt
 import db.table.InternIdentSequence
 import db.table.nextValueOf
 import io.kotest.assertions.throwables.shouldThrow
@@ -19,9 +24,11 @@ import no.nav.db.Ident
 import no.nav.db.Ident.HistoriskStatus.AKTIV
 import no.nav.db.Ident.HistoriskStatus.HISTORISK
 import no.nav.db.Ident.HistoriskStatus.UKJENT
+import no.nav.db.IdentSomKanLagres
 import no.nav.db.Npid
 import no.nav.http.client.IdentFunnet
 import no.nav.http.client.IdenterFunnet
+import no.nav.http.client.IdenterIkkeFunnet
 import no.nav.http.client.IdenterOppslagFeil
 import no.nav.http.client.IdenterResult
 import no.nav.kafka.processor.Retry
@@ -31,6 +38,7 @@ import no.nav.person.pdl.aktor.v2.Identifikator
 import no.nav.person.pdl.aktor.v2.Type
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.randomAktorId
+import no.nav.utils.randomFnr
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.batchUpsert
@@ -38,6 +46,7 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
 import java.time.OffsetDateTime
+import java.time.ZonedDateTime
 
 class IdentServiceTest {
 
@@ -375,6 +384,36 @@ class IdentServiceTest {
         identService.veksleAktorIdIForetrukketIdent(aktorId).shouldBeInstanceOf<IdentFunnet>()
     }
 
+    @Test
+    fun `skal håndtere merge`() = runTest {
+        flywayMigrationInTest()
+        val aktorId1 = randomAktorId()
+        val fnr1 = randomFnr()
+        val internIdent1 = 123456L
+        val internIdent2 = internIdent1 + 1
+        val aktorId2 = randomAktorId()
+        val fnr2 = randomFnr()
+        val irrelevantIdentProvider: suspend (String) -> IdenterIkkeFunnet = { input -> IdenterIkkeFunnet("Ikke brukt") }
+        val identService = IdentService(irrelevantIdentProvider)
+        lagreIdenter(identer = listOf(aktorId1, fnr1), nyInternIdent = internIdent1)
+        lagreIdenter(identer = listOf(aktorId2, fnr2), nyInternIdent = internIdent2)
+
+        identService.håndterEndringPåIdenter(
+            aktorId = aktorId2,
+            oppdaterteIdenterFraPdl = listOf(
+                OppdatertIdent(fnr1, true),
+                OppdatertIdent(aktorId1, true),
+                OppdatertIdent(fnr2, false),
+                OppdatertIdent(aktorId2, false)
+            )
+        )
+
+        val identer = identService.hentIdentMappinger(aktorId2, true)
+        identer.size shouldBe 4
+        val unikeInternIdenter = identer.map { it.internIdent }.distinct().size
+        unikeInternIdenter shouldBe 1
+    }
+
     data class IdentFraDb(
         val ident: String,
         val type: String,
@@ -392,6 +431,19 @@ class IdentServiceTest {
                     row[IdentMappingTable.historisk],
                     row[IdentMappingTable.slettetHosOss] != null
                 )  }
+        }
+    }
+
+    fun lagreIdenter(identer: List<Ident>, nyInternIdent: Long) {
+        return transaction {
+            IdentMappingTable.batchInsert(identer) { ident ->
+                this[IdentMappingTable.id] = ident.value
+                this[slettetHosOss] = null
+                this[historisk] = ident.historisk == HISTORISK
+                this[internIdent] = nyInternIdent
+                this[identType] = ident.toIdentType()
+                this[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
+            }.size
         }
     }
 }

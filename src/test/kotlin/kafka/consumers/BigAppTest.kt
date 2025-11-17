@@ -1,12 +1,18 @@
 package kafka.consumers
 
 import db.table.KafkaOffsetTable
+import domain.kontorForGt.KontorForGtFantDefaultKontor
 import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
-import io.ktor.server.config.ApplicationConfig
-import io.ktor.server.testing.testApplication
+import io.ktor.server.config.*
+import io.ktor.server.testing.*
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.mockk
 import kafka.consumers.TopicUtils.oppfolgingStartetMelding
+import kafka.producers.KontorEndringProducer
+import kafka.producers.OppfolgingEndretTilordningMelding
 import kafka.retry.TestLockProvider
 import kafka.retry.library.internal.setupKafkaMock
 import kotlinx.coroutines.CoroutineScope
@@ -17,16 +23,8 @@ import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.KontorHistorikkEntity
 import no.nav.db.entity.OppfolgingsperiodeEntity
 import no.nav.db.table.KontorhistorikkTable
-import no.nav.domain.HarSkjerming
-import no.nav.domain.HarStrengtFortroligAdresse
-import no.nav.domain.KontorId
-import no.nav.domain.OppfolgingsperiodeId
-import no.nav.http.client.AlderFunnet
-import no.nav.http.client.IdentFunnet
-import no.nav.http.client.GeografiskTilknytningBydelNr
-import no.nav.http.client.HarStrengtFortroligAdresseFunnet
-import no.nav.http.client.IdenterFunnet
-import no.nav.http.client.SkjermingFunnet
+import no.nav.domain.*
+import no.nav.http.client.*
 import no.nav.http.client.arbeidssogerregisteret.ProfileringFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
 import no.nav.kafka.config.configureTopology
@@ -36,13 +34,6 @@ import no.nav.kafka.consumers.LeesahProcessor
 import no.nav.kafka.consumers.SkjermingProcessor
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
-import domain.kontorForGt.KontorForGtFantDefaultKontor
-import io.mockk.coEvery
-import io.mockk.coVerify
-import io.mockk.mockk
-import kafka.producers.KontorEndringProducer
-import kafka.producers.OppfolgingEndretTilordningMelding
-import no.nav.domain.KontorEndringsType
 import no.nav.services.KontorTilordningService
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.randomFnr
@@ -56,7 +47,7 @@ import topics
 import utils.Outcome
 import java.time.OffsetDateTime
 import java.time.ZonedDateTime
-import java.util.UUID
+import java.util.*
 
 class BigAppTest {
 
@@ -79,16 +70,17 @@ class BigAppTest {
         }
         application {
             val topics = this.environment.topics()
-            val oppfolgingsperiodeProvider = { _: Ident -> AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, OffsetDateTime.now()) }
-            val automatiskKontorRutingService =  AutomatiskKontorRutingService(
+            val oppfolgingsperiodeProvider =
+                { _: Ident -> AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, OffsetDateTime.now()) }
+            val automatiskKontorRutingService = AutomatiskKontorRutingService(
                 KontorTilordningService::tilordneKontor,
-                { _, a, b-> KontorForGtFantDefaultKontor(kontor, b, a, GeografiskTilknytningBydelNr("3131")) },
+                { _, a, b -> KontorForGtFantDefaultKontor(kontor, b, a, GeografiskTilknytningBydelNr("3131")) },
                 { AlderFunnet(40) },
                 { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
                 { SkjermingFunnet(HarSkjerming(false)) },
                 { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
                 oppfolgingsperiodeProvider,
-                { _, _ -> Outcome.Success(false)  }
+                { _, _ -> Outcome.Success(false) }
             )
             val tilordningProcessor = KontortilordningsProcessor(automatiskKontorRutingService)
             val leesahProcessor = LeesahProcessor(
@@ -101,13 +93,16 @@ class BigAppTest {
             )
             val endringPaaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
                 oppfolgingsperiodeProvider,
-                { null } // TODO: Mer realitisk test-oppsett
+                { null }, // TODO: Mer realitisk test-oppsett
+                {}
             )
             val identService = IdentService { IdenterFunnet(emptyList(), fnr) }
             val identendringsProcessor = IdentChangeProcessor(identService)
 
             val kontorEndringProducer = mockk<KontorEndringProducer>()
-            coEvery { kontorEndringProducer.publiserEndringPåKontor(any<OppfolgingEndretTilordningMelding>()) } returns Result.success(Unit)
+            coEvery { kontorEndringProducer.publiserEndringPåKontor(any<OppfolgingEndretTilordningMelding>()) } returns Result.success(
+                Unit
+            )
 
             val publiserKontorTilordningProcessor = PubliserKontorTilordningProcessor(
                 identService::hentAlleIdenter,
@@ -123,16 +118,23 @@ class BigAppTest {
                 skjermingProcessor,
                 endringPaaOppfolgingsBrukerProcessor,
                 identendringsProcessor,
-                OppfolgingsHendelseProcessor(OppfolgingsperiodeService(identService::hentAlleIdenter ), kontorEndringProducer::publiserTombstone)
+                OppfolgingsHendelseProcessor(
+                    OppfolgingsperiodeService(identService::hentAlleIdenter),
+                    kontorEndringProducer::publiserTombstone,
+                ),
+                mockk<ArenakontorProcessor>()
             )
-            val (driver, inputTopics, _) = setupKafkaMock(topology,
+            val (driver, inputTopics, _) = setupKafkaMock(
+                topology,
                 listOf(topics.inn.oppfolgingsHendelser.name), null
             )
             val bruker = Bruker(fnr, aktorId.value, oppfolgingsperiodeId, ZonedDateTime.now())
 
-            inputTopics.first().pipeInput(fnr.value, oppfolgingStartetMelding(
-                bruker = bruker,
-            ).value())
+            inputTopics.first().pipeInput(
+                fnr.value, oppfolgingStartetMelding(
+                    bruker = bruker,
+                ).value()
+            )
 
             withClue("Skal finnes Oppfolgingsperiode på bruker") {
                 transaction {
@@ -155,12 +157,16 @@ class BigAppTest {
             withClue("Skal finnes 2 historikkinnslag på bruker men var $antallHistorikkRader") {
                 antallHistorikkRader shouldBe 2
             }
-            coVerify { kontorEndringProducer.publiserEndringPåKontor(OppfolgingEndretTilordningMelding(
-                "4154",
-                oppfolgingsperiodeId.value.toString(),
-                fnr.value,
-                KontorEndringsType.AutomatiskRutetTilNOE
-            )) }
+            coVerify {
+                kontorEndringProducer.publiserEndringPåKontor(
+                    OppfolgingEndretTilordningMelding(
+                        "4154",
+                        oppfolgingsperiodeId.value.toString(),
+                        fnr.value,
+                        KontorEndringsType.AutomatiskRutetTilNOE
+                    )
+                )
+            }
         }
     }
 }

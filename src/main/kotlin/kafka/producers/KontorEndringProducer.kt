@@ -138,6 +138,7 @@ enum class Tilordningstype {
                 KontorEndringsType.AutomatiskNorgRutingFallback,
                 KontorEndringsType.AutomatiskRutetTilNavItManglerGt,
                 KontorEndringsType.AutomatiskRutetTilNavItGtErLand,
+                KontorEndringsType.ArenaKontorHentetSynkrontVedOppfolgingsStart,
                 KontorEndringsType.AutomatiskRutetTilNavItIngenKontorFunnetForGt -> KONTOR_VED_OPPFOLGINGSPERIODE_START
 
                 KontorEndringsType.FikkAddressebeskyttelse,
@@ -153,7 +154,9 @@ enum class Tilordningstype {
                 KontorEndringsType.ArenaKontorVedOppfolgingsStart,
                 KontorEndringsType.TidligArenaKontorVedOppfolgingStart,
                 KontorEndringsType.ArenaKontorVedOppfolgingStartMedEtterslep,
+                KontorEndringsType.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart,
                 KontorEndringsType.MIGRERING,
+                KontorEndringsType.PATCH,
                 KontorEndringsType.ArenaMigrering -> {
                     throw RuntimeException("Vi skal ikke publisere kontorendringer på kontor-endring av type $kontorEndringsType")
                 }

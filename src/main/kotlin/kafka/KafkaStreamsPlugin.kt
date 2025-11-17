@@ -1,6 +1,7 @@
 package no.nav.kafka
 
 import dab.poao.nav.no.health.CriticalErrorNotificationFunction
+import http.client.VeilarbArenaClient
 import io.ktor.events.EventDefinition
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationPlugin
@@ -12,6 +13,7 @@ import io.ktor.server.application.log
 import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.binder.kafka.KafkaStreamsMetrics
+import kafka.consumers.ArenakontorProcessor
 import kafka.consumers.IdentChangeProcessor
 import kafka.consumers.OppfolgingsHendelseProcessor
 import kafka.consumers.PubliserKontorTilordningProcessor
@@ -29,6 +31,7 @@ import no.nav.kafka.consumers.KontortilordningsProcessor
 import no.nav.kafka.consumers.SkjermingProcessor
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.KontorTilhorighetService
+import no.nav.services.KontorTilordningService
 import no.nav.services.OppfolgingsperiodeDao
 import org.apache.kafka.streams.KafkaStreams
 import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler
@@ -56,7 +59,8 @@ class KafkaStreamsPluginConfig(
     var identService: IdentService? = null,
     var criticalErrorNotificationFunction: CriticalErrorNotificationFunction? = null,
     var kontorTilhorighetService: KontorTilhorighetService? = null,
-    var kontorEndringProducer: KontorEndringProducer? = null
+    var kontorEndringProducer: KontorEndringProducer? = null,
+    var veilarbArenaClient: VeilarbArenaClient? = null,
 )
 
 const val arbeidsoppfolgingkontorSinkName = "endring-pa-arbeidsoppfolgingskontor"
@@ -92,13 +96,17 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val kontorProducer = requireNotNull(this.pluginConfig.kontorEndringProducer) {
         "KontorTilhorighetService must be configured for KafkaStreamsPlugin"
     }
+    val veilarbArenaClient = requireNotNull(this.pluginConfig.veilarbArenaClient) {
+        "VeilarbArenaClient must be configured for KafkaStreamPlugin"
+    }
 
     val isProduction = environment.isProduction()
     if (isProduction) logger.info("Kjører i produksjonsmodus. Konsumerer kun siste-oppfølgingsperiode.")
 
     val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
         { oppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) },
-        { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) }
+        { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },
+        KontorTilordningService::tilordneKontor
     )
 
     val kontorTilordningsProcessor = KontortilordningsProcessor(
@@ -111,10 +119,16 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val identEndringProcessor = IdentChangeProcessor(identService)
     val oppfolgingsHendelseProcessor = OppfolgingsHendelseProcessor(
         oppfolgingsperiodeService,
-        { periode -> kontorProducer.publiserTombstone(periode) })
+        { periode -> kontorProducer.publiserTombstone(periode) },
+    )
     val publiserKontorTilordningProcessor = PubliserKontorTilordningProcessor(
         identService::hentAlleIdenter,
         { kontorProducer.publiserEndringPåKontor(it) }
+    )
+    val arenakontorProcessor = ArenakontorProcessor(
+        veilarbArenaClient::hentArenaKontor,
+        { KontorTilordningService.tilordneKontor(it) },
+        { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },
     )
 
 
@@ -127,7 +141,8 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         endringPaOppfolgingsBrukerProcessor = endringPaOppfolgingsBrukerProcessor,
         identEndringsProcessor = identEndringProcessor,
         oppfolgingsHendelseProcessor = oppfolgingsHendelseProcessor,
-        publiserKontorTilordningProcessor = publiserKontorTilordningProcessor
+        publiserKontorTilordningProcessor = publiserKontorTilordningProcessor,
+        arenakontorProcessor = arenakontorProcessor,
     )
     val kafkaStream = KafkaStreams(topology, kafkaStreamsProps(environment.config))
 

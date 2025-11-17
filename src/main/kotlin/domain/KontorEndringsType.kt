@@ -22,10 +22,15 @@ enum class KontorEndringsType {
 
     /* ArenaKontor */
     EndretIArena,
-    @Deprecated("Alle kontor bør taes fra topic, ikke fra veilarboppfolging")
+    @Deprecated("Skal ikke lenger brukes")
     ArenaKontorVedOppfolgingsStart,
+    ArenaKontorHentetSynkrontVedOppfolgingsStart,
+    @Deprecated("Skal ikke lenger brukes")
     TidligArenaKontorVedOppfolgingStart,
     ArenaKontorVedOppfolgingStartMedEtterslep,
+    @Deprecated("Skal ikke lenger brukes")
+    ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart,
     MIGRERING,
     ArenaMigrering,
+    PATCH
 }
