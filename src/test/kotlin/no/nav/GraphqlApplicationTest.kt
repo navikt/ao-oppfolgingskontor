@@ -28,6 +28,12 @@ import no.nav.http.graphql.installGraphQl
 import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
 import no.nav.http.graphql.schemas.RegistrantTypeDto
 import domain.kontorForGt.KontorForGtFantDefaultKontor
+import io.kotest.matchers.collections.shouldBeMonotonicallyDecreasingWith
+import io.kotest.matchers.collections.shouldBeSortedBy
+import io.kotest.matchers.collections.shouldContain
+import io.kotest.matchers.collections.shouldContainExactly
+import io.kotest.matchers.shouldNotBe
+import no.nav.http.graphql.schemas.AlleKontorQueryDto
 import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
 import no.nav.services.KontorTilordningService
@@ -104,21 +110,56 @@ class GraphqlApplicationTest {
     }
 
     @Test
-    fun `skal kunne hente alle kontor via graphql`() = testApplication {
+    fun `skal kunne hente alle kontor i riktig rekkefølge via graphql`() = testApplication {
         val fnr = randomFnr(UKJENT)
         val kontorId = "4142"
+        val geografiskKontorId = "1941"
         val client = getJsonHttpClient()
         graphqlServerInTest(fnr)
         application {
             gittBrukerMedKontorIArena(fnr, kontorId)
+            gittBrukerMedGeografiskTilknyttetKontor(fnr, geografiskKontorId)
+        }
+
+        val response = client.alleKontor(fnr)
+
+        val antallSpesialkontorer = 4
+        val antallEgneAnsatteKontorer = 14
+        val antallLokalkontorer = 248
+        response.status shouldBe OK
+        val payload = response.body<GraphqlResponse<AlleKontor>>()
+        payload.errors shouldBe null
+        val kontorer = payload.data!!.alleKontor
+        kontorer shouldHaveSize (antallLokalkontorer + antallSpesialkontorer + antallEgneAnsatteKontorer)
+
+        kontorer[0] shouldBe AlleKontorQueryDto("4154","Nasjonal oppfølgingsenhet")
+        kontorer[1] shouldBe AlleKontorQueryDto("0393","Nav utland og fellestjenester Oslo")
+        kontorer[2].kontorId shouldBe geografiskKontorId
+        kontorer shouldContain AlleKontorQueryDto("2103","Nav Vikafossen")
+        kontorer shouldContain AlleKontorQueryDto("2990","Nav IT-avdelingen")
+        val kontorerEtterSpesialkontorOgGtKontor = kontorer.subList(3, kontorer.size)
+        val sorterteKontorer = kontorerEtterSpesialkontorOgGtKontor.sortedBy { it.kontorId.toInt() }
+        kontorerEtterSpesialkontorOgGtKontor shouldBe sorterteKontorer
+    }
+
+    @Test
+    fun `skal ikke sortere GT-kontor hvis det er likt som ao-kontor`() = testApplication {
+        val fnr = randomFnr(UKJENT)
+        val kontorId = "4142"
+        val geografiskKontorId = "4142"
+        val client = getJsonHttpClient()
+        graphqlServerInTest(fnr)
+        application {
+            gittBrukerMedKontorIArena(fnr, kontorId)
+            gittBrukerMedGeografiskTilknyttetKontor(fnr, geografiskKontorId)
         }
 
         val response = client.alleKontor(fnr)
 
         response.status shouldBe OK
         val payload = response.body<GraphqlResponse<AlleKontor>>()
-        payload.errors shouldBe null
-        payload.data!!.alleKontor shouldHaveSize (248 + 3)
+        val kontorer = payload.data!!.alleKontor
+        kontorer[2].kontorId shouldNotBe geografiskKontorId
     }
 
     @Test
