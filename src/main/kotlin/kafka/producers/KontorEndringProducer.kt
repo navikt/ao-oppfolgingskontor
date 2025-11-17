@@ -2,6 +2,7 @@ package kafka.producers
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import no.nav.BRUK_AO_RUTING
 import no.nav.db.AktorId
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
@@ -24,13 +25,17 @@ class KontorEndringProducer(
 ) {
 
     suspend fun publiserEndringPåKontor(event: KontorSattAvVeileder): Result<Unit> {
-        return runCatching {
-            val value = event.toKontorTilordningMeldingDto(
-                aktorIdProvider(event.tilordning.fnr)
-                    ?: throw RuntimeException("Finner ikke aktorId for ident ${event.tilordning.fnr.value}"),
-                kontorNavnProvider(event.tilordning.kontorId)
-            )
-            publiserEndringPåKontor(value)
+        if (BRUK_AO_RUTING) {
+            return runCatching {
+                val value = event.toKontorTilordningMeldingDto(
+                    aktorIdProvider(event.tilordning.fnr)
+                        ?: throw RuntimeException("Finner ikke aktorId for ident ${event.tilordning.fnr.value}"),
+                    kontorNavnProvider(event.tilordning.kontorId)
+                )
+                publiserEndringPåKontor(value)
+            }
+        } else {
+            return Result.success(Unit)
         }
     }
 
@@ -71,13 +76,17 @@ class KontorEndringProducer(
     }
 
     fun publiserTombstone(oppfolgingPeriodeId: OppfolgingsperiodeId): Result<Unit> {
-        return runCatching {
-            val record: ProducerRecord<String,String?> = ProducerRecord(
-                kontorTopicNavn,
-                oppfolgingPeriodeId.value.toString(),
-                null
-            )
-            producer.send(record)
+        if (BRUK_AO_RUTING) {
+            return runCatching {
+                val record: ProducerRecord<String,String?> = ProducerRecord(
+                    kontorTopicNavn,
+                    oppfolgingPeriodeId.value.toString(),
+                    null
+                )
+                producer.send(record)
+            }
+        } else {
+            return Result.success(Unit)
         }
     }
 }

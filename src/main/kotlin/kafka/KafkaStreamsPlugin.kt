@@ -20,6 +20,7 @@ import kafka.consumers.PubliserKontorTilordningProcessor
 import kafka.producers.KontorEndringProducer
 import java.time.Duration
 import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
+import no.nav.BRUK_AO_RUTING
 import no.nav.db.AktorId
 import no.nav.http.client.IdentResult
 import no.nav.isProduction
