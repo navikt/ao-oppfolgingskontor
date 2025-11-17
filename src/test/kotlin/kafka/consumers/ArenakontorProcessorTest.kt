@@ -42,7 +42,7 @@ class ArenakontorProcessorTest {
     fun `Skal ignorere OppfolgingsperiodeAvsluttet-hendelser`() {
         val processor = ArenakontorProcessor(
             { ArenakontorIkkeFunnet() },
-            { KontorTilordningService.tilordneKontor(it) },
+            { KontorTilordningService.tilordneKontor(it, true) },
             { null })
         val record = oppfolgingsperiodeAvsluttetRecord()
         val result = processor.process(record)
@@ -59,7 +59,7 @@ class ArenakontorProcessorTest {
         val gammelKontorId = KontorId("4321")
         val processor = ArenakontorProcessor(
             { ArenakontorFunnet(kontorId, ZonedDateTime.now()) },
-            { KontorTilordningService.tilordneKontor(it) },
+            { KontorTilordningService.tilordneKontor(it, true) },
             {
                 ArenaKontorUtvidet(
                     kontorId = gammelKontorId,
@@ -120,7 +120,7 @@ class ArenakontorProcessorTest {
         val record = oppfolgingsperiodeStartetRecord()
         val processor = ArenakontorProcessor(
             { ArenakontorIkkeFunnet() },
-            { KontorTilordningService.tilordneKontor(it) },
+            { KontorTilordningService.tilordneKontor(it, true) },
             { null })
         val result = processor.process(record)
         result.shouldBeInstanceOf<Commit<*, *>>()

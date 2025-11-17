@@ -73,7 +73,7 @@ class BigAppTest {
             val oppfolgingsperiodeProvider =
                 { _: Ident -> AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, OffsetDateTime.now()) }
             val automatiskKontorRutingService = AutomatiskKontorRutingService(
-                KontorTilordningService::tilordneKontor,
+                { KontorTilordningService.tilordneKontor(it, true)},
                 { _, a, b -> KontorForGtFantDefaultKontor(kontor, b, a, GeografiskTilknytningBydelNr("3131")) },
                 { AlderFunnet(40) },
                 { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },

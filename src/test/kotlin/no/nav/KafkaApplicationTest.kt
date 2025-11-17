@@ -76,7 +76,7 @@ class KafkaApplicationTest {
         val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
             oppfolgingsperiodeService::getCurrentOppfolgingsperiode,
             { null },
-            KontorTilordningService::tilordneKontor
+            { KontorTilordningService.tilordneKontor(it, true)}
         )
 
         application {
@@ -116,7 +116,7 @@ class KafkaApplicationTest {
         val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
             oppfolgingsperiodeService::getCurrentOppfolgingsperiode,
             { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },
-            KontorTilordningService::tilordneKontor
+            { KontorTilordningService.tilordneKontor(it, true)}
         )
 
         application {
@@ -157,7 +157,7 @@ class KafkaApplicationTest {
         val topic = randomTopicName()
 
         val automatiskKontorRutingService = AutomatiskKontorRutingService(
-            KontorTilordningService::tilordneKontor,
+            { KontorTilordningService.tilordneKontor(it, true)},
             { _, b, a ->
                 KontorForGtFantDefaultKontor(
                     KontorId(skjermetKontor),

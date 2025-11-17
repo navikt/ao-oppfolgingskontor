@@ -31,8 +31,8 @@ class KontorTilordningServiceTest {
         val oppfolginsperiodeUuid = OppfolgingsperiodeId(UUID.randomUUID())
         val kontorEndretEvent = OppfolgingsperiodeStartetNoeTilordning(Fnr(fnr, AKTIV), oppfolginsperiodeUuid)
 
-        KontorTilordningService.tilordneKontor(kontorEndretEvent)
-        KontorTilordningService.tilordneKontor(kontorEndretEvent)
+        KontorTilordningService.tilordneKontor(kontorEndretEvent, true)
+        KontorTilordningService.tilordneKontor(kontorEndretEvent, true)
 
         val (arbeidsoppfolgingskontor, historikkEntries) = transaction {
             val arbeidsoppfolgingskontor = ArbeidsOppfolgingKontorEntity[fnr]
@@ -65,7 +65,7 @@ class KontorTilordningServiceTest {
         KontorTilordningService.tilordneKontor(KontorEndringer(
             aoKontorEndret = aoEndring,
             arenaKontorEndret = arenaEndring,
-        ))
+        ), true)
 
         transaction { ArbeidsOppfolgingKontorEntity[fnr].kontorId } shouldBe "4154"
         transaction { ArenaKontorEntity[fnr].kontorId } shouldBe "1122"

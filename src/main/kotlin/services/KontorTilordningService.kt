@@ -18,35 +18,50 @@ import org.jetbrains.exposed.sql.upsert
 import java.time.ZonedDateTime
 
 object KontorTilordningService {
-    fun tilordneKontor(kontorEndringer: KontorEndringer) {
-        kontorEndringer.aoKontorEndret?.let { tilordneKontor(it) }
-        kontorEndringer.arenaKontorEndret?.let { tilordneKontor(it) }
-        kontorEndringer.gtKontorEndret?.let { tilordneKontor(it) }
+    fun tilordneKontor(kontorEndringer: KontorEndringer, brukAoRuting: Boolean = false) {
+        kontorEndringer.aoKontorEndret?.let { tilordneKontor(it, brukAoRuting) }
+        kontorEndringer.arenaKontorEndret?.let { tilordneKontor(it, brukAoRuting) }
+        kontorEndringer.gtKontorEndret?.let { tilordneKontor(it, brukAoRuting) }
     }
-    fun tilordneKontor(kontorEndring: KontorEndretEvent) {
+    fun tilordneKontor(kontorEndring: KontorEndretEvent, brukAoRuting: Boolean = false) {
         val kontorTilhorighet = kontorEndring.tilordning
         transaction {
             kontorEndring.logg()
             when (kontorEndring) {
                 is AOKontorEndret -> {
-                    AlternativAoKontorTable.insert {
-                        it[fnr] = kontorTilhorighet.fnr.value
-                        it[kontorId] = kontorTilhorighet.kontorId.id
-                        it[endretAv] = System().getIdent()
-                        it[endretAvType] = System().getType()
-                        it[kontorendringstype] = kontorEndring.kontorEndringsType().name
-                        it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
+                    if(brukAoRuting) {
+                        val entryId = settKontorIHistorikk(kontorEndring)
+                        ArbeidsOppfolgingKontorTable.upsert {
+                            it[kontorId] = kontorTilhorighet.kontorId.id
+                            it[id] = kontorTilhorighet.fnr.value
+                            it[endretAv] = kontorEndring.registrant.getIdent()
+                            it[endretAvType] = kontorEndring.registrant.getType()
+                            it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
+                            it[historikkEntry] = entryId.value
+                        }
+                    } else
+                    {
+                        AlternativAoKontorTable.insert {
+                            it[fnr] = kontorTilhorighet.fnr.value
+                            it[kontorId] = kontorTilhorighet.kontorId.id
+                            it[endretAv] = System().getIdent()
+                            it[endretAvType] = System().getType()
+                            it[kontorendringstype] = kontorEndring.kontorEndringsType().name
+                            it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
+                        }
                     }
                 }
                 is ArenaKontorEndret -> {
                     val entryId = settKontorIHistorikk(kontorEndring)
-                    ArbeidsOppfolgingKontorTable.upsert {
-                        it[kontorId] = kontorTilhorighet.kontorId.id
-                        it[id] = kontorTilhorighet.fnr.value
-                        it[endretAv] = System().getIdent()
-                        it[endretAvType] = System().getType()
-                        it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
-                        it[historikkEntry] = entryId.value
+                    if(!brukAoRuting){
+                        ArbeidsOppfolgingKontorTable.upsert {
+                            it[kontorId] = kontorTilhorighet.kontorId.id
+                            it[id] = kontorTilhorighet.fnr.value
+                            it[endretAv] = System().getIdent()
+                            it[endretAvType] = System().getType()
+                            it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
+                            it[historikkEntry] = entryId.value
+                        }
                     }
                     ArenaKontorTable.upsert {
                         it[kontorId] = kontorTilhorighet.kontorId.id

@@ -225,7 +225,8 @@ class GraphqlApplicationTest {
             EndringPaaOppfolgingsBrukerFraArena(
                 kontorTilordning = KontorTilordning(fnr, KontorId(kontorId), OppfolgingsperiodeId(UUID.randomUUID())),
                 sistEndretIArena = insertTime.toOffsetDateTime()
-            )
+            ),
+            true
         )
     }
 
@@ -235,7 +236,8 @@ class GraphqlApplicationTest {
                 kontorTilordning = KontorTilordning(fnr, KontorId(kontorId), OppfolgingsperiodeId(UUID.randomUUID())),
                 kontorEndringsType = KontorEndringsType.FlyttetAvVeileder,
                 gt = GtNummerForBrukerFunnet(GeografiskTilknytningBydelNr("3131"))
-            )
+            ),
+            true
         )
     }
 
@@ -249,7 +251,8 @@ class GraphqlApplicationTest {
                     ingenSensitivitet.strengtFortroligAdresse,
                     geografiskTilknytningNr = GeografiskTilknytningKommuneNr("2121")
                 )
-            )
+            ),
+            true
         )
     }
 }

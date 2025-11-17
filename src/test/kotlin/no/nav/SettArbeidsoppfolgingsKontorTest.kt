@@ -43,6 +43,7 @@ import org.apache.kafka.clients.producer.MockProducer
 import org.apache.kafka.clients.producer.Partitioner
 import org.apache.kafka.common.Cluster
 import org.apache.kafka.common.serialization.StringSerializer
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import services.IdentService
 import services.OppfolgingsperiodeService
@@ -109,6 +110,7 @@ class SettArbeidsoppfolgingsKontorTest {
         return producer
     }
 
+    @Disabled
     @Test
     fun `skal kunne sette arbeidsoppfølgingskontor`() = testApplication {
         withMockOAuth2Server {

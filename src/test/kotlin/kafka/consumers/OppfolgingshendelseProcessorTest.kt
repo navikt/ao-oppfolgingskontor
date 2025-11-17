@@ -89,7 +89,8 @@ class OppfolgingshendelseProcessorTest {
                     ingenSensitivitet.strengtFortroligAdresse,
                     geografiskTilknytningNr = GeografiskTilknytningBydelNr("313131")
                 )
-            )
+            ),
+            true
         )
     }
 
@@ -98,7 +99,8 @@ class OppfolgingshendelseProcessorTest {
             ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep(
                 KontorTilordning(this.ident, kontorId, this.oppfolgingsperiodeId),
                 OffsetDateTime.now()
-            )
+            ),
+            true
         )
     }
 
