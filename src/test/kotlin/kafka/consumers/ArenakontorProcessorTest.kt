@@ -43,7 +43,8 @@ class ArenakontorProcessorTest {
         val processor = ArenakontorProcessor(
             { ArenakontorIkkeFunnet() },
             { KontorTilordningService.tilordneKontor(it, true) },
-            { null })
+            { null },
+            { Result.success(Unit) })
         val record = oppfolgingsperiodeAvsluttetRecord()
         val result = processor.process(record)
         result.shouldBeInstanceOf<Skip<*, *>>()
@@ -66,7 +67,9 @@ class ArenakontorProcessorTest {
                     oppfolgingsperiodeId = null,
                     sistEndretDatoArena = OffsetDateTime.now().minusDays(1)
                 )
-            })
+            },
+            { Result.success(Unit) }
+        )
         val result = processor.process(record)
         result.shouldBeInstanceOf<Commit<*, *>>()
         transaction {
@@ -89,7 +92,9 @@ class ArenakontorProcessorTest {
                     oppfolgingsperiodeId = null,
                     sistEndretDatoArena = OffsetDateTime.now().minusDays(1)
                 )
-            })
+            },
+            { Result.success(Unit) }
+        )
         val result = processor.process(record)
         result.shouldBeInstanceOf<Skip<*, *>>()
     }
@@ -110,7 +115,9 @@ class ArenakontorProcessorTest {
                     oppfolgingsperiodeId = null,
                     sistEndretDatoArena = tidspunktKontorIdIDatabasen
                 )
-            })
+            },
+            { Result.success(Unit) }
+        )
         val result = processor.process(record)
         result.shouldBeInstanceOf<Skip<*, *>>()
     }
@@ -121,7 +128,9 @@ class ArenakontorProcessorTest {
         val processor = ArenakontorProcessor(
             { ArenakontorIkkeFunnet() },
             { KontorTilordningService.tilordneKontor(it, true) },
-            { null })
+            { null },
+            { Result.success(Unit) }
+        )
         val result = processor.process(record)
         result.shouldBeInstanceOf<Commit<*, *>>()
         transaction {

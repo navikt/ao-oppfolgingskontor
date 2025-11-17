@@ -76,7 +76,8 @@ class KafkaApplicationTest {
         val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
             oppfolgingsperiodeService::getCurrentOppfolgingsperiode,
             { null },
-            { KontorTilordningService.tilordneKontor(it, true)}
+            { KontorTilordningService.tilordneKontor(it, true)},
+            { Result.success(Unit) }
         )
 
         application {
@@ -116,7 +117,8 @@ class KafkaApplicationTest {
         val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
             oppfolgingsperiodeService::getCurrentOppfolgingsperiode,
             { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },
-            { KontorTilordningService.tilordneKontor(it, true)}
+            { KontorTilordningService.tilordneKontor(it, true)},
+            { Result.success(Unit) }
         )
 
         application {

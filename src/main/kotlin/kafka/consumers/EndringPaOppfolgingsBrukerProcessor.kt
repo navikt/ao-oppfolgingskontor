@@ -5,7 +5,6 @@ import kafka.producers.OppfolgingEndretTilordningMelding
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import no.nav.BRUK_AO_RUTING
 import no.nav.PUBLISER_ARENA_KONTOR
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
@@ -33,7 +32,7 @@ class EndringPaOppfolgingsBrukerProcessor(
     val oppfolgingsperiodeProvider: suspend (IdentSomKanLagres) -> OppfolgingsperiodeOppslagResult,
     val arenaKontorProvider: suspend (IdentSomKanLagres) -> ArenaKontorUtvidet?,
     val lagreKontorTilordninger: (KontorEndretEvent) -> Unit,
-    val publiserKontorTilordning: (kontorEndring: OppfolgingEndretTilordningMelding) -> Result<Unit>
+    val publiserKontorTilordning: suspend (kontorEndring: OppfolgingEndretTilordningMelding) -> Result<Unit>
 ) {
     val log = LoggerFactory.getLogger(EndringPaOppfolgingsBrukerProcessor::class.java)
 
@@ -90,14 +89,16 @@ class EndringPaOppfolgingsBrukerProcessor(
                     } else {
                         KontorEndringsType.EndretIArena
                     }
-                    publiserKontorTilordning(
-                        OppfolgingEndretTilordningMelding(
-                            kontorId = kontorTilordning.kontorId.id,
-                            oppfolgingsperiodeId = kontorTilordning.oppfolgingsperiodeId.value.toString(),
-                            ident =  kontorTilordning.fnr.value,
-                            kontorEndringsType = kontorEndringstype
+                    runBlocking {
+                        publiserKontorTilordning(
+                            OppfolgingEndretTilordningMelding(
+                                kontorId = kontorTilordning.kontorId.id,
+                                oppfolgingsperiodeId = kontorTilordning.oppfolgingsperiodeId.value.toString(),
+                                ident =  kontorTilordning.fnr.value,
+                                kontorEndringsType = kontorEndringstype
+                            )
                         )
-                    )
+                    }
                 }
                 Commit()
             }

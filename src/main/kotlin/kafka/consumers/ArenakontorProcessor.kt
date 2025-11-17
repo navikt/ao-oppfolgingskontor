@@ -29,8 +29,8 @@ import org.slf4j.LoggerFactory
 class ArenakontorProcessor(
     private val hentArenakontor: suspend (Ident) -> ArenakontorResult,
     private val lagreKontortilordning: (ArenaKontorHentetSynkrontVedOppfolgingStart) -> Unit,
-    val arenaKontorProvider: suspend (IdentSomKanLagres) -> ArenaKontorUtvidet?,
-    val publiserKontorTilordning: (kontorEndring: OppfolgingEndretTilordningMelding) -> Result<Unit>
+    private val arenaKontorProvider: suspend (IdentSomKanLagres) -> ArenaKontorUtvidet?,
+    private val publiserKontorTilordning: suspend (kontorEndring: OppfolgingEndretTilordningMelding) -> Result<Unit>
 ) {
     companion object {
         const val processorName = "ArenakontorProcessor"
