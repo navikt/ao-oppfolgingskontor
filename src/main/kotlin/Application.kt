@@ -143,3 +143,5 @@ fun ApplicationEnvironment.isProduction(): Boolean {
         ?.getString()
         ?.contentEquals("prod-gcp") ?: false
 }
+
+val BRUK_AO_RUTING: Boolean = false

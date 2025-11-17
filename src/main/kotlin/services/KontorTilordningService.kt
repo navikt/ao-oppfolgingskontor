@@ -1,6 +1,7 @@
 package no.nav.services
 
 import db.table.AlternativAoKontorTable
+import no.nav.BRUK_AO_RUTING
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.db.table.ArenaKontorTable
 import no.nav.db.table.GeografiskTilknytningKontorTable
@@ -18,12 +19,12 @@ import org.jetbrains.exposed.sql.upsert
 import java.time.ZonedDateTime
 
 object KontorTilordningService {
-    fun tilordneKontor(kontorEndringer: KontorEndringer, brukAoRuting: Boolean = false) {
+    fun tilordneKontor(kontorEndringer: KontorEndringer, brukAoRuting: Boolean = BRUK_AO_RUTING) {
         kontorEndringer.aoKontorEndret?.let { tilordneKontor(it, brukAoRuting) }
         kontorEndringer.arenaKontorEndret?.let { tilordneKontor(it, brukAoRuting) }
         kontorEndringer.gtKontorEndret?.let { tilordneKontor(it, brukAoRuting) }
     }
-    fun tilordneKontor(kontorEndring: KontorEndretEvent, brukAoRuting: Boolean = false) {
+    fun tilordneKontor(kontorEndring: KontorEndretEvent, brukAoRuting: Boolean = BRUK_AO_RUTING) {
         val kontorTilhorighet = kontorEndring.tilordning
         transaction {
             kontorEndring.logg()
