@@ -16,6 +16,7 @@ import org.apache.kafka.streams.processor.api.Record
 import org.junit.jupiter.api.Test
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
+import java.time.ZonedDateTime
 import java.util.*
 
 class EndringPaOppfolgingsBrukerProcessorTest {
@@ -240,6 +241,48 @@ class EndringPaOppfolgingsBrukerProcessorTest {
             "1213",
             oppfolgingsperiodeId,
         ) shouldBe ArenaKontorEndringsType.ENDRET_I_PERIODE
+    }
+
+    @Test
+    fun `skal publisere melding ut hvis publiserArenaKontor er true`() {
+        val fnr = randomFnr()
+        val oppfolgingsperiode = OppfolgingsperiodeId(UUID.randomUUID())
+        var harPublisertMelding = false
+        val processor = EndringPaOppfolgingsBrukerProcessor(
+            { AktivOppfolgingsperiode(fnr, oppfolgingsperiode, OffsetDateTime.now().minusDays(2)) },
+            { arenaKontor(endret = etterCutoffMenAnnenTidssone.minusSeconds(1)) },
+            {},
+            {
+                harPublisertMelding = true
+                Result.success(Unit)
+            },
+            publiserArenaKontor = true
+        )
+
+        processor.process(testRecord(fnr, sistEndretDato = etterCutoffMenAnnenTidssone))
+
+        harPublisertMelding shouldBe true
+    }
+
+    @Test
+    fun `skal ikke publisere melding ut hvis publiserArenaKontor er false`() {
+        val fnr = randomFnr()
+        val oppfolgingsperiode = OppfolgingsperiodeId(UUID.randomUUID())
+        var harPublisertMelding = false
+        val processor = EndringPaOppfolgingsBrukerProcessor(
+            { AktivOppfolgingsperiode(fnr, oppfolgingsperiode, OffsetDateTime.now().minusDays(2)) },
+            { arenaKontor(endret = etterCutoffMenAnnenTidssone.minusSeconds(1)) },
+            {},
+            {
+                harPublisertMelding = true
+                Result.success(Unit)
+            },
+            publiserArenaKontor = false
+        )
+
+        processor.process(testRecord(fnr, sistEndretDato = etterCutoffMenAnnenTidssone))
+
+        harPublisertMelding shouldBe false
     }
 
     fun testRecord(
