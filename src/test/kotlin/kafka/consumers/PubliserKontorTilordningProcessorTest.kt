@@ -1,5 +1,6 @@
 package kafka.consumers
 
+import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kafka.producers.OppfolgingEndretTilordningMelding
 import no.nav.db.Ident
@@ -38,4 +39,61 @@ class PubliserKontorTilordningProcessorTest {
         processor.process(record).shouldBeInstanceOf<Retry<String, String>>()
     }
 
+    @Test
+    fun `Skal ikke publisere når brukAoRuting er false`() {
+        var harPublisertMelding = false
+        val processor = PubliserKontorTilordningProcessor(
+            hentAlleIdenter = { IdenterOppslagFeil("PDL feiler") },
+            publiserKontorTilordning = {
+                harPublisertMelding = true
+                Result.success(Unit)
+            },
+            brukAoRuting = false
+        )
+        val ident: Ident = randomFnr()
+        val tilordningMelding = OppfolgingEndretTilordningMelding(
+            kontorId = "3131",
+            oppfolgingsperiodeId = UUID.randomUUID().toString(),
+            ident = ident.value,
+            kontorEndringsType = KontorEndringsType.AutomatiskNorgRuting
+        )
+        val record = Record(
+            OppfolgingsperiodeId(UUID.fromString(tilordningMelding.oppfolgingsperiodeId)),
+            tilordningMelding,
+            ZonedDateTime.now().toEpochSecond()
+        )
+
+        processor.process(record)
+
+        harPublisertMelding shouldBe false
+    }
+
+    @Test
+    fun `Skal publisere når brukAoRuting er true`() {
+        var harPublisertMelding = false
+        val processor = PubliserKontorTilordningProcessor(
+            hentAlleIdenter = { IdenterOppslagFeil("PDL feiler") },
+            publiserKontorTilordning = {
+                harPublisertMelding = true
+                Result.success(Unit)
+            },
+            brukAoRuting = true
+        )
+        val ident: Ident = randomFnr()
+        val tilordningMelding = OppfolgingEndretTilordningMelding(
+            kontorId = "3131",
+            oppfolgingsperiodeId = UUID.randomUUID().toString(),
+            ident = ident.value,
+            kontorEndringsType = KontorEndringsType.AutomatiskNorgRuting
+        )
+        val record = Record(
+            OppfolgingsperiodeId(UUID.fromString(tilordningMelding.oppfolgingsperiodeId)),
+            tilordningMelding,
+            ZonedDateTime.now().toEpochSecond()
+        )
+
+        processor.process(record)
+
+        harPublisertMelding shouldBe true
+    }
 }
