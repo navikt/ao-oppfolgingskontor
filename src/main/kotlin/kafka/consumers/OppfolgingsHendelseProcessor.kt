@@ -23,6 +23,7 @@ import java.util.*
 class OppfolgingsHendelseProcessor(
     val oppfolgingsPeriodeService: OppfolgingsperiodeService,
     val publiserTombstone: (oppfolgingsperiodeId: OppfolgingsperiodeId) -> Result<Unit>,
+    val brukAoRuting: Boolean = BRUK_AO_RUTING
 ) {
     val log = LoggerFactory.getLogger(javaClass)
 
@@ -77,7 +78,7 @@ class OppfolgingsHendelseProcessor(
         return when (this) {
             IngenPeriodeAvsluttet -> Skip()
             GammelPeriodeAvsluttet, InnkommendePeriodeAvsluttet -> {
-                if (BRUK_AO_RUTING) {
+                if (brukAoRuting) {
                     publiserTombstone(event.periodeId)
                 }
                 Commit()

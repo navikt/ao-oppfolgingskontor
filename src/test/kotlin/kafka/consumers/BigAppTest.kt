@@ -106,8 +106,9 @@ class BigAppTest {
             )
 
             val publiserKontorTilordningProcessor = PubliserKontorTilordningProcessor(
-                identService::hentAlleIdenter,
-                kontorEndringProducer::publiserEndringPåKontor,
+                hentAlleIdenter = identService::hentAlleIdenter,
+                publiserKontorTilordning = kontorEndringProducer::publiserEndringPåKontor,
+                brukAoRuting = true
             )
             val topology = configureTopology(
                 this.environment,

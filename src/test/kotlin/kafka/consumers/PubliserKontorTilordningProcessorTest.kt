@@ -20,6 +20,7 @@ class PubliserKontorTilordningProcessorTest {
         val processor = PubliserKontorTilordningProcessor(
             hentAlleIdenter = { IdenterOppslagFeil("PDL feiler") },
             publiserKontorTilordning = { Result.failure(Exception("Feilet")) },
+            brukAoRuting = true
         )
         val ident: Ident = randomFnr()
         val tilordningMelding = OppfolgingEndretTilordningMelding(

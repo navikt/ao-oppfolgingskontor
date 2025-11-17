@@ -19,6 +19,7 @@ import java.util.UUID
 class PubliserKontorTilordningProcessor(
     val hentAlleIdenter: suspend (Ident) -> IdenterResult,
     val publiserKontorTilordning: suspend (kontorEndring: OppfolgingEndretTilordningMelding) -> Result<Unit>,
+    val brukAoRuting: Boolean = BRUK_AO_RUTING
 ) {
     val log = LoggerFactory.getLogger(this.javaClass)
 
@@ -36,7 +37,7 @@ class PubliserKontorTilordningProcessor(
     fun process(
         record: Record<OppfolgingsperiodeId, OppfolgingEndretTilordningMelding>
     ): RecordProcessingResult<String, String> {
-        if (BRUK_AO_RUTING) {
+        if (brukAoRuting) {
             val result = runBlocking { publiserKontorTilordning(record.value()) }
 
             return when (result.isSuccess) {
