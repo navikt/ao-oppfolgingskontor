@@ -7,11 +7,15 @@ import no.nav.http.client.Norg2Client
 import org.jetbrains.exposed.sql.batchUpsert
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import java.time.OffsetDateTime
 
 class KontorNavnService(
     val norg2Client: Norg2Client
 ) {
+    private val logger: Logger = LoggerFactory.getLogger(this::class.java)
+
     suspend fun getKontorNavn(kontorId: KontorId): KontorNavn {
         return hentLagretKontorNavn(kontorId)?.kontorNavn ?:
             norg2Client.hentKontor(kontorId).let { KontorNavn(it.navn) }
@@ -19,6 +23,7 @@ class KontorNavnService(
     }
 
     suspend fun friskOppAlleKontorNavn() {
+        logger.info("Henter alle kontornavn fra Norg2")
         val kontorer = norg2Client.hentAlleEnheter()
         transaction {
             KontorNavnTable.batchUpsert(kontorer) { kontoret ->
@@ -27,6 +32,7 @@ class KontorNavnService(
                 this[KontorNavnTable.updatedAt] = OffsetDateTime.now()
             }
         }
+        logger.info("Ferdig med å friske opp alle kontornavn")
     }
 
     private fun lagreKontorNavn(kontorId: KontorId, kontorNavn: KontorNavn) {

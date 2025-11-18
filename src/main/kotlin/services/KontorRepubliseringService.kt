@@ -30,7 +30,7 @@ class KontorRepubliseringService(
             republiserKontor(it)
 
             antallPubliserte++
-            if (antallPubliserte % 5000 == 0) {
+            if (antallPubliserte % 500 == 0) {
                 log.info("Antall publiserte: $antallPubliserte")
             }
         }
