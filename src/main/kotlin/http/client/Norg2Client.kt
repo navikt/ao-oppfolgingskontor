@@ -224,4 +224,5 @@ enum class KontorType {
     TILLIT,
     RIKSREV,
     EKSTERN,
+    FORVALTNING
 }
