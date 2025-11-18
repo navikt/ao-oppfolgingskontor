@@ -51,8 +51,6 @@ fun Application.configureKontorRepubliseringModule(
                         HttpStatusCode.InternalServerError,
                         "Klarte ikke starte republisering av kontorer: ${e.message} \n" + e.stackTraceToString()
                     )
-                }.onSuccess {
-                    log.info("Republisering av kontorer fullført.")
                 }
             }
         }
