@@ -35,7 +35,6 @@ class KontorRepubliseringServiceTest {
         }
     }
 
-
     @Test
     fun `Skal kunne republisere kontor uten feil`() = runTest {
         transaction {
@@ -84,4 +83,44 @@ class KontorRepubliseringServiceTest {
             kontorEndringsType = KontorEndringsType.AutomatiskNorgRuting
         )
     }
+
+    @Test
+    fun `Skal ikke republisere kontor for personer som ikke er under oppfølging`() = runTest {
+        transaction {
+            OppfolgingsperiodeTable.deleteAll()
+        }
+        val republiserteKontorer = mutableListOf<KontorSomSkalRepubliseres>()
+
+        val kontorRepubliseringService = KontorRepubliseringService(
+            { republiserteKontorer.add(it) },
+            dataSource,
+            {}
+        )
+        val fnr = randomFnr()
+        val aktorId = randomAktorId()
+        val kontorId = KontorId("2121")
+        val kontorNavn = KontorNavn("Nav Helsfyr")
+        gittIdentIMapping(listOf(fnr, aktorId), null, 20312)
+        gittKontorNavn(kontorNavn, kontorId)
+        gittIdentMedKontor(
+            ident = fnr,
+            kontorId = kontorId,
+            oppfolgingsperiodeId = null,
+        )
+
+        var count = 0L
+        newSuspendedTransaction {
+            count = OppfolgingsperiodeEntity.count()
+            kontorRepubliseringService.republiserKontorer()
+        }
+
+        withClue("Forventet ${count} republiserte kontoret men fikk ${republiserteKontorer.size}") {
+            republiserteKontorer.size shouldBe count
+        }
+        val testKontor = republiserteKontorer
+            .find { it.aktorId == aktorId }
+
+        testKontor shouldBe null
+    }
+
 }
