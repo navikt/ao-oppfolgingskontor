@@ -50,8 +50,11 @@ class Norg2Client(
         val response = httpClient.get(hentEnheterPath) {
             accept(ContentType.Application.Json)
         }
-        return response.body<List<NorgKontor>>()
+        log.info("Hentet alle kontorer fra NORG2")
+        val kontorer = response.body<List<NorgKontor>>()
             .map { it.toMinimaltKontor() }
+        log.info("Har mappet ${kontorer.size} kontorer til minimaltKontor")
+        return kontorer
     }
 
     suspend fun hentKontor(kontorId: KontorId): MinimaltNorgKontor {
@@ -63,7 +66,11 @@ class Norg2Client(
         return response.body<NorgKontor>().toMinimaltKontor()
     }
 
-    suspend fun hentKontorForGt(gt: GeografiskTilknytningNr, brukerHarStrengtFortroligAdresse: HarStrengtFortroligAdresse, brukerErSkjermet: HarSkjerming): KontorForGtResultat {
+    suspend fun hentKontorForGt(
+        gt: GeografiskTilknytningNr,
+        brukerHarStrengtFortroligAdresse: HarStrengtFortroligAdresse,
+        brukerErSkjermet: HarSkjerming
+    ): KontorForGtResultat {
         try {
             val response = httpClient.get((hentKontorForGtPath(gt))) {
                 accept(ContentType.Application.Json)
@@ -76,7 +83,8 @@ class Norg2Client(
             }
 
             if (response.status == HttpStatusCode.NotFound)
-                return KontorForGtFantIkkeKontor(brukerErSkjermet, brukerHarStrengtFortroligAdresse,
+                return KontorForGtFantIkkeKontor(
+                    brukerErSkjermet, brukerHarStrengtFortroligAdresse,
                     GtNummerForBrukerFunnet(gt)
                 )
 
@@ -88,7 +96,8 @@ class Norg2Client(
                     KontorId(it.kontorId).toDefaultGtKontorFunnet(
                         brukerHarStrengtFortroligAdresse,
                         brukerErSkjermet,
-                        gt)
+                        gt
+                    )
                 }
         } catch (e: Throwable) {
             return KontorForGtFeil(e.message ?: "Ukjent feil")
@@ -104,7 +113,11 @@ class Norg2Client(
         val behandlingstype: String = "ae0253", // "Oppfølgingskontor"
     )
 
-    suspend fun hentKontorForBrukerMedMangelfullGT(gtForBruker: GtSomKreverFallback, brukerHarStrengtFortroligAdresse: HarStrengtFortroligAdresse, brukerErSkjermet: HarSkjerming): KontorForBrukerMedMangelfullGtResultat {
+    suspend fun hentKontorForBrukerMedMangelfullGT(
+        gtForBruker: GtSomKreverFallback,
+        brukerHarStrengtFortroligAdresse: HarStrengtFortroligAdresse,
+        brukerErSkjermet: HarSkjerming
+    ): KontorForBrukerMedMangelfullGtResultat {
         try {
             val geografiskOmraade = when (gtForBruker) {
                 is GtLandForBrukerFunnet -> gtForBruker.land.value
@@ -133,7 +146,7 @@ class Norg2Client(
         }
     }
 
-        companion object {
+    companion object {
         const val hentEnheterPath = "/norg2/api/v1/enhet"
         const val hentEnhetPathWithParam = "/norg2/api/v1/enhet/{enhetId}"
         fun hentEnhetPath(kontorId: KontorId): (String) = "/norg2/api/v1/enhet/${kontorId.id}"
@@ -146,7 +159,7 @@ fun KontorId.toDefaultGtKontorFunnet(
     brukerHarStrengtFortroligAdresse: HarStrengtFortroligAdresse,
     brukerErSkjermet: HarSkjerming,
     geografiskTilknytningNr: GeografiskTilknytningNr,
-    ): KontorForGtFantDefaultKontor {
+): KontorForGtFantDefaultKontor {
     return KontorForGtFantDefaultKontor(
         this,
         brukerErSkjermet,
@@ -167,8 +180,8 @@ enum class GtType {
 }
 
 sealed class GeografiskTilknytningNr(open val value: String, val type: GtType)
-data class GeografiskTilknytningBydelNr(override val value: String): GeografiskTilknytningNr(value, GtType.Bydel)
-data class GeografiskTilknytningKommuneNr(override val value: String): GeografiskTilknytningNr(value, GtType.Kommune)
+data class GeografiskTilknytningBydelNr(override val value: String) : GeografiskTilknytningNr(value, GtType.Bydel)
+data class GeografiskTilknytningKommuneNr(override val value: String) : GeografiskTilknytningNr(value, GtType.Kommune)
 data class GeografiskTilknytningLand(val value: String)
 
 fun NorgKontor.toMinimaltKontor() = MinimaltNorgKontor(
