@@ -14,7 +14,7 @@ import no.nav.domain.events.AOKontorEndret
 import no.nav.domain.events.KontorSattAvVeileder
 import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.clients.producer.ProducerRecord
-import services.KontorSomSkalRepubliseres
+import services.KontortilordningSomSkalRepubliseres
 import kotlin.String
 
 class KontorEndringProducer(
@@ -57,9 +57,9 @@ class KontorEndringProducer(
         }
     }
 
-    fun republiserKontor(kontorSomSkalRepubliseres: KontorSomSkalRepubliseres): Result<Unit> {
+    fun republiserKontor(kontortilordningSomSkalRepubliseres: KontortilordningSomSkalRepubliseres): Result<Unit> {
         return runCatching {
-            val value = kontorSomSkalRepubliseres.toKontorTilordningMeldingDto()
+            val value = kontortilordningSomSkalRepubliseres.toKontorTilordningMeldingDto()
             publiserEndringPåKontor(value)
         }
     }
@@ -100,7 +100,7 @@ fun AOKontorEndret.toKontorTilordningMeldingDto(
         tilordningstype = Tilordningstype.fraKontorEndringsType(this.kontorEndringsType())
     )
 }
-fun KontorSomSkalRepubliseres.toKontorTilordningMeldingDto(): KontorTilordningMeldingDto {
+fun KontortilordningSomSkalRepubliseres.toKontorTilordningMeldingDto(): KontorTilordningMeldingDto {
     return KontorTilordningMeldingDto(
         kontorId = this.kontorId.id,
         kontorNavn = this.kontorNavn.navn,

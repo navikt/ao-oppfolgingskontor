@@ -16,7 +16,7 @@ import java.util.*
 import javax.sql.DataSource
 
 class KontorRepubliseringService(
-    val republiserKontor: (KontorSomSkalRepubliseres) -> Unit,
+    val republiserKontor: (KontortilordningSomSkalRepubliseres) -> Unit,
     val datasource: DataSource,
     val friskOppAlleKontorNavn: suspend () -> Unit,
 ) {
@@ -38,7 +38,7 @@ class KontorRepubliseringService(
     }
 
     fun hentAlleKontorerSomSkalRepubliseres(
-        publiserEndringPaaKafka: (KontorSomSkalRepubliseres) -> Unit
+        publiserEndringPaaKafka: (KontortilordningSomSkalRepubliseres) -> Unit
     ): Result<Unit> = runCatching {
         val query = """
             select
@@ -76,7 +76,7 @@ class KontorRepubliseringService(
     }
 }
 
-fun ResultSet.toKontorSomSkalRepubliseres(): KontorSomSkalRepubliseres {
+fun ResultSet.toKontorSomSkalRepubliseres(): KontortilordningSomSkalRepubliseres {
     val ident = validateIdentSomKanLagres(this.getString("fnr"), Ident.HistoriskStatus.UKJENT)
     val aktorId = AktorId(this.getString("aktorId"), Ident.HistoriskStatus.UKJENT)
     val kontorId = KontorId(this.getString("kontor_id"))
@@ -84,7 +84,7 @@ fun ResultSet.toKontorSomSkalRepubliseres(): KontorSomSkalRepubliseres {
     val oppfolgingsperiodeId = OppfolgingsperiodeId(this.getObject("oppfolgingsperiode_id", UUID::class.java))
     val kontorEndringsType = KontorEndringsType.valueOf(this.getString("kontorendringstype"))
     val kontorNavn = KontorNavn(this.getString("kontor_navn"))
-    return KontorSomSkalRepubliseres(
+    return KontortilordningSomSkalRepubliseres(
         ident = ident,
         aktorId = aktorId,
         kontorId = kontorId,
@@ -95,7 +95,7 @@ fun ResultSet.toKontorSomSkalRepubliseres(): KontorSomSkalRepubliseres {
     )
 }
 
-data class KontorSomSkalRepubliseres(
+data class KontortilordningSomSkalRepubliseres(
     val ident: IdentSomKanLagres,
     val aktorId: AktorId,
     val kontorId: KontorId,
