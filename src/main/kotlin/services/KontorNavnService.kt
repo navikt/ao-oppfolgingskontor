@@ -25,6 +25,7 @@ class KontorNavnService(
     suspend fun friskOppAlleKontorNavn() {
         logger.info("Henter alle kontornavn fra Norg2")
         val kontorer = norg2Client.hentAlleEnheter()
+        logger.info("Hentet antall enheter: ${kontorer.size} for å friske opp kontornavn")
         transaction {
             KontorNavnTable.batchUpsert(kontorer) { kontoret ->
                 this[KontorNavnTable.id] = kontoret.kontorId
