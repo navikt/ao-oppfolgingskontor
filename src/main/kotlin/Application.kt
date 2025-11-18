@@ -143,3 +143,6 @@ fun ApplicationEnvironment.isProduction(): Boolean {
         ?.getString()
         ?.contentEquals("prod-gcp") ?: false
 }
+
+val BRUK_AO_RUTING: Boolean = System.getenv("NAIS_CLUSTER_NAME") == "prod-gcp"
+val PUBLISER_ARENA_KONTOR: Boolean = !BRUK_AO_RUTING

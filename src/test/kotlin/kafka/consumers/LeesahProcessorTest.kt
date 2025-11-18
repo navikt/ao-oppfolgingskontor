@@ -146,7 +146,7 @@ class LeesahProcessorTest {
         strengtFortroligAdresseProvider: suspend (ident: Ident) -> HarStrengtFortroligAdresseResult = { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) }
     ): AutomatiskKontorRutingService {
         return AutomatiskKontorRutingService(
-            KontorTilordningService::tilordneKontor,
+            { KontorTilordningService.tilordneKontor(it, true)},
             gtKontorProvider = gtProvider,
             aldersProvider = { throw Throwable("Denne skal ikke brukes") },
             profileringProvider = { throw Throwable("Denne skal ikke brukes") },
@@ -170,7 +170,8 @@ class LeesahProcessorTest {
                 kontorTilordning = KontorTilordning(fnr, kontorId, oppfolgingsperiodeId),
                 kontorEndringsType = KontorEndringsType.EndretBostedsadresse,
                 gt = GtNummerForBrukerFunnet(GeografiskTilknytningBydelNr("3131"))
-            )
+            ),
+            true
         )
     }
 
@@ -185,7 +186,8 @@ class LeesahProcessorTest {
                     HarStrengtFortroligAdresse(false),
                     geografiskTilknytningNr = GeografiskTilknytningBydelNr("313121")
                 ),
-            )
+            ),
+            true
         )
     }
 }

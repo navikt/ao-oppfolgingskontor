@@ -89,7 +89,8 @@ class OppfolgingshendelseProcessorTest {
                     ingenSensitivitet.strengtFortroligAdresse,
                     geografiskTilknytningNr = GeografiskTilknytningBydelNr("313131")
                 )
-            )
+            ),
+            true
         )
     }
 
@@ -98,7 +99,8 @@ class OppfolgingshendelseProcessorTest {
             ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep(
                 KontorTilordning(this.ident, kontorId, this.oppfolgingsperiodeId),
                 OffsetDateTime.now()
-            )
+            ),
+            true
         )
     }
 
@@ -122,8 +124,8 @@ class OppfolgingshendelseProcessorTest {
     /* Mock at oppslag for å hente alle mappede identer bare returnerer 1 ident (happu path)  */
     fun Bruker.defaultOppfolgingsHendelseProcessor(publiserTombstone: (oppfolgingsperiodeId: OppfolgingsperiodeId) -> Result<Unit> = { _ -> Result.success(Unit) }): OppfolgingsHendelseProcessor {
         return OppfolgingsHendelseProcessor(
-            OppfolgingsperiodeService { IdenterFunnet(listOf(this.ident, AktorId(this.aktorId, AKTIV)), this.ident) },
-            publiserTombstone,
+            oppfolgingsPeriodeService = OppfolgingsperiodeService { IdenterFunnet(listOf(this.ident, AktorId(this.aktorId, AKTIV)), this.ident) },
+            publiserTombstone = publiserTombstone
         )
     }
 
@@ -375,7 +377,9 @@ class OppfolgingshendelseProcessorTest {
         val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
             { NotUnderOppfolging },
             { sistLagreArenaKontor },
-            {})
+            {},
+            { Result.success(Unit) }
+        )
         endringPaOppfolgingsBrukerProcessor.process(
             TopicUtils.endringPaaOppfolgingsBrukerMessage(
                 ident,

@@ -5,9 +5,12 @@ import http.client.ArenakontorOppslagFeilet
 import http.client.ArenakontorResult
 import http.client.ArenakontorFunnet
 import http.client.ArenakontorIkkeFunnet
+import kafka.producers.OppfolgingEndretTilordningMelding
 import kotlinx.coroutines.runBlocking
+import no.nav.PUBLISER_ARENA_KONTOR
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
+import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorTilordning
 import no.nav.domain.events.ArenaKontorHentetSynkrontVedOppfolgingStart
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
@@ -26,7 +29,9 @@ import org.slf4j.LoggerFactory
 class ArenakontorProcessor(
     private val hentArenakontor: suspend (Ident) -> ArenakontorResult,
     private val lagreKontortilordning: (ArenaKontorHentetSynkrontVedOppfolgingStart) -> Unit,
-    val arenaKontorProvider: suspend (IdentSomKanLagres) -> ArenaKontorUtvidet?,
+    private val arenaKontorProvider: suspend (IdentSomKanLagres) -> ArenaKontorUtvidet?,
+    private val publiserKontorTilordning: suspend (kontorEndring: OppfolgingEndretTilordningMelding) -> Result<Unit>,
+    private val publiserArenaKontor: Boolean = PUBLISER_ARENA_KONTOR
 ) {
     companion object {
         const val processorName = "ArenakontorProcessor"
@@ -86,6 +91,16 @@ class ArenakontorProcessor(
                             } else {
                                 logger.info("Lagrer funnet arenakontor")
                                 lagreKontortilordning(kontorTilordning)
+                                if (publiserArenaKontor) {
+                                    publiserKontorTilordning(
+                                        OppfolgingEndretTilordningMelding(
+                                            kontorId = kontorTilordning.tilordning.kontorId.id,
+                                            oppfolgingsperiodeId = kontorTilordning.tilordning.oppfolgingsperiodeId.value.toString(),
+                                            ident =  kontorTilordning.tilordning.fnr.value,
+                                            kontorEndringsType = KontorEndringsType.ArenaKontorHentetSynkrontVedOppfolgingsStart
+                                        )
+                                    )
+                                }
                                 Commit()
                             }
                         }

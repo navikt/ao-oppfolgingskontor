@@ -1,9 +1,12 @@
 package no.nav.services
 
+import db.table.AlternativAoKontorTable
+import no.nav.BRUK_AO_RUTING
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.db.table.ArenaKontorTable
 import no.nav.db.table.GeografiskTilknytningKontorTable
 import no.nav.db.table.KontorhistorikkTable
+import no.nav.domain.System
 import no.nav.domain.events.AOKontorEndret
 import no.nav.domain.events.ArenaKontorEndret
 import no.nav.domain.events.GTKontorEndret
@@ -16,28 +19,51 @@ import org.jetbrains.exposed.sql.upsert
 import java.time.ZonedDateTime
 
 object KontorTilordningService {
-    fun tilordneKontor(kontorEndringer: KontorEndringer) {
-        kontorEndringer.aoKontorEndret?.let { tilordneKontor(it) }
-        kontorEndringer.arenaKontorEndret?.let { tilordneKontor(it) }
-        kontorEndringer.gtKontorEndret?.let { tilordneKontor(it) }
+    fun tilordneKontor(kontorEndringer: KontorEndringer, brukAoRuting: Boolean = BRUK_AO_RUTING) {
+        kontorEndringer.aoKontorEndret?.let { tilordneKontor(it, brukAoRuting) }
+        kontorEndringer.arenaKontorEndret?.let { tilordneKontor(it, brukAoRuting) }
+        kontorEndringer.gtKontorEndret?.let { tilordneKontor(it, brukAoRuting) }
     }
-    fun tilordneKontor(kontorEndring: KontorEndretEvent) {
+    fun tilordneKontor(kontorEndring: KontorEndretEvent, brukAoRuting: Boolean = BRUK_AO_RUTING) {
         val kontorTilhorighet = kontorEndring.tilordning
         transaction {
             kontorEndring.logg()
-            val entryId = settKontorIHistorikk(kontorEndring)
             when (kontorEndring) {
                 is AOKontorEndret -> {
-                    ArbeidsOppfolgingKontorTable.upsert {
-                        it[kontorId] = kontorTilhorighet.kontorId.id
-                        it[id] = kontorTilhorighet.fnr.value
-                        it[endretAv] = kontorEndring.registrant.getIdent()
-                        it[endretAvType] = kontorEndring.registrant.getType()
-                        it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
-                        it[historikkEntry] = entryId.value
+                    if(brukAoRuting) {
+                        val entryId = settKontorIHistorikk(kontorEndring)
+                        ArbeidsOppfolgingKontorTable.upsert {
+                            it[kontorId] = kontorTilhorighet.kontorId.id
+                            it[id] = kontorTilhorighet.fnr.value
+                            it[endretAv] = kontorEndring.registrant.getIdent()
+                            it[endretAvType] = kontorEndring.registrant.getType()
+                            it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
+                            it[historikkEntry] = entryId.value
+                        }
+                    } else
+                    {
+                        AlternativAoKontorTable.insert {
+                            it[fnr] = kontorTilhorighet.fnr.value
+                            it[kontorId] = kontorTilhorighet.kontorId.id
+                            it[endretAv] = System().getIdent()
+                            it[endretAvType] = System().getType()
+                            it[kontorendringstype] = kontorEndring.kontorEndringsType().name
+                            it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
+                        }
                     }
                 }
                 is ArenaKontorEndret -> {
+                    val entryId = settKontorIHistorikk(kontorEndring)
+                    if(!brukAoRuting){
+                        ArbeidsOppfolgingKontorTable.upsert {
+                            it[kontorId] = kontorTilhorighet.kontorId.id
+                            it[id] = kontorTilhorighet.fnr.value
+                            it[endretAv] = System().getIdent()
+                            it[endretAvType] = System().getType()
+                            it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
+                            it[historikkEntry] = entryId.value
+                        }
+                    }
                     ArenaKontorTable.upsert {
                         it[kontorId] = kontorTilhorighet.kontorId.id
                         it[id] = kontorTilhorighet.fnr.value
@@ -47,6 +73,7 @@ object KontorTilordningService {
                     }
                 }
                 is GTKontorEndret -> {
+                    val entryId = settKontorIHistorikk(kontorEndring)
                     GeografiskTilknytningKontorTable.upsert {
                         it[kontorId] = kontorTilhorighet.kontorId.id
                         it[id] = kontorTilhorighet.fnr.value

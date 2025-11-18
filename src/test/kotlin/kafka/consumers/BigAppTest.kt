@@ -73,7 +73,7 @@ class BigAppTest {
             val oppfolgingsperiodeProvider =
                 { _: Ident -> AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, OffsetDateTime.now()) }
             val automatiskKontorRutingService = AutomatiskKontorRutingService(
-                KontorTilordningService::tilordneKontor,
+                { KontorTilordningService.tilordneKontor(it, true)},
                 { _, a, b -> KontorForGtFantDefaultKontor(kontor, b, a, GeografiskTilknytningBydelNr("3131")) },
                 { AlderFunnet(40) },
                 { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
@@ -94,7 +94,8 @@ class BigAppTest {
             val endringPaaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
                 oppfolgingsperiodeProvider,
                 { null }, // TODO: Mer realitisk test-oppsett
-                {}
+                {},
+                { Result.success(Unit) }
             )
             val identService = IdentService { IdenterFunnet(emptyList(), fnr) }
             val identendringsProcessor = IdentChangeProcessor(identService)
@@ -105,8 +106,9 @@ class BigAppTest {
             )
 
             val publiserKontorTilordningProcessor = PubliserKontorTilordningProcessor(
-                identService::hentAlleIdenter,
-                kontorEndringProducer::publiserEndringPåKontor,
+                hentAlleIdenter = identService::hentAlleIdenter,
+                publiserKontorTilordning = kontorEndringProducer::publiserEndringPåKontor,
+                brukAoRuting = true
             )
             val topology = configureTopology(
                 this.environment,

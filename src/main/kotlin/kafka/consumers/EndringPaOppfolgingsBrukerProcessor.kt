@@ -1,11 +1,14 @@
 package no.nav.kafka.consumers
 
 import domain.ArenaKontorUtvidet
+import kafka.producers.OppfolgingEndretTilordningMelding
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import no.nav.PUBLISER_ARENA_KONTOR
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
+import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
@@ -28,7 +31,9 @@ import java.time.ZoneOffset
 class EndringPaOppfolgingsBrukerProcessor(
     val oppfolgingsperiodeProvider: suspend (IdentSomKanLagres) -> OppfolgingsperiodeOppslagResult,
     val arenaKontorProvider: suspend (IdentSomKanLagres) -> ArenaKontorUtvidet?,
-    val lagreKontorTilordninger: (KontorEndretEvent) -> Unit
+    val lagreKontorTilordninger: (KontorEndretEvent) -> Unit,
+    val publiserKontorTilordning: suspend (kontorEndring: OppfolgingEndretTilordningMelding) -> Result<Unit>,
+    val publiserArenaKontor: Boolean = PUBLISER_ARENA_KONTOR
 ) {
     val log = LoggerFactory.getLogger(EndringPaOppfolgingsBrukerProcessor::class.java)
 
@@ -79,6 +84,23 @@ class EndringPaOppfolgingsBrukerProcessor(
                         )
                     }
                 )
+                if (publiserArenaKontor) {
+                    val kontorEndringstype = if (result.erFørsteArenaKontorIOppfolgingsperiode) {
+                        KontorEndringsType.ArenaKontorVedOppfolgingStartMedEtterslep
+                    } else {
+                        KontorEndringsType.EndretIArena
+                    }
+                    runBlocking {
+                        publiserKontorTilordning(
+                            OppfolgingEndretTilordningMelding(
+                                kontorId = kontorTilordning.kontorId.id,
+                                oppfolgingsperiodeId = kontorTilordning.oppfolgingsperiodeId.value.toString(),
+                                ident =  kontorTilordning.fnr.value,
+                                kontorEndringsType = kontorEndringstype
+                            )
+                        )
+                    }
+                }
                 Commit()
             }
         }

@@ -2,6 +2,7 @@ package kafka.consumers
 
 import kafka.producers.OppfolgingEndretTilordningMelding
 import kotlinx.coroutines.runBlocking
+import no.nav.BRUK_AO_RUTING
 import no.nav.db.Ident
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.http.client.IdenterResult
@@ -18,6 +19,7 @@ import java.util.UUID
 class PubliserKontorTilordningProcessor(
     val hentAlleIdenter: suspend (Ident) -> IdenterResult,
     val publiserKontorTilordning: suspend (kontorEndring: OppfolgingEndretTilordningMelding) -> Result<Unit>,
+    val brukAoRuting: Boolean = BRUK_AO_RUTING
 ) {
     val log = LoggerFactory.getLogger(this.javaClass)
 
@@ -35,15 +37,19 @@ class PubliserKontorTilordningProcessor(
     fun process(
         record: Record<OppfolgingsperiodeId, OppfolgingEndretTilordningMelding>
     ): RecordProcessingResult<String, String> {
-        val result = runBlocking { publiserKontorTilordning(record.value()) }
+        if (brukAoRuting) {
+            val result = runBlocking { publiserKontorTilordning(record.value()) }
 
-        return when (result.isSuccess) {
-            true -> Commit()
-            false -> {
-                val message = "Kunne ikke publisere endring på ao-kontor til kafka topic: ${result.exceptionOrNull()?.message}"
-                log.error(message, result.exceptionOrNull())
-                Retry(message)
+            return when (result.isSuccess) {
+                true -> Commit()
+                false -> {
+                    val message = "Kunne ikke publisere endring på ao-kontor til kafka topic: ${result.exceptionOrNull()?.message}"
+                    log.error(message, result.exceptionOrNull())
+                    Retry(message)
+                }
             }
+        } else {
+            return Commit()
         }
     }
 }
