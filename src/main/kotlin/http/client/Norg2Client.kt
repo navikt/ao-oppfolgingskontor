@@ -51,10 +51,16 @@ class Norg2Client(
             accept(ContentType.Application.Json)
         }
         log.info("Hentet alle kontorer fra NORG2")
-        val kontorer = response.body<List<NorgKontor>>()
-            .map { it.toMinimaltKontor() }
-        log.info("Har mappet ${kontorer.size} kontorer til minimaltKontor")
-        return kontorer
+        try {
+            val kontorer = response.body<List<NorgKontor>>()
+                .map { it.toMinimaltKontor() }
+
+            log.info("Har mappet ${kontorer.size} kontorer til minimaltKontor")
+            return kontorer
+        } catch (e: Exception) {
+            log.error("Feil ved mapping av NorgKontor til MinimaltKontor: ${e.message}")
+            throw e
+        }
     }
 
     suspend fun hentKontor(kontorId: KontorId): MinimaltNorgKontor {
