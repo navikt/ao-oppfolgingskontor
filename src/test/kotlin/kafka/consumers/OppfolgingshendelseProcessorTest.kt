@@ -125,8 +125,7 @@ class OppfolgingshendelseProcessorTest {
     fun Bruker.defaultOppfolgingsHendelseProcessor(publiserTombstone: (oppfolgingsperiodeId: OppfolgingsperiodeId) -> Result<Unit> = { _ -> Result.success(Unit) }): OppfolgingsHendelseProcessor {
         return OppfolgingsHendelseProcessor(
             oppfolgingsPeriodeService = OppfolgingsperiodeService { IdenterFunnet(listOf(this.ident, AktorId(this.aktorId, AKTIV)), this.ident) },
-            publiserTombstone = publiserTombstone,
-            brukAoRuting = true
+            publiserTombstone = publiserTombstone
         )
     }
 

@@ -76,17 +76,13 @@ class KontorEndringProducer(
     }
 
     fun publiserTombstone(oppfolgingPeriodeId: OppfolgingsperiodeId): Result<Unit> {
-        if (BRUK_AO_RUTING) {
-            return runCatching {
-                val record: ProducerRecord<String,String?> = ProducerRecord(
-                    kontorTopicNavn,
-                    oppfolgingPeriodeId.value.toString(),
-                    null
-                )
-                producer.send(record)
-            }
-        } else {
-            return Result.success(Unit)
+        return runCatching {
+            val record: ProducerRecord<String,String?> = ProducerRecord(
+                kontorTopicNavn,
+                oppfolgingPeriodeId.value.toString(),
+                null
+            )
+            producer.send(record)
         }
     }
 }
