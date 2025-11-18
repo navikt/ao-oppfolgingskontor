@@ -177,7 +177,7 @@ fun KontorId.toDefaultGtKontorFunnet(
 data class MinimaltNorgKontor(
     val kontorId: String,
     val navn: String,
-    val type: KontorType
+    val type: NorgKontorType
 )
 
 enum class GtType {
@@ -193,7 +193,7 @@ data class GeografiskTilknytningLand(val value: String)
 fun NorgKontor.toMinimaltKontor() = MinimaltNorgKontor(
     kontorId = this.enhetNr,
     navn = this.navn,
-    KontorType.valueOf(this.type),
+    NorgKontorType.fromString(this.type),
 )
 
 @Serializable
@@ -217,33 +217,16 @@ data class NorgKontor(
     val orgNrTilKommunaltNavKontor: String?
 )
 
-enum class KontorType {
-    KO,
+enum class NorgKontorType {
     LOKAL,
-    FYLKE,
-    TILTAK,
-    ALS,
-    DOKSENTER,
-    ARK,
-    OPPFUTLAND,
-    ROL,
-    HELFO,
-    DIR,
-    ROBOT,
-    IT,
-    KONTAKT,
-    OKONOMI,
-    KLAGE,
-    UTLAND,
-    YTA,
-    KONTROLL,
-    HMS,
-    FPY,
-    INNKREV,
-    TILLIT,
-    RIKSREV,
-    EKSTERN,
-    FORVALTNING,
-    INTRO,
-    OTENESTE
+    IRRELEVANT_KONTORTYPE;
+    companion object {
+        fun fromString(value: String): NorgKontorType {
+            try {
+                return valueOf(value)
+            } catch (e: IllegalArgumentException) {
+                return IRRELEVANT_KONTORTYPE
+            }
+        }
+    }
 }

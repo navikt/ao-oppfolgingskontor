@@ -6,22 +6,22 @@ import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.GeografiskTilknyttetKontorEntity
 import no.nav.db.table.ArenaKontorTable
 import no.nav.db.table.GeografiskTilknytningKontorTable
-import no.nav.http.client.KontorType
+import no.nav.http.client.NorgKontorType
 import no.nav.http.client.MinimaltNorgKontor
 import no.nav.http.client.Norg2Client
 import no.nav.http.graphql.schemas.AlleKontorQueryDto
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 
-val velgbareKontorTyper = listOf(
-    KontorType.LOKAL,
+val velgbareNorgKontorTyper = listOf(
+    NorgKontorType.LOKAL,
 )
 
 fun MinimaltNorgKontor.erEgenAnsattKontor() = this.navn.toLowerCasePreservingASCIIRules()
     .contains("egne ansatte")
 
 fun erValgbartKontor(kontor: MinimaltNorgKontor): Boolean {
-    if (kontor.type in velgbareKontorTyper) return true
+    if (kontor.type in velgbareNorgKontorTyper) return true
     if (kontor.erEgenAnsattKontor()) return true
     return false
 }
