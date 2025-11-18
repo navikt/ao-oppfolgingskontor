@@ -8,7 +8,7 @@ object KontorNavnTable: IdTable<String>("kontornavn") {
     override val id = varchar("kontor_id", 50).entityId()
     override val primaryKey = PrimaryKey(id) // PRIMARY KEY (fnr),
 //    val kontorId = char("kontor_id", 4)
-    val kontorNavn = varchar("kontor_navn", 50)
+    val kontorNavn = text("kontor_navn")
     val updatedAt = timestampWithTimeZone("updated_at")
         .defaultExpression(CurrentTimestampWithTimeZone) // TIMESTAMPTZ DEFAULT NOW()
 }
