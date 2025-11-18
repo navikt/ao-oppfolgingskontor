@@ -244,5 +244,6 @@ enum class KontorType {
     RIKSREV,
     EKSTERN,
     FORVALTNING,
-    INTRO
+    INTRO,
+    OTENESTE
 }
