@@ -28,6 +28,11 @@ spec:
         diskAutoresize: true
         databases:
           - name: ao-oppfolgingskontor
+            users:
+              - name: datastream
+        flags:
+          - name: cloudsql.logical_decoding
+            value: "on"
   prometheus:
     enabled: true
     path: /metrics
