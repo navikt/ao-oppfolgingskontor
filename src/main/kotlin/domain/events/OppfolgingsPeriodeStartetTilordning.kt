@@ -35,7 +35,7 @@ enum class RutingResultat {
             RutetViaNorgFallback -> KontorEndringsType.AutomatiskNorgRutingFallback
             FallbackIngenGTFunnet -> KontorEndringsType.AutomatiskRutetTilNavItManglerGt
             FallbackLandGTFunnet -> KontorEndringsType.AutomatiskRutetTilNavItGtErLand
-            FallbackIngenKontorFunnetForGT -> KontorEndringsType.AutmatiskRutetTilNavItUgyldigGt
+            FallbackIngenKontorFunnetForGT -> KontorEndringsType.AutomatiskRutetTilNavItUgyldigGt
         }
     }
 }

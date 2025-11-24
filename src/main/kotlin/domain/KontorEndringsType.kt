@@ -7,9 +7,9 @@ enum class KontorEndringsType {
     AutomatiskNorgRutingFallback, // /arbeidsfordeling/bestmatch
     AutomatiskRutetTilNavItManglerGt,
     AutomatiskRutetTilNavItGtErLand,
+    AutomatiskRutetTilNavItUgyldigGt,
     AutomatiskRutetTilNavItIngenKontorFunnetForGt,
     FlyttetAvVeileder,
-    AutmatiskRutetTilNavItUgyldigGt,
 
     /* Både Arbeidsoppfølgingskontor og GT kontor  */
     FikkSkjerming,
