@@ -165,8 +165,7 @@ enum class Tilordningstype {
                 KontorEndringsType.TidligArenaKontorVedOppfolgingStart,
                 KontorEndringsType.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart,
                 KontorEndringsType.MIGRERING,
-                KontorEndringsType.PATCH,
-                KontorEndringsType.ArenaMigrering -> {
+                KontorEndringsType.PATCH -> {
                     throw RuntimeException("Vi skal ikke publisere kontorendringer på kontor-endring av type $kontorEndringsType")
                 }
                 /* Endringer som bare skal skje på GT-kontor eller Arena-kontor */

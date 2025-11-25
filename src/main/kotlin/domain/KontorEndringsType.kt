@@ -32,6 +32,5 @@ enum class KontorEndringsType {
     @Deprecated("Skal ikke lenger brukes")
     ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart,
     MIGRERING,
-    ArenaMigrering,
     PATCH
 }
