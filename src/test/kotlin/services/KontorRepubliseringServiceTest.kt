@@ -43,6 +43,7 @@ class KontorRepubliseringServiceTest {
         val kontorRepubliseringService = KontorRepubliseringService(
             {
                 republiserteKontorer.add(it)
+                Result.success(Unit)
             },
             dataSource,
             {}
@@ -92,7 +93,10 @@ class KontorRepubliseringServiceTest {
         val republiserteKontorer = mutableListOf<KontortilordningSomSkalRepubliseres>()
 
         val kontorRepubliseringService = KontorRepubliseringService(
-            { republiserteKontorer.add(it) },
+            {
+                republiserteKontorer.add(it)
+                Result.success(Unit)
+            },
             dataSource,
             {}
         )

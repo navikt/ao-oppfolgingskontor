@@ -16,7 +16,7 @@ import java.util.*
 import javax.sql.DataSource
 
 class KontorRepubliseringService(
-    val republiserKontor: (KontortilordningSomSkalRepubliseres) -> Unit,
+    val republiserKontor: (KontortilordningSomSkalRepubliseres) -> Result<Unit>,
     val datasource: DataSource,
     val friskOppAlleKontorNavn: suspend () -> Unit,
 ) {
@@ -27,7 +27,7 @@ class KontorRepubliseringService(
 
         var antallPubliserte = 0
         hentAlleKontorerSomSkalRepubliseres {
-            republiserKontor(it)
+            republiserKontor(it).getOrThrow()
 
             antallPubliserte++
             if (antallPubliserte % 500 == 0) {

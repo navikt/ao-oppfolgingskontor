@@ -146,6 +146,7 @@ enum class Tilordningstype {
                 KontorEndringsType.AutomatiskRutetTilNavItGtErLand,
                 KontorEndringsType.ArenaKontorHentetSynkrontVedOppfolgingsStart,
                 KontorEndringsType.AutomatiskRutetTilNavItIngenKontorFunnetForGt,
+                KontorEndringsType.AutomatiskRutetTilNavItUgyldigGt,
                 KontorEndringsType.ArenaKontorVedOppfolgingStartMedEtterslep -> KONTOR_VED_OPPFOLGINGSPERIODE_START
 
                 KontorEndringsType.FikkAddressebeskyttelse,
