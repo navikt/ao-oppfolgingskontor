@@ -23,6 +23,7 @@ enum class KontorEndringsType {
 
     /* ArenaKontor */
     EndretIArena,
+    ArenaKontorManuellSynk,
     @Deprecated("Skal ikke lenger brukes")
     ArenaKontorVedOppfolgingsStart,
     ArenaKontorHentetSynkrontVedOppfolgingsStart,

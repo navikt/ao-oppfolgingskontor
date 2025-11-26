@@ -18,6 +18,7 @@ import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.ApplicationEnvironment
 import kotlinx.serialization.Serializable
 import no.nav.db.Ident
+import no.nav.db.IdentSomKanLagres
 import no.nav.domain.KontorId
 import no.nav.http.client.tokenexchange.SystemTokenPlugin
 import no.nav.http.client.tokenexchange.TexasTokenResponse
@@ -43,7 +44,7 @@ class VeilarbArenaClient(
 
     private val logger = LoggerFactory.getLogger(this::class.java)
 
-    suspend fun hentArenaKontor(ident: Ident): ArenakontorResult {
+    suspend fun hentArenaKontor(ident: IdentSomKanLagres): ArenakontorResult {
         val url = "$baseUrl/veilarbarena/api/v3/hent-oppfolgingsbruker"
         logger.info("Henter Arenakontor fra url: $url")
         return try {

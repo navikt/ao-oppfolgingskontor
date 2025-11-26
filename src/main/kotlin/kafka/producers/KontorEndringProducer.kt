@@ -159,6 +159,7 @@ enum class Tilordningstype {
                 KontorEndringsType.FikkSkjerming,
                 KontorEndringsType.MistetSkjerming,
                 KontorEndringsType.FlyttetAvVeileder,
+                KontorEndringsType.ArenaKontorManuellSynk,
                 KontorEndringsType.EndretIArena -> ENDRET_KONTOR
 
                 /* Endringer som midlertidig publiseres siden egen ruting ikke er lansert */
