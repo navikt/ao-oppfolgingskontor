@@ -147,7 +147,12 @@ enum class Tilordningstype {
                 KontorEndringsType.ArenaKontorHentetSynkrontVedOppfolgingsStart,
                 KontorEndringsType.AutomatiskRutetTilNavItIngenKontorFunnetForGt,
                 KontorEndringsType.AutomatiskRutetTilNavItUgyldigGt,
-                KontorEndringsType.ArenaKontorVedOppfolgingStartMedEtterslep -> KONTOR_VED_OPPFOLGINGSPERIODE_START
+                KontorEndringsType.ArenaKontorVedOppfolgingStartMedEtterslep,
+                KontorEndringsType.ArenaKontorVedOppfolgingsStart,
+                KontorEndringsType.TidligArenaKontorVedOppfolgingStart,
+                KontorEndringsType.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart,
+                KontorEndringsType.MIGRERING,
+                KontorEndringsType.PATCH-> KONTOR_VED_OPPFOLGINGSPERIODE_START
 
                 KontorEndringsType.FikkAddressebeskyttelse,
                 KontorEndringsType.AddressebeskyttelseMistet,
@@ -156,16 +161,17 @@ enum class Tilordningstype {
                 KontorEndringsType.FlyttetAvVeileder,
                 KontorEndringsType.EndretIArena -> ENDRET_KONTOR
 
-                KontorEndringsType.GTKontorVedOppfolgingStart,
-                KontorEndringsType.EndretBostedsadresse,
+                /* Endringer som midlertidig publiseres siden egen ruting ikke er lansert */
 //                KontorEndringsType.EndretIArena,
 //                KontorEndringsType.ArenaKontorHentetSynkrontVedOppfolgingsStart,
 //                KontorEndringsType.ArenaKontorVedOppfolgingStartMedEtterslep,
-                KontorEndringsType.ArenaKontorVedOppfolgingsStart,
-                KontorEndringsType.TidligArenaKontorVedOppfolgingStart,
-                KontorEndringsType.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart,
-                KontorEndringsType.MIGRERING,
-                KontorEndringsType.PATCH -> {
+//                KontorEndringsType.ArenaKontorVedOppfolgingsStart,
+//                KontorEndringsType.TidligArenaKontorVedOppfolgingStart,
+//                KontorEndringsType.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart,
+//                KontorEndringsType.MIGRERING,
+//                KontorEndringsType.PATCH,
+                KontorEndringsType.GTKontorVedOppfolgingStart,
+                KontorEndringsType.EndretBostedsadresse -> {
                     throw RuntimeException("Vi skal ikke publisere kontorendringer på kontor-endring av type $kontorEndringsType")
                 }
                 /* Endringer som bare skal skje på GT-kontor eller Arena-kontor */
