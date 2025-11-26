@@ -43,6 +43,11 @@ class KontorTilhorighetService(
 
     suspend fun getArbeidsoppfolgingKontorTilhorighet(ident: Ident, principal: AOPrincipal)
         = getArbeidsoppfolgingKontorTilhorighet(hentAlleIdenter(ident).getOrThrow(), principal)
+    suspend fun getArenaKontorTilhorighet(ident: Ident, principal: AOPrincipal): ArenaKontor? {
+        val identer = hentAlleIdenter(ident).getOrThrow()
+        poaoTilgangClient.harLeseTilgang(principal, identer.foretrukketIdent)
+        return getArenaKontorTilhorighet(identer)
+    }
     private suspend  fun getArbeidsoppfolgingKontorTilhorighet(identer: IdenterFunnet, principal: AOPrincipal): ArbeidsoppfolgingsKontor? {
         poaoTilgangClient.harLeseTilgang(principal, identer.foretrukketIdent)
         return getArbeidsoppfolgingKontorTilhorighet(identer)

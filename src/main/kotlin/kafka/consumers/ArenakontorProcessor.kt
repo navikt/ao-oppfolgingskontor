@@ -27,7 +27,7 @@ import org.apache.kafka.streams.processor.api.Record
 import org.slf4j.LoggerFactory
 
 class ArenakontorProcessor(
-    private val hentArenakontor: suspend (Ident) -> ArenakontorResult,
+    private val hentArenakontor: suspend (IdentSomKanLagres) -> ArenakontorResult,
     private val lagreKontortilordning: (ArenaKontorHentetSynkrontVedOppfolgingStart) -> Unit,
     private val arenaKontorProvider: suspend (IdentSomKanLagres) -> ArenaKontorUtvidet?,
     private val publiserKontorTilordning: suspend (kontorEndring: OppfolgingEndretTilordningMelding) -> Result<Unit>,
