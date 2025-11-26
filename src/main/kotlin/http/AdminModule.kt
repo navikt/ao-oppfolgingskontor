@@ -65,7 +65,7 @@ fun Application.configureAdminModule(
                 runCatching {
                     log.info("Setter i gang syncing av Arena-kontor")
                     val input = call.receive<ArenaSyncInputBody>()
-                    val identer = input.identer.split(".")
+                    val identer = input.identer.split(",")
                     val godkjenteIdenter = identer.map { Ident.validateIdentSomKanLagres(it, Ident.HistoriskStatus.UKJENT) }
 
                     log.info("Setter i gang sync av arena-kontor for ${godkjenteIdenter.size} identer av ${identer.size} mottatte identer")
