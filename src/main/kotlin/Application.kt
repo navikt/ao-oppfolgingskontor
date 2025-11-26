@@ -8,11 +8,6 @@ import http.configureHentArbeidsoppfolgingskontorBulkModule
 import io.ktor.server.application.*
 import io.ktor.server.netty.*
 import kafka.producers.KontorEndringProducer
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.job
-import kotlinx.coroutines.launch
 import no.nav.db.configureDatabase
 import no.nav.http.client.*
 import no.nav.http.client.arbeidssogerregisteret.ArbeidssokerregisterClient
@@ -23,7 +18,7 @@ import no.nav.http.client.poaoTilgang.getPoaoTilgangScope
 import no.nav.http.client.tokenexchange.TexasSystemTokenClient
 import no.nav.http.client.tokenexchange.getNaisTokenEndpoint
 import no.nav.http.configureArbeidsoppfolgingskontorModule
-import no.nav.http.configureKontorRepubliseringModule
+import no.nav.http.configureAdminModule
 import no.nav.http.graphql.AuthenticateRequest
 import no.nav.http.graphql.configureGraphQlModule
 import no.nav.http.graphql.getNorg2Url
@@ -39,7 +34,7 @@ import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
 import no.nav.services.KontorTilordningService
 import no.nav.services.OppfolgingsperiodeDao
-import org.slf4j.MarkerFactory
+import services.ArenaSyncService
 import services.IdentService
 import services.KontorRepubliseringService
 import services.KontorTilhorighetBulkService
@@ -102,6 +97,7 @@ fun Application.module() {
         aktorIdProvider = { identSomKanLagres -> identService.hentAktorId(identSomKanLagres) }
     )
     val republiseringService = KontorRepubliseringService(kontorEndringProducer::republiserKontor, datasource, kontorNavnService::friskOppAlleKontorNavn)
+    val arenaSyncService = ArenaSyncService(veilarbArenaClient, KontorTilordningService, kontorTilhorighetService, oppfolgingsperiodeService)
 
     install(KafkaStreamsPlugin) {
         this.automatiskKontorRutingService = automatiskKontorRutingService
@@ -128,7 +124,7 @@ fun Application.module() {
         oppfolgingsperiodeService,
         { kontorEndringProducer.publiserEndringPåKontor(it) }
     )
-    configureKontorRepubliseringModule(republiseringService)
+    configureAdminModule(republiseringService, arenaSyncService)
     configureHentArbeidsoppfolgingskontorBulkModule(KontorTilhorighetBulkService)
 }
 

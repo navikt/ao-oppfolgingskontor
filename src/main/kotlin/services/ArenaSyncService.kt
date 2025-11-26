@@ -21,11 +21,11 @@ class ArenaSyncService(
     val oppfolgingsperiodeService: OppfolgingsperiodeService,
 ) {
 
-    suspend fun refreshArenaKontor(identer: List<IdentSomKanLagres>, principal: AOPrincipal) {
-        identer.map { refreshArenaKontor(it, principal) }
+    suspend fun refreshArenaKontor(identer: List<IdentSomKanLagres>) {
+        identer.map { refreshArenaKontor(it) }
     }
 
-    suspend fun refreshArenaKontor(ident: IdentSomKanLagres, principal: AOPrincipal) {
+    suspend fun refreshArenaKontor(ident: IdentSomKanLagres) {
         val currentOpenOppfolgingsperiode = when (val result = oppfolgingsperiodeService.getCurrentOppfolgingsperiode(ident)) {
             is AktivOppfolgingsperiode -> result
             NotUnderOppfolging -> throw Exception("Kan ikke sette arenakontor på brukere som ikke er under oppfølging")
