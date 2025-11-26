@@ -6,7 +6,7 @@ import http.client.ArenakontorOppslagFeilet
 import http.client.VeilarbArenaClient
 import no.nav.db.IdentSomKanLagres
 import no.nav.domain.KontorTilordning
-import no.nav.domain.events.EndringPaaOppfolgingsBrukerFraArena
+import no.nav.domain.events.ManuellSynkVeilarbArena
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.KontorTilhorighetService
 import no.nav.services.KontorTilordningService
@@ -45,7 +45,7 @@ class ArenaSyncService(
 
         if (currentRemoteArenaKontor.kontorId != currentLocalArenaKontor.kontorId) {
             kontorTilordningService.tilordneKontor(
-                EndringPaaOppfolgingsBrukerFraArena(
+                ManuellSynkVeilarbArena(
                     kontorTilordning = KontorTilordning(
                         ident,
                         currentRemoteArenaKontor.kontorId,

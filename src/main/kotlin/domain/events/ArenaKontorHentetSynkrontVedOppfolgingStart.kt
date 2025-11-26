@@ -47,6 +47,16 @@ data class EndringPaaOppfolgingsBrukerFraArena(
     override fun toHistorikkInnslag() = lagKontorHistorikkInnslag(KontorEndringsType.EndretIArena)
 }
 
+data class ManuellSynkVeilarbArena(
+    private val kontorTilordning: KontorTilordning,
+    private val sistEndretIArena: OffsetDateTime,
+): ArenaKontorEndret(
+    tilordning = kontorTilordning,
+    sistEndretDatoArena = sistEndretIArena
+) {
+    override fun toHistorikkInnslag() = lagKontorHistorikkInnslag(KontorEndringsType.ArenaKontorManuellSynk)
+}
+
 private fun ArenaKontorEndret.lagKontorHistorikkInnslag(kontorEndringsType: KontorEndringsType) =
     KontorHistorikkInnslag(
         kontorId = tilordning.kontorId,
