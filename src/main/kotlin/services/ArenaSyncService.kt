@@ -4,7 +4,6 @@ import http.client.ArenakontorFunnet
 import http.client.ArenakontorIkkeFunnet
 import http.client.ArenakontorOppslagFeilet
 import http.client.VeilarbArenaClient
-import no.nav.AOPrincipal
 import no.nav.db.IdentSomKanLagres
 import no.nav.domain.KontorTilordning
 import no.nav.domain.events.EndringPaaOppfolgingsBrukerFraArena
@@ -13,6 +12,7 @@ import no.nav.services.KontorTilhorighetService
 import no.nav.services.KontorTilordningService
 import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingperiodeOppslagFeil
+import org.slf4j.LoggerFactory
 
 class ArenaSyncService(
     val veilarbArenaClient: VeilarbArenaClient,
@@ -20,6 +20,7 @@ class ArenaSyncService(
     val kontorTilhorighetService: KontorTilhorighetService,
     val oppfolgingsperiodeService: OppfolgingsperiodeService,
 ) {
+    val log = LoggerFactory.getLogger(ArenaSyncService::class.java)
 
     suspend fun refreshArenaKontor(identer: List<IdentSomKanLagres>) {
         identer.map { refreshArenaKontor(it) }
@@ -40,8 +41,9 @@ class ArenaSyncService(
         }
 
         if (currentLocalArenaKontor == null) throw Exception("Støtter ikke å refreshe arena kontor på brukere som ikke har arenakontor")
+        if (currentRemoteArenaKontor == null) throw Exception("Fant ingen arenakontor på bruker i veilarbarena")
 
-        if (currentRemoteArenaKontor != null && currentRemoteArenaKontor.kontorId != currentLocalArenaKontor.kontorId) {
+        if (currentRemoteArenaKontor.kontorId != currentLocalArenaKontor.kontorId) {
             kontorTilordningService.tilordneKontor(
                 EndringPaaOppfolgingsBrukerFraArena(
                     kontorTilordning = KontorTilordning(
@@ -52,6 +54,9 @@ class ArenaSyncService(
                     sistEndretIArena = currentRemoteArenaKontor.sistEndret.toOffsetDateTime()
                 )
             )
+            log.info("Fant ulike arena-kontor i veilarbarena og lokalt, oppdaterer arena-kontor")
+        } else {
+            log.info("Arena-kontor i veilarbarena og lokalt var like, oppdaterer ikke arena-kontor")
         }
     }
 }

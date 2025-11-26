@@ -9,7 +9,9 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import no.nav.authenticateCall
 import no.nav.db.Ident
+import no.nav.http.graphql.AuthenticateRequest
 import no.nav.security.token.support.v3.RequiredClaims
 import no.nav.security.token.support.v3.tokenValidationSupport
 import org.slf4j.LoggerFactory
