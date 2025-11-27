@@ -30,7 +30,7 @@ class KontorRepubliseringService(
         log.info("Skal republisere kontorer for ${identer.size} identer")
 
         friskOppAlleKontorNavn()
-        val identerListe = identer.joinToString(",") { it.value }
+        val identerListe = identer.joinToString(",") { "'${it.value}'" }
         val sqlForRepubliseringForIdenter = queryForRepublisering + " and arbeidsoppfolgingskontor.fnr in ($identerListe)"
 
         val kontorerSomSkalRepubliseres = datasource.connection.use { connection ->
