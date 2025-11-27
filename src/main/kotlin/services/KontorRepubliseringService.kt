@@ -22,6 +22,31 @@ class KontorRepubliseringService(
 ) {
     val log = LoggerFactory.getLogger(this::class.java)
 
+    suspend fun republiserKontorer(identer: List<IdentSomKanLagres>) {
+        if (identer.isEmpty()) {
+            log.info("Ingen identer oppgitt for republisering av kontorer, republiserer ikke")
+            return
+        }
+        log.info("Skal republisere kontorer for ${identer.size} identer")
+
+        friskOppAlleKontorNavn()
+        val identerListe = identer.joinToString(",") { it.value }
+        val sqlForRepubliseringForIdenter = queryForRepublisering + " and arbeidsoppfolgingskontor.fnr in ($identerListe)"
+
+        val kontorerSomSkalRepubliseres = datasource.connection.use { connection ->
+            val statement = connection.prepareStatement(sqlForRepubliseringForIdenter)
+            val resultSet = statement.executeQuery()
+
+            generateSequence {
+                if (resultSet.next()) resultSet.toKontorSomSkalRepubliseres()
+                else null
+            }.toList()
+        }
+
+        log.info("Fant ${kontorerSomSkalRepubliseres.size} kontorer som skal republiseres for ${identer.size} oppgitte identer")
+        kontorerSomSkalRepubliseres.forEach { republiserKontor(it).getOrThrow() }
+    }
+
     suspend fun republiserKontorer() {
         friskOppAlleKontorNavn()
 
@@ -40,7 +65,23 @@ class KontorRepubliseringService(
     fun hentAlleKontorerSomSkalRepubliseres(
         publiserEndringPaaKafka: (KontortilordningSomSkalRepubliseres) -> Unit
     ): Result<Unit> = runCatching {
-        val query = """
+        // Use streaming / cursor mode
+        val conn = datasource.connection
+        conn.autoCommit = false
+        val statement = conn.prepareStatement(queryForRepublisering)
+        statement.fetchSize = 500
+
+        val resultSet = statement.executeQuery()
+        while (resultSet.next()) {
+            publiserEndringPaaKafka(resultSet.toKontorSomSkalRepubliseres())
+        }
+        resultSet.close()
+        statement.close()
+    }.onFailure {
+        log.error("Republisering av kontor feilet", it)
+    }
+
+    private val queryForRepublisering = """
             select
                 arbeidsoppfolgingskontor.fnr,
                 arbeidsoppfolgingskontor.kontor_id,
@@ -59,21 +100,6 @@ class KontorRepubliseringService(
             where alle_identer.historisk = false and aktorId.historisk = false
         """.trimIndent()
 
-        // Use streaming / cursor mode
-        val conn = datasource.connection
-        conn.autoCommit = false
-        val statement = conn.prepareStatement(query)
-        statement.fetchSize = 500
-
-        val resultSet = statement.executeQuery()
-        while (resultSet.next()) {
-            publiserEndringPaaKafka(resultSet.toKontorSomSkalRepubliseres())
-        }
-        resultSet.close()
-        statement.close()
-    }.onFailure {
-        log.error("Republisering av kontor feilet", it)
-    }
 }
 
 fun ResultSet.toKontorSomSkalRepubliseres(): KontortilordningSomSkalRepubliseres {

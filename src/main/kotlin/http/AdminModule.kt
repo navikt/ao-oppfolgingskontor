@@ -22,8 +22,8 @@ val log = LoggerFactory.getLogger("AdminModule")
 
 fun Application.configureAdminModule(
     kontorRepubliseringService: KontorRepubliseringService,
-    arenaSyncService: ArenaSyncService,
-    ) {
+    arenaSyncService: ArenaSyncService
+) {
     routing {
         val config = environment.config
 
@@ -70,6 +70,7 @@ fun Application.configureAdminModule(
 
                     log.info("Setter i gang sync av arena-kontor for ${godkjenteIdenter.size} identer av ${identer.size} mottatte identer")
                     arenaSyncService.refreshArenaKontor(godkjenteIdenter)
+                    kontorRepubliseringService.republiserKontorer(godkjenteIdenter)
                     call.respond(HttpStatusCode.Accepted, "Syncing av Arena-kontorer startet")
                 }.onFailure { e ->
                     log.error("Feil ved syncing av Arena-kontor", e)
