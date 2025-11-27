@@ -124,7 +124,7 @@ fun Application.module() {
         oppfolgingsperiodeService,
         { kontorEndringProducer.publiserEndringPåKontor(it) }
     )
-    configureAdminModule(republiseringService, arenaSyncService)
+    configureAdminModule(republiseringService, arenaSyncService, identService)
     configureHentArbeidsoppfolgingskontorBulkModule(KontorTilhorighetBulkService)
 }
 
