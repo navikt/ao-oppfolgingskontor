@@ -9,9 +9,7 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
-import no.nav.authenticateCall
 import no.nav.db.Ident
-import no.nav.http.graphql.AuthenticateRequest
 import no.nav.security.token.support.v3.RequiredClaims
 import no.nav.security.token.support.v3.tokenValidationSupport
 import org.slf4j.LoggerFactory
@@ -23,7 +21,7 @@ val log = LoggerFactory.getLogger("AdminModule")
 fun Application.configureAdminModule(
     kontorRepubliseringService: KontorRepubliseringService,
     arenaSyncService: ArenaSyncService,
-    ) {
+) {
     routing {
         val config = environment.config
 
@@ -70,6 +68,7 @@ fun Application.configureAdminModule(
 
                     log.info("Setter i gang sync av arena-kontor for ${godkjenteIdenter.size} identer av ${identer.size} mottatte identer")
                     arenaSyncService.refreshArenaKontor(godkjenteIdenter)
+                    kontorRepubliseringService.republiserKontorer(godkjenteIdenter)
                     call.respond(HttpStatusCode.Accepted, "Syncing av Arena-kontorer startet")
                 }.onFailure { e ->
                     log.error("Feil ved syncing av Arena-kontor", e)
