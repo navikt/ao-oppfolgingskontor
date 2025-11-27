@@ -106,10 +106,10 @@ class IdentService(
         }
     }
 
-    private suspend fun hentAlleIdenterOgOppdaterMapping(ident: Ident): IdenterResult {
+    suspend fun hentAlleIdenterOgOppdaterMapping(ident: Ident): IdenterResult {
         return when (val identer = hentAlleIdenterSynkrontFraPdl(ident.value)) {
             is IdenterFunnet -> {
-                oppdaterAlleIdentMappinger(identer)
+                oppdaterAlleIdentMappinger(identer.identer)
                 identer
             }
 
@@ -140,14 +140,14 @@ class IdentService(
             }
     }
 
-    private fun oppdaterAlleIdentMappinger(identer: IdenterFunnet) {
+    private fun oppdaterAlleIdentMappinger(identer: List<Ident>) {
         try {
-            val eksitrerendeInternIder = hentEksisterendeIdenter(identer.identer)
+            val eksitrerendeInternIder = hentEksisterendeIdenter(identer)
                 .map { it.internIdent }
 
             transaction {
                 val internId = getOrCreateInternId(eksitrerendeInternIder)
-                IdentMappingTable.batchUpsert(identer.identer) {
+                IdentMappingTable.batchUpsert(identer) {
                     this[IdentMappingTable.id] = it.value
                     this[identType] = it.toIdentType()
                     this[internIdent] = internId

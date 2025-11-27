@@ -14,6 +14,7 @@ import no.nav.security.token.support.v3.RequiredClaims
 import no.nav.security.token.support.v3.tokenValidationSupport
 import org.slf4j.LoggerFactory
 import services.ArenaSyncService
+import services.IdentService
 import services.KontorRepubliseringService
 
 val log = LoggerFactory.getLogger("AdminModule")
@@ -21,6 +22,7 @@ val log = LoggerFactory.getLogger("AdminModule")
 fun Application.configureAdminModule(
     kontorRepubliseringService: KontorRepubliseringService,
     arenaSyncService: ArenaSyncService,
+    identService: IdentService,
 ) {
     routing {
         val config = environment.config
@@ -59,10 +61,28 @@ fun Application.configureAdminModule(
                 }
             }
 
+            post("/admin/republiser-arbeidsoppfolgingskontorendret-utvalgte-brukere") {
+                runCatching {
+                    log.info("Setter i gang republisering av kontorer for utvalgte brukere")
+                    val input = call.receive<IdenterInputBody>()
+                    val identer = input.identer.split(",")
+                    val godkjenteIdenter = identer.map { Ident.validateIdentSomKanLagres(it, Ident.HistoriskStatus.UKJENT) }
+                    godkjenteIdenter.forEach { identService.hentAlleIdenterOgOppdaterMapping(it) }
+                    kontorRepubliseringService.republiserKontorer(godkjenteIdenter)
+                    call.respond(HttpStatusCode.Accepted, "Republisering av kontorer utvalgte brukere fullført.")
+                }.onFailure { e ->
+                    log.error("Feil ved republisering av kontorer for utvalgte brukere", e)
+                    call.respond(
+                        HttpStatusCode.InternalServerError,
+                        "Klarte ikke starte republisering av kontorer for utvalgte brukere: ${e.message} \n" + e.stackTraceToString()
+                    )
+                }
+            }
+
             post("/admin/sync-arena-kontor") {
                 runCatching {
                     log.info("Setter i gang syncing av Arena-kontor")
-                    val input = call.receive<ArenaSyncInputBody>()
+                    val input = call.receive<IdenterInputBody>()
                     val identer = input.identer.split(",")
                     val godkjenteIdenter = identer.map { Ident.validateIdentSomKanLagres(it, Ident.HistoriskStatus.UKJENT) }
 
@@ -83,4 +103,4 @@ fun Application.configureAdminModule(
 }
 
 @Serializable
-private data class ArenaSyncInputBody(val identer: String)
+private data class IdenterInputBody(val identer: String)
