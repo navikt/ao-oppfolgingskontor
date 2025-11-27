@@ -106,7 +106,7 @@ class IdentService(
         }
     }
 
-    private suspend fun hentAlleIdenterOgOppdaterMapping(ident: Ident): IdenterResult {
+    suspend fun hentAlleIdenterOgOppdaterMapping(ident: Ident): IdenterResult {
         return when (val identer = hentAlleIdenterSynkrontFraPdl(ident.value)) {
             is IdenterFunnet -> {
                 oppdaterAlleIdentMappinger(identer.identer)
@@ -140,7 +140,7 @@ class IdentService(
             }
     }
 
-    fun oppdaterAlleIdentMappinger(identer: List<Ident>) {
+    private fun oppdaterAlleIdentMappinger(identer: List<Ident>) {
         try {
             val eksitrerendeInternIder = hentEksisterendeIdenter(identer)
                 .map { it.internIdent }

@@ -67,7 +67,7 @@ fun Application.configureAdminModule(
                     val input = call.receive<IdenterInputBody>()
                     val identer = input.identer.split(",")
                     val godkjenteIdenter = identer.map { Ident.validateIdentSomKanLagres(it, Ident.HistoriskStatus.UKJENT) }
-                    identService.oppdaterAlleIdentMappinger(godkjenteIdenter)
+                    godkjenteIdenter.forEach { identService.hentAlleIdenterOgOppdaterMapping(it) }
                     kontorRepubliseringService.republiserKontorer(godkjenteIdenter)
                     call.respond(HttpStatusCode.Accepted, "Republisering av kontorer utvalgte brukere fullført.")
                 }.onFailure { e ->
