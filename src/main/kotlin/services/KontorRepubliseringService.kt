@@ -8,6 +8,7 @@ import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorId
 import no.nav.domain.KontorNavn
 import no.nav.domain.OppfolgingsperiodeId
+import org.intellij.lang.annotations.Language
 import org.slf4j.LoggerFactory
 import java.sql.ResultSet
 import java.time.ZoneId
@@ -30,11 +31,9 @@ class KontorRepubliseringService(
         log.info("Skal republisere kontorer for ${identer.size} identer")
 
         friskOppAlleKontorNavn()
-        val identerListe = identer.joinToString(",") { "'${it.value}'" }
-        val sqlForRepubliseringForIdenter = queryForRepublisering + " and arbeidsoppfolgingskontor.fnr in ($identerListe)"
 
         val kontorerSomSkalRepubliseres = datasource.connection.use { connection ->
-            val statement = connection.prepareStatement(sqlForRepubliseringForIdenter)
+            val statement = connection.prepareStatement(queryForRepubliseringForGitteBrukere(identer))
             val resultSet = statement.executeQuery()
 
             generateSequence {
@@ -81,25 +80,76 @@ class KontorRepubliseringService(
         log.error("Republisering av kontor feilet", it)
     }
 
-    private val queryForRepublisering = """
-            select
+
+    @Language("PostgreSQL")
+    val queryForRepublisering = """
+            select distinct on (oppfolgingsperiode.oppfolgingsperiode_id)
                 arbeidsoppfolgingskontor.fnr,
                 arbeidsoppfolgingskontor.kontor_id,
                 arbeidsoppfolgingskontor.updated_at,
                 aktorId.ident as aktorId, -- aktørid
                 oppfolgingsperiode.oppfolgingsperiode_id,
                 historikk.kontorendringstype,
-                kontornavn.kontor_navn
+                kontornavn.kontor_navn,               
+                CASE
+                    WHEN alle_identer.ident_type = 'FNR' and alle_identer.historisk = false THEN 1
+                    WHEN alle_identer.ident_type = 'DNR' and alle_identer.historisk = false THEN 2
+                    WHEN alle_identer.ident_type = 'NPID' and alle_identer.historisk = false THEN 3
+                    WHEN alle_identer.ident_type = 'FNR' and alle_identer.historisk = true THEN 4
+                    WHEN alle_identer.ident_type = 'DNR' and alle_identer.historisk = true THEN 5
+                    WHEN alle_identer.ident_type = 'NPID' and alle_identer.historisk = true THEN 6
+                    ELSE 7
+                END as ident_prio
             from oppfolgingsperiode
                 join ident_mapping input_ident on oppfolgingsperiode.fnr = input_ident.ident
-                join ident_mapping alle_identer on input_ident.intern_ident = alle_identer.intern_ident and alle_identer.ident_type != 'AKTOR_ID'
+                join ident_mapping alle_identer 
+                    on input_ident.intern_ident = alle_identer.intern_ident 
+                    and alle_identer.ident_type != 'AKTOR_ID'
                 join ident_mapping aktorId on input_ident.intern_ident = aktorId.intern_ident and aktorId.ident_type = 'AKTOR_ID'
                 join arbeidsoppfolgingskontor on alle_identer.ident = arbeidsoppfolgingskontor.fnr
                 join kontorhistorikk historikk on arbeidsoppfolgingskontor.historikk_entry = historikk.id
                 join kontornavn on arbeidsoppfolgingskontor.kontor_id = kontornavn.kontor_id
-            where alle_identer.historisk = false and aktorId.historisk = false
+            where aktorId.historisk = false
+            order by oppfolgingsperiode.oppfolgingsperiode_id, ident_prio
         """.trimIndent()
 
+    fun queryForRepubliseringForGitteBrukere(identer: List<IdentSomKanLagres>): String {
+        val identerListe = identer.joinToString(",") { "'${it.value}'" }
+
+        @Language("PostgreSQL")
+        val query = """
+            select distinct on (oppfolgingsperiode.oppfolgingsperiode_id)
+                    arbeidsoppfolgingskontor.fnr,
+                    arbeidsoppfolgingskontor.kontor_id,
+                    arbeidsoppfolgingskontor.updated_at,
+                    aktorId.ident as aktorId, -- aktørid
+                    oppfolgingsperiode.oppfolgingsperiode_id,
+                    historikk.kontorendringstype,
+                    kontornavn.kontor_navn,               
+                    CASE
+                        WHEN alle_identer.ident_type = 'FNR' and alle_identer.historisk = false THEN 1
+                        WHEN alle_identer.ident_type = 'DNR' and alle_identer.historisk = false THEN 2
+                        WHEN alle_identer.ident_type = 'NPID' and alle_identer.historisk = false THEN 3
+                        WHEN alle_identer.ident_type = 'FNR' and alle_identer.historisk = true THEN 4
+                        WHEN alle_identer.ident_type = 'DNR' and alle_identer.historisk = true THEN 5
+                        WHEN alle_identer.ident_type = 'NPID' and alle_identer.historisk = true THEN 6
+                        ELSE 7
+                    END as ident_prio
+                from ident_mapping input_ident
+                    join ident_mapping alle_identer 
+                        on input_ident.intern_ident = alle_identer.intern_ident 
+                        and alle_identer.ident_type != 'AKTOR_ID'
+                    join oppfolgingsperiode on alle_identer.ident = oppfolgingsperiode.fnr
+                    join ident_mapping aktorId on input_ident.intern_ident = aktorId.intern_ident and aktorId.ident_type = 'AKTOR_ID'
+                    join arbeidsoppfolgingskontor on alle_identer.ident = arbeidsoppfolgingskontor.fnr
+                    join kontorhistorikk historikk on arbeidsoppfolgingskontor.historikk_entry = historikk.id
+                    join kontornavn on arbeidsoppfolgingskontor.kontor_id = kontornavn.kontor_id
+                where aktorId.historisk = false
+                    and input_ident.ident in ($identerListe)
+                order by oppfolgingsperiode.oppfolgingsperiode_id, ident_prio
+        """.trimIndent()
+        return query
+    }
 }
 
 fun ResultSet.toKontorSomSkalRepubliseres(): KontortilordningSomSkalRepubliseres {

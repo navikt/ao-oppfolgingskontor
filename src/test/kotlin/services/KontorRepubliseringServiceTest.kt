@@ -3,6 +3,7 @@ package services
 import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.test.runTest
+import no.nav.db.Ident
 import no.nav.db.entity.OppfolgingsperiodeEntity
 import no.nav.db.table.OppfolgingsperiodeTable
 import no.nav.domain.KontorEndringsType
@@ -15,6 +16,7 @@ import no.nav.utils.gittIdentIMapping
 import no.nav.utils.gittIdentMedKontor
 import no.nav.utils.gittKontorNavn
 import no.nav.utils.randomAktorId
+import no.nav.utils.randomDnr
 import no.nav.utils.randomFnr
 import org.jetbrains.exposed.sql.deleteAll
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
@@ -34,10 +36,7 @@ class KontorRepubliseringServiceTest {
     }
 
     @Test
-    fun `Skal kunne republisere kontor uten feil`() = runTest {
-        transaction {
-            OppfolgingsperiodeTable.deleteAll()
-        }
+    fun `Skal kunne republisere kontor for alle brukere uten feil`() = runTest {
         val republiserteKontorer = mutableListOf<KontortilordningSomSkalRepubliseres>()
 
         val kontorRepubliseringService = KontorRepubliseringService(
@@ -50,10 +49,10 @@ class KontorRepubliseringServiceTest {
         )
         val fnr = randomFnr()
         val aktorId = randomAktorId()
-        val kontorId = KontorId("2123")
-        val kontorNavn = KontorNavn("Nav Helsfyr")
+        val kontorId = KontorId("2124")
+        val kontorNavn = KontorNavn("Nav Etterstad")
         val periode = gittBrukerUnderOppfolging(fnr)
-        gittIdentIMapping(listOf(fnr, aktorId), null, 20312)
+        gittIdentIMapping(listOf(fnr, aktorId), null, 20313)
         gittKontorNavn(kontorNavn, kontorId)
         gittIdentMedKontor(
             ident = fnr,
@@ -86,6 +85,59 @@ class KontorRepubliseringServiceTest {
     }
 
     @Test
+    fun `Skal kunne republisere kontor for valgte brukere uten feil`() = runTest {
+        transaction {
+            OppfolgingsperiodeTable.deleteAll()
+        }
+        val republiserteKontorer = mutableListOf<KontortilordningSomSkalRepubliseres>()
+
+        val kontorRepubliseringService = KontorRepubliseringService(
+            {
+                republiserteKontorer.add(it)
+                Result.success(Unit)
+            },
+            dataSource,
+            {}
+        )
+        val fnr = randomFnr()
+        val dnr = randomDnr(Ident.HistoriskStatus.HISTORISK)
+        val aktorId = randomAktorId()
+        val kontorId = KontorId("2123")
+        val kontorNavn = KontorNavn("Nav Helsfyr")
+        val periode = gittBrukerUnderOppfolging(dnr)
+        gittIdentIMapping(listOf(fnr, aktorId, dnr), null, 20312)
+        gittKontorNavn(kontorNavn, kontorId)
+        gittIdentMedKontor(
+            ident = dnr,
+            kontorId = kontorId,
+            oppfolgingsperiodeId = periode,
+        )
+
+        var count = 0L
+        newSuspendedTransaction {
+            count = OppfolgingsperiodeEntity.count()
+            kontorRepubliseringService.republiserKontorer(listOf(fnr))
+        }
+
+        withClue("Forventet ${count} republiserte tilordninger men fikk ${republiserteKontorer.size}") {
+            republiserteKontorer.size shouldBe count
+        }
+        val testKontor = republiserteKontorer
+            .find { it.oppfolgingsperiodeId == periode && it.aktorId == aktorId }
+        val updatedAt = testKontor!!.updatedAt // TODO: Les updatedAt fra kontorTilordningen
+
+        testKontor shouldBe KontortilordningSomSkalRepubliseres(
+            ident =  dnr, // Blir mapped om til gyldig ident før publisering på topic
+            aktorId = aktorId,
+            kontorId = kontorId,
+            kontorNavn = kontorNavn,
+            updatedAt = updatedAt,
+            oppfolgingsperiodeId = periode,
+            kontorEndringsType = KontorEndringsType.AutomatiskNorgRuting
+        )
+    }
+
+    @Test
     fun `Skal ikke republisere kontor for personer som ikke er under oppfølging`() = runTest {
         transaction {
             OppfolgingsperiodeTable.deleteAll()
@@ -104,7 +156,7 @@ class KontorRepubliseringServiceTest {
         val aktorId = randomAktorId()
         val kontorId = KontorId("2121")
         val kontorNavn = KontorNavn("Nav Helsfyr")
-        gittIdentIMapping(listOf(fnr, aktorId), null, 20313)
+        gittIdentIMapping(listOf(fnr, aktorId), null, 20311)
         gittKontorNavn(kontorNavn, kontorId)
         gittIdentMedKontor(
             ident = fnr,

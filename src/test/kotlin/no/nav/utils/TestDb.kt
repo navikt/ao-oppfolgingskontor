@@ -53,7 +53,7 @@ fun flywayMigrationInTest() {
 }
 
 fun gittBrukerUnderOppfolging(
-    fnr: Fnr,
+    fnr: IdentSomKanLagres,
     oppfolgingsperiodeId: OppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
 ): OppfolgingsperiodeId {
     transaction {
