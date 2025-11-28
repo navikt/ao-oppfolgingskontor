@@ -31,6 +31,7 @@ class KontorHistorikkQuery(
                     .map {
                         val endringsType = KontorEndringsType.valueOf(it.kontorendringstype)
                         KontorHistorikkQueryDto(
+                            ident = it.ident,
                             kontorId = it.kontorId,
                             kontorType = KontorType.valueOf(it.kontorType),
                             endretAv = it.endretAv,

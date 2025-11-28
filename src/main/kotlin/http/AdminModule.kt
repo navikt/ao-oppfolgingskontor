@@ -67,7 +67,8 @@ fun Application.configureAdminModule(
                 runCatching {
                     log.info("Setter i gang republisering av kontorer for utvalgte brukere")
                     val input = call.receive<OppfolgingsperiodeInputBody>()
-                    val perioder = input.oppfolgingsperioder.split(",").map { OppfolgingsperiodeId(UUID.fromString(it)) }
+                    val perioder = input.oppfolgingsperioder.split(",")
+                        .map { OppfolgingsperiodeId(UUID.fromString(it)) }
                     kontorRepubliseringService.republiserKontorer(perioder)
                     call.respond(HttpStatusCode.Accepted, "Republisering av kontorer utvalgte brukere fullført.")
                 }.onFailure { e ->

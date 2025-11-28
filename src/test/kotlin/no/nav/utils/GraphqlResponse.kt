@@ -106,7 +106,7 @@ val identArg = "${pesos}ident"
 
 private fun kontorHistorikkQuery(ident: Ident): String {
     return graphqlPayload(ident, """
-            { kontorHistorikk (ident: \"$ident\") { kontorId , kontorType, endretAv, endretAvType, endretTidspunkt, endringsType } }
+            { kontorHistorikk (ident: \"$ident\") { ident, kontorId , kontorType, endretAv, endretAvType, endretTidspunkt, endringsType } }
         """.trimIndent())
 }
 fun kontorTilhorighetQuery(ident: Ident): String {

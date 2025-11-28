@@ -6,6 +6,7 @@ import no.nav.domain.KontorType
 
 @Serializable
 data class KontorHistorikkQueryDto(
+    val ident: String,
     val kontorId: String,
     val kontorType: KontorType,
     val endringsType: KontorEndringsType,
