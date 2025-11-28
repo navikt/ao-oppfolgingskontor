@@ -76,9 +76,8 @@ class SettArbeidsoppfolgingsKontorTest {
         val norg2Client = mockNorg2Host()
         val poaoTilgangClient = mockPoaoTilgangHost(null)
         val kontorNavnService = KontorNavnService(norg2Client)
-        val identService = IdentService {
-            IdenterFunnet(listOf(ident, aktorId), ident)
-        }
+        val identerFunnet = IdenterFunnet(listOf(ident, aktorId), ident)
+        val identService = IdentService { identerFunnet }
         val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangClient, identService::hentAlleIdenter)
         val oppfolgingsperiodeService = OppfolgingsperiodeService(identService::hentAlleIdenter)
         val producer = MockProducer(true, partitioner, StringSerializer(), StringSerializer())
@@ -86,7 +85,7 @@ class SettArbeidsoppfolgingsKontorTest {
             producer,
             "arbeidsoppfolgingskontortilordninger",
             { KontorNavn("Test KontorNavn") },
-            { aktorId },
+            { identerFunnet },
         )
         application {
             flywayMigrationInTest()

@@ -124,7 +124,7 @@ class BigAppTest {
                     OppfolgingsperiodeService(identService::hentAlleIdenter),
                     kontorEndringProducer::publiserTombstone,
                 ),
-                mockk<ArenakontorProcessor>()
+                mockk<`ArenakontorVedOppfolgingStartetProcessor`>()
             )
             val (driver, inputTopics, _) = setupKafkaMock(
                 topology,

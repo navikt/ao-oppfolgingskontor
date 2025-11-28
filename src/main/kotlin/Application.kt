@@ -94,7 +94,7 @@ fun Application.module() {
         producer = createKafkaProducer(this.environment.config.toKafkaEnv()),
         kontorTopicNavn = this.environment.topics().ut.arbeidsoppfolgingskontortilordninger.name,
         kontorNavnProvider = { kontorId -> kontorNavnService.getKontorNavn(kontorId) },
-        aktorIdProvider = { identSomKanLagres -> identService.hentAktorId(identSomKanLagres) }
+        hentAlleIdenter = { identSomKanLagres -> identService.hentAlleIdenter(identSomKanLagres) }
     )
     val republiseringService = KontorRepubliseringService(kontorEndringProducer::republiserKontor, datasource, kontorNavnService::friskOppAlleKontorNavn)
     val arenaSyncService = ArenaSyncService(veilarbArenaClient, KontorTilordningService, kontorTilhorighetService, oppfolgingsperiodeService)

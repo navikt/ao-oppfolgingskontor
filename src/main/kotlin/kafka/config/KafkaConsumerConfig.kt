@@ -3,7 +3,7 @@ package no.nav.kafka.config
 import Topic
 import io.ktor.server.application.ApplicationEnvironment
 import io.ktor.server.config.*
-import kafka.consumers.ArenakontorProcessor
+import kafka.consumers.`ArenakontorVedOppfolgingStartetProcessor`
 import kafka.consumers.IdentChangeProcessor
 import kafka.consumers.OppfolgingsHendelseProcessor
 import kafka.consumers.PubliserKontorTilordningProcessor
@@ -75,7 +75,7 @@ fun configureTopology(
     endringPaOppfolgingsBrukerProcessor: EndringPaOppfolgingsBrukerProcessor,
     identEndringsProcessor: IdentChangeProcessor,
     oppfolgingsHendelseProcessor: OppfolgingsHendelseProcessor,
-    arenakontorProcessor: ArenakontorProcessor
+    arenakontorProcessor: `ArenakontorVedOppfolgingStartetProcessor`
 ): Topology {
     val topics = environment.topics()
     val builder = StreamsBuilder()
@@ -125,9 +125,9 @@ fun configureTopology(
         businessLogic = publiserKontorTilordningProcessor::process,
     )
     val arenakontorProcessorSupplier = wrapInRetryProcessor(
-        keyInSerde = ArenakontorProcessor.identSerde,
-        valueInSerde = ArenakontorProcessor.oppfolgingsperiodeEndretSerde,
-        topic = ArenakontorProcessor.processorName,
+        keyInSerde = `ArenakontorVedOppfolgingStartetProcessor`.identSerde,
+        valueInSerde = `ArenakontorVedOppfolgingStartetProcessor`.oppfolgingsperiodeEndretSerde,
+        topic = `ArenakontorVedOppfolgingStartetProcessor`.processorName,
         streamType = StreamType.INTERNAL,
         businessLogic = arenakontorProcessor::process
     )
@@ -140,7 +140,7 @@ fun configureTopology(
         .process(publiserKontorTilordningProcessorSupplier, Named.`as`(PubliserKontorTilordningProcessor.processorName))
 
     oppfolgingHendelser
-        .process(arenakontorProcessorSupplier, Named.`as`(ArenakontorProcessor.processorName))
+        .process(arenakontorProcessorSupplier, Named.`as`(`ArenakontorVedOppfolgingStartetProcessor`.processorName))
 
     /*
     * Endring på oppfølgingsbruker (Arena)
