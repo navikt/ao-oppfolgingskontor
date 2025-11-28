@@ -13,14 +13,13 @@ import io.ktor.server.application.log
 import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.binder.kafka.KafkaStreamsMetrics
-import kafka.consumers.ArenakontorProcessor
+import kafka.consumers.`ArenakontorVedOppfolgingStartetProcessor`
 import kafka.consumers.IdentChangeProcessor
 import kafka.consumers.OppfolgingsHendelseProcessor
 import kafka.consumers.PubliserKontorTilordningProcessor
 import kafka.producers.KontorEndringProducer
 import java.time.Duration
 import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
-import no.nav.BRUK_AO_RUTING
 import no.nav.db.AktorId
 import no.nav.http.client.IdentResult
 import no.nav.isProduction
@@ -127,7 +126,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         identService::hentAlleIdenter,
         { kontorProducer.publiserEndringPåKontor(it) }
     )
-    val arenakontorProcessor = ArenakontorProcessor(
+    val arenakontorProcessor = `ArenakontorVedOppfolgingStartetProcessor`(
         veilarbArenaClient::hentArenaKontor,
         { KontorTilordningService.tilordneKontor(it) },
         { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },

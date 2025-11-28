@@ -6,12 +6,17 @@ import no.nav.BRUK_AO_RUTING
 import no.nav.db.AktorId
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
+import no.nav.db.finnForetrukketIdent
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorId
 import no.nav.domain.KontorNavn
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.events.AOKontorEndret
 import no.nav.domain.events.KontorSattAvVeileder
+import no.nav.http.client.IdenterFunnet
+import no.nav.http.client.IdenterIkkeFunnet
+import no.nav.http.client.IdenterOppslagFeil
+import no.nav.http.client.IdenterResult
 import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.clients.producer.ProducerRecord
 import services.KontortilordningSomSkalRepubliseres
@@ -21,15 +26,19 @@ class KontorEndringProducer(
     val producer: Producer<String, String?>,
     val kontorTopicNavn: String,
     val kontorNavnProvider: suspend (kontorId: KontorId) -> KontorNavn,
-    val aktorIdProvider: suspend (ident: IdentSomKanLagres) -> AktorId?,
+    val hentAlleIdenter: suspend (identInput: IdentSomKanLagres) -> IdenterResult
 ) {
 
+    /**
+    * Brukes ved synkront endring via REST API
+    * */
     suspend fun publiserEndringPåKontor(event: KontorSattAvVeileder): Result<Unit> {
         if (BRUK_AO_RUTING) {
             return runCatching {
+                val (ident, aktorId) = finnPubliseringsIdenter(event.tilordning.fnr)
                 val value = event.toKontorTilordningMeldingDto(
-                    aktorIdProvider(event.tilordning.fnr)
-                        ?: throw RuntimeException("Finner ikke aktorId for ident ${event.tilordning.fnr.value}"),
+                    aktorId,
+                    ident,
                     kontorNavnProvider(event.tilordning.kontorId)
                 )
                 publiserEndringPåKontor(value)
@@ -43,14 +52,15 @@ class KontorEndringProducer(
         return runCatching {
             val ident = Ident.validateOrThrow(event.ident, Ident.HistoriskStatus.UKJENT) as? IdentSomKanLagres
                 ?: throw IllegalArgumentException("Kan ikke publisere kontor-endring på aktørid, trenger annen ident")
+            val (fnr, aktorId) = finnPubliseringsIdenter(ident)
+
             publiserEndringPåKontor(
                 KontorTilordningMeldingDto(
                     kontorId = event.kontorId,
                     kontorNavn = kontorNavnProvider(KontorId(event.kontorId)).navn,
                     oppfolgingsperiodeId = event.oppfolgingsperiodeId,
-                    aktorId = aktorIdProvider(ident)?.value
-                        ?: throw RuntimeException("Finner ikke aktorId for ident ${event.ident}"),
-                    ident = event.ident,
+                    aktorId = aktorId.value,
+                    ident = fnr.value,
                     tilordningstype = Tilordningstype.fraKontorEndringsType(event.kontorEndringsType)
                 )
             )
@@ -77,7 +87,7 @@ class KontorEndringProducer(
 
     fun publiserTombstone(oppfolgingPeriodeId: OppfolgingsperiodeId): Result<Unit> {
         return runCatching {
-            val record: ProducerRecord<String,String?> = ProducerRecord(
+            val record: ProducerRecord<String, String?> = ProducerRecord(
                 kontorTopicNavn,
                 oppfolgingPeriodeId.value.toString(),
                 null
@@ -85,10 +95,24 @@ class KontorEndringProducer(
             producer.send(record)
         }
     }
+
+    suspend fun finnPubliseringsIdenter(ident: IdentSomKanLagres): Pair<IdentSomKanLagres, AktorId> {
+        val alleIdenter = hentAlleIdenter(ident)
+        val identer = when (alleIdenter) {
+            is IdenterFunnet -> alleIdenter.identer
+            is IdenterIkkeFunnet -> throw RuntimeException("Finner ikke identer for ident")
+            is IdenterOppslagFeil -> throw RuntimeException("Feil ved oppslag av identer")
+        }
+        val aktorId = identer.first { it is AktorId && it.historisk == Ident.HistoriskStatus.AKTIV } as? AktorId
+            ?: throw RuntimeException("Fant ikke aktorId for ident ved publisering av kontor endring")
+        val fnr = identer.finnForetrukketIdent() ?: throw RuntimeException("Fant ikke foretrukken ident for $ident")
+        return fnr to aktorId
+    }
 }
 
 fun AOKontorEndret.toKontorTilordningMeldingDto(
     aktorId: AktorId,
+    ident: IdentSomKanLagres,
     kontorNavn: KontorNavn
 ): KontorTilordningMeldingDto {
     return KontorTilordningMeldingDto(
@@ -96,10 +120,11 @@ fun AOKontorEndret.toKontorTilordningMeldingDto(
         kontorNavn = kontorNavn.navn,
         oppfolgingsperiodeId = this.tilordning.oppfolgingsperiodeId.value.toString(),
         aktorId = aktorId.value,
-        ident = this.tilordning.fnr.value,
+        ident = ident.value,
         tilordningstype = Tilordningstype.fraKontorEndringsType(this.kontorEndringsType())
     )
 }
+
 fun KontortilordningSomSkalRepubliseres.toKontorTilordningMeldingDto(): KontorTilordningMeldingDto {
     return KontorTilordningMeldingDto(
         kontorId = this.kontorId.id,
@@ -152,7 +177,7 @@ enum class Tilordningstype {
                 KontorEndringsType.TidligArenaKontorVedOppfolgingStart,
                 KontorEndringsType.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart,
                 KontorEndringsType.MIGRERING,
-                KontorEndringsType.PATCH-> KONTOR_VED_OPPFOLGINGSPERIODE_START
+                KontorEndringsType.PATCH -> KONTOR_VED_OPPFOLGINGSPERIODE_START
 
                 KontorEndringsType.FikkAddressebeskyttelse,
                 KontorEndringsType.AddressebeskyttelseMistet,
