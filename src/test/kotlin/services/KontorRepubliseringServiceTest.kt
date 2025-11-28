@@ -85,7 +85,66 @@ class KontorRepubliseringServiceTest {
     }
 
     @Test
-    fun `Skal kunne republisere kontor for valgte brukere uten feil`() = runTest {
+    fun `Skal kunne republisere kontor for valgte brukere med kontor både på historisk og nåværende ident`() = runTest {
+        transaction {
+            OppfolgingsperiodeTable.deleteAll()
+        }
+        val republiserteKontorer = mutableListOf<KontortilordningSomSkalRepubliseres>()
+
+        val kontorRepubliseringService = KontorRepubliseringService(
+            {
+                republiserteKontorer.add(it)
+                Result.success(Unit)
+            },
+            dataSource,
+            {}
+        )
+        val fnr = randomFnr()
+        val dnr = randomDnr(Ident.HistoriskStatus.HISTORISK)
+        val aktorId = randomAktorId()
+        val kontorId = KontorId("1123")
+        val gammeltKontor = KontorId("1127")
+        val kontorNavn = KontorNavn("Nav Vålrenga")
+        val periode = gittBrukerUnderOppfolging(dnr)
+        gittIdentIMapping(listOf(fnr, aktorId, dnr), null, 25312)
+        gittKontorNavn(kontorNavn, kontorId)
+        gittIdentMedKontor(
+            ident = dnr,
+            kontorId = gammeltKontor,
+            oppfolgingsperiodeId = periode,
+        )
+        gittIdentMedKontor(
+            ident = fnr,
+            kontorId = kontorId,
+            oppfolgingsperiodeId = periode,
+        )
+
+        var count = 0L
+        newSuspendedTransaction {
+            count = OppfolgingsperiodeEntity.count()
+            kontorRepubliseringService.republiserKontorer(listOf(periode))
+        }
+
+        withClue("Forventet ${count} republiserte tilordninger men fikk ${republiserteKontorer.size}") {
+            republiserteKontorer.size shouldBe count
+        }
+        val testKontor = republiserteKontorer
+            .find { it.oppfolgingsperiodeId == periode && it.aktorId == aktorId }
+        val updatedAt = testKontor!!.updatedAt // TODO: Les updatedAt fra kontorTilordningen
+
+        testKontor shouldBe KontortilordningSomSkalRepubliseres(
+            ident =  fnr, // Blir mapped om til gyldig ident før publisering på topic
+            aktorId = aktorId,
+            kontorId = kontorId,
+            kontorNavn = kontorNavn,
+            updatedAt = updatedAt,
+            oppfolgingsperiodeId = periode,
+            kontorEndringsType = KontorEndringsType.AutomatiskNorgRuting
+        )
+    }
+
+    @Test
+    fun `Skal kunne republisere kontor for valgt bruker med bare kontor på gammel ident`() = runTest {
         transaction {
             OppfolgingsperiodeTable.deleteAll()
         }
@@ -116,7 +175,7 @@ class KontorRepubliseringServiceTest {
         var count = 0L
         newSuspendedTransaction {
             count = OppfolgingsperiodeEntity.count()
-            kontorRepubliseringService.republiserKontorer(listOf(fnr))
+            kontorRepubliseringService.republiserKontorer(listOf(periode))
         }
 
         withClue("Forventet ${count} republiserte tilordninger men fikk ${republiserteKontorer.size}") {
@@ -128,6 +187,59 @@ class KontorRepubliseringServiceTest {
 
         testKontor shouldBe KontortilordningSomSkalRepubliseres(
             ident =  dnr, // Blir mapped om til gyldig ident før publisering på topic
+            aktorId = aktorId,
+            kontorId = kontorId,
+            kontorNavn = kontorNavn,
+            updatedAt = updatedAt,
+            oppfolgingsperiodeId = periode,
+            kontorEndringsType = KontorEndringsType.AutomatiskNorgRuting
+        )
+    }
+
+    @Test
+    fun `Skal kunne republisere kontor for valgt bruker med perioder på gammel ident og kontor ny ident`() = runTest {
+        transaction {
+            OppfolgingsperiodeTable.deleteAll()
+        }
+        val republiserteKontorer = mutableListOf<KontortilordningSomSkalRepubliseres>()
+
+        val kontorRepubliseringService = KontorRepubliseringService(
+            {
+                republiserteKontorer.add(it)
+                Result.success(Unit)
+            },
+            dataSource,
+            {}
+        )
+        val fnr = randomFnr()
+        val dnr = randomDnr(Ident.HistoriskStatus.HISTORISK)
+        val aktorId = randomAktorId()
+        val kontorId = KontorId("1133")
+        val kontorNavn = KontorNavn("Nav Fyrstikk")
+        val periode = gittBrukerUnderOppfolging(dnr)
+        gittIdentIMapping(listOf(fnr, aktorId, dnr), null, 701112)
+        gittKontorNavn(kontorNavn, kontorId)
+        gittIdentMedKontor(
+            ident = fnr,
+            kontorId = kontorId,
+            oppfolgingsperiodeId = periode,
+        )
+
+        var count = 0L
+        newSuspendedTransaction {
+            count = OppfolgingsperiodeEntity.count()
+            kontorRepubliseringService.republiserKontorer(listOf(periode))
+        }
+
+        withClue("Forventet ${count} republiserte tilordninger men fikk ${republiserteKontorer.size}") {
+            republiserteKontorer.size shouldBe count
+        }
+        val testKontor = republiserteKontorer
+            .find { it.oppfolgingsperiodeId == periode && it.aktorId == aktorId }
+        val updatedAt = testKontor!!.updatedAt // TODO: Les updatedAt fra kontorTilordningen
+
+        testKontor shouldBe KontortilordningSomSkalRepubliseres(
+            ident =  fnr,
             aktorId = aktorId,
             kontorId = kontorId,
             kontorNavn = kontorNavn,

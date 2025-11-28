@@ -10,12 +10,14 @@ import io.ktor.server.routing.*
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import no.nav.db.Ident
+import no.nav.domain.OppfolgingsperiodeId
 import no.nav.security.token.support.v3.RequiredClaims
 import no.nav.security.token.support.v3.tokenValidationSupport
 import org.slf4j.LoggerFactory
 import services.ArenaSyncService
 import services.IdentService
 import services.KontorRepubliseringService
+import java.util.UUID
 
 val log = LoggerFactory.getLogger("AdminModule")
 
@@ -61,14 +63,12 @@ fun Application.configureAdminModule(
                 }
             }
 
-            post("/admin/republiser-arbeidsoppfolgingskontorendret-utvalgte-brukere") {
+            post("/admin/republiser-arbeidsoppfolgingskontorendret-utvalgte-perioder") {
                 runCatching {
                     log.info("Setter i gang republisering av kontorer for utvalgte brukere")
-                    val input = call.receive<IdenterInputBody>()
-                    val identer = input.identer.split(",")
-                    val godkjenteIdenter = identer.map { Ident.validateIdentSomKanLagres(it, Ident.HistoriskStatus.UKJENT) }
-                    godkjenteIdenter.forEach { identService.hentAlleIdenterOgOppdaterMapping(it) }
-                    kontorRepubliseringService.republiserKontorer(godkjenteIdenter)
+                    val input = call.receive<OppfolgingsperiodeInputBody>()
+                    val perioder = input.oppfolgingsperioder.split(",").map { OppfolgingsperiodeId(UUID.fromString(it)) }
+                    kontorRepubliseringService.republiserKontorer(perioder)
                     call.respond(HttpStatusCode.Accepted, "Republisering av kontorer utvalgte brukere fullført.")
                 }.onFailure { e ->
                     log.error("Feil ved republisering av kontorer for utvalgte brukere", e)
@@ -88,7 +88,6 @@ fun Application.configureAdminModule(
 
                     log.info("Setter i gang sync av arena-kontor for ${godkjenteIdenter.size} identer av ${identer.size} mottatte identer")
                     arenaSyncService.refreshArenaKontor(godkjenteIdenter)
-                    kontorRepubliseringService.republiserKontorer(godkjenteIdenter)
                     call.respond(HttpStatusCode.Accepted, "Syncing av Arena-kontorer startet")
                 }.onFailure { e ->
                     log.error("Feil ved syncing av Arena-kontor", e)
@@ -104,3 +103,7 @@ fun Application.configureAdminModule(
 
 @Serializable
 private data class IdenterInputBody(val identer: String)
+@Serializable
+private data class OppfolgingsperiodeInputBody(
+    val oppfolgingsperioder: String // Kommeseparert liste over oppfolgingsperioder-id-er
+)
