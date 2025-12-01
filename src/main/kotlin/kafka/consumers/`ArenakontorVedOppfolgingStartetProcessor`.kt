@@ -11,7 +11,9 @@ import no.nav.PUBLISER_ARENA_KONTOR
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
 import no.nav.domain.KontorEndringsType
+import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
+import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.events.ArenaKontorHentetSynkrontVedOppfolgingStart
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeEndret
@@ -53,6 +55,7 @@ class ArenakontorVedOppfolgingStartetProcessor(
 
     val logger = LoggerFactory.getLogger(this::class.java)
 
+    // TODO: Publiser melding når vi henter Arena-kontor
     fun process(record: Record<Ident, OppfolgingsperiodeEndret>): RecordProcessingResult<String, String> {
         return runBlocking {
             when (record.value()) {
@@ -87,20 +90,13 @@ class ArenakontorVedOppfolgingStartetProcessor(
                             val kontorIdErLik = alleredeLagretArenaKontor?.kontorId == kontorTilordning.tilordning.kontorId
                             if (lagretArenakontorErNyest || kontorIdErLik) {
                                 logger.info("Lagrer ikke funnet arenakontor siden vi har nyere eller lik informasjon lagret")
+                                val arenaKontorSomSkalPubliseres = if (lagretArenakontorErNyest && alleredeLagretArenaKontor != null) alleredeLagretArenaKontor.kontorId else arenakontorOppslag.kontorId
+                                publiserArenaKontor(arenaKontorSomSkalPubliseres, oppfølgingsperiodeStartet.periodeId, fnr)
                                 Skip<String, String>()
                             } else {
                                 logger.info("Lagrer funnet arenakontor")
                                 lagreKontortilordning(kontorTilordning)
-                                if (publiserArenaKontor) {
-                                    publiserKontorTilordning(
-                                        OppfolgingEndretTilordningMelding(
-                                            kontorId = kontorTilordning.tilordning.kontorId.id,
-                                            oppfolgingsperiodeId = kontorTilordning.tilordning.oppfolgingsperiodeId.value.toString(),
-                                            ident =  kontorTilordning.tilordning.fnr.value,
-                                            kontorEndringsType = KontorEndringsType.ArenaKontorHentetSynkrontVedOppfolgingsStart
-                                        )
-                                    )
-                                }
+                                publiserArenaKontor(kontorTilordning.tilordning.kontorId, oppfølgingsperiodeStartet.periodeId, fnr)
                                 Commit()
                             }
                         }
@@ -112,6 +108,19 @@ class ArenakontorVedOppfolgingStartetProcessor(
                     }
                 }
             }
+        }
+    }
+
+    private suspend fun publiserArenaKontor(kontorId: KontorId, oppfolgingsperiodeId: OppfolgingsperiodeId, ident: IdentSomKanLagres) {
+        if (publiserArenaKontor) {
+            publiserKontorTilordning(
+                OppfolgingEndretTilordningMelding(
+                    kontorId = kontorId.id,
+                    oppfolgingsperiodeId = oppfolgingsperiodeId.value.toString(),
+                    ident =  ident.value,
+                    kontorEndringsType = KontorEndringsType.ArenaKontorHentetSynkrontVedOppfolgingsStart
+                )
+            )
         }
     }
 }
