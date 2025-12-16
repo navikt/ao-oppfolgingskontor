@@ -40,10 +40,10 @@ class ArenaSyncService(
             is ArenakontorOppslagFeilet -> throw Exception("Arena kontor oppslag feilet")
         }
 
-        if (currentLocalArenaKontor == null) throw Exception("Støtter ikke å refreshe arena kontor på brukere som ikke har arenakontor")
+//        if (currentLocalArenaKontor == null) throw Exception("Støtter ikke å refreshe arena kontor på brukere som ikke har arenakontor")
         if (currentRemoteArenaKontor == null) throw Exception("Fant ingen arenakontor på bruker i veilarbarena")
 
-        if (currentRemoteArenaKontor.kontorId != currentLocalArenaKontor.kontorId) {
+        if (currentLocalArenaKontor == null || currentRemoteArenaKontor.kontorId != currentLocalArenaKontor.kontorId) {
             kontorTilordningService.tilordneKontor(
                 ManuellSynkVeilarbArena(
                     kontorTilordning = KontorTilordning(
