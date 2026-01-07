@@ -132,9 +132,9 @@ class GraphqlApplicationTest {
         val kontorer = payload.data!!.alleKontor
         kontorer shouldHaveSize (antallLokalkontorer + antallSpesialkontorer + antallEgneAnsatteKontorer)
 
-        kontorer[0] shouldBe AlleKontorQueryDto("4154","Nasjonal oppfølgingsenhet")
-        kontorer[1] shouldBe AlleKontorQueryDto("0393","Nav utland og fellestjenester Oslo")
-        kontorer[2].kontorId shouldBe geografiskKontorId
+        kontorer[0].kontorId shouldBe geografiskKontorId
+        kontorer[1] shouldBe AlleKontorQueryDto("4154","Nasjonal oppfølgingsenhet")
+        kontorer[2] shouldBe AlleKontorQueryDto("0393","Nav utland og fellestjenester Oslo")
         kontorer shouldContain AlleKontorQueryDto("2103","Nav Vikafossen")
         kontorer shouldContain AlleKontorQueryDto("2990","Nav IT-avdelingen")
         val kontorerEtterSpesialkontorOgGtKontor = kontorer.subList(3, kontorer.size)

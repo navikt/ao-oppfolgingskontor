@@ -39,7 +39,7 @@ class AlleKontorQuery(
             val aoKontor = transaction {
                 ArenaKontorEntity.find { ArenaKontorTable.id eq ident }.firstOrNull()
             }
-            val skalSortereGtKontorFørAndreLokalkontor = gtKontor != null && (aoKontor == null || aoKontor.kontorId != gtKontor.kontorId)
+            val skalSortereGtKontorFørst = gtKontor != null && (aoKontor == null || aoKontor.kontorId != gtKontor.kontorId)
 
             val spesialKontorerSomSkalSorteresFørst = listOf(
                 AlleKontorQueryDto("4154","Nasjonal oppfølgingsenhet"),
@@ -54,13 +54,20 @@ class AlleKontorQuery(
                 .filter { erValgbartKontor(it) }
                 .map { AlleKontorQueryDto(it.kontorId,it.navn) }
 
-            val kontorerSortertPåEnhetId = (lokalKontorer + andreSpesialKontorer)
-                .sortedBy {
-                    if (skalSortereGtKontorFørAndreLokalkontor && it.kontorId == gtKontor.kontorId) 0
-                    else it.kontorId.toLong()
-                }
+            val gtKontorDto = lokalKontorer
+                .firstOrNull { it.kontorId == gtKontor?.kontorId }
+                ?.takeIf { skalSortereGtKontorFørst }
 
-            spesialKontorerSomSkalSorteresFørst + kontorerSortertPåEnhetId
+            val kontorerSortertPåEnhetId = (lokalKontorer + andreSpesialKontorer)
+                .filterNot { it.kontorId == gtKontorDto?.kontorId }
+                .sortedBy { it.kontorId.toLong() }
+
+            buildList {
+                gtKontorDto?.let { add(it) }
+                addAll(spesialKontorerSomSkalSorteresFørst)
+                addAll(kontorerSortertPåEnhetId)
+            }
+
         }
             .onSuccess { it }
             .onFailure {
