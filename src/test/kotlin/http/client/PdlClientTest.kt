@@ -117,7 +117,7 @@ class PdlClientTest {
     fun `hentAlder skal bruker foedselsaar til å beregne alder om foedselsdato ikke finnes`() = testApplication {
         val fnr = randomFnr()
         val localDate = LocalDate.of(1990, 1, 1)
-        val now = LocalDate.of(2025, 12, 31)
+        val now = LocalDate.now()
         val diff = Period.between(localDate, now).years
         val client = mockPdl(
             hentPersonQuery(
