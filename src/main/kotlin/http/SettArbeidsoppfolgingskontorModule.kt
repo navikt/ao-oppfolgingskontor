@@ -86,7 +86,7 @@ fun Application.configureArbeidsoppfolgingskontorModule(
                             return@post
                         }
                     }
-                    val gammeltKontor = kontorTilhorighetService.getArbeidsoppfolgingKontorTilhorighet(ident, principal)
+                    val gammeltKontor = kontorTilhorighetService.getArbeidsoppfolgingKontorTilhorighet(ident)
                     val kontorId = KontorId(kontorTilordning.kontorId)
 
                     val oppfolgingsperiode = oppfolgingsperiodeService.getCurrentOppfolgingsperiode(IdentFunnet(ident))

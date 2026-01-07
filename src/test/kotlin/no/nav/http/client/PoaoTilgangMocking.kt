@@ -21,7 +21,7 @@ import java.util.UUID
 val poaoTilgangTestUrl = "http://poao.tilgang.test.no"
 private const val tilgangsattributterPath = "/api/v1/tilgangsattributter"
 
-fun ApplicationTestBuilder.mockPoaoTilgangHost(kontorId: String?): PoaoTilgangKtorHttpClient {
+fun ApplicationTestBuilder.mockPoaoTilgangHost(kontorId: String?, harTilgang: Boolean = true): PoaoTilgangKtorHttpClient {
     externalServices {
         hosts(poaoTilgangTestUrl) {
             this.install(io.ktor.server.plugins.contentnegotiation.ContentNegotiation) {
@@ -45,7 +45,7 @@ fun ApplicationTestBuilder.mockPoaoTilgangHost(kontorId: String?): PoaoTilgangKt
                             PolicyEvaluationResultDto(
                                 requestId = UUID.randomUUID().toString(),
                                 decision = DecisionDto(
-                                    type = DecisionType.PERMIT,
+                                    type = if (harTilgang) DecisionType.PERMIT else DecisionType.DENY,
                                     reason = null,
                                     message = null
                                 )

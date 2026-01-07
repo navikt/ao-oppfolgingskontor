@@ -28,30 +28,19 @@ import org.slf4j.LoggerFactory
 
 class KontorTilhorighetService(
     val kontorNavnService: KontorNavnService,
-    val poaoTilgangClient: PoaoTilgangKtorHttpClient,
     val hentAlleIdenter: suspend (Ident) -> IdenterResult,
 ) {
     val log = LoggerFactory.getLogger(KontorTilhorighetService::class.java)
 
-    suspend fun getKontorTilhorigheter(ident: Ident, principal: AOPrincipal): Triple<ArbeidsoppfolgingsKontor?, ArenaKontor?, GeografiskTilknyttetKontor?> {
-        val alleIdenter = hentAlleIdenter(ident).getOrThrow()
-        val aokontor = getArbeidsoppfolgingKontorTilhorighet(alleIdenter, principal)
+    suspend fun getKontorTilhorigheter(alleIdenter: IdenterFunnet): Triple<ArbeidsoppfolgingsKontor?, ArenaKontor?, GeografiskTilknyttetKontor?> {
+        val aokontor = getArbeidsoppfolgingKontorTilhorighet(alleIdenter)
         val arenakontor = getArenaKontorTilhorighet(alleIdenter)
         val gtkontor = getGeografiskTilknyttetKontorTilhorighet(alleIdenter)
         return Triple(aokontor, arenakontor, gtkontor)
     }
 
-    suspend fun getArbeidsoppfolgingKontorTilhorighet(ident: Ident, principal: AOPrincipal)
-        = getArbeidsoppfolgingKontorTilhorighet(hentAlleIdenter(ident).getOrThrow(), principal)
-    suspend fun getArenaKontorTilhorighet(ident: Ident, principal: AOPrincipal): ArenaKontor? {
-        val identer = hentAlleIdenter(ident).getOrThrow()
-        poaoTilgangClient.harLeseTilgang(principal, identer.foretrukketIdent)
-        return getArenaKontorTilhorighet(identer)
-    }
-    private suspend  fun getArbeidsoppfolgingKontorTilhorighet(identer: IdenterFunnet, principal: AOPrincipal): ArbeidsoppfolgingsKontor? {
-        poaoTilgangClient.harLeseTilgang(principal, identer.foretrukketIdent)
-        return getArbeidsoppfolgingKontorTilhorighet(identer)
-    }
+    suspend fun getArbeidsoppfolgingKontorTilhorighet(ident: Ident)
+        = getArbeidsoppfolgingKontorTilhorighet(hentAlleIdenter(ident).getOrThrow())
 
     /* Nåværedne arena-kontor med oppfølgingsperiode */
     suspend fun getArenaKontorMedOppfolgingsperiode(ident: Ident): ArenaKontorUtvidet? {
@@ -114,10 +103,7 @@ class KontorTilhorighetService(
             .firstOrNullOrThrow(identer) { it.fnr.value }
     }
 
-    suspend fun getKontorTilhorighet(ident: Ident, principal: AOPrincipal): KontorTilhorighetQueryDto? {
-        poaoTilgangClient.harLeseTilgang(principal, ident)
-        val identer = hentAlleIdenter(ident).getOrThrow()
-
+    suspend fun getKontorTilhorighet(identer: IdenterFunnet): KontorTilhorighetQueryDto? {
         val kontorer = transaction {
             /* The ordering is important! */
             listOf(
