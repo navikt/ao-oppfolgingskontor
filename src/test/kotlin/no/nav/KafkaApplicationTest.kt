@@ -112,7 +112,7 @@ class KafkaApplicationTest {
         val oppfolgingsperiodeService = OppfolgingsperiodeService({ IdenterFunnet(listOf(fnr), fnr) })
         val kontorTilhorighetService = KontorTilhorighetService(
             kontorNavnService = mockk(),
-            poaoTilgangClient = mockk()
+//            poaoTilgangClient = mockk()
         ) { IdenterFunnet(listOf(fnr), fnr) }
         val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
             oppfolgingsperiodeService::getCurrentOppfolgingsperiode,
