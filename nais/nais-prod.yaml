@@ -26,6 +26,7 @@ spec:
         tier: db-custom-1-3840
         diskType: SSD
         diskAutoresize: true
+        pointInTimeRecovery: true
         databases:
           - name: ao-oppfolgingskontor
             users:
