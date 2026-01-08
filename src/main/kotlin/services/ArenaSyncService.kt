@@ -33,7 +33,7 @@ class ArenaSyncService(
             is OppfolgingperiodeOppslagFeil -> throw Exception("Noe gikk galt ved henting av oppfølgingsperioden til bruker: ${result.message}")
         }
 
-        val currentLocalArenaKontor = kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(ident)
+        val currentLocalArenaKontor = kontorTilhorighetService.getArenaKontorTilhorighet(ident)
         val currentRemoteArenaKontor = when (val result = veilarbArenaClient.hentArenaKontor(ident)) {
             is ArenakontorFunnet -> result
             is ArenakontorIkkeFunnet -> null

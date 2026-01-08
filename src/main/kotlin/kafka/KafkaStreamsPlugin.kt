@@ -126,7 +126,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         identService::hentAlleIdenter,
         { kontorProducer.publiserEndringPåKontor(it) }
     )
-    val arenakontorProcessor = `ArenakontorVedOppfolgingStartetProcessor`(
+    val arenakontorProcessor = ArenakontorVedOppfolgingStartetProcessor(
         veilarbArenaClient::hentArenaKontor,
         { KontorTilordningService.tilordneKontor(it) },
         { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },

@@ -20,6 +20,7 @@ import no.nav.domain.OppfolgingsperiodeId
 import no.nav.http.client.IdenterFunnet
 import no.nav.http.client.IdenterResult
 import no.nav.http.client.poaoTilgang.PoaoTilgangKtorHttpClient
+import no.nav.http.graphql.queries.toKontorTilhorighetQueryDto
 import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
 import no.nav.http.graphql.schemas.RegistrantTypeDto
 import org.jetbrains.exposed.sql.SizedIterable
@@ -42,7 +43,10 @@ class KontorTilhorighetService(
     suspend fun getArbeidsoppfolgingKontorTilhorighet(ident: Ident)
         = getArbeidsoppfolgingKontorTilhorighet(hentAlleIdenter(ident).getOrThrow())
 
-    /* Nåværedne arena-kontor med oppfølgingsperiode */
+    suspend fun getArenaKontorTilhorighet(ident: Ident)
+        = getArenaKontorTilhorighet(hentAlleIdenter(ident).getOrThrow())
+
+    /* Nåværedne arena-kontor med oppfølgingsperiode og sistEndretDatoArena */
     suspend fun getArenaKontorMedOppfolgingsperiode(ident: Ident): ArenaKontorUtvidet? {
         val alleIdenter = hentAlleIdenter(ident).getOrThrow()
         val arenaKontor = getArenaKontor(alleIdenter.identer) ?: return null
@@ -56,7 +60,29 @@ class KontorTilhorighetService(
         )
     }
 
-    /* Private fordi tilgangskontrollen gjøre før disse kalles */
+    suspend fun getKontorTilhorighet(identer: IdenterFunnet): KontorTilhorighetQueryDto? {
+        val kontorer = transaction {
+            /* The ordering is important! */
+            listOf(
+                getAOKontor(identer.identer),
+                getArenaKontor(identer.identer),
+                getGTKontor(identer.identer),
+            )
+        }
+        return kontorer.firstOrNull { it != null }
+            ?.let {
+                val kontorNavn = kontorNavnService.getKontorNavn(it.getKontorId())
+                it to kontorNavn
+            }
+            ?.let { (kontor, kontorNavn) ->
+                when (kontor) {
+                    is ArbeidsOppfolgingKontorEntity -> kontor.toKontorTilhorighetQueryDto(kontorNavn)
+                    is ArenaKontorEntity -> kontor.toKontorTilhorighetQueryDto(kontorNavn)
+                    is GeografiskTilknyttetKontorEntity -> kontor.toKontorTilhorighetQueryDto(kontorNavn)
+                }
+            }
+    }
+
     private suspend fun getArbeidsoppfolgingKontorTilhorighet(identer: IdenterFunnet): ArbeidsoppfolgingsKontor? {
         return transaction { getAOKontor(identer.identer) }
             ?.let { it to kontorNavnService.getKontorNavn(KontorId(it.kontorId)) }
@@ -73,7 +99,7 @@ class KontorTilhorighetService(
             ?.let { (kontor, kontorNavn) -> GeografiskTilknyttetKontor(kontorNavn,kontor.getKontorId()) }
     }
 
-    inline fun <reified T> SizedIterable<T>.firstOrNullOrThrow(identer: List<Ident>, identProvider: (T) -> String): T? {
+    private inline fun <reified T> SizedIterable<T>.firstOrNullOrThrow(identer: List<Ident>, identProvider: (T) -> String): T? {
         val historiskeIdenter = identer.filter { it.historisk == Ident.HistoriskStatus.HISTORISK }.map { it.value }
         val withoutHistorisk = this.filter { !historiskeIdenter.contains(identProvider(it)) }
         return when (withoutHistorisk.size) {
@@ -102,55 +128,5 @@ class KontorTilhorighetService(
             .find { ArbeidsOppfolgingKontorTable.id inList (identer.map { it.value }) }
             .firstOrNullOrThrow(identer) { it.fnr.value }
     }
-
-    suspend fun getKontorTilhorighet(identer: IdenterFunnet): KontorTilhorighetQueryDto? {
-        val kontorer = transaction {
-            /* The ordering is important! */
-            listOf(
-                 getAOKontor(identer.identer),
-                 getArenaKontor(identer.identer),
-                 getGTKontor(identer.identer),
-            )
-        }
-        return kontorer.firstOrNull { it != null }
-            ?.let {
-                val kontorNavn = kontorNavnService.getKontorNavn(it.getKontorId())
-                it to kontorNavn
-            }
-            ?.let { (kontor, kontorNavn) ->
-                when (kontor) {
-                    is ArbeidsOppfolgingKontorEntity -> kontor.toKontorTilhorighetQueryDto(kontorNavn)
-                    is ArenaKontorEntity -> kontor.toKontorTilhorighetQueryDto(kontorNavn)
-                    is GeografiskTilknyttetKontorEntity -> kontor.toKontorTilhorighetQueryDto(kontorNavn)
-                }
-            }
-    }
 }
 
-fun ArbeidsOppfolgingKontorEntity.toKontorTilhorighetQueryDto(navn: KontorNavn): KontorTilhorighetQueryDto {
-    return KontorTilhorighetQueryDto(
-        kontorId = this.kontorId,
-        kontorType = KontorType.ARBEIDSOPPFOLGING,
-        registrant = this.endretAv,
-        registrantType = RegistrantTypeDto.valueOf(this.endretAvType),
-        kontorNavn = navn.navn
-    )
-}
-fun ArenaKontorEntity.toKontorTilhorighetQueryDto(navn: KontorNavn): KontorTilhorighetQueryDto {
-    return KontorTilhorighetQueryDto(
-        kontorId = this.kontorId,
-        kontorType = KontorType.ARENA,
-        registrant = "Arena",
-        registrantType = RegistrantTypeDto.ARENA,
-        kontorNavn = navn.navn
-    )
-}
-fun GeografiskTilknyttetKontorEntity.toKontorTilhorighetQueryDto(navn: KontorNavn): KontorTilhorighetQueryDto {
-    return KontorTilhorighetQueryDto(
-        kontorId = this.kontorId,
-        kontorType = KontorType.GEOGRAFISK_TILKNYTNING,
-        registrant = "FREG",
-        registrantType = RegistrantTypeDto.SYSTEM,
-        kontorNavn = navn.navn
-    )
-}
