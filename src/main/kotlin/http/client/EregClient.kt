@@ -31,7 +31,7 @@ class EregClient(
 ) {
 
     val nøkkelInfoUrl = { orgnummer: String -> "/v2/organisasjon/$orgnummer/noekkelinfo" }
-    suspend fun hentNøkkelinfoForArbeidsgiver(orgNummer: OrgNummer): EregResult {
+    suspend fun hentNøkkelinfoOmArbeidsgiver(orgNummer: OrgNummer): EregResult {
         return runCatching {
             val result = httpClient.get(nøkkelInfoUrl(orgNummer.value))
             result.body<EregNøkkelinfoDto>()

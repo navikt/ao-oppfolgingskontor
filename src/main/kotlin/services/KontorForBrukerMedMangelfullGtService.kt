@@ -12,9 +12,9 @@ import no.nav.http.client.GeografiskTilknytningKommuneNr
 import no.nav.http.client.GeografiskTilknytningNr
 
 class KontorForBrukerMedMangelfullGtService(
-    val hentArbeidsforhold: (ident: IdentSomKanLagres) -> AaregResult,
-    val hentArbeidsgiverAdresse: (orgNummer: OrgNummer) -> EregResult,
-    val hentKontorForGt: (gt: GeografiskTilknytningNr) -> KontorForGtResultat,
+    val hentArbeidsforhold: suspend (ident: IdentSomKanLagres) -> AaregResult,
+    val hentArbeidsgiverAdresse: suspend (orgNummer: OrgNummer) -> EregResult,
+    val hentKontorForGt: suspend (gt: GeografiskTilknytningNr, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming) -> KontorForGtResultat,
 ) {
 
     suspend fun finnKontorForGtBasertPåArbeidsforhold(

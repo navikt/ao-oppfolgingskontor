@@ -86,7 +86,11 @@ fun Application.module() {
         azureTokenProvider = texasClient.tokenProvider(environment.getEregScope())
     )
 
-    val kontorForBrukerMedMangelfullGtService = KontorForBrukerMedMangelfullGtService(norg2Client, aaregClient, eregClient)
+    val kontorForBrukerMedMangelfullGtService = KontorForBrukerMedMangelfullGtService(
+        {aaregClient.hentArbeidsforhold(it)},
+        {eregClient.hentNøkkelinfoOmArbeidsgiver(it)},
+        {gt, strengtFortroligAdresse, skjermet -> norg2Client.hentKontorForGt(gt,strengtFortroligAdresse, skjermet)}
+    )
     val identService = IdentService({ pdlClient.hentIdenterFor(it) })
     val gtNorgService = GTNorgService(
         { pdlClient.hentGt(it) },
