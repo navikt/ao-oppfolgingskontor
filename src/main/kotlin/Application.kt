@@ -42,6 +42,7 @@ import no.nav.services.KontorTilordningService
 import no.nav.services.OppfolgingsperiodeDao
 import services.ArenaSyncService
 import services.IdentService
+import services.KontorForBrukerMedMangelfullGtService
 import services.KontorRepubliseringService
 import services.KontorTilhorighetBulkService
 import services.OppfolgingsperiodeService
