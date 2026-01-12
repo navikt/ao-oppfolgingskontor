@@ -2,6 +2,7 @@ package services
 
 import http.client.AaregClient
 import http.client.EregClient
+import no.nav.db.IdentSomKanLagres
 import no.nav.services.GTNorgService
 
 class KontorForBrukerMedMangelfullGtService(
@@ -10,4 +11,7 @@ class KontorForBrukerMedMangelfullGtService(
     val eregClient: EregClient,
 ) {
 
+    fun finnFallbackGtBasertPåArbeidsforhold(ident: IdentSomKanLagres) {
+
+    }
 }
