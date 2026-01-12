@@ -31,8 +31,6 @@ class KontorForBrukerMedMangelfullGtService(
 @JvmInline
 value class OrgNummer(val value: String)
 
-class
-
 class Arbeidsforhold() {
 
 }
