@@ -1,30 +1,32 @@
 package services
 
-import http.client.AaregClient
-import http.client.EregClient
+import domain.gtForBruker.GtNummerForBrukerFallbackFunnet
+import domain.gtForBruker.GtNummerForBrukerFunnet
+import http.client.AaregFailure
+import http.client.AaregResult
+import http.client.AaregSuccess
+import http.client.EregFailure
+import http.client.EregResult
+import http.client.EregSuccess
 import no.nav.db.IdentSomKanLagres
-import no.nav.services.GTNorgService
+import no.nav.http.client.GeografiskTilknytningNr
 
 class KontorForBrukerMedMangelfullGtService(
-    val gtNorgService: GTNorgService,
-    val aaregClient: AaregClient,
-    val eregClient: EregClient,
+    val aaregClient: (ident: IdentSomKanLagres) -> AaregResult,
+    val eregClient: (orgNummer: OrgNummer) -> EregResult,
+    val kontorForGt: (gt: GeografiskTilknytningNr) -> Unit
 ) {
 
-    fun finnFallbackGtBasertPåArbeidsforhold(ident: IdentSomKanLagres) {
-
-        // Finn siste arbeidsforhold
-
-        // Finn ardresse til siste arbeidsforhold
-
-    }
-
-    fun hentSisteArbeidsforhold() {
-
-    }
-
-    fun hentArbeidsgiver(orgNummer: OrgNummer) {
-
+    suspend fun finnFallbackGtBasertPåArbeidsforhold(ident: IdentSomKanLagres) {
+        val arbeidsforhold = when (val res = aaregClient(ident)) {
+            is AaregFailure -> TODO()
+            is AaregSuccess -> TODO()
+        }
+        val arbeidsgiverAdresse = when (val res = eregClient(arbeidsforhold)) {
+            is EregFailure -> TODO()
+            is EregSuccess -> TODO()
+        }
+        arbeidsgiverAdresse
     }
 }
 

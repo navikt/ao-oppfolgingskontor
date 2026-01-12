@@ -8,7 +8,8 @@ import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.request.bearerAuth
-import io.ktor.client.request.get
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.ApplicationEnvironment
 import no.nav.db.IdentSomKanLagres
@@ -45,6 +46,9 @@ class AaregClient(
             }
             val result = httpClient.post(arbeidsforholdUrl) {
                 bearerAuth(tokenResult.accessToken)
+                setBody(ArbeidsforholdPayload(
+                    arbeidstakerId = ident.value
+                ))
             }
             result.body<ArbeidsforholdDto>()
         }.fold(
@@ -70,4 +74,10 @@ class ArbeidsforholdDto(
     val arbeidssted: Arbeidssted,
     val sistBekreftet: String,
     val sistEndret: String,
+)
+
+class ArbeidsforholdPayload(
+    val arbeidstakerId: String,
+    val historikk: Boolean = false,
+    val sporingsinformasjon: Boolean = false
 )
