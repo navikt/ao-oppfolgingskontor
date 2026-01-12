@@ -13,5 +13,26 @@ class KontorForBrukerMedMangelfullGtService(
 
     fun finnFallbackGtBasertPåArbeidsforhold(ident: IdentSomKanLagres) {
 
+        // Finn siste arbeidsforhold
+
+        // Finn ardresse til siste arbeidsforhold
+
     }
+
+    fun hentSisteArbeidsforhold() {
+
+    }
+
+    fun hentArbeidsgiver(orgNummer: OrgNummer) {
+
+    }
+}
+
+@JvmInline
+value class OrgNummer(val value: String)
+
+class
+
+class Arbeidsforhold() {
+
 }
