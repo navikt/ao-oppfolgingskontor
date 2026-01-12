@@ -34,6 +34,7 @@ import domain.kontorForGt.KontorForGtFantIkkeKontor
 import domain.kontorForGt.KontorForGtFantDefaultKontor
 import domain.kontorForGt.KontorForGtNrFantFallbackKontorForManglendeGt
 import domain.kontorForGt.KontorForGtFantKontor
+import domain.kontorForGt.KontorForGtFantKontorForArbeidsgiverAdresse
 import domain.kontorForGt.KontorForGtResultat
 import domain.kontorForGt.KontorForGtSuccess
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
@@ -72,7 +73,7 @@ class AutomatiskKontorRutingService(
     private val tilordneKontor: suspend (kontorEndretEvent: KontorEndringer) -> Unit,
     private val gtKontorProvider:
     suspend (
-        fnr: Ident,
+        fnr: IdentSomKanLagres,
         strengtFortroligAdresse: HarStrengtFortroligAdresse,
         skjermet: HarSkjerming
     ) -> KontorForGtResultat,
@@ -279,6 +280,7 @@ class AutomatiskKontorRutingService(
                         is KontorForGtFantIkkeKontor -> INGEN_GT_KONTOR_FALLBACK
                         is KontorForGtFantDefaultKontor -> gtKontorResultat.kontorId
                         is KontorForGtNrFantFallbackKontorForManglendeGt -> gtKontorResultat.kontorId
+                        is KontorForGtFantKontorForArbeidsgiverAdresse -> gtKontorResultat.kontorId
                     }
                     val gtKontorEndring = GTKontorEndret.endretPgaBostedsadresseEndret(
                         KontorTilordning(hendelse.ident, kontorId, oppfolgingsperiodeId),
@@ -503,6 +505,7 @@ fun KontorForGtSuccess.toGtKontorEndret(ident: IdentSomKanLagres, oppfolgingsper
         is KontorForGtFantDefaultKontor -> this.kontorId
         is KontorForGtNrFantFallbackKontorForManglendeGt -> this.kontorId
         is KontorForGtFantIkkeKontor -> null
+        is KontorForGtFantKontorForArbeidsgiverAdresse -> this.kontorId
     }
 
     return when {

@@ -1,11 +1,10 @@
 package services
 
 import domain.gtForBruker.GtSomKreverFallback
-import domain.kontorForGt.KontorForGtFantDefaultKontor
 import domain.kontorForGt.KontorForGtFantIkkeKontor
+import domain.kontorForGt.KontorForGtFantKontor
 import domain.kontorForGt.KontorForGtFantKontorForArbeidsgiverAdresse
 import domain.kontorForGt.KontorForGtFeil
-import domain.kontorForGt.KontorForGtNrFantFallbackKontorForManglendeGt
 import domain.kontorForGt.KontorForGtResultat
 import http.client.*
 import no.nav.db.IdentSomKanLagres
@@ -42,14 +41,19 @@ class KontorForBrukerMedMangelfullGtService(
             else -> return KontorForGtFeil("Kunne ikke finne gt basert på arbeidsgiverforhold, feil antall siffer i kommunenr fra ereg")
         }
         val kontorForGt = hentKontorForGt(gt, harStrengtFortroligAdresse, harSkjerming)
-        when (kontorForGt) {
+        val kontorId = when (val res = kontorForGt) {
             is KontorForGtFeil -> return kontorForGt
-            is KontorForGtFantIkkeKontor -> TODO()
-            is KontorForGtFantDefaultKontor -> TODO()
-            is KontorForGtFantKontorForArbeidsgiverAdresse -> TODO()
-            is KontorForGtNrFantFallbackKontorForManglendeGt -> TODO()
+            is KontorForGtFantIkkeKontor -> return kontorForGt
+            is KontorForGtFantKontor -> {
+                res.kontorId
+            }
         }
-        return KontorForGtFantKontorForArbeidsgiverAdresse(,harStrengtFortroligAdresse, harSkjerming, gt)
+        return KontorForGtFantKontorForArbeidsgiverAdresse(
+            kontorId,
+            harSkjerming,
+            harStrengtFortroligAdresse,
+            gt,
+            mangelfullGt)
     }
 }
 

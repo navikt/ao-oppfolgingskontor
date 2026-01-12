@@ -167,6 +167,7 @@ enum class Tilordningstype {
                 KontorEndringsType.AutomatiskRutetTilNOE,
                 KontorEndringsType.AutomatiskNorgRuting,
                 KontorEndringsType.AutomatiskNorgRutingFallback,
+                KontorEndringsType.AutomatiskRutingArbeidsgiverFallback,
                 KontorEndringsType.AutomatiskRutetTilNavItManglerGt,
                 KontorEndringsType.AutomatiskRutetTilNavItGtErLand,
                 KontorEndringsType.ArenaKontorHentetSynkrontVedOppfolgingsStart,

@@ -18,6 +18,7 @@ import domain.kontorForGt.KontorForGtFantIkkeKontor
 import domain.kontorForGt.KontorForGtFantDefaultKontor
 import domain.kontorForGt.KontorForGtNrFantFallbackKontorForManglendeGt
 import domain.kontorForGt.KontorForGtFantKontor
+import domain.kontorForGt.KontorForGtFantKontorForArbeidsgiverAdresse
 import domain.kontorForGt.KontorForGtSuccess
 
 enum class RutingResultat {
@@ -26,6 +27,7 @@ enum class RutingResultat {
     FallbackLandGTFunnet,
     FallbackIngenKontorFunnetForGT,
     RutetViaNorgFallback,
+    RutetViaArbeidsgiversAdresseFallback,
     RutetViaNorg;
 
     fun toKontorEndringsType(): KontorEndringsType {
@@ -36,6 +38,7 @@ enum class RutingResultat {
             FallbackIngenGTFunnet -> KontorEndringsType.AutomatiskRutetTilNavItManglerGt
             FallbackLandGTFunnet -> KontorEndringsType.AutomatiskRutetTilNavItGtErLand
             FallbackIngenKontorFunnetForGT -> KontorEndringsType.AutomatiskRutetTilNavItUgyldigGt
+            RutetViaArbeidsgiversAdresseFallback -> KontorEndringsType.AutomatiskRutingArbeidsgiverFallback
         }
     }
 }
@@ -69,6 +72,7 @@ data class OppfolgingsPeriodeStartetLokalKontorTilordning(
     val rutingResultat: RutingResultat = when (kontorForGt) {
         is KontorForGtFantDefaultKontor -> RutingResultat.RutetViaNorg
         is KontorForGtNrFantFallbackKontorForManglendeGt -> RutingResultat.RutetViaNorgFallback
+        is KontorForGtFantKontorForArbeidsgiverAdresse -> TODO()
     }
 
     override fun kontorEndringsType(): KontorEndringsType = rutingResultat.toKontorEndringsType()
