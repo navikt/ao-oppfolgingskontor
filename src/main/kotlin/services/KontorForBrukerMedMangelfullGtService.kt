@@ -5,6 +5,10 @@ import domain.kontorForGt.KontorForGtFeil
 import domain.kontorForGt.KontorForGtResultat
 import http.client.*
 import no.nav.db.IdentSomKanLagres
+import no.nav.domain.HarSkjerming
+import no.nav.domain.HarStrengtFortroligAdresse
+import no.nav.http.client.GeografiskTilknytningBydelNr
+import no.nav.http.client.GeografiskTilknytningKommuneNr
 import no.nav.http.client.GeografiskTilknytningNr
 
 class KontorForBrukerMedMangelfullGtService(
@@ -13,16 +17,27 @@ class KontorForBrukerMedMangelfullGtService(
     val hentKontorForGt: (gt: GeografiskTilknytningNr) -> KontorForGtResultat,
 ) {
 
-    suspend fun finnKontorForGtBasertPåArbeidsforhold(ident: IdentSomKanLagres, mangelfullGt: GtSomKreverFallback): KontorForGtResultat {
+    suspend fun finnKontorForGtBasertPåArbeidsforhold(
+        ident: IdentSomKanLagres,
+        mangelfullGt: GtSomKreverFallback,
+        harStrengtFortroligAdresse: HarStrengtFortroligAdresse,
+        harSkjerming: HarSkjerming
+    ): KontorForGtResultat {
         val arbeidsforhold = when (val res = hentArbeidsforhold(ident)) {
-            is AaregFailure -> KontorForGtFeil("Feil ved henting av arbeidsforhold for bruker med mangelfull gt: " + res.errorMessage)
-            is AaregSuccess -> TODO()
+            is AaregFailure -> return KontorForGtFeil("Feil ved henting av arbeidsforhold for bruker med mangelfull gt: " + res.errorMessage)
+            is AaregSuccess -> res.data
         }
-        val arbeidsgiverAdresse = when (val res = hentArbeidsgiverAdresse(arbeidsforhold)) {
-            is EregFailure -> KontorForGtFeil("Feil ved henting av arbeidsgiveradresse for bruker med mangelfull gt: " + res.errorMessage)
-            is EregSuccess -> TODO()
+        val orgNummer = OrgNummer(arbeidsforhold.arbeidssted.identer.first())
+        val arbeidsgiverAdresse = when (val res = hentArbeidsgiverAdresse(orgNummer)) {
+            is EregFailure -> return KontorForGtFeil("Feil ved henting av arbeidsgiveradresse for bruker med mangelfull gt: " + res.errorMessage)
+            is EregSuccess -> res.data
         }
-        return hentKontorForGt(arbeidsgiverAdresse)
+        val gt = when (arbeidsgiverAdresse.adresse.kommunenummer.length) {
+            4 -> GeografiskTilknytningKommuneNr(arbeidsgiverAdresse.adresse.kommunenummer)
+            6 -> GeografiskTilknytningBydelNr(arbeidsgiverAdresse.adresse.kommunenummer)
+            else -> return KontorForGtFeil("Kunne ikke finne gt basert på arbeidsgiverforhold, feil antall siffer i kommunenr fra ereg")
+        }
+        return hentKontorForGt(gt)
     }
 }
 
