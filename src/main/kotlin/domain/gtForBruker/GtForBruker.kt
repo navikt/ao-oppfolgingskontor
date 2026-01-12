@@ -13,6 +13,5 @@ data class GtNummerForBrukerFunnet(val gtNr: GeografiskTilknytningNr) : GtForBru
 data class GtLandForBrukerFunnet(val land: GeografiskTilknytningLand) : GtForBrukerFunnet(), GtSomKreverFallback {
     override fun toString() = "${land.value} type: Land"
 }
-data class GtNummerForBrukerFallbackFunnet(val gtNr: GeografiskTilknytningNr): GtForBrukerFunnet()
 data class GtForBrukerIkkeFunnet(val message: String) : GtForBrukerSuccess(), GtSomKreverFallback
 data class GtForBrukerOppslagFeil(val message: String) : GtForBrukerResult()

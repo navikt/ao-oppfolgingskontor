@@ -53,6 +53,18 @@ data class KontorForGtFantDefaultKontor(
 }
 
 /**
+ * Fant match på /navkontor/{geografiskOmråde}
+ * */
+data class KontorForGtFantKontorForArbeidsgiverAdresse(
+    override val kontorId: KontorId,
+    override val skjerming: HarSkjerming,
+    override val strengtFortroligAdresse: HarStrengtFortroligAdresse,
+    val geografiskTilknytningNr: GeografiskTilknytningNr
+) : KontorForGtFantKontor(kontorId, skjerming, strengtFortroligAdresse) {
+    override fun gt(): GtForBrukerFunnet = GtNummerForBrukerFunnet(geografiskTilknytningNr)
+}
+
+/**
  * Fallback til arbeidsfordeling/bestmatch
  */
 data class KontorForGtNrFantFallbackKontorForManglendeGt(
