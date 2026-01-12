@@ -22,6 +22,8 @@ no:
                       issuer_name: "EntraAD"
 
 apis:
+  aareg:
+    url: "$AAREG_URL"
   norg2:
     url: "$NORG2_URL"
   poaoTilgang:

@@ -91,6 +91,8 @@ spec:
         extra:
           - "NAVident"
   env:
+    - name: AAREG_URL
+      value: https://aareg-services.intern.nav.no
     - name: NORG2_URL
       value: http://norg2.org
     - name: POAO_TILGANG_URL
