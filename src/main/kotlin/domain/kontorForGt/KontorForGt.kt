@@ -59,7 +59,8 @@ data class KontorForGtFantKontorForArbeidsgiverAdresse(
     override val kontorId: KontorId,
     override val skjerming: HarSkjerming,
     override val strengtFortroligAdresse: HarStrengtFortroligAdresse,
-    val geografiskTilknytningNr: GeografiskTilknytningNr
+    val geografiskTilknytningNr: GeografiskTilknytningNr,
+    val mangelfullGt: GtSomKreverFallback
 ) : KontorForGtFantKontor(kontorId, skjerming, strengtFortroligAdresse) {
     override fun gt(): GtForBrukerFunnet = GtNummerForBrukerFunnet(geografiskTilknytningNr)
 }

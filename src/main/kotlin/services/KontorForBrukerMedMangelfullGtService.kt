@@ -1,7 +1,11 @@
 package services
 
 import domain.gtForBruker.GtSomKreverFallback
+import domain.kontorForGt.KontorForGtFantDefaultKontor
+import domain.kontorForGt.KontorForGtFantIkkeKontor
+import domain.kontorForGt.KontorForGtFantKontorForArbeidsgiverAdresse
 import domain.kontorForGt.KontorForGtFeil
+import domain.kontorForGt.KontorForGtNrFantFallbackKontorForManglendeGt
 import domain.kontorForGt.KontorForGtResultat
 import http.client.*
 import no.nav.db.IdentSomKanLagres
@@ -37,7 +41,15 @@ class KontorForBrukerMedMangelfullGtService(
             6 -> GeografiskTilknytningBydelNr(arbeidsgiverAdresse.adresse.kommunenummer)
             else -> return KontorForGtFeil("Kunne ikke finne gt basert på arbeidsgiverforhold, feil antall siffer i kommunenr fra ereg")
         }
-        return hentKontorForGt(gt)
+        val kontorForGt = hentKontorForGt(gt, harStrengtFortroligAdresse, harSkjerming)
+        when (kontorForGt) {
+            is KontorForGtFeil -> return kontorForGt
+            is KontorForGtFantIkkeKontor -> TODO()
+            is KontorForGtFantDefaultKontor -> TODO()
+            is KontorForGtFantKontorForArbeidsgiverAdresse -> TODO()
+            is KontorForGtNrFantFallbackKontorForManglendeGt -> TODO()
+        }
+        return KontorForGtFantKontorForArbeidsgiverAdresse(,harStrengtFortroligAdresse, harSkjerming, gt)
     }
 }
 
