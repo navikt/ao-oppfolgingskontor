@@ -15,7 +15,7 @@ import no.nav.db.Ident
 import no.nav.http.client.arbeidssogerregisteret.ArbeidssokerregisterClient
 import no.nav.http.client.arbeidssogerregisteret.ProfileringFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringIkkeFunnet
-import kotlin.test.Test
+import org.junit.jupiter.api.Test
 
 class ArbeidssokerregisterClientTest {
 

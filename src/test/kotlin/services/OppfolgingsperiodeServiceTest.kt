@@ -8,7 +8,7 @@ import no.nav.http.client.IdenterIkkeFunnet
 import no.nav.http.client.IdenterOppslagFeil
 import no.nav.services.OppfolgingperiodeOppslagFeil
 import no.nav.utils.randomFnr
-import kotlin.test.Test
+import org.junit.jupiter.api.Test
 
 class OppfolgingsperiodeServiceTest {
 
