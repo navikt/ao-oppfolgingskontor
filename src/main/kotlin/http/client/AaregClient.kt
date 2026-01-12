@@ -7,11 +7,14 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logging
+import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.ApplicationEnvironment
 import no.nav.db.IdentSomKanLagres
 import no.nav.http.client.tokenexchange.ProvideToken
+import no.nav.http.client.tokenexchange.TexasTokenFailedResult
+import no.nav.http.client.tokenexchange.TexasTokenSuccessResult
 
 fun ApplicationEnvironment.getAaregScope(): String {
     return config.property("apis.aareg.scope").getString()
@@ -35,15 +38,19 @@ class AaregClient(
     val arbeidsforholdUrl = "/api/v2/arbeidstaker/arbeidsforhold"
     suspend fun hentArbeidsforhold(ident: IdentSomKanLagres): AaregResult {
         return runCatching {
-            val result = httpClient.get(arbeidsforholdUrl) {
-
+            val tokenResult = azureTokenProvider()
+            when(tokenResult) {
+                is TexasTokenFailedResult -> return AaregFailure(tokenResult.errorMessage)
+                is TexasTokenSuccessResult -> tokenResult.accessToken
+            }
+            val result = httpClient.post(arbeidsforholdUrl) {
+                bearerAuth(tokenResult.accessToken)
             }
             result.body<ArbeidsforholdDto>()
         }.fold(
             onSuccess = { AaregSuccess(it) },
             onFailure =  { AaregFailure(it.localizedMessage) })
     }
-
 }
 
 sealed class AaregResult
