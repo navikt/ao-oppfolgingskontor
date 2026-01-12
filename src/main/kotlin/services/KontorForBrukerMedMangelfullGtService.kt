@@ -1,34 +1,29 @@
 package services
 
-import domain.gtForBruker.GtNummerForBrukerFallbackFunnet
-import domain.gtForBruker.GtNummerForBrukerFunnet
-import http.client.AaregFailure
-import http.client.AaregResult
-import http.client.AaregSuccess
-import http.client.EregFailure
-import http.client.EregResult
-import http.client.EregSuccess
+import http.client.*
 import no.nav.db.IdentSomKanLagres
 import no.nav.http.client.GeografiskTilknytningNr
 
 class KontorForBrukerMedMangelfullGtService(
-    val aaregClient: (ident: IdentSomKanLagres) -> AaregResult,
-    val eregClient: (orgNummer: OrgNummer) -> EregResult,
-    val kontorForGt: (gt: GeografiskTilknytningNr) -> Unit
+    val hentArbeidsforhold: (ident: IdentSomKanLagres) -> AaregResult,
+    val hentArbeidsgiveradresse: (orgNummer: OrgNummer) -> EregResult,
+    val hentKontorForGt: (gt: GeografiskTilknytningNr) -> Unit
 ) {
 
     suspend fun finnFallbackGtBasertPåArbeidsforhold(ident: IdentSomKanLagres) {
-        val arbeidsforhold = when (val res = aaregClient(ident)) {
+        val arbeidsforhold = when (val res = hentArbeidsforhold(ident)) {
             is AaregFailure -> TODO()
             is AaregSuccess -> TODO()
         }
-        val arbeidsgiverAdresse = when (val res = eregClient(arbeidsforhold)) {
+        val arbeidsgiverAdresse = when (val res = hentArbeidsgiveradresse(arbeidsforhold)) {
             is EregFailure -> TODO()
             is EregSuccess -> TODO()
         }
-        arbeidsgiverAdresse
+        return hentKontorForGt(arbeidsgiverAdresse)
     }
 }
+
+
 
 @JvmInline
 value class OrgNummer(val value: String)
