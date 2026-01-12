@@ -93,6 +93,8 @@ spec:
   env:
     - name: AAREG_URL
       value: https://aareg-services.intern.nav.no
+    - name: EREG_URL
+      value: https://ereg-services.intern.dev.nav.no
     - name: NORG2_URL
       value: http://norg2.org
     - name: POAO_TILGANG_URL

@@ -24,6 +24,10 @@ no:
 apis:
   aareg:
     url: "$AAREG_URL"
+    scope: "$AAREG_SCOPE"
+  ereg:
+    url: "$EREG_URL"
+    scope: "$EREG_SCOPE"
   norg2:
     url: "$NORG2_URL"
   poaoTilgang:

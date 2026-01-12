@@ -1,7 +1,11 @@
 package no.nav
 
 import dab.poao.nav.no.health.CriticalErrorNotificationFunction
+import http.client.AaregClient
+import http.client.EregClient
 import http.client.VeilarbArenaClient
+import http.client.getAaregScope
+import http.client.getEregScope
 import http.client.getVeilarbarenaScope
 import http.configureContentNegotiation
 import http.configureHentArbeidsoppfolgingskontorBulkModule
@@ -21,6 +25,8 @@ import no.nav.http.configureArbeidsoppfolgingskontorModule
 import no.nav.http.configureAdminModule
 import no.nav.http.graphql.AuthenticateRequest
 import no.nav.http.graphql.configureGraphQlModule
+import no.nav.http.graphql.getAaregUrl
+import no.nav.http.graphql.getEregUrl
 import no.nav.http.graphql.getNorg2Url
 import no.nav.http.graphql.getPDLUrl
 import no.nav.http.graphql.getPoaoTilgangUrl

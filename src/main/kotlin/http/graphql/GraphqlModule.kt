@@ -94,6 +94,10 @@ fun ApplicationEnvironment.getAaregUrl(): String {
     return config.property("apis.aareg.url").getString()
 }
 
+fun ApplicationEnvironment.getEregUrl(): String {
+    return config.property("apis.ereg.url").getString()
+}
+
 fun Application.configureGraphQlModule(norg2Client: Norg2Client, kontorTilhorighetService: KontorTilhorighetService, authenticateCall: AuthenticateRequest, hentAlleIdenter: suspend (Ident) -> IdenterResult) {
     installGraphQl(norg2Client, kontorTilhorighetService, authenticateCall, hentAlleIdenter)
 
