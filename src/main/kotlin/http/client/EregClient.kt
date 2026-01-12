@@ -1,19 +1,14 @@
 package http.client
 
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.defaultRequest
-import io.ktor.client.plugins.logging.LogLevel
-import io.ktor.client.plugins.logging.Logging
-import io.ktor.client.request.bearerAuth
-import io.ktor.client.request.get
-import io.ktor.serialization.kotlinx.json.json
-import io.ktor.server.application.ApplicationEnvironment
-import no.nav.http.client.tokenexchange.ProvideToken
-import no.nav.http.client.tokenexchange.TexasTokenFailedResult
-import no.nav.http.client.tokenexchange.TexasTokenSuccessResult
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.engine.cio.*
+import io.ktor.client.plugins.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.plugins.logging.*
+import io.ktor.client.request.*
+import io.ktor.serialization.kotlinx.json.*
+import io.ktor.server.application.*
 import services.OrgNummer
 
 fun ApplicationEnvironment.getEregScope(): String {
@@ -40,9 +35,9 @@ class EregClient(
         return runCatching {
             val result = httpClient.get(nøkkelInfoUrl(orgNummer.value))
             result.body<EregNøkkelinfoDto>()
-        }
-            .onSuccess { EregSuccess(it) }
-            .onFailure { EregFailure(it.localizedMessage) }
+        }.fold(
+            onSuccess = { EregSuccess(it) },
+            onFailure =  { EregFailure(it.localizedMessage) })
     }
 
 }
