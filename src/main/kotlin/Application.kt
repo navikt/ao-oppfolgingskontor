@@ -70,7 +70,16 @@ fun Application.module() {
         baseUrl = environment.getVeilarbArenaUrl(),
         azureTokenProvider = texasClient.tokenProvider(environment.getVeilarbarenaScope())
     )
+    val aaregClient = AaregClient(
+        baseUrl = environment.getAaregUrl(),
+        azureTokenProvider = texasClient.tokenProvider(environment.getAaregScope())
+    )
+    val eregClient = EregClient(
+        baseUrl = environment.getEregUrl(),
+        azureTokenProvider = texasClient.tokenProvider(environment.getEregScope())
+    )
 
+    val kontorForBrukerMedMangelfullGtService = KontorForBrukerMedMangelfullGtService(norg2Client, aaregClient, eregClient)
     val identService = IdentService({ pdlClient.hentIdenterFor(it) })
     val gtNorgService = GTNorgService(
         { pdlClient.hentGt(it) },
