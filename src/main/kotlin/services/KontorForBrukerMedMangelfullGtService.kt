@@ -1,11 +1,11 @@
 package services
 
+import domain.gtForBruker.GtNummerForBrukerFunnet
 import domain.gtForBruker.GtSomKreverFallback
+import domain.kontorForGt.ArbeidsgiverFallbackKontorForGt
 import domain.kontorForGt.KontorForGtFantIkkeKontor
-import domain.kontorForGt.KontorForGtFantKontor
 import domain.kontorForGt.KontorForGtFantKontorForArbeidsgiverAdresse
 import domain.kontorForGt.KontorForGtFeil
-import domain.kontorForGt.KontorForGtResultat
 import http.client.*
 import no.nav.db.IdentSomKanLagres
 import no.nav.domain.HarSkjerming
@@ -13,11 +13,15 @@ import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.GeografiskTilknytningKommuneNr
 import no.nav.http.client.GeografiskTilknytningNr
+import no.nav.http.client.NorgKontorForGtFantIkkeKontor
+import no.nav.http.client.NorgKontorForGtFantKontor
+import no.nav.http.client.NorgKontorForGtFeil
+import no.nav.http.client.NorgKontorForGtResultat
 
 class KontorForBrukerMedMangelfullGtService(
     val hentArbeidsforhold: suspend (ident: IdentSomKanLagres) -> AaregResult,
     val hentArbeidsgiverAdresse: suspend (orgNummer: OrgNummer) -> EregResult,
-    val hentKontorForGt: suspend (gt: GeografiskTilknytningNr, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming) -> KontorForGtResultat,
+    val hentKontorForGt: suspend (gt: GeografiskTilknytningNr, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming) -> NorgKontorForGtResultat,
 ) {
 
     suspend fun finnKontorForGtBasertPåArbeidsforhold(
@@ -25,7 +29,7 @@ class KontorForBrukerMedMangelfullGtService(
         mangelfullGt: GtSomKreverFallback,
         harStrengtFortroligAdresse: HarStrengtFortroligAdresse,
         harSkjerming: HarSkjerming
-    ): KontorForGtResultat {
+    ): ArbeidsgiverFallbackKontorForGt {
         val arbeidsforhold = when (val res = hentArbeidsforhold(ident)) {
             is AaregFailure -> return KontorForGtFeil("Feil ved henting av arbeidsforhold for bruker med mangelfull gt: " + res.errorMessage)
             is AaregSuccess -> res.data
@@ -42,11 +46,13 @@ class KontorForBrukerMedMangelfullGtService(
         }
         val kontorForGt = hentKontorForGt(gt, harStrengtFortroligAdresse, harSkjerming)
         val kontorId = when (val res = kontorForGt) {
-            is KontorForGtFeil -> return kontorForGt
-            is KontorForGtFantIkkeKontor -> return kontorForGt
-            is KontorForGtFantKontor -> {
-                res.kontorId
-            }
+            NorgKontorForGtFantIkkeKontor -> return KontorForGtFantIkkeKontor(
+                harSkjerming,
+                harStrengtFortroligAdresse,
+                GtNummerForBrukerFunnet(gt)
+            )
+            is NorgKontorForGtFantKontor -> { res.id }
+            is NorgKontorForGtFeil -> return KontorForGtFeil("Feil å hente kontor via Norg for gt: ${gt.value}: ${res.message}")
         }
         return KontorForGtFantKontorForArbeidsgiverAdresse(
             kontorId,
