@@ -1,5 +1,6 @@
 package services
 
+import domain.gtForBruker.GtForBrukerIkkeFunnet
 import domain.gtForBruker.GtNummerForBrukerFunnet
 import domain.gtForBruker.GtSomKreverFallback
 import domain.kontorForGt.ArbeidsgiverFallbackKontorForGt
@@ -34,15 +35,28 @@ class KontorForBrukerMedMangelfullGtService(
             is AaregFailure -> return KontorForGtFeil("Feil ved henting av arbeidsforhold for bruker med mangelfull gt: " + res.errorMessage)
             is AaregSuccess -> res.data
         }
-        val orgNummer = OrgNummer(arbeidsforhold.arbeidssted.identer.first())
+
+        val orgNummer = arbeidsforhold.arbeidssted.identer.firstOrNull()
+            ?.let { OrgNummer(it) }
+            ?: return KontorForGtFantIkkeKontor(
+                harSkjerming,
+                harStrengtFortroligAdresse,
+                GtForBrukerIkkeFunnet("Fant ikke noe arbeidsgiverforhold på bruker og derfor ingen fallback-gt")
+            )
+
         val arbeidsgiverAdresse = when (val res = hentArbeidsgiverAdresse(orgNummer)) {
             is EregFailure -> return KontorForGtFeil("Feil ved henting av arbeidsgiveradresse for bruker med mangelfull gt: " + res.errorMessage)
             is EregSuccess -> res.data
         }
-        val gt = when (arbeidsgiverAdresse.adresse.kommunenummer.length) {
+
+        val gt = when (arbeidsgiverAdresse.adresse?.kommunenummer?.length) {
             4 -> GeografiskTilknytningKommuneNr(arbeidsgiverAdresse.adresse.kommunenummer)
             6 -> GeografiskTilknytningBydelNr(arbeidsgiverAdresse.adresse.kommunenummer)
-            else -> return KontorForGtFeil("Kunne ikke finne gt basert på arbeidsgiverforhold, feil antall siffer i kommunenr fra ereg")
+            else -> return KontorForGtFantIkkeKontor(
+                    harSkjerming,
+                    harStrengtFortroligAdresse,
+                    GtForBrukerIkkeFunnet("Fant ikke noe GT fra arbeidsgiverforholdet til bruker kommunenr: ${arbeidsgiverAdresse.adresse?.kommunenummer}")
+                )
         }
         val kontorForGt = hentKontorForGt(gt, harStrengtFortroligAdresse, harSkjerming)
         val kontorId = when (val res = kontorForGt) {

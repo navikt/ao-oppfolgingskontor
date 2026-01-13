@@ -11,7 +11,6 @@ import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.GeografiskTilknytningLand
 import domain.gtForBruker.GtForBrukerIkkeFunnet
 import domain.gtForBruker.GtForBrukerOppslagFeil
-import domain.gtForBruker.GtForBrukerSuccess
 import domain.gtForBruker.GtLandForBrukerFunnet
 import domain.gtForBruker.GtNummerForBrukerFunnet
 import no.nav.services.GTNorgService
@@ -31,13 +30,13 @@ class GTNorgServiceTest {
     val fnr = Fnr("12345678901", Ident.HistoriskStatus.UKJENT)
 
     @Test
-    fun `skal svare KontorForGtFinnesIkke for bruker uten GT og uten fallback kontor`() = runTest {
+    fun `skal svare KontorForGtFinnesIkke for bruker uten GT og uten arbeigiver-fallback og uten norg-fallback`() = runTest {
         val gtForBruker = GtForBrukerIkkeFunnet("Ingen geografisk tilknytning funnet for bruker")
         val gtService = GTNorgService(
             { gtForBruker },
             { a, b, c -> throw IllegalStateException("Ikke implementert") },
             { a, b, c -> KontorForBrukerMedMangelfullGtIkkeFunnet(a) },
-            { a,b,c,d -> throw IllegalStateException("Ikke implementert") }
+            { a,b,c,d -> KontorForGtFantIkkeKontor(d, c, GtForBrukerIkkeFunnet(":(")) }
         )
 
         val kontorForGtResult = gtService.hentGtKontorForBruker(
@@ -120,7 +119,7 @@ class GTNorgServiceTest {
             { gtForBruker },
             { a, b, c -> throw IllegalStateException("Ikke implementert") },
             { a, b, c -> KontorForBrukerMedMangelfullGtFunnet(fallbackKontor, gtForBruker) },
-            { a,b,c,d -> throw IllegalStateException("Ikke implementert") }
+            { a,b,c,d -> KontorForGtFantIkkeKontor(d, c, GtForBrukerIkkeFunnet(":/")) }
         )
 
         val kontorForGtResult = gtService.hentGtKontorForBruker(
@@ -146,7 +145,7 @@ class GTNorgServiceTest {
             { gtForBruker },
             { a, b, c -> throw IllegalStateException("Ikke implementert") },
             { a, b, c -> KontorForBrukerMedMangelfullGtFunnet(navUtlandKontor,gtForBruker) },
-            { a,b,c,d -> throw IllegalStateException("Ikke implementert") }
+            { a,b,c,d -> KontorForGtFantIkkeKontor(d, c, GtForBrukerIkkeFunnet(":(")) }
         )
 
         val kontorForGtResult = gtService.hentGtKontorForBruker(

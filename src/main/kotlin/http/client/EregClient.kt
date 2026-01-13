@@ -51,9 +51,9 @@ class EregFailure(
 ): EregResult()
 
 data class EregNøkkelinfoDto(
-    val adresse: Adresse
+    val adresse: Adresse?
 )
 
 class Adresse(
-    val kommunenummer: String,
+    val kommunenummer: String?,
 )
