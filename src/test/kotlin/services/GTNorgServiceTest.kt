@@ -11,6 +11,7 @@ import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.GeografiskTilknytningLand
 import domain.gtForBruker.GtForBrukerIkkeFunnet
 import domain.gtForBruker.GtForBrukerOppslagFeil
+import domain.gtForBruker.GtForBrukerSuccess
 import domain.gtForBruker.GtLandForBrukerFunnet
 import domain.gtForBruker.GtNummerForBrukerFunnet
 import no.nav.services.GTNorgService
@@ -72,16 +73,17 @@ class GTNorgServiceTest {
     }
 
     @Test
-    fun `skal svare fallback når gt for bruker når gt ikke finnes men det finnes fallback`() = runTest {
+    fun `skal svare fallback når gt for bruker ikke finnes men det finnes Norg fallback (ikke arbeidsgiver)`() = runTest {
         val fallbackKontor = KontorId("4444")
         val skjerming = HarSkjerming(false)
         val adresse = HarStrengtFortroligAdresse(false)
         val gtForBruker = GtForBrukerIkkeFunnet("Fant ikke")
+        val gtForArbeidsgiver = GtNummerForBrukerFunnet(GeografiskTilknytningKommuneNr("3311"))
         val gtService = GTNorgService(
             { gtForBruker },
             { a, b, c -> NorgKontorForGtFantIkkeKontor },
             { a, b, c -> KontorForBrukerMedMangelfullGtFunnet(fallbackKontor, gtForBruker) },
-            { a,b,c,d -> throw IllegalStateException("Ikke implementert") }
+            { a, gt, adresse, skjerming -> KontorForGtFantIkkeKontor(skjerming, adresse, gtForArbeidsgiver) }
         )
 
         val kontorForGtResult = gtService.hentGtKontorForBruker(fnr, adresse, skjerming)

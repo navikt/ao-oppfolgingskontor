@@ -29,10 +29,10 @@ import no.nav.http.client.NorgKontorForGtResultat
 import org.slf4j.LoggerFactory
 
 class GTNorgService(
-    private val gtForBrukerProvider: suspend (fnr: Ident) -> GtForBrukerResult,
-    private val kontorForGtProvider: suspend (gt: GeografiskTilknytningNr, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming) -> NorgKontorForGtResultat,
-    private val kontorForBrukerMedMangelfullGtNorgFallback: suspend (gt: GtSomKreverFallback, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming) -> KontorForBrukerMedMangelfullGtResultat,
-    private val kontorForBrukerMedMangelfullGtArbeidsgiverAdresseFallback: suspend (ident: IdentSomKanLagres, gt: GtSomKreverFallback, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming) -> ArbeidsgiverFallbackKontorForGt,
+    private val hentGtForBruker: suspend (fnr: Ident) -> GtForBrukerResult,
+    private val hentKontorForGt: suspend (gt: GeografiskTilknytningNr, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming) -> NorgKontorForGtResultat,
+    private val hentKontorForBrukerMedMangelfullGtNorgFallback: suspend (gt: GtSomKreverFallback, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming) -> KontorForBrukerMedMangelfullGtResultat,
+    private val hentKontorForBrukerMedMangelfullGtArbeidsgiverAdresseFallback: suspend (ident: IdentSomKanLagres, gt: GtSomKreverFallback, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming) -> ArbeidsgiverFallbackKontorForGt,
 ) {
     val log = LoggerFactory.getLogger(this::class.java)
 
@@ -42,11 +42,11 @@ class GTNorgService(
         skjermet: HarSkjerming
     ): KontorForGtResultat {
         try {
-            val gtForBruker = gtForBrukerProvider(ident)
+            val gtForBruker = hentGtForBruker(ident)
             return when (gtForBruker) {
                 is GtLandForBrukerFunnet,
                 is GtForBrukerIkkeFunnet -> {
-                    val gtForBrukerBasertPaArbeidsgiverResult = kontorForBrukerMedMangelfullGtArbeidsgiverAdresseFallback(
+                    val gtForBrukerBasertPaArbeidsgiverResult = hentKontorForBrukerMedMangelfullGtArbeidsgiverAdresseFallback(
                         ident,
                         gtForBruker,
                         strengtFortroligAdresse,
@@ -57,7 +57,7 @@ class GTNorgService(
                         is KontorForGtFantIkkeKontor -> {} // Gå videre til neste fallback
                     }
 
-                    val fallbackResult = kontorForBrukerMedMangelfullGtNorgFallback(gtForBruker, strengtFortroligAdresse, skjermet)
+                    val fallbackResult = hentKontorForBrukerMedMangelfullGtNorgFallback(gtForBruker, strengtFortroligAdresse, skjermet)
                     when (fallbackResult) {
                         is KontorForBrukerMedMangelfullGtFunnet -> KontorForGtNrFantFallbackKontorForManglendeGt(
                             fallbackResult.kontorId,
@@ -74,7 +74,7 @@ class GTNorgService(
                     }
                 }
                 is GtForBrukerOppslagFeil -> KontorForGtFeil(gtForBruker.message)
-                is GtNummerForBrukerFunnet -> kontorForGtProvider(gtForBruker.gtNr, strengtFortroligAdresse, skjermet)
+                is GtNummerForBrukerFunnet -> hentKontorForGt(gtForBruker.gtNr, strengtFortroligAdresse, skjermet)
                     .let {
                         when (it) {
                             NorgKontorForGtFantIkkeKontor -> KontorForGtFantIkkeKontor(

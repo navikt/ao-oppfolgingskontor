@@ -147,13 +147,13 @@ class LeesahProcessorTest {
     ): AutomatiskKontorRutingService {
         return AutomatiskKontorRutingService(
             { KontorTilordningService.tilordneKontor(it, true)},
-            gtKontorProvider = gtProvider,
-            aldersProvider = { throw Throwable("Denne skal ikke brukes") },
-            profileringProvider = { throw Throwable("Denne skal ikke brukes") },
-            erSkjermetProvider = { SkjermingFunnet(HarSkjerming(false)) },
-            harStrengtFortroligAdresseProvider = strengtFortroligAdresseProvider,
-            isUnderOppfolgingProvider = { AktivOppfolgingsperiode(Fnr("66666666666", Ident.HistoriskStatus.AKTIV), OppfolgingsperiodeId(UUID.randomUUID()), OffsetDateTime.now()) },
-            harAlleredeTilordnetAoKontorForOppfolgingsperiodeProvider = { _, _ -> Outcome.Success(false)  }
+            hentKontorForGt = gtProvider,
+            hentAlder = { throw Throwable("Denne skal ikke brukes") },
+            hentProfilering = { throw Throwable("Denne skal ikke brukes") },
+            hentSkjerming = { SkjermingFunnet(HarSkjerming(false)) },
+            hentHarStrengtFortroligAdresse = strengtFortroligAdresseProvider,
+            hentGjeldendeOppfolgingsperiode = { AktivOppfolgingsperiode(Fnr("66666666666", Ident.HistoriskStatus.AKTIV), OppfolgingsperiodeId(UUID.randomUUID()), OffsetDateTime.now()) },
+            harAlleredeTilordnetAoKontorForOppfolgingsperiode = { _, _ -> Outcome.Success(false)  }
         )
     }
 
