@@ -50,7 +50,7 @@ class AaregClient(
                     arbeidstakerId = ident.value
                 ))
             }
-            result.body<ArbeidsforholdDto>()
+            result.body<List<ArbeidsforholdDto>>()
         }.fold(
             onSuccess = { AaregSuccess(it) },
             onFailure =  { AaregFailure(it.localizedMessage) })
@@ -59,7 +59,7 @@ class AaregClient(
 
 sealed class AaregResult
 class AaregSuccess(
-    val data: ArbeidsforholdDto
+    val data: List<ArbeidsforholdDto>
 ): AaregResult()
 class AaregFailure(
     val errorMessage: String
