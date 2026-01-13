@@ -36,7 +36,13 @@ class KontorForBrukerMedMangelfullGtService(
             is AaregSuccess -> res.data
         }
 
-        val orgNummer = arbeidsforhold.arbeidssted.identer.firstOrNull()
+        val orgNummer = arbeidsforhold.partition { it.ansettelsesperiode.sluttdato != null }
+            .let { (nåværendeArbeidsforhold, tidligereArbeidsforhold) ->
+                nåværendeArbeidsforhold.maxByOrNull { it.ansettelsesperiode.startdato }
+                    ?: tidligereArbeidsforhold.maxByOrNull { it.ansettelsesperiode.startdato }
+            }
+            ?.arbeidssted?.identer?.first { it.type == "ORGANISASJONSNUMMER" }
+            ?.ident
             ?.let { OrgNummer(it) }
             ?: return KontorForGtFantIkkeKontor(
                 harSkjerming,

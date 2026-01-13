@@ -67,13 +67,26 @@ class AaregFailure(
 
 class Arbeidssted(
     /* Liste av identer for underenhet (organisasjonsnummer) eller person (folkeregisterident/aktør-id) */
-    val identer: List<String>
+    val identer: List<ArbeidsforholdIdent>
 )
+
+class ArbeidsforholdIdent(
+    val ident: String,
+    val type: String,
+    val gjeldende: Boolean
+)
+
 /* Er en mye større DTO med felter som vi ikke trenger foreløpig */
 class ArbeidsforholdDto(
     val arbeidssted: Arbeidssted,
     val sistBekreftet: String,
     val sistEndret: String,
+    val ansettelsesperiode: Ansettelsesperiode
+)
+
+class Ansettelsesperiode(
+    val startdato: String,
+    val sluttdato: String?
 )
 
 class ArbeidsforholdPayload(
