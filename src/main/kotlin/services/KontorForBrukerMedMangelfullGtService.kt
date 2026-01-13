@@ -56,13 +56,14 @@ class KontorForBrukerMedMangelfullGtService(
         }
 
         val gt = when (arbeidsgiverAdresse.adresse?.kommunenummer?.length) {
+            null -> return KontorForGtFantIkkeKontor(
+                harSkjerming,
+                harStrengtFortroligAdresse,
+                GtForBrukerIkkeFunnet("Fant ikke noe GT fra arbeidsgiverforholdet til bruker fordi kommunenr var null")
+            )
             4 -> GeografiskTilknytningKommuneNr(arbeidsgiverAdresse.adresse.kommunenummer)
             6 -> GeografiskTilknytningBydelNr(arbeidsgiverAdresse.adresse.kommunenummer)
-            else -> return KontorForGtFantIkkeKontor(
-                    harSkjerming,
-                    harStrengtFortroligAdresse,
-                    GtForBrukerIkkeFunnet("Fant ikke noe GT fra arbeidsgiverforholdet til bruker kommunenr: ${arbeidsgiverAdresse.adresse?.kommunenummer}")
-                )
+            else -> return KontorForGtFeil("Kommunenr fra arbeidsgiverforholdet til bruker er ikke gyldig kommunenr: ${arbeidsgiverAdresse.adresse?.kommunenummer}")
         }
         val kontorForGt = hentKontorForGt(gt, harStrengtFortroligAdresse, harSkjerming)
         val kontorId = when (val res = kontorForGt) {
