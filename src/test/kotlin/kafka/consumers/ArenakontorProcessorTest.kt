@@ -40,7 +40,7 @@ class ArenakontorProcessorTest {
 
     @Test
     fun `Skal ignorere OppfolgingsperiodeAvsluttet-hendelser`() {
-        val processor = `ArenakontorVedOppfolgingStartetProcessor`(
+        val processor = ArenakontorVedOppfolgingStartetProcessor(
             { ArenakontorIkkeFunnet() },
             { KontorTilordningService.tilordneKontor(it, true) },
             { null },
@@ -58,7 +58,7 @@ class ArenakontorProcessorTest {
         val record = oppfolgingsperiodeStartetRecord()
         val kontorId = KontorId("1234")
         val gammelKontorId = KontorId("4321")
-        val processor = `ArenakontorVedOppfolgingStartetProcessor`(
+        val processor = ArenakontorVedOppfolgingStartetProcessor(
             { ArenakontorFunnet(kontorId, ZonedDateTime.now()) },
             { KontorTilordningService.tilordneKontor(it, true) },
             {
@@ -106,7 +106,7 @@ class ArenakontorProcessorTest {
         val nyereKontorId = KontorId("4321")
         val tidspunktSynkronHenting = ZonedDateTime.now().minusSeconds(30)
         val tidspunktKontorIdIDatabasen = OffsetDateTime.now().minusSeconds(20)
-        val processor = `ArenakontorVedOppfolgingStartetProcessor`(
+        val processor = ArenakontorVedOppfolgingStartetProcessor(
             { ArenakontorFunnet(kontorIdHentetSynkront, tidspunktSynkronHenting) },
             { throw Exception("Skal ikke lagre når det ikke har vært en endring") },
             {
@@ -144,7 +144,7 @@ class ArenakontorProcessorTest {
         val kontorId = KontorId("1234")
         val gammelKontorId = KontorId("4321")
         var harPublisertMelding = false
-        val processor = `ArenakontorVedOppfolgingStartetProcessor`(
+        val processor = ArenakontorVedOppfolgingStartetProcessor(
             { ArenakontorFunnet(kontorId, ZonedDateTime.now()) },
             { KontorTilordningService.tilordneKontor(it, true) },
             {
@@ -171,7 +171,7 @@ class ArenakontorProcessorTest {
         val kontorId = KontorId("1234")
         val gammelKontorId = KontorId("4321")
         var harPublisertMelding = false
-        val processor = `ArenakontorVedOppfolgingStartetProcessor`(
+        val processor = ArenakontorVedOppfolgingStartetProcessor(
             { ArenakontorFunnet(kontorId, ZonedDateTime.now()) },
             { KontorTilordningService.tilordneKontor(it, true) },
             {

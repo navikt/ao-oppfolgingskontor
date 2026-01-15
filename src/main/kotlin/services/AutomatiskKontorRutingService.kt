@@ -70,8 +70,7 @@ data class TilordningSuccessKontorEndret(val kontorEndretEvent: KontorEndringer)
 data class TilordningFeil(val message: String) : TilordningResultat()
 data class TilordningRetry(val message: String) : TilordningResultat()
 
-class AutomatiskKontorRutingService(
-    private val tilordneKontor: suspend (kontorEndretEvent: KontorEndringer) -> Unit,
+data class AutomatiskKontorRutingService(
     private val hentKontorForGt:
     suspend (
         fnr: IdentSomKanLagres,
@@ -157,10 +156,8 @@ class AutomatiskKontorRutingService(
                         gtKontorEndret = gtKontorResultat.toGtKontorEndret(fnr, oppfolgingsperiodeId)
                     )
                 }
-            tilordneKontor( kontorTilordning)
             return TilordningSuccessKontorEndret(kontorTilordning)
-
-            } catch (e: Exception) {
+        } catch (e: Exception) {
             return TilordningFeil("Feil ved tilordning av kontor: ${e.message ?: e.toString()}")
         }
     }
@@ -287,7 +284,6 @@ class AutomatiskKontorRutingService(
                         KontorTilordning(hendelse.ident, kontorId, oppfolgingsperiodeId),
                         gtKontorResultat.gt()
                     ).let { KontorEndringer(gtKontorEndret = it) }
-                    tilordneKontor(gtKontorEndring)
                     HåndterPersondataEndretSuccess(gtKontorEndring)
                 }
                 is KontorForGtFeil -> HåndterPersondataEndretFail("Kunne ikke håndtere endring i bostedsadresse pga feil ved henting av gt-kontor: ${gtKontorResultat.melding}")
@@ -353,11 +349,8 @@ class AutomatiskKontorRutingService(
                         val kontorEndringer = AOKontorEndretPgaAdressebeskyttelseEndret(
                             KontorTilordning(hendelse.ident, gtKontor, oppfolgingsperiodeId)
                         ).let { KontorEndringer(aoKontorEndret = it, gtKontorEndret = gtKontorEndring) }
-                        tilordneKontor(kontorEndringer)
                         HåndterPersondataEndretSuccess(kontorEndringer)
                     } else {
-                        val kontorEndring = KontorEndringer(gtKontorEndret = gtKontorEndring)
-                        tilordneKontor( kontorEndring)
                         HåndterPersondataEndretSuccess(KontorEndringer(gtKontorEndret = gtKontorEndring))
                     }
                 }
@@ -424,11 +417,9 @@ class AutomatiskKontorRutingService(
                             KontorTilordning(endringISkjermingStatus.fnr, gtKontor, oppfolgingsperiodeId)
                         )
                         val kontorEndringer = KontorEndringer(aoKontorEndret = aoKontorEndring, gtKontorEndret = gtKontorEndring)
-                        tilordneKontor(kontorEndringer)
                         Result.success(EndringISkjermingResult(kontorEndringer))
                     } else {
                         val kontorEndringer = KontorEndringer(gtKontorEndret = gtKontorEndring)
-                        tilordneKontor(kontorEndringer)
                         Result.success(EndringISkjermingResult(kontorEndringer))
                     }
                 }

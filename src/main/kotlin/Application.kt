@@ -5,7 +5,6 @@ import http.client.AaregClient
 import http.client.EregClient
 import http.client.VeilarbArenaClient
 import http.client.getAaregScope
-import http.client.getEregScope
 import http.client.getVeilarbarenaScope
 import http.configureContentNegotiation
 import http.configureHentArbeidsoppfolgingskontorBulkModule
@@ -101,7 +100,6 @@ fun Application.module() {
     val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangHttpClient, identService::hentAlleIdenter)
     val oppfolgingsperiodeService = OppfolgingsperiodeService(identService::hentAlleIdenter)
     val automatiskKontorRutingService = AutomatiskKontorRutingService(
-        KontorTilordningService::tilordneKontor,
         { fnr, strengtFortroligAdresse, skjermet -> gtNorgService.hentGtKontorForBruker(fnr, strengtFortroligAdresse, skjermet) },
         { pdlClient.hentAlder(it) },
         { arbeidssokerregisterClient.hentProfilering(it) },
@@ -117,7 +115,7 @@ fun Application.module() {
         hentAlleIdenter = { identSomKanLagres -> identService.hentAlleIdenter(identSomKanLagres) }
     )
     val republiseringService = KontorRepubliseringService(kontorEndringProducer::republiserKontor, datasource, kontorNavnService::friskOppAlleKontorNavn)
-    val arenaSyncService = ArenaSyncService(veilarbArenaClient, KontorTilordningService, kontorTilhorighetService, oppfolgingsperiodeService)
+    val arenaSyncService = ArenaSyncService(veilarbArenaClient, KontorTilordningService, kontorTilhorighetService, oppfolgingsperiodeService, BRUK_AO_RUTING)
 
     install(KafkaStreamsPlugin) {
         this.automatiskKontorRutingService = automatiskKontorRutingService
@@ -131,6 +129,7 @@ fun Application.module() {
         this.kontorTilhorighetService = kontorTilhorighetService
         this.kontorEndringProducer = kontorEndringProducer
         this.veilarbArenaClient = veilarbArenaClient
+        this.brukAoRuting = BRUK_AO_RUTING
     }
 
     val issuer = environment.getIssuer()
@@ -142,9 +141,10 @@ fun Application.module() {
         kontorTilhorighetService,
         poaoTilgangHttpClient,
         oppfolgingsperiodeService,
-        { kontorEndringProducer.publiserEndringPåKontor(it) }
+        { kontorEndringProducer.publiserEndringPåKontor(it) },
+        brukAoRuting = BRUK_AO_RUTING,
     )
-    configureAdminModule(republiseringService, arenaSyncService, identService)
+    configureAdminModule(automatiskKontorRutingService, republiseringService, arenaSyncService, identService)
     configureHentArbeidsoppfolgingskontorBulkModule(KontorTilhorighetBulkService)
 }
 

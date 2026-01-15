@@ -13,6 +13,7 @@ import no.nav.db.Ident
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.security.token.support.v3.RequiredClaims
 import no.nav.security.token.support.v3.tokenValidationSupport
+import no.nav.services.AutomatiskKontorRutingService
 import org.slf4j.LoggerFactory
 import services.ArenaSyncService
 import services.IdentService
@@ -22,6 +23,7 @@ import java.util.UUID
 val log = LoggerFactory.getLogger("AdminModule")
 
 fun Application.configureAdminModule(
+    automatiskKontorRutingService: AutomatiskKontorRutingService,
     kontorRepubliseringService: KontorRepubliseringService,
     arenaSyncService: ArenaSyncService,
     identService: IdentService,
@@ -97,6 +99,10 @@ fun Application.configureAdminModule(
                         "Klarte ikke synce Arena-kontor: ${e.message} \n" + e.stackTraceToString()
                     )
                 }
+            }
+
+            post("/admin/finn-kontor") {
+                automatiskKontorRutingService
             }
         }
     }

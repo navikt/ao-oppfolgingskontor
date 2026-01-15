@@ -14,6 +14,7 @@ import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
 import no.nav.services.AutomatiskKontorRutingService
+import no.nav.services.KontorTilordningService
 import no.nav.services.TilordningFeil
 import no.nav.services.TilordningRetry
 import no.nav.services.TilordningSuccess
@@ -29,6 +30,7 @@ import java.time.ZonedDateTime
 class KontortilordningsProcessor(
     private val automatiskKontorRutingService: AutomatiskKontorRutingService,
     private val skipPersonIkkeFunnet: Boolean = false,
+    private val brukAoRuting: Boolean,
 ) {
     companion object {
         const val processorName = "KontortilordningsProcessor"
@@ -47,10 +49,9 @@ class KontortilordningsProcessor(
             record: Record<Ident, OppfolgingsperiodeEndret>
     ): RecordProcessingResult<OppfolgingsperiodeId, OppfolgingEndretTilordningMelding> {
         try {
-            val periodeStartet = record.value() as OppfolgingsperiodeStartet ?: return Skip()
+            val periodeStartet = record.value() as? OppfolgingsperiodeStartet ?: return Skip()
 
             return runBlocking {
-                val oppfolgingsperiode = record.value()
                 return@runBlocking automatiskKontorRutingService
                     .tilordneKontorAutomatisk(periodeStartet)
                     .let { tilordningResultat ->
@@ -76,6 +77,7 @@ class KontortilordningsProcessor(
                                         log.info("Behandlet start oppfølging uten at noen kontor ble endret")
                                     }
                                     is TilordningSuccessKontorEndret -> {
+                                        KontorTilordningService.tilordneKontor(tilordningResultat.kontorEndretEvent, brukAoRuting)
                                         val aoKontor = tilordningResultat.kontorEndretEvent.aoKontorEndret
                                         if (aoKontor != null)
                                             /* Publishing it done in its own processor to avoid re-setting kontor and creating

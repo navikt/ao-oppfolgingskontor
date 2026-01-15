@@ -37,6 +37,7 @@ class KontortilordningsProcessorTest {
         val oppfolgingsperiode = oppfolgingsperiodeStartet()
         val processor = KontortilordningsProcessor(
             hardtFeilendeAutomatiskKontorRutingService(),
+            false,
             false
         )
         val record: Record<Ident, OppfolgingsperiodeEndret> = Record(
@@ -56,6 +57,7 @@ class KontortilordningsProcessorTest {
         val oppfolgingsperiode = oppfolgingsperiodeStartet()
         val processor = KontortilordningsProcessor(
             feilendeAutomatiskKontorRutingService(oppfolgingsperiode),
+            false,
             false
         )
         val record: Record<Ident, OppfolgingsperiodeEndret> = Record(
@@ -74,7 +76,8 @@ class KontortilordningsProcessorTest {
         val oppfolgingsperiode = oppfolgingsperiodeStartet()
         val processor = KontortilordningsProcessor(
             feilendeAutomatiskKontorRutingService(oppfolgingsperiode),
-            true
+            true,
+            false
         )
         val record: Record<Ident, OppfolgingsperiodeEndret> = Record(
             oppfolgingsperiode.fnr as Ident,
@@ -98,7 +101,6 @@ class KontortilordningsProcessorTest {
 
     fun automatiskKontorRutingService(oppfolging: OppfolgingsperiodeStartet): AutomatiskKontorRutingService {
         return AutomatiskKontorRutingService(
-            {},
             { a, b, c -> KontorForGtFantDefaultKontor(KontorId("3131"), HarSkjerming(false),
                 HarStrengtFortroligAdresse(false), GeografiskTilknytningKommuneNr("3131")) },
             { AlderFunnet(33) },
@@ -116,7 +118,6 @@ class KontortilordningsProcessorTest {
 
     fun feilendeAutomatiskKontorRutingService(oppfolging: OppfolgingsperiodeStartet): AutomatiskKontorRutingService {
         return AutomatiskKontorRutingService(
-            {},
             { a, b, c -> KontorForGtFantDefaultKontor(KontorId("3131"), HarSkjerming(false),
                 HarStrengtFortroligAdresse(false), GeografiskTilknytningKommuneNr("3131")) },
             { AlderIkkeFunnet("Ingen foedselsdato i felt 'foedselsdato' fra pdl-spørring, dårlig data i dev?") },
@@ -134,7 +135,6 @@ class KontortilordningsProcessorTest {
 
     fun hardtFeilendeAutomatiskKontorRutingService(): AutomatiskKontorRutingService {
         return AutomatiskKontorRutingService(
-            {},
             { a, b, c -> throw NotImplementedError("Feilet") },
             { throw NotImplementedError("Feilet") },
             { throw NotImplementedError("Feilet") },

@@ -842,7 +842,6 @@ fun oppfolgingsperiodeStartet(
 
 fun gitt(bruker: Bruker): AutomatiskKontorRutingService {
     return AutomatiskKontorRutingService(
-        {},
         { _, strengtFortroligAdresse, skjerming -> bruker.gtKontor },
         { bruker.alder },
         { bruker.profilering },

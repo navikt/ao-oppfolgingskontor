@@ -10,11 +10,13 @@ import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
 import no.nav.services.AutomatiskKontorRutingService
+import no.nav.services.KontorTilordningService
 import org.apache.kafka.streams.processor.api.Record
 import org.slf4j.LoggerFactory
 
 class SkjermingProcessor(
-    val automatiskKontorRutingService: AutomatiskKontorRutingService
+    val automatiskKontorRutingService: AutomatiskKontorRutingService,
+    val brukAoRuting: Boolean
 ) {
     val log = LoggerFactory.getLogger(SkjermingProcessor::class.java)
 
@@ -35,6 +37,8 @@ class SkjermingProcessor(
                     when (result.isSuccess) {
                         true -> {
                             log.info("Behandling endring i skjerming med resultat: ${result.getOrNull()}")
+                            result.getOrNull()
+                                ?.let { KontorTilordningService.tilordneKontor(it.endringer, brukAoRuting) }
                             Commit()
                         }
                         false -> {
