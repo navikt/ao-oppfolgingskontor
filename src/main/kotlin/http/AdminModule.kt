@@ -121,20 +121,34 @@ fun Application.configureAdminModule(
                     val identer = input.identer.split(",")
                     val godkjenteIdenter =
                         identer.map { Ident.validateIdentSomKanLagres(it, Ident.HistoriskStatus.UKJENT) }
-                    godkjenteIdenter.associateWith { godkjentIdent ->
+                    val result: Map<String, String> = godkjenteIdenter.associateWith { godkjentIdent ->
                         val res = alltidRuting.tilordneKontorAutomatisk(
                             godkjentIdent,
                             OppfolgingsperiodeId(UUID.randomUUID()),
                             true,
                             ZonedDateTime.now()
                         )
-                        when (res) {
+                        val output: String = when (res) {
                             is TilordningFeil -> res.message
                             is TilordningRetry -> res.message
                             TilordningSuccessIngenEndring -> "Ingen endring"
-                            is TilordningSuccessKontorEndret -> res.kontorEndretEvent.aoKontorEndret?.tilordning?.kontorId
+                            is TilordningSuccessKontorEndret -> """
+                                ao-kontor: ${res.kontorEndretEvent.aoKontorEndret?.tilordning?.kontorId?.id}
+                                gt-kontor: ${res.kontorEndretEvent.gtKontorEndret?.tilordning?.kontorId?.id}
+                            """.trimIndent()
                         }
-                    }
+                        output
+                    }.mapKeys { it.value }
+                    call.respond(
+                        HttpStatusCode.Accepted,
+                        result
+                    )
+                }.onFailure { e ->
+                    log.error("Feil ved syncing av Arena-kontor", e)
+                    call.respond(
+                        HttpStatusCode.InternalServerError,
+                        "Klarte ikke kjøre dry-run av kontor-ruting: ${e.message} \n" + e.stackTraceToString()
+                    )
                 }
             }
         }
