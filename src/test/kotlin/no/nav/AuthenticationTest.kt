@@ -51,12 +51,21 @@ class AuthenticationTest {
         val poaoTilgangKtorHttpClient = mockPoaoTilgangHost(null)
         val norg2Client = mockNorg2Host()
         val kontorNavnService = KontorNavnService(norg2Client)
-        val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangKtorHttpClient, identService::hentAlleIdenter)
+        val kontorTilhorighetService = KontorTilhorighetService(
+            kontorNavnService,
+            identService::hentAlleIdenter,
+        )
         application {
             flywayMigrationInTest()
             ident?.let { gittIdentIMapping(it) }
             configureSecurity()
-            installGraphQl(norg2Client, kontorTilhorighetService, { req -> req.call.authenticateCall(environment.getIssuer()) }, identService::hentAlleIdenter)
+            installGraphQl(
+                norg2Client,
+                kontorTilhorighetService,
+                { req -> req.call.authenticateCall(environment.getIssuer()) },
+                identService::hentAlleIdenter,
+                poaoTilgangKtorHttpClient::harLeseTilgang
+            )
             routing {
                 authenticate("EntraAD") {
                     graphQLPostRoute()

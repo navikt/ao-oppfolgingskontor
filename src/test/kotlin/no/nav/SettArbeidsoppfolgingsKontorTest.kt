@@ -78,7 +78,7 @@ class SettArbeidsoppfolgingsKontorTest {
         val kontorNavnService = KontorNavnService(norg2Client)
         val identerFunnet = IdenterFunnet(listOf(ident, aktorId), ident)
         val identService = IdentService { identerFunnet }
-        val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangClient, identService::hentAlleIdenter)
+        val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, identService::hentAlleIdenter)
         val oppfolgingsperiodeService = OppfolgingsperiodeService(identService::hentAlleIdenter)
         val producer = MockProducer(true, partitioner, StringSerializer(), StringSerializer())
         val kontorEndringProducer = KontorEndringProducer(
@@ -91,7 +91,13 @@ class SettArbeidsoppfolgingsKontorTest {
             flywayMigrationInTest()
             extraDatabaseSetup()
             configureSecurity()
-            installGraphQl(norg2Client, kontorTilhorighetService, { req -> req.call.authenticateCall(environment.getIssuer()) }, identService::hentAlleIdenter)
+            installGraphQl(
+                norg2Client,
+                kontorTilhorighetService,
+                { req -> req.call.authenticateCall(environment.getIssuer()) },
+                identService::hentAlleIdenter,
+                poaoTilgangClient::harLeseTilgang
+            )
             configureContentNegotiation()
             configureArbeidsoppfolgingskontorModule(
                 kontorNavnService,
