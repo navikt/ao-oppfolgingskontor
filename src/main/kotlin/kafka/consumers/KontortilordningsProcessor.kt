@@ -53,7 +53,7 @@ class KontortilordningsProcessor(
 
             return runBlocking {
                 return@runBlocking automatiskKontorRutingService
-                    .tilordneKontorAutomatisk(periodeStartet)
+                    .tilordneKontorAutomatiskVedStartOppfolging(periodeStartet)
                     .let { tilordningResultat ->
                         when (tilordningResultat) {
                             is TilordningRetry -> {

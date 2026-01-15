@@ -88,7 +88,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
 
         describe("start oppfolgingsperiode ") {
             it("skal sette AO kontor til lokalkontor for unge brukere (under 30)") {
-                gitt(ungBrukerMedGodeMuligheter).tilordneKontorAutomatisk(
+                gitt(ungBrukerMedGodeMuligheter).tilordneKontorAutomatiskVedStartOppfolging(
                     oppfolgingsperiodeStartet(ungBrukerMedGodeMuligheter)
                 ) shouldBe TilordningSuccessKontorEndret(
                     KontorEndringer(
@@ -106,7 +106,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
             }
 
             it("skal sette AO kontor til NOE hvis gode muligheter og over 30 år") {
-                gitt(eldreBrukerMedGodeMuligheter).tilordneKontorAutomatisk(
+                gitt(eldreBrukerMedGodeMuligheter).tilordneKontorAutomatiskVedStartOppfolging(
                     oppfolgingsperiodeStartet(eldreBrukerMedGodeMuligheter)
                 ) shouldBe TilordningSuccessKontorEndret(
                     KontorEndringer(
@@ -120,7 +120,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
             }
 
             it("skal sette AO kontor til fallback (it avdelingen) hvis gt ikke finnes") {
-                gitt(brukerSomManglerGt).tilordneKontorAutomatisk(
+                gitt(brukerSomManglerGt).tilordneKontorAutomatiskVedStartOppfolging(
                     oppfolgingsperiodeStartet(brukerSomManglerGt)
                 ) shouldBe TilordningSuccessKontorEndret(
                     KontorEndringer(
@@ -138,7 +138,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
             }
 
             it("skal sette AO kontor til adressebeskyttet kontor hvis adressebeskyttet bruker") {
-                gitt(adressebeskyttetBruker).tilordneKontorAutomatisk(
+                gitt(adressebeskyttetBruker).tilordneKontorAutomatiskVedStartOppfolging(
                     oppfolgingsperiodeStartet(adressebeskyttetBruker)
                 ) shouldBe TilordningSuccessKontorEndret(
                     KontorEndringer(
@@ -157,7 +157,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
             }
 
             it("skal sette AO kontor til et skjermet kontor hvis skjermet bruker") {
-                gitt(skjermetBruker).tilordneKontorAutomatisk(
+                gitt(skjermetBruker).tilordneKontorAutomatiskVedStartOppfolging(
                     oppfolgingsperiodeStartet(skjermetBruker)
                 ) shouldBe TilordningSuccessKontorEndret(
                     KontorEndringer(
@@ -179,7 +179,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
             }
 
             it("skal sette AO kontor til lokalkontor hvis har antatt behov for veiledening") {
-                gitt(ungBrukerMedbehovForVeiledning).tilordneKontorAutomatisk(
+                gitt(ungBrukerMedbehovForVeiledning).tilordneKontorAutomatiskVedStartOppfolging(
                     oppfolgingsperiodeStartet(ungBrukerMedbehovForVeiledning)
                 ) shouldBe TilordningSuccessKontorEndret(
                     KontorEndringer(
@@ -197,7 +197,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
             }
 
             it("skal sette AO kontor til lokalkontor hvis bruker har feilende profilering") {
-                gitt(brukerMedFeilendeProfilering).tilordneKontorAutomatisk(
+                gitt(brukerMedFeilendeProfilering).tilordneKontorAutomatiskVedStartOppfolging(
                     oppfolgingsperiodeStartet(brukerMedFeilendeProfilering)
                 ) shouldBe TilordningSuccessKontorEndret(
                     KontorEndringer(
@@ -215,7 +215,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
             }
 
             it("skal bruke arbeidsfordeling-fallback hvis bruker har landskode som gt") {
-                gitt(brukerMedLandskodeOgFallback).tilordneKontorAutomatisk(
+                gitt(brukerMedLandskodeOgFallback).tilordneKontorAutomatiskVedStartOppfolging(
                     oppfolgingsperiodeStartet(brukerMedLandskodeOgFallback)
                 ) shouldBe TilordningSuccessKontorEndret(
                     KontorEndringer(
@@ -233,7 +233,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
             }
 
             it("skal bruker arbeidsgiver-fallback hvis bruker har landskode som gt og fikk arbeidsgiver som fallback") {
-                gitt(brukerMedLandsKodeOgFallbackTilArbeidsgiveradresse).tilordneKontorAutomatisk(
+                gitt(brukerMedLandsKodeOgFallbackTilArbeidsgiveradresse).tilordneKontorAutomatiskVedStartOppfolging(
                     oppfolgingsperiodeStartet(brukerMedLandsKodeOgFallbackTilArbeidsgiveradresse)
                 ) shouldBe TilordningSuccessKontorEndret(
                     KontorEndringer(
@@ -258,7 +258,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
             }
 
             it("skal bruke hardkodet-fallback hvis bruker har landskode som gt men ikke fikk treff på arbeidsfordeling") {
-                gitt(brukerMedLandskodeUtenFallback).tilordneKontorAutomatisk(
+                gitt(brukerMedLandskodeUtenFallback).tilordneKontorAutomatiskVedStartOppfolging(
                     oppfolgingsperiodeStartet(brukerMedLandskodeUtenFallback)
                 ) shouldBe TilordningSuccessKontorEndret(
                     KontorEndringer(
@@ -274,7 +274,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
             }
 
             it("skal rute til vikafossen hvis bruker har landskode som gt, men adressebeskyttelse") {
-                gitt(brukerMedAdressebeskyttelseOgLandskode).tilordneKontorAutomatisk(
+                gitt(brukerMedAdressebeskyttelseOgLandskode).tilordneKontorAutomatiskVedStartOppfolging(
                     oppfolgingsperiodeStartet(brukerMedAdressebeskyttelseOgLandskode)
                 ) shouldBe TilordningSuccessKontorEndret(
                     KontorEndringer(
@@ -301,7 +301,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
             }
 
             it("skal rute til vikafossen hvis bruker mangler gt, men har adressebeskyttelse") {
-                gitt(brukerMedAdressebeskyttelseSomManglerGt).tilordneKontorAutomatisk(
+                gitt(brukerMedAdressebeskyttelseSomManglerGt).tilordneKontorAutomatiskVedStartOppfolging(
                     oppfolgingsperiodeStartet(brukerMedAdressebeskyttelseSomManglerGt)
                 ) shouldBe TilordningSuccessKontorEndret(
                     KontorEndringer(
@@ -320,20 +320,20 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
             }
 
             it("skal throwe hvis bruker har landskode som gt, men er skjermet") {
-                gitt(skjermetBrukerMedLandskode).tilordneKontorAutomatisk(
+                gitt(skjermetBrukerMedLandskode).tilordneKontorAutomatiskVedStartOppfolging(
                     oppfolgingsperiodeStartet(skjermetBrukerMedLandskode)
                 ) shouldBe TilordningFeil("Feil ved tilordning av kontor: Vi håndterer ikke skjermede brukere uten geografisk tilknytning")
             }
 
             it("skal ikke sette AO kontor hvis bruker allerede har fått satt kontor pga. oppfolgingsperiode startet") {
-                gitt(brukerMedTilordnetKontorForOppfolgingStartet).tilordneKontorAutomatisk(
+                gitt(brukerMedTilordnetKontorForOppfolgingStartet).tilordneKontorAutomatiskVedStartOppfolging(
                     oppfolgingsperiodeStartet(brukerMedTilordnetKontorForOppfolgingStartet)
                 ) shouldBe TilordningSuccessIngenEndring
             }
 
             it("skal ikke sette Arenakontor selvom det kommer med i start-oppfolging melding") {
                 val arenaKontor = KontorId("3311")
-                gitt(ungBrukerMedGodeMuligheter).tilordneKontorAutomatisk(
+                gitt(ungBrukerMedGodeMuligheter).tilordneKontorAutomatiskVedStartOppfolging(
                     oppfolgingsperiodeStartet(ungBrukerMedGodeMuligheter)
                 ) shouldBe TilordningSuccessKontorEndret(
                     KontorEndringer(
@@ -746,7 +746,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                     is AktivOppfolgingsperiode -> bruker.oppfolgingsPeriodeResult.startDato
                     else -> OffsetDateTime.now()
                 }
-                gitt(bruker).tilordneKontorAutomatisk(oppfolgingsperiodeStartet(fnr = fnr, startDato = starttidspunkt))
+                gitt(bruker).tilordneKontorAutomatiskVedStartOppfolging(oppfolgingsperiodeStartet(fnr = fnr, startDato = starttidspunkt))
             } shouldBe listOf(
                 TilordningFeil("Feil ved oppslag på oppfolgingsperiode: feil i fnr"),
                 TilordningFeil("Kunne ikke hente alder: feil i alder"),

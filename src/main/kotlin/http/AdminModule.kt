@@ -18,9 +18,11 @@ import org.slf4j.LoggerFactory
 import services.ArenaSyncService
 import services.IdentService
 import services.KontorRepubliseringService
+import utils.Outcome
 import java.util.UUID
 
 val log = LoggerFactory.getLogger("AdminModule")
+
 
 fun Application.configureAdminModule(
     automatiskKontorRutingService: AutomatiskKontorRutingService,
@@ -28,6 +30,9 @@ fun Application.configureAdminModule(
     arenaSyncService: ArenaSyncService,
     identService: IdentService,
 ) {
+    val ignorerEksisterendeKontor: suspend (Ident, OppfolgingsperiodeId) -> Outcome<Boolean> = { a: Ident, b: OppfolgingsperiodeId -> Outcome.Success(   false) }
+    val alltidRuting = automatiskKontorRutingService.copy(harAlleredeTilordnetAoKontorForOppfolgingsperiode = ignorerEksisterendeKontor)
+
     routing {
         val config = environment.config
 
@@ -102,7 +107,8 @@ fun Application.configureAdminModule(
             }
 
             post("/admin/finn-kontor") {
-                automatiskKontorRutingService
+
+                alltidRuting.tilordneKontorAutomatiskVedStartOppfolging()
             }
         }
     }
