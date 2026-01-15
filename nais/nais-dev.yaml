@@ -75,9 +75,6 @@ spec:
           permissions:
             roles:
               - "bulk-hent-kontor"
-        - application: ao-min-side-microfrontend-ssr
-          namespace: dab
-          cluster: dev-gcp
     outbound:
       rules:
         - application: norg2
