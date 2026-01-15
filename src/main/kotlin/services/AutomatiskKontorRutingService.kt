@@ -37,6 +37,7 @@ import domain.kontorForGt.KontorForGtFantKontor
 import domain.kontorForGt.KontorForGtFantKontorForArbeidsgiverAdresse
 import domain.kontorForGt.KontorForGtResultat
 import domain.kontorForGt.KontorForGtSuccess
+import no.nav.domain.GT_VAR_LAND_FALLBACK
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseIkkeFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseOppslagFeil
@@ -146,8 +147,8 @@ class AutomatiskKontorRutingService(
             }
             val gtKontorResultat = hentKontorForGt(fnr, harStrengtFortroligAdresse, erSkjermet)
             val kontorTilordning = when (gtKontorResultat) {
-                is KontorForGtFantIkkeKontor -> hentTilordningUtenGtKontor(fnr, alder, profilering, oppfolgingsperiodeId, gtKontorResultat)
-                is KontorForGtFantKontor -> hentTilordning(fnr, gtKontorResultat, alder, profilering, oppfolgingsperiodeId)
+                is KontorForGtFantIkkeKontor -> velgKontorForBrukerUtenGtKontor(fnr, alder, profilering, oppfolgingsperiodeId, gtKontorResultat)
+                is KontorForGtFantKontor -> velgKontorForBruker(fnr, gtKontorResultat, alder, profilering, oppfolgingsperiodeId)
                 is KontorForGtFeil -> return TilordningFeil("Feil ved henting av gt-kontor: ${gtKontorResultat.melding}")
             }
                 .let {
@@ -175,7 +176,7 @@ class AutomatiskKontorRutingService(
                 alder in 30..66
     }
 
-    private fun hentTilordningUtenGtKontor(
+    private fun velgKontorForBrukerUtenGtKontor(
         fnr: IdentSomKanLagres,
         alder: Int,
         profilering: Profilering,
@@ -202,7 +203,7 @@ class AutomatiskKontorRutingService(
         }
     }
 
-    private fun hentTilordning(
+    private fun velgKontorForBruker(
         fnr: IdentSomKanLagres,
         gtKontor: KontorForGtFantKontor,
         alder: Int,
@@ -501,11 +502,11 @@ fun KontorForGtSuccess.toGtKontorEndret(ident: IdentSomKanLagres, oppfolgingsper
         )
     }
 
-    val kontorId = when (this) {
-        is KontorForGtFantDefaultKontor -> this.kontorId
-        is KontorForGtNrFantFallbackKontorForManglendeGt -> this.kontorId
-        is KontorForGtFantIkkeKontor -> null
-        is KontorForGtFantKontorForArbeidsgiverAdresse -> this.kontorId
+    val (kontorId, gt) = when (this) {
+        is KontorForGtFantDefaultKontor -> this.kontorId to this.gt()
+        is KontorForGtNrFantFallbackKontorForManglendeGt -> this.kontorId to this.gt()
+        is KontorForGtFantIkkeKontor -> null to this.gt()
+        is KontorForGtFantKontorForArbeidsgiverAdresse -> INGEN_GT_KONTOR_FALLBACK to this.mangelfullGt as GtForBrukerSuccess
     }
 
     return when {
@@ -515,7 +516,7 @@ fun KontorForGtSuccess.toGtKontorEndret(ident: IdentSomKanLagres, oppfolgingsper
                 kontorId = kontorId,
                 oppfolgingsperiodeId = oppfolgingsperiodeId
             ),
-            this.gt()
+            gt
         )
         else -> null
     }

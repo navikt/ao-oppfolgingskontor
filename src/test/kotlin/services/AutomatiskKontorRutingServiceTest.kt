@@ -22,7 +22,6 @@ import no.nav.domain.events.OppfolgingsPeriodeStartetFallbackKontorTilordning
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.domain.events.OppfolgingsPeriodeStartetSensitivKontorTilordning
 import no.nav.domain.events.OppfolgingsperiodeStartetNoeTilordning
-import no.nav.domain.events.TidligArenaKontorVedOppfolgingStart
 import no.nav.domain.externalEvents.AdressebeskyttelseEndret
 import no.nav.domain.externalEvents.BostedsadresseEndret
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
@@ -65,10 +64,12 @@ import no.nav.services.AutomatiskKontorRutingService.Companion.VIKAFOSSEN
 import domain.kontorForGt.KontorForGtFantIkkeKontor
 import domain.kontorForGt.KontorForGtFantDefaultKontor
 import domain.kontorForGt.KontorForGtFantKontor
+import domain.kontorForGt.KontorForGtFantKontorForArbeidsgiverAdresse
 import domain.kontorForGt.KontorForGtFeil
 import domain.kontorForGt.KontorForGtNrFantFallbackKontorForManglendeGt
 import domain.kontorForGt.KontorForGtResultat
 import domain.kontorForGt.KontorForGtSuccess
+import no.nav.http.client.GeografiskTilknytningKommuneNr
 import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingperiodeOppslagFeil
 import no.nav.services.OppfolgingsperiodeOppslagResult
@@ -226,6 +227,31 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                                 brukerMedLandskodeOgFallback.oppfolgingsperiodeId()
                             ),
                             brukerMedLandskodeOgFallback.gtKontor as KontorForGtFantKontor
+                        )
+                    )
+                )
+            }
+
+            it("skal bruker arbeidsgiver-fallback hvis bruker har landskode som gt og fikk arbeidsgiver som fallback") {
+                gitt(brukerMedLandsKodeOgFallbackTilArbeidsgiveradresse).tilordneKontorAutomatisk(
+                    oppfolgingsperiodeStartet(brukerMedLandsKodeOgFallbackTilArbeidsgiveradresse)
+                ) shouldBe TilordningSuccessKontorEndret(
+                    KontorEndringer(
+                        gtKontorEndret = GTKontorEndret.syncVedStartOppfolging(
+                            tilordning = KontorTilordning(
+                                brukerMedLandsKodeOgFallbackTilArbeidsgiveradresse.fnr(),
+                                INGEN_GT_KONTOR_FALLBACK,
+                                brukerMedLandsKodeOgFallbackTilArbeidsgiveradresse.oppfolgingsperiodeId()
+                            ),
+                            gt = brukerMedLandsKodeOgFallbackTilArbeidsgiveradresse.gtForBruker as GtForBrukerSuccess
+                        ),
+                        aoKontorEndret = OppfolgingsPeriodeStartetLokalKontorTilordning(
+                            KontorTilordning(
+                                brukerMedLandsKodeOgFallbackTilArbeidsgiveradresse.fnr(),
+                                brukerMedLandsKodeOgFallbackTilArbeidsgiveradresse.gtKontor(),
+                                brukerMedLandsKodeOgFallbackTilArbeidsgiveradresse.oppfolgingsperiodeId()
+                            ),
+                            brukerMedLandsKodeOgFallbackTilArbeidsgiveradresse.gtKontor as KontorForGtFantKontor
                         )
                     )
                 )
@@ -1014,6 +1040,21 @@ val brukerMedLandskodeOgFallback = Bruker(
         KontorId("3443"),
         HarSkjerming(false),
         HarStrengtFortroligAdresse(false),
+        GtLandForBrukerFunnet(GeografiskTilknytningLand("JPN"))
+    ),
+    GtLandForBrukerFunnet(GeografiskTilknytningLand("JPN")),
+    SkjermingFunnet(HarSkjerming(false)),
+    HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
+)
+val brukerMedLandsKodeOgFallbackTilArbeidsgiveradresse = Bruker(
+    IdentFunnet(Fnr("62346676901", AKTIV)),
+    AlderFunnet(20),
+    ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
+    KontorForGtFantKontorForArbeidsgiverAdresse(
+        KontorId("3443"),
+        HarSkjerming(false),
+        HarStrengtFortroligAdresse(false),
+        GeografiskTilknytningKommuneNr("1111"),
         GtLandForBrukerFunnet(GeografiskTilknytningLand("JPN"))
     ),
     GtLandForBrukerFunnet(GeografiskTilknytningLand("JPN")),

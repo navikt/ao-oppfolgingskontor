@@ -72,7 +72,7 @@ data class OppfolgingsPeriodeStartetLokalKontorTilordning(
     val rutingResultat: RutingResultat = when (kontorForGt) {
         is KontorForGtFantDefaultKontor -> RutingResultat.RutetViaNorg
         is KontorForGtNrFantFallbackKontorForManglendeGt -> RutingResultat.RutetViaNorgFallback
-        is KontorForGtFantKontorForArbeidsgiverAdresse -> TODO()
+        is KontorForGtFantKontorForArbeidsgiverAdresse -> RutingResultat.RutetViaArbeidsgiversAdresseFallback
     }
 
     override fun kontorEndringsType(): KontorEndringsType = rutingResultat.toKontorEndringsType()
