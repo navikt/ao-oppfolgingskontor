@@ -85,6 +85,12 @@ spec:
           namespace: paw
         - application: skjermede-personer-pip
           namespace: nom
+        - application: aareg-services-nais
+          namespace: arbeidsforhold
+          cluster: dev-fss
+        - application: ereg-services
+          namespace: arbeidsforhold
+          cluster: dev-fss
       external:
         - host: norg2.dev-fss-pub.nais.io
         - host: pdl-api.dev-fss-pub.nais.io
