@@ -36,7 +36,7 @@ class AaregClient(
             level = LogLevel.INFO
         }
         install(ContentNegotiation) {
-            json(Json { ignoreUnknownKeys = true })
+            json(Json { ignoreUnknownKeys = true; explicitNulls = false })
         }
     }
 ) {

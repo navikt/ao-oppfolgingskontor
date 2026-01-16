@@ -9,6 +9,7 @@ import io.ktor.client.plugins.logging.*
 import io.ktor.client.request.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
+import kotlinx.serialization.json.Json
 import services.OrgNummer
 
 fun ApplicationEnvironment.getEregScope(): String {
@@ -25,7 +26,7 @@ class EregClient(
             level = LogLevel.INFO
         }
         install(ContentNegotiation) {
-            json()
+            json(Json { ignoreUnknownKeys = true; explicitNulls = false })
         }
     }
 ) {
