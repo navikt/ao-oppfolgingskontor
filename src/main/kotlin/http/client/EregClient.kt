@@ -9,6 +9,7 @@ import io.ktor.client.plugins.logging.*
 import io.ktor.client.request.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import services.OrgNummer
 
@@ -51,10 +52,12 @@ class EregFailure(
     val errorMessage: String
 ): EregResult()
 
+@Serializable
 data class EregNøkkelinfoDto(
-    val adresse: Adresse?
+    val adresse: Adresse? = null
 )
 
+@Serializable
 class Adresse(
-    val kommunenummer: String?,
+    val kommunenummer: String? = null,
 )
