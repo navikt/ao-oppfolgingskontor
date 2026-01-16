@@ -88,7 +88,7 @@ data class ArbeidsforholdIdent(
 data class ArbeidsforholdDto(
     val arbeidssted: Arbeidssted,
     val sistBekreftet: String,
-    val sistEndret: String,
+    val sistEndret: String?,
     val ansettelsesperiode: Ansettelsesperiode
 )
 
