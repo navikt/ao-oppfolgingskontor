@@ -104,13 +104,13 @@ spec:
           - "NAVident"
   env:
     - name: AAREG_URL
-      value: https://aareg-services.intern.dev.nav.no
+      value: https://aareg-services.dev.intern.nav.no
     - name: AAREG_SCOPE
       value: api://dev-fss.arbeidsforhold.aareg-services-nais/.default
     - name: EREG_URL
       value: https://ereg-services.intern.dev.nav.no
     - name: EREG_SCOPE
-      value: api://dev-fss.arbeidsforhold.ereg-services-nais/.default
+      value: api://dev-fss.arbeidsforhold.ereg-services/.default
     - name: NORG2_URL
       value: http://norg2.org
     - name: POAO_TILGANG_URL
