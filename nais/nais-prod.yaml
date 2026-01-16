@@ -96,7 +96,7 @@ spec:
     - name: AAREG_SCOPE
       value: api://prod-fss.arbeidsforhold.aareg-services-nais/.default
     - name: EREG_URL
-      value: https://ereg-services.intern.dev.nav.no
+      value: https://ereg-services.intern.nav.no
     - name: EREG_SCOPE
       value: api://prod-fss.arbeidsforhold.ereg-services-nais/.default
     - name: NORG2_URL

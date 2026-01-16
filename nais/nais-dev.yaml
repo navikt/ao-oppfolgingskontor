@@ -110,7 +110,7 @@ spec:
     - name: AAREG_SCOPE
       value: api://dev-fss.arbeidsforhold.aareg-services-nais/.default
     - name: EREG_URL
-      value: https://ereg-services.intern.dev.nav.no
+      value: https://ereg-services.dev-fss-pub.nais.io
     - name: EREG_SCOPE
       value: api://dev-fss.arbeidsforhold.ereg-services/.default
     - name: NORG2_URL
