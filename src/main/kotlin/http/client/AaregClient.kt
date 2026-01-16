@@ -12,6 +12,7 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.ApplicationEnvironment
+import kotlinx.serialization.Serializable
 import no.nav.db.IdentSomKanLagres
 import no.nav.http.client.tokenexchange.ProvideToken
 import no.nav.http.client.tokenexchange.TexasTokenFailedResult
@@ -65,31 +66,37 @@ class AaregFailure(
     val errorMessage: String
 ): AaregResult()
 
-class Arbeidssted(
+@Serializable
+data class Arbeidssted(
     /* Liste av identer for underenhet (organisasjonsnummer) eller person (folkeregisterident/aktør-id) */
     val identer: List<ArbeidsforholdIdent>
 )
 
-class ArbeidsforholdIdent(
+@Serializable
+data class ArbeidsforholdIdent(
     val ident: String,
     val type: String,
     val gjeldende: Boolean
 )
 
 /* Er en mye større DTO med felter som vi ikke trenger foreløpig */
-class ArbeidsforholdDto(
+@Serializable
+data class ArbeidsforholdDto(
     val arbeidssted: Arbeidssted,
     val sistBekreftet: String,
     val sistEndret: String,
     val ansettelsesperiode: Ansettelsesperiode
 )
 
-class Ansettelsesperiode(
+
+@Serializable
+data class Ansettelsesperiode(
     val startdato: String,
     val sluttdato: String?
 )
 
-class ArbeidsforholdPayload(
+@Serializable
+data class ArbeidsforholdPayload(
     val arbeidstakerId: String,
     val historikk: Boolean = false,
     val sporingsinformasjon: Boolean = false
