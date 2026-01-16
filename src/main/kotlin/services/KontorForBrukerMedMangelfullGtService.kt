@@ -18,6 +18,7 @@ import no.nav.http.client.NorgKontorForGtFantIkkeKontor
 import no.nav.http.client.NorgKontorForGtFantKontor
 import no.nav.http.client.NorgKontorForGtFeil
 import no.nav.http.client.NorgKontorForGtResultat
+import no.nav.http.log
 
 class KontorForBrukerMedMangelfullGtService(
     val hentArbeidsforhold: suspend (ident: IdentSomKanLagres) -> AaregResult,
@@ -49,6 +50,8 @@ class KontorForBrukerMedMangelfullGtService(
                 harStrengtFortroligAdresse,
                 GtForBrukerIkkeFunnet("Fant ikke noe arbeidsgiverforhold på bruker og derfor ingen fallback-gt")
             )
+
+        log.info("Orgnummer hentet fra arbeidsforhold: $orgNummer")
 
         val arbeidsgiverAdresse = when (val res = hentArbeidsgiverAdresse(orgNummer)) {
             is EregFailure -> return KontorForGtFeil("Feil ved henting av arbeidsgiveradresse for bruker med mangelfull gt: " + res.errorMessage)
