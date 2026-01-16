@@ -117,6 +117,7 @@ fun Application.configureAdminModule(
 
             post("/admin/finn-kontor") {
                 runCatching {
+                    log.info("Setter i gang dry-run av kontor-ruting med input: " + call.receiveText())
                     val input = call.receive<IdenterInputBody>()
                     val identer = input.identer.split(",")
                     val godkjenteIdenter =
