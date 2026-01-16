@@ -9,6 +9,7 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import no.nav.db.Ident
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.security.token.support.v3.RequiredClaims
@@ -117,8 +118,9 @@ fun Application.configureAdminModule(
 
             post("/admin/finn-kontor") {
                 runCatching {
-                    log.info("Setter i gang dry-run av kontor-ruting med input: " + call.receiveText())
-                    val input = call.receive<IdenterInputBody>()
+                    val bodyText = call.receiveText()
+                    log.info("Setter i gang dry-run av kontor-ruting med input: $bodyText")
+                    val input = Json.decodeFromString<IdenterInputBody>(bodyText)
                     val identer = input.identer.split(",")
                     val godkjenteIdenter =
                         identer.map { Ident.validateIdentSomKanLagres(it, Ident.HistoriskStatus.UKJENT) }
