@@ -144,7 +144,7 @@ fun Application.configureAdminModule(
                         result
                     )
                 }.onFailure { e ->
-                    log.error("Feil ved syncing av Arena-kontor", e)
+                    log.error("Feil ved finn kontor", e)
                     call.respond(
                         HttpStatusCode.InternalServerError,
                         "Klarte ikke kjøre dry-run av kontor-ruting: ${e.message} \n" + e.stackTraceToString()
