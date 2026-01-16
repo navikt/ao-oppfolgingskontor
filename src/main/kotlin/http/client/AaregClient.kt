@@ -80,7 +80,7 @@ data class Arbeidssted(
 data class ArbeidsforholdIdent(
     val ident: String,
     val type: String,
-    val gjeldende: Boolean
+    val gjeldende: Boolean?
 )
 
 /* Er en mye større DTO med felter som vi ikke trenger foreløpig */
