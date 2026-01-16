@@ -106,7 +106,7 @@ spec:
           - "NAVident"
   env:
     - name: AAREG_URL
-      value: https://aareg-services.dev.intern.nav.no
+      value: https://aareg-services.dev-fss-pub.nais.io
     - name: AAREG_SCOPE
       value: api://dev-fss.arbeidsforhold.aareg-services-nais/.default
     - name: EREG_URL
