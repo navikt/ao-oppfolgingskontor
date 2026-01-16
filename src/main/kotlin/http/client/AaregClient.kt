@@ -10,6 +10,8 @@ import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.ApplicationEnvironment
 import kotlinx.serialization.Serializable
@@ -47,6 +49,7 @@ class AaregClient(
             }
             val result = httpClient.post(arbeidsforholdUrl) {
                 bearerAuth(tokenResult.accessToken)
+                contentType(ContentType.Application.Json)
                 setBody(ArbeidsforholdPayload(
                     arbeidstakerId = ident.value
                 ))
