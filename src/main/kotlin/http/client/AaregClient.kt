@@ -87,10 +87,11 @@ data class ArbeidsforholdIdent(
 @Serializable
 data class ArbeidsforholdDto(
     val arbeidssted: Arbeidssted,
-    val sistBekreftet: String,
-    val sistEndret: String?,
+    val sistBekreftet: String? = null,
+    val sistEndret: String? = null,
     val ansettelsesperiode: Ansettelsesperiode
 )
+
 
 
 @Serializable
