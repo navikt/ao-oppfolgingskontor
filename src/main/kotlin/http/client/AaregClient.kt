@@ -15,6 +15,7 @@ import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.ApplicationEnvironment
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import no.nav.db.IdentSomKanLagres
 import no.nav.http.client.tokenexchange.ProvideToken
 import no.nav.http.client.tokenexchange.TexasTokenFailedResult
@@ -35,7 +36,7 @@ class AaregClient(
             level = LogLevel.INFO
         }
         install(ContentNegotiation) {
-            json()
+            json(Json { ignoreUnknownKeys = true })
         }
     }
 ) {
