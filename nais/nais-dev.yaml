@@ -96,6 +96,7 @@ spec:
         - host: pdl-api.dev-fss-pub.nais.io
         - host: veilarbarena.dev-fss-pub.nais.io
         - host: aareg-services.dev-fss-pub.nais.io
+        - host: ereg-services.dev-fss-pub.nais.io
   azure:
     application:
       enabled: true
