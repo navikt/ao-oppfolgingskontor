@@ -1,0 +1,12 @@
+query sokAdresseFritekstQuery($paging: Paging, $criteria: [Criterion]) {
+    sokAdresse(paging: $paging, criteria: $criteria) {
+        pageNumber
+        totalHits
+        totalPages
+        hits {
+            vegadresse {
+                bydelsnummer
+            }
+        }
+    }
+}
