@@ -54,7 +54,7 @@ class GTNorgService(
                     when (gtForBrukerBasertPaArbeidsgiverResult) {
                         is KontorForGtFantKontorForArbeidsgiverAdresse,
                         is KontorForGtFeil -> return gtForBrukerBasertPaArbeidsgiverResult
-                        is KontorForGtFantIkkeKontor -> {} // Gå videre til neste fallback
+                        is KontorForGtFantIkkeKontor -> { log.info("Fant ikke kontor for arbeidsgiver adresse")} // Gå videre til neste fallback
                     }
 
                     val fallbackResult = hentKontorForBrukerMedMangelfullGtNorgFallback(gtForBruker, strengtFortroligAdresse, skjermet)
