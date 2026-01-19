@@ -37,6 +37,8 @@ class KontorForBrukerMedMangelfullGtService(
             is AaregSuccess -> res.data
         }
 
+        log.info("Hentet antall arbeidsforhold: ${arbeidsforhold.size}")
+
         val orgNummer = arbeidsforhold.partition { it.ansettelsesperiode.sluttdato != null }
             .let { (nåværendeArbeidsforhold, tidligereArbeidsforhold) ->
                 nåværendeArbeidsforhold.maxByOrNull { it.ansettelsesperiode.startdato }
