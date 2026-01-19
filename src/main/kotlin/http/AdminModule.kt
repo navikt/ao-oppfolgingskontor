@@ -145,7 +145,7 @@ fun Application.configureAdminModule(
                             """.trimIndent()
                         }
                         output
-                    }.mapKeys { it.value }
+                    }.mapKeys { it.key.value }
                     call.respond(
                         HttpStatusCode.Accepted,
                         result
