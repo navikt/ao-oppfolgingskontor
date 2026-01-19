@@ -26,6 +26,7 @@ import services.KontorRepubliseringService
 import utils.Outcome
 import java.time.ZonedDateTime
 import java.util.UUID
+import kotlin.time.Duration.Companion.minutes
 
 val log = LoggerFactory.getLogger("AdminModule")
 
@@ -129,19 +130,17 @@ fun Application.configureAdminModule(
                             godkjentIdent,
                             OppfolgingsperiodeId(UUID.randomUUID()),
                             true,
-                            ZonedDateTime.now()
+                            (ZonedDateTime.now().minusMinutes(30))
                         )
                         val output: String = when (res) {
                             is TilordningFeil -> res.message
                             is TilordningRetry -> res.message
                             TilordningSuccessIngenEndring -> "Ingen endring"
                             is TilordningSuccessKontorEndret -> """
-                                ============================
                                 FNR: ${godkjentIdent.value}
                                 ao-kontor: ${res.kontorEndretEvent.aoKontorEndret?.tilordning?.kontorId?.id}
                                 arenakontor: ${res.kontorEndretEvent.arenaKontorEndret?.tilordning?.kontorId?.id}
                                 gt-kontor: ${res.kontorEndretEvent.gtKontorEndret?.tilordning?.kontorId?.id}
-                                ============================
                             """.trimIndent()
                         }
                         output
