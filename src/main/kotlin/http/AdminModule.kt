@@ -120,7 +120,7 @@ fun Application.configureAdminModule(
             post("/admin/finn-kontor") {
                 runCatching {
                     val bodyText = call.receiveText()
-                    log.info("Setter i gang dry-run av kontor-ruting med input: $bodyText")
+                    log.info("Setter i gang dry-run av kontor-ruting med input")
                     val input = Json.decodeFromString<IdenterInputBody>(bodyText)
                     val identer = input.identer.split(",")
                     val godkjenteIdenter =
