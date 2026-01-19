@@ -132,15 +132,16 @@ fun configureTopology(
         businessLogic = arenakontorProcessor::process
     )
 
-    val oppfolgingHendelser = builder.stream(topics.inn.oppfolgingsHendelser.name, topics.inn.oppfolgingsHendelser.consumedWith())
+    builder.stream(topics.inn.oppfolgingsHendelser.name, topics.inn.oppfolgingsHendelser.consumedWith())
         .process(oppfolgingHendelseProcessorSupplier, Named.`as`(processorName(topics.inn.oppfolgingsHendelser.name)))
-
-    oppfolgingHendelser
-        .process(kontortilordningProcessorSupplier, Named.`as`(KontortilordningsProcessor.processorName))
-        .process(publiserKontorTilordningProcessorSupplier, Named.`as`(PubliserKontorTilordningProcessor.processorName))
-
-    oppfolgingHendelser
-        .process(arenakontorProcessorSupplier, Named.`as`(`ArenakontorVedOppfolgingStartetProcessor`.processorName))
+        .let { oppfolgingHendelser ->
+            // Sender videre oppfolgingshendelser til både vanlig kontor-processor og arena-processor
+            oppfolgingHendelser
+                .process(kontortilordningProcessorSupplier, Named.`as`(KontortilordningsProcessor.processorName))
+                .process(publiserKontorTilordningProcessorSupplier, Named.`as`(PubliserKontorTilordningProcessor.processorName))
+            oppfolgingHendelser
+                .process(arenakontorProcessorSupplier, Named.`as`(`ArenakontorVedOppfolgingStartetProcessor`.processorName))
+        }
 
     /*
     * Endring på oppfølgingsbruker (Arena)

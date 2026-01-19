@@ -157,9 +157,9 @@ class KafkaApplicationTest {
         val fnr =  randomFnr(UKJENT)
         val skjermetKontor = "4555"
         val topic = randomTopicName()
+        val brukAoRuting = true
 
         val automatiskKontorRutingService = AutomatiskKontorRutingService(
-            { KontorTilordningService.tilordneKontor(it, true)},
             { _, b, a ->
                 KontorForGtFantDefaultKontor(
                     KontorId(skjermetKontor),
@@ -175,7 +175,7 @@ class KafkaApplicationTest {
             { AktivOppfolgingsperiode(fnr, OppfolgingsperiodeId(UUID.randomUUID()), OffsetDateTime.now()) },
             { _, _ -> Outcome.Success(false) }
         )
-        val skjermingProcessor = SkjermingProcessor(automatiskKontorRutingService)
+        val skjermingProcessor = SkjermingProcessor(automatiskKontorRutingService, brukAoRuting)
 
         application {
             flywayMigrationInTest()
@@ -185,9 +185,9 @@ class KafkaApplicationTest {
             kafkaMockTopic.pipeInput(fnr.value, "true")
 
             transaction {
-                GeografiskTilknyttetKontorEntity.Companion.findById(fnr.value)?.kontorId shouldBe skjermetKontor
-                ArbeidsOppfolgingKontorEntity.Companion.findById(fnr.value)?.kontorId shouldBe skjermetKontor
-                KontorHistorikkEntity.Companion
+                GeografiskTilknyttetKontorEntity.findById(fnr.value)?.kontorId shouldBe skjermetKontor
+                ArbeidsOppfolgingKontorEntity.findById(fnr.value)?.kontorId shouldBe skjermetKontor
+                KontorHistorikkEntity
                     .find { KontorhistorikkTable.ident eq fnr.value }
                     .count() shouldBe 2
             }

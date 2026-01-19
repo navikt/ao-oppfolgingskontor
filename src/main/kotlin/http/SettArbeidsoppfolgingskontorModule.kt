@@ -46,6 +46,7 @@ fun Application.configureArbeidsoppfolgingskontorModule(
     oppfolgingsperiodeService: OppfolgingsperiodeService,
     publiserKontorEndring: suspend (KontorSattAvVeileder) -> Result<Unit>,
     authenticateRequest: AuthenticateRequest = { req -> req.call.authenticateCall(environment.getIssuer()) },
+    brukAoRuting: Boolean
 ) {
     val log = LoggerFactory.getLogger("Application.configureArbeidsoppfolgingskontorModule")
 
@@ -111,7 +112,7 @@ fun Application.configureArbeidsoppfolgingskontorModule(
                         ),
                         registrant = principal.toRegistrant()
                     )
-                    KontorTilordningService.tilordneKontor(kontorEndring)
+                    KontorTilordningService.tilordneKontor(kontorEndring, brukAoRuting)
                     val result = publiserKontorEndring(kontorEndring)
                     if (result.isFailure) throw result.exceptionOrNull()!!
                     kontorId to gammeltKontor

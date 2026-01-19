@@ -24,6 +24,7 @@ import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
 import no.nav.person.pdl.leesah.Personhendelse
 import no.nav.services.AutomatiskKontorRutingService
+import no.nav.services.KontorTilordningService
 import org.apache.kafka.streams.processor.api.Record
 import org.slf4j.LoggerFactory
 
@@ -31,6 +32,7 @@ class LeesahProcessor(
     private val automatiskKontorRutingService: AutomatiskKontorRutingService,
     private val fnrProvider: suspend (ident: AktorId) -> IdentResult,
     private val isProduction: Boolean,
+    private val brukAoRuting: Boolean
 ) {
     val log = LoggerFactory.getLogger(this::class.java)
 
@@ -67,8 +69,13 @@ class LeesahProcessor(
         return when (result) {
             is HåndterPersondataEndretSuccess -> {
                 val aoKontorEndring = result.endringer.aoKontorEndret
+
+                result.endringer.gtKontorEndret
+                    ?.let { KontorTilordningService.tilordneKontor(it, brukAoRuting) }
+
                 return when {
                     aoKontorEndring != null -> {
+                        KontorTilordningService.tilordneKontor(aoKontorEndring, brukAoRuting)
                         if(isProduction) {
                             log.info("Hopper over forwarding av kontorendring for PROD")
                             Commit() // In production we do not forward kontorendringer, but we still commit the record

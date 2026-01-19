@@ -30,7 +30,7 @@ data class KontorForGtFantIkkeKontor(
     override val skjerming: HarSkjerming,
     override val strengtFortroligAdresse: HarStrengtFortroligAdresse,
     val gtForBruker: GtForBrukerSuccess
-): KontorForGtSuccess(skjerming, strengtFortroligAdresse) {
+): ArbeidsgiverFallbackKontorForGt, KontorForGtSuccess(skjerming, strengtFortroligAdresse) {
     override fun gt(): GtForBrukerSuccess = gtForBruker
 }
 
@@ -53,6 +53,19 @@ data class KontorForGtFantDefaultKontor(
 }
 
 /**
+ * Fant match på /navkontor/{geografiskOmråde}
+ * */
+data class KontorForGtFantKontorForArbeidsgiverAdresse(
+    override val kontorId: KontorId,
+    override val skjerming: HarSkjerming,
+    override val strengtFortroligAdresse: HarStrengtFortroligAdresse,
+    val geografiskTilknytningNr: GeografiskTilknytningNr,
+    val mangelfullGt: GtSomKreverFallback
+) : ArbeidsgiverFallbackKontorForGt, KontorForGtFantKontor(kontorId, skjerming, strengtFortroligAdresse) {
+    override fun gt(): GtForBrukerFunnet = GtNummerForBrukerFunnet(geografiskTilknytningNr)
+}
+
+/**
  * Fallback til arbeidsfordeling/bestmatch
  */
 data class KontorForGtNrFantFallbackKontorForManglendeGt(
@@ -67,4 +80,7 @@ data class KontorForGtNrFantFallbackKontorForManglendeGt(
     }
 }
 
-data class KontorForGtFeil(val melding: String) : KontorForGtResultat()
+data class KontorForGtFeil(val melding: String) : ArbeidsgiverFallbackKontorForGt, KontorForGtResultat()
+
+/* Arbeidsgiver fallback har bare tre utfall, bruker sealed interface for å si hvilke det er */
+sealed interface ArbeidsgiverFallbackKontorForGt
