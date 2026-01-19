@@ -83,11 +83,12 @@ fun Application.module() {
     val eregClient = EregClient(
         baseUrl = environment.getEregUrl(),
     )
-
+ 
     val kontorForBrukerMedMangelfullGtService = KontorForBrukerMedMangelfullGtService(
         {aaregClient.hentArbeidsforhold(it)},
         {eregClient.hentNøkkelinfoOmArbeidsgiver(it)},
-        {gt, strengtFortroligAdresse, skjermet -> norg2Client.hentKontorForGt(gt,strengtFortroligAdresse, skjermet)}
+        {gt, strengtFortroligAdresse, skjermet -> norg2Client.hentKontorForGt(gt,strengtFortroligAdresse, skjermet)},
+        pdlClient::sokAdresseFritekst
     )
     val identService = IdentService({ pdlClient.hentIdenterFor(it) })
     val gtNorgService = GTNorgService(

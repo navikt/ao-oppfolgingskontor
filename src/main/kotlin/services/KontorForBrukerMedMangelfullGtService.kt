@@ -11,6 +11,10 @@ import http.client.*
 import no.nav.db.IdentSomKanLagres
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
+import no.nav.http.client.AdresseFritekstSokResult
+import no.nav.http.client.AdresseFunnet
+import no.nav.http.client.AdresseIkkeFunnet
+import no.nav.http.client.AdresseOppslagFeil
 import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.GeografiskTilknytningKommuneNr
 import no.nav.http.client.GeografiskTilknytningNr
@@ -20,10 +24,18 @@ import no.nav.http.client.NorgKontorForGtFeil
 import no.nav.http.client.NorgKontorForGtResultat
 import no.nav.http.log
 
+val kommunerSomKreverBydelsNr = listOf(
+    "0301", // Oslo
+    "4601", // Bergen
+    "5001", // Trondheim
+    "1103"  // Stavanger
+)
+
 class KontorForBrukerMedMangelfullGtService(
     val hentArbeidsforhold: suspend (ident: IdentSomKanLagres) -> AaregResult,
     val hentArbeidsgiverAdresse: suspend (orgNummer: OrgNummer) -> EregResult,
     val hentKontorForGt: suspend (gt: GeografiskTilknytningNr, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming) -> NorgKontorForGtResultat,
+    val sokEtterAdresse: suspend (adresse: String, kommuneNr: GeografiskTilknytningKommuneNr) -> AdresseFritekstSokResult
 ) {
 
     suspend fun finnKontorForGtBasertPåArbeidsforhold(
@@ -69,7 +81,30 @@ class KontorForBrukerMedMangelfullGtService(
             4 -> GeografiskTilknytningKommuneNr(arbeidsgiverAdresse.adresse.kommunenummer)
             6 -> GeografiskTilknytningBydelNr(arbeidsgiverAdresse.adresse.kommunenummer)
             else -> return KontorForGtFeil("Kommunenr fra arbeidsgiverforholdet til bruker er ikke gyldig kommunenr: ${arbeidsgiverAdresse.adresse?.kommunenummer}")
+        }.let {
+            if (it is GeografiskTilknytningKommuneNr && it.value in kommunerSomKreverBydelsNr) {
+                val adresselinje1 = arbeidsgiverAdresse.adresse.adresselinje1 ?: return KontorForGtFantIkkeKontor(
+                    harSkjerming,
+                    harStrengtFortroligAdresse,
+                    GtForBrukerIkkeFunnet("Fant ikke gt (bydelsnummer) til arbeidsgiver ved sok etter arbeidsgiveradresse i kommune som krever bydel (${it.value}), adresselinje1 var null")
+                )
+                val adressesokResult = sokEtterAdresse(adresselinje1, it)
+                when (adressesokResult) {
+                    is AdresseFunnet -> adressesokResult.bydelsnummer
+                    is AdresseIkkeFunnet -> return KontorForGtFantIkkeKontor(
+                        harSkjerming,
+                        harStrengtFortroligAdresse,
+                        GtForBrukerIkkeFunnet("Ingen gyldig gt på arbeidsgiver funnet i kommune som krever bydelsnummer")
+                    )
+                    is AdresseOppslagFeil -> return KontorForGtFeil(
+                        "Feil ved sok etter arbeidsgivers adresse sitt bydelsnummer i PDL: ${adressesokResult.message}",
+                    )
+                }
+            } else {
+                it
+            }
         }
+
         val kontorForGt = hentKontorForGt(gt, harStrengtFortroligAdresse, harSkjerming)
         val kontorId = when (val res = kontorForGt) {
             NorgKontorForGtFantIkkeKontor -> return KontorForGtFantIkkeKontor(
@@ -88,8 +123,6 @@ class KontorForBrukerMedMangelfullGtService(
             mangelfullGt)
     }
 }
-
-
 
 @JvmInline
 value class OrgNummer(val value: String)

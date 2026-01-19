@@ -60,4 +60,6 @@ data class EregNøkkelinfoDto(
 @Serializable
 class Adresse(
     val kommunenummer: String? = null,
+    val adresselinje1: String?,
+    val type: String
 )
