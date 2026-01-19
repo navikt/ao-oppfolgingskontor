@@ -136,8 +136,12 @@ fun Application.configureAdminModule(
                             is TilordningRetry -> res.message
                             TilordningSuccessIngenEndring -> "Ingen endring"
                             is TilordningSuccessKontorEndret -> """
+                                ============================
+                                FNR: ${godkjentIdent.value}
                                 ao-kontor: ${res.kontorEndretEvent.aoKontorEndret?.tilordning?.kontorId?.id}
+                                arenakontor: ${res.kontorEndretEvent.arenaKontorEndret?.tilordning?.kontorId?.id}
                                 gt-kontor: ${res.kontorEndretEvent.gtKontorEndret?.tilordning?.kontorId?.id}
+                                ============================
                             """.trimIndent()
                         }
                         output
