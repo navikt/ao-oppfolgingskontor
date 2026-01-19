@@ -79,10 +79,18 @@ spec:
           namespace: paw
         - application: skjermede-personer-pip
           namespace: nom
+        - application: aareg-services-nais
+          namespace: arbeidsforhold
+          cluster: prod-fss
+        - application: ereg-services
+          namespace: arbeidsforhold
+          cluster: prod-fss
       external:
         - host: norg2.prod-fss-pub.nais.io
         - host: pdl-api.prod-fss-pub.nais.io
         - host: veilarbarena.prod-fss-pub.nais.io
+        - host: aareg-services.intern.nav.no
+        - host: ereg-services.intern.nav.no
   azure:
     application:
       enabled: true
