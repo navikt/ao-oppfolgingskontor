@@ -53,91 +53,108 @@ fun Application.configureArbeidsoppfolgingskontorModule(
     routing {
         authenticate("EntraAD") {
             post("/api/kontor") {
-                // TODO: La toggle styre om endepunktet er tilgjengelig
-                call.respond(HttpStatusCode.NotImplemented)
-                return@post
-                runCatching {
-                    val kontorTilordning = call.receive<ArbeidsoppfolgingsKontorTilordningDTO>()
-                    val principal = when(val authresult = authenticateRequest(call.request)) {
-                        is Authenticated -> authresult.principal
-                        is NotAuthenticated -> {
-                            log.warn("Not authorized ${authresult.reason}")
-                            call.respond(HttpStatusCode.Unauthorized)
-                            return@post
-                        }
-                    }
-                    val muligLagrebarIdent = Ident.validateOrThrow(kontorTilordning.ident, Ident.HistoriskStatus.UKJENT)
-                    val ident: IdentSomKanLagres = when (muligLagrebarIdent) {
-                        is AktorId -> {
-                            throw Exception("/api/kontor støtter ikke endring via aktorId, bruk dnr/fnr istedet")
-                        }
-                        is Dnr, is Fnr, is Npid -> muligLagrebarIdent
-                    }
+                if(!brukAoRuting) {
+                    call.respond(HttpStatusCode.NotImplemented)
+                    return@post
+                } else {
 
-                    val harTilgang = poaoTilgangClient.harLeseTilgang(principal, ident)
-                    when (harTilgang) {
-                        is HarIkkeTilgang -> {
-                            logger.warn("Bruker/system har ikke tilgang til å endre kontor for bruker")
-                            call.respond(HttpStatusCode.Forbidden, "Du har ikke tilgang til å endre kontor for denne brukeren")
-                            return@post
+                    runCatching {
+                        val kontorTilordning = call.receive<ArbeidsoppfolgingsKontorTilordningDTO>()
+                        val principal = when (val authresult = authenticateRequest(call.request)) {
+                            is Authenticated -> authresult.principal
+                            is NotAuthenticated -> {
+                                log.warn("Not authorized ${authresult.reason}")
+                                call.respond(HttpStatusCode.Unauthorized)
+                                return@post
+                            }
                         }
-                        HarTilgang -> {}
-                        is TilgangOppslagFeil -> {
-                            logger.warn(harTilgang.message)
-                            call.respond(HttpStatusCode.InternalServerError, "Noe gikk galt under oppslag av tilgang for bruker")
-                            return@post
-                        }
-                    }
-                    val gammeltKontor = kontorTilhorighetService.getArbeidsoppfolgingKontorTilhorighet(ident, principal)
-                    val kontorId = KontorId(kontorTilordning.kontorId)
+                        val muligLagrebarIdent =
+                            Ident.validateOrThrow(kontorTilordning.ident, Ident.HistoriskStatus.UKJENT)
+                        val ident: IdentSomKanLagres = when (muligLagrebarIdent) {
+                            is AktorId -> {
+                                throw Exception("/api/kontor støtter ikke endring via aktorId, bruk dnr/fnr istedet")
+                            }
 
-                    val oppfolgingsperiode = oppfolgingsperiodeService.getCurrentOppfolgingsperiode(IdentFunnet(ident))
-                    val oppfolgingsperiodeId = when(oppfolgingsperiode) {
-                        is AktivOppfolgingsperiode -> oppfolgingsperiode.periodeId
-                        NotUnderOppfolging -> {
-                            call.respond(HttpStatusCode.Conflict, "Bruker er ikke under oppfølging")
-                            return@post
+                            is Dnr, is Fnr, is Npid -> muligLagrebarIdent
                         }
-                        is OppfolgingperiodeOppslagFeil -> {
-                            log.error("Klarte ikke hente oppfølgingsperiode: ${oppfolgingsperiode.message}")
-                            call.respond(HttpStatusCode.InternalServerError, "Klarte ikke hente oppfølgingsperiode")
-                            return@post
-                        }
-                    }
 
-                    val kontorEndring = KontorSattAvVeileder(
-                        tilhorighet = KontorTilordning(
-                            fnr = ident,
-                            kontorId = kontorId,
-                            oppfolgingsperiodeId
-                        ),
-                        registrant = principal.toRegistrant()
-                    )
-                    KontorTilordningService.tilordneKontor(kontorEndring, brukAoRuting)
-                    val result = publiserKontorEndring(kontorEndring)
-                    if (result.isFailure) throw result.exceptionOrNull()!!
-                    kontorId to gammeltKontor
-                }
-                    .onSuccess { (kontorId, gammeltKontor) ->
-                        val kontorNavn = kontorNavnService.getKontorNavn(kontorId)
-                        call.respond(KontorByttetOkResponseDto(
-                            fraKontor = gammeltKontor?.let {
-                                Kontor(
-                                    kontorNavn = it.kontorNavn.navn,
-                                    kontorId = it.kontorId.id,
+                        val harTilgang = poaoTilgangClient.harLeseTilgang(principal, ident)
+                        when (harTilgang) {
+                            is HarIkkeTilgang -> {
+                                logger.warn("Bruker/system har ikke tilgang til å endre kontor for bruker")
+                                call.respond(
+                                    HttpStatusCode.Forbidden,
+                                    "Du har ikke tilgang til å endre kontor for denne brukeren"
                                 )
-                            },
-                            tilKontor = Kontor(
-                                kontorNavn = kontorNavn.navn,
-                                kontorId = kontorId.id
+                                return@post
+                            }
+
+                            HarTilgang -> {}
+                            is TilgangOppslagFeil -> {
+                                logger.warn(harTilgang.message)
+                                call.respond(
+                                    HttpStatusCode.InternalServerError,
+                                    "Noe gikk galt under oppslag av tilgang for bruker"
+                                )
+                                return@post
+                            }
+                        }
+                        val gammeltKontor =
+                            kontorTilhorighetService.getArbeidsoppfolgingKontorTilhorighet(ident, principal)
+                        val kontorId = KontorId(kontorTilordning.kontorId)
+
+                        val oppfolgingsperiode =
+                            oppfolgingsperiodeService.getCurrentOppfolgingsperiode(IdentFunnet(ident))
+                        val oppfolgingsperiodeId = when (oppfolgingsperiode) {
+                            is AktivOppfolgingsperiode -> oppfolgingsperiode.periodeId
+                            NotUnderOppfolging -> {
+                                call.respond(HttpStatusCode.Conflict, "Bruker er ikke under oppfølging")
+                                return@post
+                            }
+
+                            is OppfolgingperiodeOppslagFeil -> {
+                                log.error("Klarte ikke hente oppfølgingsperiode: ${oppfolgingsperiode.message}")
+                                call.respond(HttpStatusCode.InternalServerError, "Klarte ikke hente oppfølgingsperiode")
+                                return@post
+                            }
+                        }
+
+                        val kontorEndring = KontorSattAvVeileder(
+                            tilhorighet = KontorTilordning(
+                                fnr = ident,
+                                kontorId = kontorId,
+                                oppfolgingsperiodeId
+                            ),
+                            registrant = principal.toRegistrant()
+                        )
+                        KontorTilordningService.tilordneKontor(kontorEndring, brukAoRuting)
+                        val result = publiserKontorEndring(kontorEndring)
+                        if (result.isFailure) throw result.exceptionOrNull()!!
+                        kontorId to gammeltKontor
+                    }
+                        .onSuccess { (kontorId, gammeltKontor) ->
+                            val kontorNavn = kontorNavnService.getKontorNavn(kontorId)
+                            call.respond(
+                                KontorByttetOkResponseDto(
+                                    fraKontor = gammeltKontor?.let {
+                                        Kontor(
+                                            kontorNavn = it.kontorNavn.navn,
+                                            kontorId = it.kontorId.id,
+                                        )
+                                    },
+                                    tilKontor = Kontor(
+                                        kontorNavn = kontorNavn.navn,
+                                        kontorId = kontorId.id
+                                    )
+                                )
                             )
-                        ))
-                        call.respondText("OK", status = HttpStatusCode.OK)
-                    }
-                    .onFailure {
-                        logger.error("Kunne ikke oppdatere kontor", it)
-                        call.respondText( "Kunne ikke oppdatere kontor", status = HttpStatusCode.InternalServerError)
-                    }
+                            call.respondText("OK", status = HttpStatusCode.OK)
+                        }
+                        .onFailure {
+                            logger.error("Kunne ikke oppdatere kontor", it)
+                            call.respondText("Kunne ikke oppdatere kontor", status = HttpStatusCode.InternalServerError)
+                        }
+                }
             }
         }
     }
