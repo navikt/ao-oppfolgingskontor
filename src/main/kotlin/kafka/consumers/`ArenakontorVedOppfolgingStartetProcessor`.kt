@@ -7,7 +7,6 @@ import http.client.ArenakontorFunnet
 import http.client.ArenakontorIkkeFunnet
 import kafka.producers.OppfolgingEndretTilordningMelding
 import kotlinx.coroutines.runBlocking
-import no.nav.PUBLISER_ARENA_KONTOR
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
 import no.nav.domain.KontorEndringsType
@@ -33,7 +32,7 @@ class ArenakontorVedOppfolgingStartetProcessor(
     private val lagreKontortilordning: (ArenaKontorHentetSynkrontVedOppfolgingStart) -> Unit,
     private val arenaKontorProvider: suspend (IdentSomKanLagres) -> ArenaKontorUtvidet?,
     private val publiserKontorTilordning: suspend (kontorEndring: OppfolgingEndretTilordningMelding) -> Result<Unit>,
-    private val publiserArenaKontor: Boolean = PUBLISER_ARENA_KONTOR
+    private val publiserArenaKontor: Boolean
 ) {
     companion object {
         const val processorName = "ArenakontorProcessor"

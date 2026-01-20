@@ -56,7 +56,8 @@ class EndringPaOppfolgingsBrukerProcessorTest {
             { AktivOppfolgingsperiode(fnr, oppfolgingsperiode, OffsetDateTime.now().minusDays(2)) },
             { arenaKontor() },
             { KontorTilordningServiceMock.tilordneKontor(it, brukAoRuting) },
-            { Result.success(Unit) }
+            { Result.success(Unit) },
+            true
         )
 
         val result = processor.internalProcess(testRecord(fnr, sistEndretDato = rettFørCutoff))
@@ -76,7 +77,8 @@ class EndringPaOppfolgingsBrukerProcessorTest {
             { AktivOppfolgingsperiode(fnr, oppfolgingsperiode, OffsetDateTime.now().minusDays(2)) },
             { arenaKontor(endret = etterCutoffMenAnnenTidssone.minusSeconds(1)) },
             { KontorTilordningServiceMock.tilordneKontor(it, brukAoRuting) },
-            { Result.success(Unit) }
+            { Result.success(Unit) },
+            true
         )
         val result = processor.internalProcess(testRecord(fnr, sistEndretDato = etterCutoffMenAnnenTidssone))
         withClue("forventer SkalLagre men var ${result.javaClass.simpleName}") {
@@ -93,7 +95,8 @@ class EndringPaOppfolgingsBrukerProcessorTest {
             { NotUnderOppfolging },
             { arenaKontorFørCutoff() },
             { KontorTilordningServiceMock.tilordneKontor(it, brukAoRuting) },
-            { Result.success(Unit) }
+            { Result.success(Unit) },
+            true
         )
         val result = processor.internalProcess(
             testRecord(
@@ -125,7 +128,8 @@ class EndringPaOppfolgingsBrukerProcessorTest {
                 )
             },
             {},
-            { Result.success(Unit) }
+            { Result.success(Unit) },
+            true
         )
 
         val result = processor.internalProcess(
@@ -153,7 +157,8 @@ class EndringPaOppfolgingsBrukerProcessorTest {
             { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, oppfolgingsStartet) },
             { arenaKontor(sisteLagreMeldingTidspunkt) },
             {},
-            { Result.success(Unit) }
+            { Result.success(Unit) },
+            true
         )
 
         val result = processor.internalProcess(testRecord(fnr, sistEndretDato = innkommendeMeldingEndretTidspunkt))
@@ -173,7 +178,8 @@ class EndringPaOppfolgingsBrukerProcessorTest {
             { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, oppfolgingStartet) },
             { arenaKontor(kontor = kontorId, endret = oppfolgingStartet, oppfolgingsperiodeId = oppfolgingsperiodeId) },
             {},
-            { Result.success(Unit) }
+            { Result.success(Unit) },
+            true
         )
 
         val result = processor.internalProcess(testRecord(fnr, kontor = kontorId))
@@ -192,7 +198,8 @@ class EndringPaOppfolgingsBrukerProcessorTest {
             { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, oppfolgingStartet) },
             { arenaKontorMedAnnenOppfolgingsperiode },
             {},
-            { Result.success(Unit) }
+            { Result.success(Unit) },
+            true
         )
 
         val result = processor.internalProcess(testRecord(fnr, kontor = kontorId))
@@ -208,7 +215,8 @@ class EndringPaOppfolgingsBrukerProcessorTest {
             { OppfolgingperiodeOppslagFeil("Feil med perioder!?") },
             { null },
             {},
-            { Result.success(Unit) }
+            { Result.success(Unit) },
+            true
         )
         val result = processor.internalProcess(testRecord(fnr, sistEndretDato = etterCutoffMenAnnenTidssone))
         withClue("forventer Feil men var ${result.javaClass.simpleName}") {

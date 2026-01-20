@@ -97,7 +97,8 @@ class BigAppTest {
                 oppfolgingsperiodeProvider,
                 { null }, // TODO: Mer realitisk test-oppsett
                 {},
-                { Result.success(Unit) }
+                { Result.success(Unit) },
+                true
             )
             val identService = IdentService { IdenterFunnet(emptyList(), fnr) }
             val identendringsProcessor = IdentChangeProcessor(identService)

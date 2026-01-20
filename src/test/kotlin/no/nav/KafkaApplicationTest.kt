@@ -77,7 +77,8 @@ class KafkaApplicationTest {
             oppfolgingsperiodeService::getCurrentOppfolgingsperiode,
             { null },
             { KontorTilordningService.tilordneKontor(it, true)},
-            { Result.success(Unit) }
+            { Result.success(Unit) },
+            true
         )
 
         application {
@@ -118,7 +119,8 @@ class KafkaApplicationTest {
             oppfolgingsperiodeService::getCurrentOppfolgingsperiode,
             { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },
             { KontorTilordningService.tilordneKontor(it, true)},
-            { Result.success(Unit) }
+            { Result.success(Unit) },
+            true
         )
 
         application {
