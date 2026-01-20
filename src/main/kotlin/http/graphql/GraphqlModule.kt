@@ -50,7 +50,11 @@ class AppContextFactory(val authenticateRequest: AuthenticateRequest) : KtorGrap
     }
 }
 
-fun Application.installGraphQl(norg2Client: Norg2Client, kontorTilhorighetService: KontorTilhorighetService, authenticateRequest: AuthenticateRequest, hentAlleIdenter: suspend (Ident) -> IdenterResult) {
+fun Application.installGraphQl(
+    norg2Client: Norg2Client,
+    kontorTilhorighetService: KontorTilhorighetService,
+    authenticateRequest: AuthenticateRequest,
+    hentAlleIdenter: suspend (Ident) -> IdenterResult) {
     install(GraphQL) {
         schema {
             packages = listOf(
