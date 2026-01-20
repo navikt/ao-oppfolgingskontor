@@ -2,7 +2,6 @@ package no.nav.http.client
 
 import domain.gtForBruker.GtForBrukerIkkeFunnet
 import domain.gtForBruker.GtLandForBrukerFunnet
-import domain.gtForBruker.GtNummerForBrukerFunnet
 import domain.gtForBruker.GtSomKreverFallback
 import io.ktor.client.*
 import io.ktor.client.call.body
@@ -25,9 +24,6 @@ import domain.kontorForGt.KontorForBrukerMedMangelfullGtFunnet
 import domain.kontorForGt.KontorForBrukerMedMangelfullGtIkkeFunnet
 import domain.kontorForGt.KontorForBrukerMedMangelfullGtResultat
 import domain.kontorForGt.KontorForGtFantDefaultKontor
-import domain.kontorForGt.KontorForGtFeil
-import domain.kontorForGt.KontorForGtFantIkkeKontor
-import domain.kontorForGt.KontorForGtResultat
 import org.slf4j.LoggerFactory
 
 class Norg2Client(
@@ -76,7 +72,7 @@ class Norg2Client(
         gt: GeografiskTilknytningNr,
         brukerHarStrengtFortroligAdresse: HarStrengtFortroligAdresse,
         brukerErSkjermet: HarSkjerming
-    ): KontorForGtResultat {
+    ): NorgKontorForGtResultat {
         try {
             val response = httpClient.get((hentKontorForGtPath(gt))) {
                 accept(ContentType.Application.Json)
@@ -89,24 +85,15 @@ class Norg2Client(
             }
 
             if (response.status == HttpStatusCode.NotFound)
-                return KontorForGtFantIkkeKontor(
-                    brukerErSkjermet, brukerHarStrengtFortroligAdresse,
-                    GtNummerForBrukerFunnet(gt)
-                )
+                return NorgKontorForGtFantIkkeKontor
 
             if (response.status != HttpStatusCode.OK)
                 throw RuntimeException("Kunne ikke hente kontor for GT i norg, http-status: ${response.status}, gt: ${gt.value} ${gt.type}, body: ${response.bodyAsText()}")
 
             return response.body<NorgKontor>().toMinimaltKontor()
-                .let {
-                    KontorId(it.kontorId).toDefaultGtKontorFunnet(
-                        brukerHarStrengtFortroligAdresse,
-                        brukerErSkjermet,
-                        gt
-                    )
-                }
+                .let { NorgKontorForGtFantKontor(KontorId(it.kontorId)) }
         } catch (e: Throwable) {
-            return KontorForGtFeil(e.message ?: "Ukjent feil")
+            return NorgKontorForGtFeil(e.message ?: "Ukjent feil")
         }
     }
 
@@ -173,6 +160,11 @@ fun KontorId.toDefaultGtKontorFunnet(
         geografiskTilknytningNr = geografiskTilknytningNr
     )
 }
+
+sealed class NorgKontorForGtResultat
+data class NorgKontorForGtFantKontor(val id: KontorId) : NorgKontorForGtResultat()
+object NorgKontorForGtFantIkkeKontor: NorgKontorForGtResultat()
+data class NorgKontorForGtFeil(val message: String): NorgKontorForGtResultat()
 
 data class MinimaltNorgKontor(
     val kontorId: String,

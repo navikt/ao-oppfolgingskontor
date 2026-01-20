@@ -4,11 +4,16 @@ import domain.ArenaKontorUtvidet
 import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import io.mockk.Called
+import io.mockk.mockk
+import io.mockk.verify
 import no.nav.db.Fnr
 import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
+import no.nav.domain.events.KontorEndretEvent
 import no.nav.kafka.consumers.*
 import no.nav.services.AktivOppfolgingsperiode
+import no.nav.services.KontorTilordningService
 import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingperiodeOppslagFeil
 import no.nav.utils.randomFnr
@@ -16,10 +21,11 @@ import org.apache.kafka.streams.processor.api.Record
 import org.junit.jupiter.api.Test
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
-import java.time.ZonedDateTime
 import java.util.*
 
 class EndringPaOppfolgingsBrukerProcessorTest {
+    val KontorTilordningServiceMock = mockk<KontorTilordningService>()
+
     val rettFørCutoff = OffsetDateTime.of(
         2025,
         8,
@@ -45,13 +51,18 @@ class EndringPaOppfolgingsBrukerProcessorTest {
     fun `skal cutte off når tidspunkt er før 13 aug 2025 (i annen tidssone)`() {
         val fnr = randomFnr()
         val oppfolgingsperiode = OppfolgingsperiodeId(UUID.randomUUID())
+        val brukAoRuting = false
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { AktivOppfolgingsperiode(fnr, oppfolgingsperiode, OffsetDateTime.now().minusDays(2)) },
             { arenaKontor() },
-            {},
-            { Result.success(Unit) }
+            { KontorTilordningServiceMock.tilordneKontor(it, brukAoRuting) },
+            { Result.success(Unit) },
+            true
         )
+
         val result = processor.internalProcess(testRecord(fnr, sistEndretDato = rettFørCutoff))
+
+        verify { KontorTilordningServiceMock wasNot Called }
         withClue("forventer BeforeCutoff men var ${result.javaClass.simpleName}") {
             result.shouldBeInstanceOf<BeforeCutoff>()
         }
@@ -61,11 +72,13 @@ class EndringPaOppfolgingsBrukerProcessorTest {
     fun `skal ikke cutte off når tidspunkt er for 13 aug 2025`() {
         val fnr = randomFnr()
         val oppfolgingsperiode = OppfolgingsperiodeId(UUID.randomUUID())
+        val brukAoRuting = false
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { AktivOppfolgingsperiode(fnr, oppfolgingsperiode, OffsetDateTime.now().minusDays(2)) },
             { arenaKontor(endret = etterCutoffMenAnnenTidssone.minusSeconds(1)) },
-            {},
-            { Result.success(Unit) }
+            { KontorTilordningServiceMock.tilordneKontor(it, brukAoRuting) },
+            { Result.success(Unit) },
+            true
         )
         val result = processor.internalProcess(testRecord(fnr, sistEndretDato = etterCutoffMenAnnenTidssone))
         withClue("forventer SkalLagre men var ${result.javaClass.simpleName}") {
@@ -77,11 +90,13 @@ class EndringPaOppfolgingsBrukerProcessorTest {
     @Test
     fun `skal ikke behandle melding når bruker ikke har oppfølgingsperiode lagret`() {
         val fnr = randomFnr()
+        val brukAoRuting = false
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { NotUnderOppfolging },
             { arenaKontorFørCutoff() },
-            {},
-            { Result.success(Unit) }
+            { KontorTilordningServiceMock.tilordneKontor(it, brukAoRuting) },
+            { Result.success(Unit) },
+            true
         )
         val result = processor.internalProcess(
             testRecord(
@@ -113,7 +128,8 @@ class EndringPaOppfolgingsBrukerProcessorTest {
                 )
             },
             {},
-            { Result.success(Unit) }
+            { Result.success(Unit) },
+            true
         )
 
         val result = processor.internalProcess(
@@ -141,7 +157,8 @@ class EndringPaOppfolgingsBrukerProcessorTest {
             { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, oppfolgingsStartet) },
             { arenaKontor(sisteLagreMeldingTidspunkt) },
             {},
-            { Result.success(Unit) }
+            { Result.success(Unit) },
+            true
         )
 
         val result = processor.internalProcess(testRecord(fnr, sistEndretDato = innkommendeMeldingEndretTidspunkt))
@@ -161,7 +178,8 @@ class EndringPaOppfolgingsBrukerProcessorTest {
             { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, oppfolgingStartet) },
             { arenaKontor(kontor = kontorId, endret = oppfolgingStartet, oppfolgingsperiodeId = oppfolgingsperiodeId) },
             {},
-            { Result.success(Unit) }
+            { Result.success(Unit) },
+            true
         )
 
         val result = processor.internalProcess(testRecord(fnr, kontor = kontorId))
@@ -180,7 +198,8 @@ class EndringPaOppfolgingsBrukerProcessorTest {
             { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, oppfolgingStartet) },
             { arenaKontorMedAnnenOppfolgingsperiode },
             {},
-            { Result.success(Unit) }
+            { Result.success(Unit) },
+            true
         )
 
         val result = processor.internalProcess(testRecord(fnr, kontor = kontorId))
@@ -196,7 +215,8 @@ class EndringPaOppfolgingsBrukerProcessorTest {
             { OppfolgingperiodeOppslagFeil("Feil med perioder!?") },
             { null },
             {},
-            { Result.success(Unit) }
+            { Result.success(Unit) },
+            true
         )
         val result = processor.internalProcess(testRecord(fnr, sistEndretDato = etterCutoffMenAnnenTidssone))
         withClue("forventer Feil men var ${result.javaClass.simpleName}") {

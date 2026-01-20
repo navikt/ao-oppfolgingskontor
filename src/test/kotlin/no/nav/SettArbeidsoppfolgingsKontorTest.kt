@@ -73,6 +73,7 @@ class SettArbeidsoppfolgingsKontorTest {
         environment {
             config = server.getMockOauth2ServerConfig()
         }
+        val brukAoRuting = false
         val norg2Client = mockNorg2Host()
         val poaoTilgangClient = mockPoaoTilgangHost(null)
         val kontorNavnService = KontorNavnService(norg2Client)
@@ -86,6 +87,7 @@ class SettArbeidsoppfolgingsKontorTest {
             "arbeidsoppfolgingskontortilordninger",
             { KontorNavn("Test KontorNavn") },
             { identerFunnet },
+            false
         )
         application {
             flywayMigrationInTest()
@@ -98,7 +100,8 @@ class SettArbeidsoppfolgingsKontorTest {
                 kontorTilhorighetService,
                 poaoTilgangClient,
                 oppfolgingsperiodeService,
-                { kontorEndringProducer.publiserEndringPåKontor(it) }
+                { kontorEndringProducer.publiserEndringPåKontor(it) },
+                brukAoRuting = brukAoRuting
             )
             routing {
                 authenticate("EntraAD") {

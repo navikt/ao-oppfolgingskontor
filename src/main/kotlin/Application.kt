@@ -1,12 +1,16 @@
 package no.nav
 
 import dab.poao.nav.no.health.CriticalErrorNotificationFunction
+import http.client.AaregClient
+import http.client.EregClient
 import http.client.VeilarbArenaClient
+import http.client.getAaregScope
 import http.client.getVeilarbarenaScope
 import http.configureContentNegotiation
 import http.configureHentArbeidsoppfolgingskontorBulkModule
 import io.ktor.server.application.*
 import io.ktor.server.netty.*
+import io.ktor.util.reflect.TypeInfo
 import kafka.producers.KontorEndringProducer
 import no.nav.db.configureDatabase
 import no.nav.http.client.*
@@ -21,6 +25,8 @@ import no.nav.http.configureArbeidsoppfolgingskontorModule
 import no.nav.http.configureAdminModule
 import no.nav.http.graphql.AuthenticateRequest
 import no.nav.http.graphql.configureGraphQlModule
+import no.nav.http.graphql.getAaregUrl
+import no.nav.http.graphql.getEregUrl
 import no.nav.http.graphql.getNorg2Url
 import no.nav.http.graphql.getPDLUrl
 import no.nav.http.graphql.getPoaoTilgangUrl
@@ -36,6 +42,7 @@ import no.nav.services.KontorTilordningService
 import no.nav.services.OppfolgingsperiodeDao
 import services.ArenaSyncService
 import services.IdentService
+import services.KontorForBrukerMedMangelfullGtService
 import services.KontorRepubliseringService
 import services.KontorTilhorighetBulkService
 import services.OppfolgingsperiodeService
@@ -70,18 +77,31 @@ fun Application.module() {
         baseUrl = environment.getVeilarbArenaUrl(),
         azureTokenProvider = texasClient.tokenProvider(environment.getVeilarbarenaScope())
     )
-
+    val aaregClient = AaregClient(
+        baseUrl = environment.getAaregUrl(),
+        azureTokenProvider = texasClient.tokenProvider(environment.getAaregScope())
+    )
+    val eregClient = EregClient(
+        baseUrl = environment.getEregUrl(),
+    )
+ 
+    val kontorForBrukerMedMangelfullGtService = KontorForBrukerMedMangelfullGtService(
+        {aaregClient.hentArbeidsforhold(it)},
+        {eregClient.hentNøkkelinfoOmArbeidsgiver(it)},
+        {gt, strengtFortroligAdresse, skjermet -> norg2Client.hentKontorForGt(gt,strengtFortroligAdresse, skjermet)},
+        pdlClient::sokAdresseFritekst
+    )
     val identService = IdentService({ pdlClient.hentIdenterFor(it) })
     val gtNorgService = GTNorgService(
         { pdlClient.hentGt(it) },
         { gt, strengtFortroligAdresse, skjermet -> norg2Client.hentKontorForGt(gt, strengtFortroligAdresse, skjermet) },
         { gt, strengtFortroligAdresse, skjermet -> norg2Client.hentKontorForBrukerMedMangelfullGT(gt, strengtFortroligAdresse, skjermet) },
+        { ident, gt, strengtFortroligAdresse, skjermet -> kontorForBrukerMedMangelfullGtService.finnKontorForGtBasertPåArbeidsforhold(ident,gt, strengtFortroligAdresse, skjermet) }
     )
     val kontorNavnService = KontorNavnService(norg2Client)
     val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangHttpClient, identService::hentAlleIdenter)
     val oppfolgingsperiodeService = OppfolgingsperiodeService(identService::hentAlleIdenter)
     val automatiskKontorRutingService = AutomatiskKontorRutingService(
-        KontorTilordningService::tilordneKontor,
         { fnr, strengtFortroligAdresse, skjermet -> gtNorgService.hentGtKontorForBruker(fnr, strengtFortroligAdresse, skjermet) },
         { pdlClient.hentAlder(it) },
         { arbeidssokerregisterClient.hentProfilering(it) },
@@ -94,10 +114,12 @@ fun Application.module() {
         producer = createKafkaProducer(this.environment.config.toKafkaEnv()),
         kontorTopicNavn = this.environment.topics().ut.arbeidsoppfolgingskontortilordninger.name,
         kontorNavnProvider = { kontorId -> kontorNavnService.getKontorNavn(kontorId) },
-        hentAlleIdenter = { identSomKanLagres -> identService.hentAlleIdenter(identSomKanLagres) }
+        hentAlleIdenter = { identSomKanLagres -> identService.hentAlleIdenter(identSomKanLagres) },
+        brukAoRuting = this.environment.getBrukAoRuting()
     )
     val republiseringService = KontorRepubliseringService(kontorEndringProducer::republiserKontor, datasource, kontorNavnService::friskOppAlleKontorNavn)
-    val arenaSyncService = ArenaSyncService(veilarbArenaClient, KontorTilordningService, kontorTilhorighetService, oppfolgingsperiodeService)
+    val arenaSyncService = ArenaSyncService(veilarbArenaClient, KontorTilordningService, kontorTilhorighetService, oppfolgingsperiodeService, environment.getBrukAoRuting())
+    val brukAoRuting = environment.getBrukAoRuting()
 
     install(KafkaStreamsPlugin) {
         this.automatiskKontorRutingService = automatiskKontorRutingService
@@ -111,6 +133,7 @@ fun Application.module() {
         this.kontorTilhorighetService = kontorTilhorighetService
         this.kontorEndringProducer = kontorEndringProducer
         this.veilarbArenaClient = veilarbArenaClient
+        this.brukAoRuting = brukAoRuting
     }
 
     val issuer = environment.getIssuer()
@@ -122,9 +145,10 @@ fun Application.module() {
         kontorTilhorighetService,
         poaoTilgangHttpClient,
         oppfolgingsperiodeService,
-        { kontorEndringProducer.publiserEndringPåKontor(it) }
+        { kontorEndringProducer.publiserEndringPåKontor(it) },
+        brukAoRuting = environment.getBrukAoRuting(),
     )
-    configureAdminModule(republiseringService, arenaSyncService, identService)
+    configureAdminModule(automatiskKontorRutingService, republiseringService, arenaSyncService, identService)
     configureHentArbeidsoppfolgingskontorBulkModule(KontorTilhorighetBulkService)
 }
 
@@ -140,5 +164,10 @@ fun ApplicationEnvironment.isProduction(): Boolean {
         ?.contentEquals("prod-gcp") ?: false
 }
 
-val BRUK_AO_RUTING: Boolean = false
-val PUBLISER_ARENA_KONTOR: Boolean = !BRUK_AO_RUTING
+fun ApplicationEnvironment.getBrukAoRuting(): Boolean {
+    return config.property("brukAoRuting").getString().toBoolean()
+}
+
+fun ApplicationEnvironment.getPubliserArenaKontor(): Boolean {
+    return !getBrukAoRuting()
+}

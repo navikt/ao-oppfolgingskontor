@@ -378,7 +378,8 @@ class OppfolgingshendelseProcessorTest {
             { NotUnderOppfolging },
             { sistLagreArenaKontor },
             {},
-            { Result.success(Unit) }
+            { Result.success(Unit) },
+            true
         )
         endringPaOppfolgingsBrukerProcessor.process(
             TopicUtils.endringPaaOppfolgingsBrukerMessage(

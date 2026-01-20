@@ -21,6 +21,8 @@ import kafka.producers.KontorEndringProducer
 import java.time.Duration
 import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
 import no.nav.db.AktorId
+import no.nav.getBrukAoRuting
+import no.nav.getPubliserArenaKontor
 import no.nav.http.client.IdentResult
 import no.nav.isProduction
 import no.nav.kafka.config.kafkaStreamsProps
@@ -61,6 +63,7 @@ class KafkaStreamsPluginConfig(
     var kontorTilhorighetService: KontorTilhorighetService? = null,
     var kontorEndringProducer: KontorEndringProducer? = null,
     var veilarbArenaClient: VeilarbArenaClient? = null,
+    var brukAoRuting: Boolean? = null,
 )
 
 const val arbeidsoppfolgingkontorSinkName = "endring-pa-arbeidsoppfolgingskontor"
@@ -99,6 +102,9 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val veilarbArenaClient = requireNotNull(this.pluginConfig.veilarbArenaClient) {
         "VeilarbArenaClient must be configured for KafkaStreamPlugin"
     }
+    val brukAoRuting = requireNotNull(this.pluginConfig.brukAoRuting) {
+        "BrukAoRuting must be configured for KafkaStreamPlugin"
+    }
 
     val isProduction = environment.isProduction()
     if (isProduction) logger.info("Kjører i produksjonsmodus. Konsumerer kun siste-oppfølgingsperiode.")
@@ -106,17 +112,19 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
         { oppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) },
         { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },
-        KontorTilordningService::tilordneKontor,
-        { kontorProducer.publiserEndringPåKontor(it) }
+        { KontorTilordningService.tilordneKontor(it, brukAoRuting) },
+        { kontorProducer.publiserEndringPåKontor(it) },
+        environment.getPubliserArenaKontor()
     )
 
     val kontorTilordningsProcessor = KontortilordningsProcessor(
         automatiskKontorRutingService,
         // Hopp over personer som ikke finnes alder på i nytt felt i dev
-        skipPersonIkkeFunnet = !isProduction
+        skipPersonIkkeFunnet = !isProduction,
+        brukAoRuting
     )
-    val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, fnrProvider, isProduction)
-    val skjermingProcessor = SkjermingProcessor(automatiskKontorRutingService)
+    val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, fnrProvider, isProduction, brukAoRuting)
+    val skjermingProcessor = SkjermingProcessor(automatiskKontorRutingService, brukAoRuting)
     val identEndringProcessor = IdentChangeProcessor(identService)
     val oppfolgingsHendelseProcessor = OppfolgingsHendelseProcessor(
         oppfolgingsperiodeService,
@@ -124,13 +132,15 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     )
     val publiserKontorTilordningProcessor = PubliserKontorTilordningProcessor(
         identService::hentAlleIdenter,
-        { kontorProducer.publiserEndringPåKontor(it) }
+        { kontorProducer.publiserEndringPåKontor(it) },
+        environment.getBrukAoRuting(),
     )
-    val arenakontorProcessor = `ArenakontorVedOppfolgingStartetProcessor`(
+    val arenakontorProcessor = ArenakontorVedOppfolgingStartetProcessor(
         veilarbArenaClient::hentArenaKontor,
-        { KontorTilordningService.tilordneKontor(it) },
+        { KontorTilordningService.tilordneKontor(it, brukAoRuting) },
         { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },
-        { kontorProducer.publiserEndringPåKontor(it) }
+        { kontorProducer.publiserEndringPåKontor(it) },
+        environment.getPubliserArenaKontor(),
     )
 
 

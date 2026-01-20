@@ -32,6 +32,7 @@ import no.nav.services.AutomatiskKontorRutingService.Companion.VIKAFOSSEN
 import domain.kontorForGt.KontorForGtFantDefaultKontor
 import domain.kontorForGt.KontorForGtFeil
 import domain.kontorForGt.KontorForGtResultat
+import io.kotest.assertions.withClue
 import no.nav.services.KontorTilordningService
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.randomFnr
@@ -48,11 +49,12 @@ class LeesahProcessorTest {
         val fnr = randomFnr()
         val gammeltKontorId = "1234"
         val nyKontorId = "5678"
+        val brukAoRuting = true
         application {
             flywayMigrationInTest()
             gittNåværendeGtKontor(fnr, KontorId(gammeltKontorId))
             val automatiskKontorRutingService = gittRutingServiceMedGtKontor(KontorId(nyKontorId))
-            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, { IdentFunnet(fnr) }, false)
+            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, { IdentFunnet(fnr) }, false, brukAoRuting)
 
             leesahProcessor.handterLeesahHendelse(BostedsadresseEndret(fnr))
 
@@ -64,10 +66,11 @@ class LeesahProcessorTest {
     }
 
     @Test
-    fun `skal sette både gt-kontor og ao-kontor ved addressebeskyttelse endret hvis det er nytt kontor`() = testApplication {
+    fun `skal sette både gt-kontor og ao-kontor når bruker får addressebeskyttelse`() = testApplication {
         val fnr = randomFnr()
         val gammeltKontorId = "1234"
         val nyKontorId = "5678"
+        val brukAoRuting = true
         application {
             flywayMigrationInTest()
             gittNåværendeGtKontor(fnr, KontorId(gammeltKontorId))
@@ -75,7 +78,7 @@ class LeesahProcessorTest {
                 { a, b, c -> KontorForGtFantDefaultKontor(KontorId(nyKontorId), c, b, GeografiskTilknytningBydelNr("3131")) },
                 { ident -> HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(true)) }
             )
-            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, { IdentFunnet(fnr) }, false)
+            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, { IdentFunnet(fnr) }, false, brukAoRuting)
 
             leesahProcessor.handterLeesahHendelse(AdressebeskyttelseEndret(fnr, Gradering.STRENGT_FORTROLIG))
 
@@ -90,25 +93,30 @@ class LeesahProcessorTest {
     }
 
     @Test
-    fun `skal ikke sette ao-kontor men gt-kontor ved addressebeskyttelse endret hvis det er nytt kontor`() = testApplication {
+    fun `skal ikke sette ao-kontor men gt-kontor ved addressebeskyttelse fjernet`() = testApplication {
         val fnr = randomFnr()
         val gammelKontorId = "1234"
         val nyKontorId = "5678"
+        val brukAoRuting = true
         application {
             flywayMigrationInTest()
             gittNåværendeAOKontor(fnr, KontorId(gammelKontorId))
             gittNåværendeGtKontor(fnr, KontorId(gammelKontorId))
             val automatiskKontorRutingService = gittRutingServiceMedGtKontor(KontorId(nyKontorId))
-            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, { IdentFunnet(fnr) }, false)
+            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, { IdentFunnet(fnr) }, false, brukAoRuting)
 
             leesahProcessor.handterLeesahHendelse(AdressebeskyttelseEndret(fnr, Gradering.UGRADERT))
 
             transaction {
                 val gtKontorEtterEndring = GeografiskTilknyttetKontorEntity[fnr.value]
-                gtKontorEtterEndring.kontorId shouldBe nyKontorId
+                withClue("Forventet nytt GT-kontor (${nyKontorId}) fikk ${gtKontorEtterEndring.kontorId} istedet") {
+                    gtKontorEtterEndring.kontorId shouldBe nyKontorId
+                }
 
                 val aoKontorEtterEndirng = ArbeidsOppfolgingKontorEntity[fnr.value]
-                aoKontorEtterEndirng.kontorId shouldBe gammelKontorId
+                withClue("Forventet at ao-kontor skulle forbli gammelt kontor ${gammelKontorId}, men fikk ${aoKontorEtterEndirng.kontorId} istedet") {
+                    aoKontorEtterEndirng.kontorId shouldBe gammelKontorId
+                }
             }
         }
     }
@@ -116,10 +124,11 @@ class LeesahProcessorTest {
     @Test
     fun `skal håndtere at gt-provider returnerer GTKontorFeil`() = testApplication {
         val fnr = randomFnr()
+        val brukAoRuting = false
         val automatiskKontorRutingService = defaultAutomatiskKontorRutingService(
             { a, b, c -> KontorForGtFeil("Noe gikk galt") }
         )
-        val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, { IdentFunnet(fnr) }, false)
+        val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, { IdentFunnet(fnr) }, false, brukAoRuting)
 
         val resultat = leesahProcessor.handterLeesahHendelse(BostedsadresseEndret(fnr))
 
@@ -130,10 +139,11 @@ class LeesahProcessorTest {
     @Test
     fun `skal håndtere at gt-provider kaster throwable`() = testApplication {
         val fnr = randomFnr()
+        val brukAoRuting = true
         val automatiskKontorRutingService = defaultAutomatiskKontorRutingService(
             { a, b, c -> throw Throwable("Noe gikk galt") }
         )
-        val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, { IdentFunnet(fnr) }, false)
+        val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, { IdentFunnet(fnr) }, false, brukAoRuting)
 
         val resultat = leesahProcessor.handterLeesahHendelse(BostedsadresseEndret(fnr))
 
@@ -146,14 +156,15 @@ class LeesahProcessorTest {
         strengtFortroligAdresseProvider: suspend (ident: Ident) -> HarStrengtFortroligAdresseResult = { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) }
     ): AutomatiskKontorRutingService {
         return AutomatiskKontorRutingService(
-            { KontorTilordningService.tilordneKontor(it, true)},
-            gtKontorProvider = gtProvider,
-            aldersProvider = { throw Throwable("Denne skal ikke brukes") },
-            profileringProvider = { throw Throwable("Denne skal ikke brukes") },
-            erSkjermetProvider = { SkjermingFunnet(HarSkjerming(false)) },
-            harStrengtFortroligAdresseProvider = strengtFortroligAdresseProvider,
-            isUnderOppfolgingProvider = { AktivOppfolgingsperiode(Fnr("66666666666", Ident.HistoriskStatus.AKTIV), OppfolgingsperiodeId(UUID.randomUUID()), OffsetDateTime.now()) },
-            harAlleredeTilordnetAoKontorForOppfolgingsperiodeProvider = { _, _ -> Outcome.Success(false)  }
+            // TODO: Sjekk om test krever denne
+//            { KontorTilordningService.tilordneKontor(it, true)},
+            hentKontorForGt = gtProvider,
+            hentAlder = { throw Throwable("Denne skal ikke brukes") },
+            hentProfilering = { throw Throwable("Denne skal ikke brukes") },
+            hentSkjerming = { SkjermingFunnet(HarSkjerming(false)) },
+            hentHarStrengtFortroligAdresse = strengtFortroligAdresseProvider,
+            hentGjeldendeOppfolgingsperiode = { AktivOppfolgingsperiode(Fnr("66666666666", Ident.HistoriskStatus.AKTIV), OppfolgingsperiodeId(UUID.randomUUID()), OffsetDateTime.now()) },
+            harAlleredeTilordnetAoKontorForOppfolgingsperiode = { _, _ -> Outcome.Success(false)  }
         )
     }
 

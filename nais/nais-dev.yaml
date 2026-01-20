@@ -85,10 +85,18 @@ spec:
           namespace: paw
         - application: skjermede-personer-pip
           namespace: nom
+        - application: aareg-services-nais
+          namespace: arbeidsforhold
+          cluster: dev-fss
+        - application: ereg-services
+          namespace: arbeidsforhold
+          cluster: dev-fss
       external:
         - host: norg2.dev-fss-pub.nais.io
         - host: pdl-api.dev-fss-pub.nais.io
         - host: veilarbarena.dev-fss-pub.nais.io
+        - host: aareg-services.dev-fss-pub.nais.io
+        - host: ereg-services.dev-fss-pub.nais.io
   azure:
     application:
       enabled: true
@@ -97,6 +105,14 @@ spec:
         extra:
           - "NAVident"
   env:
+    - name: AAREG_URL
+      value: https://aareg-services.dev-fss-pub.nais.io
+    - name: AAREG_SCOPE
+      value: api://dev-fss.arbeidsforhold.aareg-services-nais/.default
+    - name: EREG_URL
+      value: https://ereg-services.dev-fss-pub.nais.io
+    - name: EREG_SCOPE
+      value: api://dev-fss.arbeidsforhold.ereg-services/.default
     - name: NORG2_URL
       value: http://norg2.org
     - name: POAO_TILGANG_URL
@@ -119,3 +135,5 @@ spec:
       value: https://veilarbarena.dev-fss-pub.nais.io
     - name: VEILARBARENA_SCOPE
       value: api://dev-fss.pto.veilarbarena/.default
+    - name: BRUK_AO_RUTING
+      value: "true"

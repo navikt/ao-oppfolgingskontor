@@ -5,7 +5,6 @@ import kafka.producers.OppfolgingEndretTilordningMelding
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import no.nav.PUBLISER_ARENA_KONTOR
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
 import no.nav.domain.KontorEndringsType
@@ -33,7 +32,7 @@ class EndringPaOppfolgingsBrukerProcessor(
     val arenaKontorProvider: suspend (IdentSomKanLagres) -> ArenaKontorUtvidet?,
     val lagreKontorTilordninger: (KontorEndretEvent) -> Unit,
     val publiserKontorTilordning: suspend (kontorEndring: OppfolgingEndretTilordningMelding) -> Result<Unit>,
-    val publiserArenaKontor: Boolean = PUBLISER_ARENA_KONTOR
+    val publiserArenaKontor: Boolean
 ) {
     val log = LoggerFactory.getLogger(EndringPaOppfolgingsBrukerProcessor::class.java)
 
