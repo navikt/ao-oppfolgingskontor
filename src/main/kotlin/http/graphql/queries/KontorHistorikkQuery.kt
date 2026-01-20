@@ -41,7 +41,16 @@ class KontorHistorikkQuery(
                         onColumn = kontorId,
                         otherColumn = KontorNavnTable.id,
                     )
-                    .selectAll()
+                    .select(
+                        KontorhistorikkTable.ident,
+                        KontorhistorikkTable.kontorendringstype,
+                        endretAv,
+                        endretAvType,
+                        createdAt,
+                        kontorNavn,
+                        kontorId,
+                        kontorType
+                    )
                     .where { KontorhistorikkTable.ident inList alleIdenter.identer.map { it.value } }
                     .orderBy(KontorhistorikkTable.id to SortOrder.ASC)
                     .map {
