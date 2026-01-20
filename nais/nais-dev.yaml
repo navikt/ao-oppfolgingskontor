@@ -136,4 +136,4 @@ spec:
     - name: VEILARBARENA_SCOPE
       value: api://dev-fss.pto.veilarbarena/.default
     - name: BRUK_AO_RUTING
-      value: "false"
+      value: "true"
