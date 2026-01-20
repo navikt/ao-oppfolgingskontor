@@ -53,6 +53,7 @@ fun Application.configureArbeidsoppfolgingskontorModule(
     routing {
         authenticate("EntraAD") {
             post("/api/kontor") {
+                // TODO: La toggle styre om endepunktet er tilgjengelig
                 call.respond(HttpStatusCode.NotImplemented)
                 return@post
                 runCatching {
