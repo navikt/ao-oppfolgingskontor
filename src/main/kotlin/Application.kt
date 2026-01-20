@@ -171,6 +171,3 @@ fun ApplicationEnvironment.getBrukAoRuting(): Boolean {
 fun ApplicationEnvironment.getPubliserArenaKontor(): Boolean {
     return !getBrukAoRuting()
 }
-
-//val BRUK_AO_RUTING: Boolean = false
-//val PUBLISER_ARENA_KONTOR: Boolean = !BRUK_AO_RUTING
