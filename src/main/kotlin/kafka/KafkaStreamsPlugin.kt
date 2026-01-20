@@ -21,6 +21,8 @@ import kafka.producers.KontorEndringProducer
 import java.time.Duration
 import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
 import no.nav.db.AktorId
+import no.nav.getBrukAoRuting
+import no.nav.getPubliserArenaKontor
 import no.nav.http.client.IdentResult
 import no.nav.isProduction
 import no.nav.kafka.config.kafkaStreamsProps
@@ -111,7 +113,8 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         { oppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) },
         { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },
         { KontorTilordningService.tilordneKontor(it, brukAoRuting) },
-        { kontorProducer.publiserEndringPåKontor(it) }
+        { kontorProducer.publiserEndringPåKontor(it) },
+        environment.getPubliserArenaKontor()
     )
 
     val kontorTilordningsProcessor = KontortilordningsProcessor(
@@ -129,13 +132,15 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     )
     val publiserKontorTilordningProcessor = PubliserKontorTilordningProcessor(
         identService::hentAlleIdenter,
-        { kontorProducer.publiserEndringPåKontor(it) }
+        { kontorProducer.publiserEndringPåKontor(it) },
+        environment.getBrukAoRuting(),
     )
     val arenakontorProcessor = ArenakontorVedOppfolgingStartetProcessor(
         veilarbArenaClient::hentArenaKontor,
         { KontorTilordningService.tilordneKontor(it, brukAoRuting) },
         { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },
-        { kontorProducer.publiserEndringPåKontor(it) }
+        { kontorProducer.publiserEndringPåKontor(it) },
+        environment.getPubliserArenaKontor(),
     )
 
 

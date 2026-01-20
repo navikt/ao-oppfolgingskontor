@@ -129,3 +129,5 @@ spec:
       value: https://veilarbarena.prod-fss-pub.nais.io
     - name: VEILARBARENA_SCOPE
       value: api://prod-fss.pto.veilarbarena/.default
+    - name: BRUK_AO_RUTING
+      value: "false"

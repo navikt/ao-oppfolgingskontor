@@ -2,6 +2,8 @@ appName: "$NAIS_APP_NAME"
 
 cluster: "$NAIS_CLUSTER_NAME: local"
 
+brukAoRuting: "$BRUK_AO_RUTING"
+
 ktor:
     application:
         modules:

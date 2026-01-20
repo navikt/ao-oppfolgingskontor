@@ -87,6 +87,7 @@ class SettArbeidsoppfolgingsKontorTest {
             "arbeidsoppfolgingskontortilordninger",
             { KontorNavn("Test KontorNavn") },
             { identerFunnet },
+            false
         )
         application {
             flywayMigrationInTest()

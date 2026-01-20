@@ -1,7 +1,6 @@
 package no.nav.services
 
 import db.table.AlternativAoKontorTable
-import no.nav.BRUK_AO_RUTING
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.db.table.ArenaKontorTable
 import no.nav.db.table.GeografiskTilknytningKontorTable

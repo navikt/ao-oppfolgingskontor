@@ -10,6 +10,7 @@ import http.configureContentNegotiation
 import http.configureHentArbeidsoppfolgingskontorBulkModule
 import io.ktor.server.application.*
 import io.ktor.server.netty.*
+import io.ktor.util.reflect.TypeInfo
 import kafka.producers.KontorEndringProducer
 import no.nav.db.configureDatabase
 import no.nav.http.client.*
@@ -113,10 +114,11 @@ fun Application.module() {
         producer = createKafkaProducer(this.environment.config.toKafkaEnv()),
         kontorTopicNavn = this.environment.topics().ut.arbeidsoppfolgingskontortilordninger.name,
         kontorNavnProvider = { kontorId -> kontorNavnService.getKontorNavn(kontorId) },
-        hentAlleIdenter = { identSomKanLagres -> identService.hentAlleIdenter(identSomKanLagres) }
+        hentAlleIdenter = { identSomKanLagres -> identService.hentAlleIdenter(identSomKanLagres) },
+        brukAoRuting = this.environment.getBrukAoRuting()
     )
     val republiseringService = KontorRepubliseringService(kontorEndringProducer::republiserKontor, datasource, kontorNavnService::friskOppAlleKontorNavn)
-    val arenaSyncService = ArenaSyncService(veilarbArenaClient, KontorTilordningService, kontorTilhorighetService, oppfolgingsperiodeService, BRUK_AO_RUTING)
+    val arenaSyncService = ArenaSyncService(veilarbArenaClient, KontorTilordningService, kontorTilhorighetService, oppfolgingsperiodeService, environment.getBrukAoRuting())
 
     install(KafkaStreamsPlugin) {
         this.automatiskKontorRutingService = automatiskKontorRutingService
@@ -130,7 +132,7 @@ fun Application.module() {
         this.kontorTilhorighetService = kontorTilhorighetService
         this.kontorEndringProducer = kontorEndringProducer
         this.veilarbArenaClient = veilarbArenaClient
-        this.brukAoRuting = BRUK_AO_RUTING
+        this.brukAoRuting = brukAoRuting
     }
 
     val issuer = environment.getIssuer()
@@ -143,7 +145,7 @@ fun Application.module() {
         poaoTilgangHttpClient,
         oppfolgingsperiodeService,
         { kontorEndringProducer.publiserEndringPåKontor(it) },
-        brukAoRuting = BRUK_AO_RUTING,
+        brukAoRuting = environment.getBrukAoRuting(),
     )
     configureAdminModule(automatiskKontorRutingService, republiseringService, arenaSyncService, identService)
     configureHentArbeidsoppfolgingskontorBulkModule(KontorTilhorighetBulkService)
@@ -161,5 +163,13 @@ fun ApplicationEnvironment.isProduction(): Boolean {
         ?.contentEquals("prod-gcp") ?: false
 }
 
-val BRUK_AO_RUTING: Boolean = false
-val PUBLISER_ARENA_KONTOR: Boolean = !BRUK_AO_RUTING
+fun ApplicationEnvironment.getBrukAoRuting(): Boolean {
+    return config.property("brukAoRuting").getString().toBoolean()
+}
+
+fun ApplicationEnvironment.getPubliserArenaKontor(): Boolean {
+    return !getPubliserArenaKontor()
+}
+
+//val BRUK_AO_RUTING: Boolean = false
+//val PUBLISER_ARENA_KONTOR: Boolean = !BRUK_AO_RUTING

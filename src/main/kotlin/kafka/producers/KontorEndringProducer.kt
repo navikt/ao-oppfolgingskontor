@@ -2,7 +2,6 @@ package kafka.producers
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import no.nav.BRUK_AO_RUTING
 import no.nav.db.AktorId
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
@@ -20,20 +19,20 @@ import no.nav.http.client.IdenterResult
 import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.clients.producer.ProducerRecord
 import services.KontortilordningSomSkalRepubliseres
-import kotlin.String
 
 class KontorEndringProducer(
     val producer: Producer<String, String?>,
     val kontorTopicNavn: String,
     val kontorNavnProvider: suspend (kontorId: KontorId) -> KontorNavn,
-    val hentAlleIdenter: suspend (identInput: IdentSomKanLagres) -> IdenterResult
+    val hentAlleIdenter: suspend (identInput: IdentSomKanLagres) -> IdenterResult,
+    val brukAoRuting: Boolean
 ) {
 
     /**
     * Brukes ved synkront endring via REST API
     * */
     suspend fun publiserEndringPåKontor(event: KontorSattAvVeileder): Result<Unit> {
-        if (BRUK_AO_RUTING) {
+        if (brukAoRuting) {
             return runCatching {
                 val (ident, aktorId) = finnPubliseringsIdenter(event.tilordning.fnr)
                 val value = event.toKontorTilordningMeldingDto(
