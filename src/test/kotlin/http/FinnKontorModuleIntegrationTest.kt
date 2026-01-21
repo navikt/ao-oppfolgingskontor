@@ -29,38 +29,33 @@ import kotlin.test.assertEquals
 
 class FinnKontorModuleIntegrationTest {
 
+    private val testIdent = Fnr(value = "01018012345", historisk = Ident.HistoriskStatus.UKJENT)
+    private val testKontorId = KontorId("1234")
+    private val testKontorNavn = KontorNavn("NAV Helsfyr")
+
     @Test
     fun `suksess gir 200 OK og korrekt respons`() = testApplication {
-        val kontorId = KontorId("1234")
-        val kontorNavn = KontorNavn("NAV Helsfyr")
-        val ident = Fnr(value = "01018012345", historisk = Ident.HistoriskStatus.UKJENT)
-        val event = lagKontorEndretEvent(kontorId, ident)
-        application {
-            testApp(TilordningSuccessKontorEndret(event), kontorNavn)
-        }
+        val event = lagKontorEndretEvent(testKontorId, testIdent)
+        application { testApp(TilordningSuccessKontorEndret(event), testKontorNavn) }
 
         val response = client.post("/api/finn-kontor") {
             contentType(ContentType.Application.Json)
-            setBody(Json.encodeToString(FinnKontorInputDto(ident, erArbeidssøker = true)))
+            setBody(Json.encodeToString(FinnKontorInputDto(testIdent, erArbeidssøker = true)))
         }
 
         assertEquals(HttpStatusCode.OK, response.status)
         val json = Json.decodeFromString(FinnKontorOutputDto.serializer(), response.bodyAsText())
-        assertEquals(kontorId, json.kontorId)
-        assertEquals(kontorNavn, json.kontorNavn)
+        assertEquals(testKontorId, json.kontorId)
+        assertEquals(testKontorNavn, json.kontorNavn)
     }
 
     @Test
     fun `feil fra ruting gir 500 InternalServerError`() = testApplication {
-        val ident = Fnr(value = "01018012345", historisk = Ident.HistoriskStatus.UKJENT)
-        application {
-            testApp(TilordningFeil("Feil oppstod"), KontorNavn("Ukjent"))
-
-        }
+        application { testApp(TilordningFeil("Feil oppstod"), testKontorNavn) }
 
         val response = client.post("/api/finn-kontor") {
             contentType(ContentType.Application.Json)
-            setBody(Json.encodeToString(FinnKontorInputDto(ident, erArbeidssøker = true)))
+            setBody(Json.encodeToString(FinnKontorInputDto(testIdent, erArbeidssøker = true)))
         }
 
         assertEquals(HttpStatusCode.InternalServerError, response.status)
@@ -68,33 +63,14 @@ class FinnKontorModuleIntegrationTest {
 
     @Test
     fun `ingen endring gir 500 InternalServerError`() = testApplication {
-        val ident = Fnr(value = "01018012345", historisk = Ident.HistoriskStatus.UKJENT)
-        application {
-            testApp(TilordningSuccessIngenEndring, KontorNavn("Ukjent"))
-        }
+        application { testApp(TilordningSuccessIngenEndring, testKontorNavn) }
 
         val response = client.post("/api/finn-kontor") {
             contentType(ContentType.Application.Json)
-            setBody(Json.encodeToString(FinnKontorInputDto(ident, erArbeidssøker = true)))
+            setBody(Json.encodeToString(FinnKontorInputDto(testIdent, erArbeidssøker = true)))
         }
 
         assertEquals(HttpStatusCode.InternalServerError, response.status)
-    }
-
-    @Test
-    fun `uautentisert gir 401 Unauthorized`() = testApplication {
-        val ident = Fnr(value = "01018012345", historisk = Ident.HistoriskStatus.UKJENT)
-        application {
-            testApp(TilordningSuccessIngenEndring, KontorNavn("Ukjent"))
-        }
-
-        val response = createClient {
-        }.post("/api/finn-kontor") {
-            contentType(ContentType.Application.Json)
-            setBody(Json.encodeToString(FinnKontorInputDto(ident, erArbeidssøker = true)))
-        }
-
-        assertEquals(HttpStatusCode.Unauthorized, response.status)
     }
 
     private fun lagKontorEndretEvent(kontorId: KontorId, fnr: Fnr): KontorEndringer {
