@@ -28,8 +28,7 @@ fun Application.configureFinnKontorModule(
                 val resultat = dryRunKontorTilordning(ident, erArbeidssøker)
 
                 when (resultat) {
-                    is TilordningFeil, is TilordningRetry -> call.respond(HttpStatusCode.InternalServerError)
-                    is TilordningSuccessIngenEndring -> call.respond(HttpStatusCode.InternalServerError) // TODO: Blir dette riktig? Skal jo være en endring...
+                    is TilordningFeil, is TilordningRetry, is TilordningSuccessIngenEndring -> call.respond(HttpStatusCode.InternalServerError)
                     is TilordningSuccessKontorEndret -> {
                         val tilordning = resultat.kontorEndretEvent.aoKontorEndret?.tilordning ?: return@post call.respond(HttpStatusCode.InternalServerError)
                         val kontorId = tilordning.kontorId
