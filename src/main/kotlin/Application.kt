@@ -8,11 +8,14 @@ import http.client.getAaregScope
 import http.client.getVeilarbarenaScope
 import http.configureContentNegotiation
 import http.configureHentArbeidsoppfolgingskontorBulkModule
-import io.ktor.server.application.*
+import io.ktor.server.application.Application
+import io.ktor.server.application.ApplicationEnvironment
+import io.ktor.server.application.install
 import io.ktor.server.netty.*
-import io.ktor.util.reflect.TypeInfo
 import kafka.producers.KontorEndringProducer
+import no.nav.db.IdentSomKanLagres
 import no.nav.db.configureDatabase
+import no.nav.domain.OppfolgingsperiodeId
 import no.nav.http.client.*
 import no.nav.http.client.arbeidssogerregisteret.ArbeidssokerregisterClient
 import no.nav.http.client.arbeidssogerregisteret.getArbeidssokerregisteretScope
@@ -23,6 +26,7 @@ import no.nav.http.client.tokenexchange.TexasSystemTokenClient
 import no.nav.http.client.tokenexchange.getNaisTokenEndpoint
 import no.nav.http.configureArbeidsoppfolgingskontorModule
 import no.nav.http.configureAdminModule
+import no.nav.http.configureFinnKontorModule
 import no.nav.http.graphql.AuthenticateRequest
 import no.nav.http.graphql.configureGraphQlModule
 import no.nav.http.graphql.getAaregUrl
@@ -40,6 +44,7 @@ import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
 import no.nav.services.KontorTilordningService
 import no.nav.services.OppfolgingsperiodeDao
+import no.nav.services.TilordningResultat
 import services.ArenaSyncService
 import services.IdentService
 import services.KontorForBrukerMedMangelfullGtService
@@ -47,6 +52,9 @@ import services.KontorRepubliseringService
 import services.KontorTilhorighetBulkService
 import services.OppfolgingsperiodeService
 import topics
+import utils.Outcome
+import java.time.ZonedDateTime
+import java.util.UUID
 
 fun main(args: Array<String>) {
     EngineMain.main(args)
@@ -110,6 +118,15 @@ fun Application.module() {
         { oppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) },
         { _, oppfolgingsperiodeId -> OppfolgingsperiodeDao.finnesAoKontorPåPeriode(oppfolgingsperiodeId) },
     )
+    val dryRunKontorRutingService = automatiskKontorRutingService.copy(harAlleredeTilordnetAoKontorForOppfolgingsperiode = { Ident, b: OppfolgingsperiodeId -> Outcome.Success(false) })
+    val dryRunTilordneKontor: suspend (IdentSomKanLagres, Boolean) -> TilordningResultat = { ident, erArbeidssøker -> dryRunKontorRutingService.tilordneKontorAutomatisk(
+            ident = ident,
+            oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
+            erArbeidssøkerRegistrering = erArbeidssøker,
+            oppfolgingStartDato = ZonedDateTime.now().minusMinutes(1)
+        )
+    }
+
     val kontorEndringProducer = KontorEndringProducer(
         producer = createKafkaProducer(this.environment.config.toKafkaEnv()),
         kontorTopicNavn = this.environment.topics().ut.arbeidsoppfolgingskontortilordninger.name,
@@ -148,7 +165,8 @@ fun Application.module() {
         { kontorEndringProducer.publiserEndringPåKontor(it) },
         brukAoRuting = environment.getBrukAoRuting(),
     )
-    configureAdminModule(automatiskKontorRutingService, republiseringService, arenaSyncService, identService)
+    configureFinnKontorModule(dryRunTilordneKontor, kontorNavnService::getKontorNavn)
+    configureAdminModule(dryRunTilordneKontor, republiseringService, arenaSyncService, identService)
     configureHentArbeidsoppfolgingskontorBulkModule(KontorTilhorighetBulkService)
 }
 
