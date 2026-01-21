@@ -6,6 +6,7 @@ import io.ktor.server.auth.*
 import io.ktor.server.request.*
 import io.ktor.server.response.respond
 import io.ktor.server.routing.*
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import no.nav.db.IdentSomKanLagres
 import no.nav.domain.KontorId
@@ -20,16 +21,6 @@ fun Application.configureFinnKontorModule(
     dryRunKontorTilordning: suspend (ident: IdentSomKanLagres, erArbeidssøker: Boolean) -> TilordningResultat,
     kontorNavn: suspend (KontorId) -> KontorNavn
 ) {
-    data class FinnKontorInputDto(
-        val ident: IdentSomKanLagres,
-        val erArbeidssøker: Boolean
-    )
-
-    data class FinnKontorOutputDto(
-        val kontorId: KontorId,
-        val kontorNavn: KontorNavn
-    )
-
     routing {
         authenticate("EntraAD") {
             post("/api/finn-kontor") {
@@ -54,3 +45,15 @@ fun Application.configureFinnKontorModule(
         }
     }
 }
+
+@Serializable
+data class FinnKontorInputDto(
+    val ident: IdentSomKanLagres,
+    val erArbeidssøker: Boolean
+)
+
+@Serializable
+data class FinnKontorOutputDto(
+    val kontorId: KontorId,
+    val kontorNavn: KontorNavn
+)
