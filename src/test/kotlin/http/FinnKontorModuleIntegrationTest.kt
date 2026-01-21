@@ -1,27 +1,31 @@
 package http
 
+import domain.kontorForGt.KontorForGtFantDefaultKontor
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.testing.*
-import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.Json
 import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
-import no.nav.domain.KontorId
-import no.nav.domain.KontorNavn
+import no.nav.domain.*
+import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.http.FinnKontorInputDto
 import no.nav.http.FinnKontorOutputDto
+import no.nav.http.client.GeografiskTilknytningKommuneNr
 import no.nav.http.configureFinnKontorModule
+import no.nav.kafka.consumers.KontorEndringer
 import no.nav.services.TilordningFeil
 import no.nav.services.TilordningResultat
-import no.nav.services.TilordningSuccessKontorEndret
 import no.nav.services.TilordningSuccessIngenEndring
+import no.nav.services.TilordningSuccessKontorEndret
 import org.junit.Test
+import java.util.*
 import kotlin.test.assertEquals
 
 class FinnKontorModuleIntegrationTest {
@@ -45,7 +49,7 @@ class FinnKontorModuleIntegrationTest {
         val kontorId = KontorId("1234")
         val kontorNavn = KontorNavn("NAV Testkontor")
         val ident = Fnr(value = "01018012345", historisk = Ident.HistoriskStatus.UKJENT)
-        val event = lagKontorEndretEvent(kontorId)
+        val event = lagKontorEndretEvent(kontorId, ident)
         application {
             testApp(
                 dryRunKontorTilordning = { i, _ ->
@@ -117,8 +121,17 @@ class FinnKontorModuleIntegrationTest {
         assertEquals(HttpStatusCode.Unauthorized, response.status)
     }
 
-    private fun lagKontorEndretEvent(kontorId: KontorId): Any {
-        data class KontorEndretEvent(val kontorId: KontorId)
-        return KontorEndretEvent(kontorId)
+    private fun lagKontorEndretEvent(kontorId: KontorId, fnr: Fnr): KontorEndringer {
+        return KontorEndringer(
+            aoKontorEndret = OppfolgingsPeriodeStartetLokalKontorTilordning(
+                kontorTilordning = KontorTilordning(fnr, kontorId, OppfolgingsperiodeId(UUID.randomUUID())),
+                kontorForGt = KontorForGtFantDefaultKontor(
+                    kontorId,
+                    HarSkjerming(false),
+                    HarStrengtFortroligAdresse(false),
+                    GeografiskTilknytningKommuneNr(kontorId.id)
+                )
+            )
+        )
     }
 }
