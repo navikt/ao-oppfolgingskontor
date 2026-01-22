@@ -92,7 +92,7 @@ fun Application.module() {
     val eregClient = EregClient(
         baseUrl = environment.getEregUrl(),
     )
- 
+
     val kontorForBrukerMedMangelfullGtService = KontorForBrukerMedMangelfullGtService(
         {aaregClient.hentArbeidsforhold(it)},
         {eregClient.hentNøkkelinfoOmArbeidsgiver(it)},
@@ -119,13 +119,15 @@ fun Application.module() {
         { _, oppfolgingsperiodeId -> OppfolgingsperiodeDao.finnesAoKontorPåPeriode(oppfolgingsperiodeId) },
     )
     val dryRunKontorRutingService = automatiskKontorRutingService.copy(harAlleredeTilordnetAoKontorForOppfolgingsperiode = { Ident, b: OppfolgingsperiodeId -> Outcome.Success(false) })
-    val simulerKontorTilordning: suspend (IdentSomKanLagres, Boolean) -> TilordningResultat = { ident, erArbeidssøker -> dryRunKontorRutingService.tilordneKontorAutomatisk(
-            ident = ident,
-            oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
-            erArbeidssøkerRegistrering = erArbeidssøker,
-            oppfolgingStartDato = ZonedDateTime.now().minusMinutes(1)
-        )
-    }
+    val simulerKontorTilordning: suspend (IdentSomKanLagres, Boolean) -> TilordningResultat =
+        { ident, erArbeidssøker ->
+            dryRunKontorRutingService.tilordneKontorAutomatisk(
+                ident = ident,
+                oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
+                erArbeidssøkerRegistrering = erArbeidssøker,
+                oppfolgingStartDato = ZonedDateTime.now().minusMinutes(1)
+            )
+        }
 
     val kontorEndringProducer = KontorEndringProducer(
         producer = createKafkaProducer(this.environment.config.toKafkaEnv()),
