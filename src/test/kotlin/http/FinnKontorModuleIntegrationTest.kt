@@ -21,6 +21,7 @@ import no.nav.http.configureFinnKontorModule
 import no.nav.kafka.consumers.KontorEndringer
 import no.nav.services.TilordningFeil
 import no.nav.services.TilordningResultat
+import no.nav.services.TilordningRetry
 import no.nav.services.TilordningSuccessIngenEndring
 import no.nav.services.TilordningSuccessKontorEndret
 import org.junit.jupiter.api.Test
@@ -50,7 +51,7 @@ class FinnKontorModuleIntegrationTest {
     }
 
     @Test
-    fun `feil fra ruting gir 500 InternalServerError`() = testApplication {
+    fun `TilordningFeil gir 500 InternalServerError`() = testApplication {
         application { testApp(TilordningFeil("Feil oppstod"), testKontorNavn) }
 
         val response = client.post("/api/finn-kontor") {
@@ -62,8 +63,20 @@ class FinnKontorModuleIntegrationTest {
     }
 
     @Test
-    fun `ingen endring gir 500 InternalServerError`() = testApplication {
+    fun `TilordningSuccessIngenEndring gir 500 InternalServerError`() = testApplication {
         application { testApp(TilordningSuccessIngenEndring, testKontorNavn) }
+
+        val response = client.post("/api/finn-kontor") {
+            contentType(ContentType.Application.Json)
+            setBody(Json.encodeToString(FinnKontorInputDto(testIdent, erArbeidssøker = true)))
+        }
+
+        assertEquals(HttpStatusCode.InternalServerError, response.status)
+    }
+
+    @Test
+    fun `TilordningRetry gir 500 InternalServerError`() = testApplication {
+        application { testApp(TilordningRetry("message"), testKontorNavn) }
 
         val response = client.post("/api/finn-kontor") {
             contentType(ContentType.Application.Json)
