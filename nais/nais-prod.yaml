@@ -69,6 +69,7 @@ spec:
           permissions:
            roles:
              - "bulk-hent-kontor"
+        - application: inngar
     outbound:
       rules:
         - application: norg2
