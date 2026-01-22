@@ -16,11 +16,14 @@ import no.nav.services.TilordningResultat
 import no.nav.services.TilordningRetry
 import no.nav.services.TilordningSuccessIngenEndring
 import no.nav.services.TilordningSuccessKontorEndret
+import org.slf4j.LoggerFactory
 
 fun Application.configureFinnKontorModule(
     simulerKontorTilordning: suspend (ident: IdentSomKanLagres, erArbeidssøker: Boolean) -> TilordningResultat,
     kontorNavn: suspend (KontorId) -> KontorNavn
 ) {
+    val log = LoggerFactory.getLogger("FinnKontorModule")
+
     routing {
         authenticate("EntraAD") {
             post("/api/finn-kontor") {
@@ -28,10 +31,17 @@ fun Application.configureFinnKontorModule(
                 val resultat = simulerKontorTilordning(ident, erArbeidssøker)
 
                 when (resultat) {
-                    is TilordningFeil, is TilordningRetry, is TilordningSuccessIngenEndring -> call.respond(HttpStatusCode.InternalServerError)
+                    is TilordningFeil, is TilordningRetry, is TilordningSuccessIngenEndring -> {
+                        log.warn("Uventet resultat ved finn-kontor: $resultat")
+                        call.respond(HttpStatusCode.InternalServerError)
+                    }
                     is TilordningSuccessKontorEndret -> {
-                        val tilordning = resultat.kontorEndretEvent.aoKontorEndret?.tilordning ?: return@post call.respond(HttpStatusCode.InternalServerError)
-                        val kontorId = tilordning.kontorId
+                        val aoKontorEndret = resultat.kontorEndretEvent.aoKontorEndret
+                        if (aoKontorEndret == null) {
+                            log.warn("Fikk ikke ao-kontorendring på finn-kontor")
+                            return@post call.respond(HttpStatusCode.InternalServerError)
+                        }
+                        val kontorId = aoKontorEndret.tilordning.kontorId
                         val kontorNavn = kontorNavn(kontorId)
 
                         call.respond(FinnKontorOutputDto(
