@@ -45,8 +45,8 @@ fun Application.configureFinnKontorModule(
                         val kontorNavn = kontorNavn(kontorId)
 
                         call.respond(FinnKontorOutputDto(
-                            kontorId = kontorId,
-                            kontorNavn = kontorNavn
+                            kontorId = kontorId.id,
+                            kontorNavn = kontorNavn.navn
                         ))
                     }
                 }
@@ -63,6 +63,6 @@ data class FinnKontorInputDto(
 
 @Serializable
 data class FinnKontorOutputDto(
-    val kontorId: KontorId,
-    val kontorNavn: KontorNavn
+    val kontorId: String,
+    val kontorNavn: String
 )

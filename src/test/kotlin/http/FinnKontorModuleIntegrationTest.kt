@@ -46,8 +46,8 @@ class FinnKontorModuleIntegrationTest {
 
         assertEquals(HttpStatusCode.OK, response.status)
         val json = Json.decodeFromString(FinnKontorOutputDto.serializer(), response.bodyAsText())
-        assertEquals(testKontorId, json.kontorId)
-        assertEquals(testKontorNavn, json.kontorNavn)
+        assertEquals(testKontorId.id, json.kontorId)
+        assertEquals(testKontorNavn.navn, json.kontorNavn)
     }
 
     @Test
