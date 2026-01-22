@@ -106,6 +106,7 @@ class GraphqlApplicationTest {
         kontorhistorikk.kontorType shouldBe KontorType.ARENA
         kontorhistorikk.endringsType shouldBe KontorEndringsType.EndretIArena
         kontorhistorikk.endretAv shouldBe System().getIdent()
+        kontorhistorikk.kontorNavn shouldBe null
         Instant.parse(kontorhistorikk.endretTidspunkt).shouldBeCloseTo(Instant.now(), 500.milliseconds)
     }
 

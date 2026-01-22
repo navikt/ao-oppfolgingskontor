@@ -13,4 +13,5 @@ data class KontorHistorikkQueryDto(
     val endretAv: String,
     val endretAvType: String,
     val endretTidspunkt: String,
+    val kontorNavn: String?,
 )

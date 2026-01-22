@@ -17,3 +17,4 @@ class KontorHistorikkEntity(id: EntityID<Int>) : Entity<Int>(id) {
     val kontorType by KontorhistorikkTable.kontorType
     val oppfolgingsperiode by KontorhistorikkTable.oppfolgingsperiodeId
 }
+
