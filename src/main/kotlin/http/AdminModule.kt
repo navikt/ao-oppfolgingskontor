@@ -15,7 +15,6 @@ import no.nav.db.IdentSomKanLagres
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.security.token.support.v3.RequiredClaims
 import no.nav.security.token.support.v3.tokenValidationSupport
-import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.TilordningFeil
 import no.nav.services.TilordningResultat
 import no.nav.services.TilordningRetry
@@ -25,16 +24,13 @@ import org.slf4j.LoggerFactory
 import services.ArenaSyncService
 import services.IdentService
 import services.KontorRepubliseringService
-import utils.Outcome
-import java.time.ZonedDateTime
 import java.util.UUID
-import kotlin.time.Duration.Companion.minutes
 
 val log = LoggerFactory.getLogger("AdminModule")
 
 
 fun Application.configureAdminModule(
-    dryRunKontorTilordning: suspend (ident: IdentSomKanLagres, erArbeidssøker: Boolean) -> TilordningResultat,
+    simulerKontorTilordning: suspend (ident: IdentSomKanLagres, erArbeidssøker: Boolean) -> TilordningResultat,
     kontorRepubliseringService: KontorRepubliseringService,
     arenaSyncService: ArenaSyncService,
     identService: IdentService,
@@ -123,7 +119,7 @@ fun Application.configureAdminModule(
                     val godkjenteIdenter =
                         identer.map { Ident.validateIdentSomKanLagres(it, Ident.HistoriskStatus.UKJENT) }
                     val result: Map<String, String> = godkjenteIdenter.associateWith { godkjentIdent ->
-                        val res = dryRunKontorTilordning(godkjentIdent, true)
+                        val res = simulerKontorTilordning(godkjentIdent, true)
                         val output: String = when (res) {
                             is TilordningFeil -> res.message
                             is TilordningRetry -> res.message

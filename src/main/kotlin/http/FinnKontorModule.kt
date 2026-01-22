@@ -18,14 +18,14 @@ import no.nav.services.TilordningSuccessIngenEndring
 import no.nav.services.TilordningSuccessKontorEndret
 
 fun Application.configureFinnKontorModule(
-    dryRunKontorTilordning: suspend (ident: IdentSomKanLagres, erArbeidssøker: Boolean) -> TilordningResultat,
+    simulerKontorTilordning: suspend (ident: IdentSomKanLagres, erArbeidssøker: Boolean) -> TilordningResultat,
     kontorNavn: suspend (KontorId) -> KontorNavn
 ) {
     routing {
         authenticate("EntraAD") {
             post("/api/finn-kontor") {
                 val (ident, erArbeidssøker) = Json.decodeFromString<FinnKontorInputDto>(call.receiveText())
-                val resultat = dryRunKontorTilordning(ident, erArbeidssøker)
+                val resultat = simulerKontorTilordning(ident, erArbeidssøker)
 
                 when (resultat) {
                     is TilordningFeil, is TilordningRetry, is TilordningSuccessIngenEndring -> call.respond(HttpStatusCode.InternalServerError)

@@ -119,7 +119,7 @@ fun Application.module() {
         { _, oppfolgingsperiodeId -> OppfolgingsperiodeDao.finnesAoKontorPåPeriode(oppfolgingsperiodeId) },
     )
     val dryRunKontorRutingService = automatiskKontorRutingService.copy(harAlleredeTilordnetAoKontorForOppfolgingsperiode = { Ident, b: OppfolgingsperiodeId -> Outcome.Success(false) })
-    val dryRunTilordneKontor: suspend (IdentSomKanLagres, Boolean) -> TilordningResultat = { ident, erArbeidssøker -> dryRunKontorRutingService.tilordneKontorAutomatisk(
+    val simulerKontorTilordning: suspend (IdentSomKanLagres, Boolean) -> TilordningResultat = { ident, erArbeidssøker -> dryRunKontorRutingService.tilordneKontorAutomatisk(
             ident = ident,
             oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
             erArbeidssøkerRegistrering = erArbeidssøker,
@@ -165,8 +165,8 @@ fun Application.module() {
         { kontorEndringProducer.publiserEndringPåKontor(it) },
         brukAoRuting = environment.getBrukAoRuting(),
     )
-    configureFinnKontorModule(dryRunTilordneKontor, kontorNavnService::getKontorNavn)
-    configureAdminModule(dryRunTilordneKontor, republiseringService, arenaSyncService, identService)
+    configureFinnKontorModule(simulerKontorTilordning, kontorNavnService::getKontorNavn)
+    configureAdminModule(simulerKontorTilordning, republiseringService, arenaSyncService, identService)
     configureHentArbeidsoppfolgingskontorBulkModule(KontorTilhorighetBulkService)
 }
 
