@@ -3,7 +3,6 @@ package eventsLogger
 import com.google.cloud.bigquery.BigQueryOptions
 import com.google.cloud.bigquery.InsertAllRequest
 import com.google.cloud.bigquery.TableId
-import com.google.cloud.Timestamp
 import org.slf4j.LoggerFactory
 
 class BigQueryClient(projectId: String) {
@@ -19,7 +18,7 @@ class BigQueryClient(projectId: String) {
         val row = mapOf(
             "id" to System.currentTimeMillis(),
             "name" to "TestBruker",
-            "created_at" to Timestamp.now()
+            "created_at" to java.time.Instant.now().toString()
         )
 
         val insertRequest = InsertAllRequest.newBuilder(tableId)
