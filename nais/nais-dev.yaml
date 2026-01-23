@@ -32,6 +32,10 @@ spec:
         flags:
           - name: cloudsql.logical_decoding
             value: "on"
+    bigQueryDatasets:
+      - name: kontor_metrikker
+        description: Metrikker for ao-oppfolgingskontor
+        permission: READWRITE
   prometheus:
     enabled: true
     path: /metrics

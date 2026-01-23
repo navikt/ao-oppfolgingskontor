@@ -1,26 +1,33 @@
 package eventsLogger
 
-/*
 import com.google.cloud.bigquery.BigQueryOptions
 import com.google.cloud.bigquery.InsertAllRequest
 import com.google.cloud.bigquery.TableId
- */
+import com.google.cloud.Timestamp
 
-interface BigQueryClient {
-    fun loggUfordeltBruker()
-    fun loggBrukerTilNavUtland() {}
-}
-/*
-class BigQueryClientImplementation(projectId: String) : BigQueryClient {
+class BigQueryClient(projectId: String) {
 
-    private fun TableId.insertRequest(row: Map<String, Any>): InsertAllRequest {
-        return InsertAllRequest.newBuilder(this).addRow(row).build()
+    private val DATASET_NAME = "kontor_metrikker"
+    private val bigQuery = BigQueryOptions.newBuilder().setProjectId(projectId).build().service
+
+    fun sendTestRow() {
+        val tableId = TableId.of(DATASET_NAME, "test_table")
+        val row = mapOf(
+            "id" to System.currentTimeMillis(),
+            "name" to "TestBruker",
+            "created_at" to Timestamp.now()
+        )
+
+        val insertRequest = InsertAllRequest.newBuilder(tableId)
+            .addRow(row)
+            .build()
+
+        val response = bigQuery.insertAll(insertRequest)
+
+        if (response.hasErrors()) {
+            println("Feil ved insert: ${response.insertErrors}")
+        } else {
+            println("Insert OK! BigQuery-kontakt fungerer.")
+        }
     }
-
-    val bigQuery = BigQueryOptions.newBuilder().setProjectId(projectId).build().service
-
-    override fun loggUfordeltBruker() {}
-
-    override fun loggBrukerTilNavUtland() {}
-
-}*/
+}

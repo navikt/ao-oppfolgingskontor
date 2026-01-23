@@ -1,6 +1,7 @@
 package no.nav
 
 import dab.poao.nav.no.health.CriticalErrorNotificationFunction
+import eventsLogger.BigQueryClient
 import http.client.AaregClient
 import http.client.EregClient
 import http.client.VeilarbArenaClient
@@ -10,9 +11,11 @@ import http.configureContentNegotiation
 import http.configureHentArbeidsoppfolgingskontorBulkModule
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationEnvironment
+import io.ktor.server.application.ApplicationStarted
 import io.ktor.server.application.install
 import io.ktor.server.netty.*
 import kafka.producers.KontorEndringProducer
+import kotlinx.coroutines.launch
 import no.nav.db.IdentSomKanLagres
 import no.nav.db.configureDatabase
 import no.nav.domain.OppfolgingsperiodeId
@@ -61,6 +64,15 @@ fun main(args: Array<String>) {
 }
 
 fun Application.module() {
+    environment.monitor.subscribe(ApplicationStarted) {
+        launch {
+            val projectId = "ao-oppfolgingskontor"
+            val bigQueryClient = BigQueryClient(projectId)
+            bigQueryClient.sendTestRow()
+        }
+    }
+
+
     val meterRegistry = configureMonitoring()
     val setCriticalError: CriticalErrorNotificationFunction = configureHealthAndCompression()
     configureSecurity()
