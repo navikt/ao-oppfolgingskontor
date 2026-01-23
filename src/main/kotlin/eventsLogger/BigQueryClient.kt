@@ -14,7 +14,7 @@ class BigQueryClient(projectId: String) {
     val log = LoggerFactory.getLogger(this::class.java)
 
     fun sendTestRow() {
-        log.info("Sending test row")
+        log.info("BigQuery Sending test row")
         val tableId = TableId.of(DATASET_NAME, "test_table")
         val row = mapOf(
             "id" to System.currentTimeMillis(),
@@ -26,12 +26,16 @@ class BigQueryClient(projectId: String) {
             .addRow(row)
             .build()
 
+        log.info("BigQuery inserterer rad: $row")
+
         val response = bigQuery.insertAll(insertRequest)
 
+        log.info("BigQuery response: $response")
+
         if (response.hasErrors()) {
-            log.error("Feil ved insert: ${response.insertErrors}")
+            log.error("BigQuery Feil ved insert: ${response.insertErrors}")
         } else {
-            log.info("Insert OK! BigQuery-kontakt fungerer.")
+            log.info("BigQuery Insert OK! BigQuery-kontakt fungerer.")
         }
     }
 }
