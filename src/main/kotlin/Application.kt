@@ -66,7 +66,7 @@ fun main(args: Array<String>) {
 fun Application.module() {
     environment.monitor.subscribe(ApplicationStarted) {
         launch {
-            val projectId = "ao-oppfolgingskontor"
+            val projectId = environment.config.property("app.gcp.projectId").getString()
             val bigQueryClient = BigQueryClient(projectId)
             bigQueryClient.sendTestRow()
         }

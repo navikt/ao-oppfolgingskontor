@@ -89,4 +89,4 @@ topics:
 
 app:
   gcp:
-    projectId: ao-oppfolgingskontor
+    projectId: "$GCP_TEAM_PROJECT_ID"
