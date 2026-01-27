@@ -3,6 +3,7 @@ package eventsLogger
 import com.google.cloud.bigquery.BigQueryOptions
 import com.google.cloud.bigquery.InsertAllRequest
 import com.google.cloud.bigquery.TableId
+import org.jetbrains.exposed.sql.statements.StatementType
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 
@@ -113,7 +114,8 @@ class BigQueryClient(projectId: String) {
                         WHERE ao.kontor_id = '2990'
                           AND (ar.arenakontor_start IS NULL
                                OR ar.arenakontor_start <> '2990')
-            """.trimIndent()
+            """.trimIndent(),
+                explicitStatementType = StatementType.SELECT
             ) { rs ->
 
                 while (rs.next()) {
