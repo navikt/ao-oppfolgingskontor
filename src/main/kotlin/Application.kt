@@ -48,13 +48,19 @@ fun Application.module() {
     configureSecurity()
     val (datasource, database) = configureDatabase()
 
+    val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     environment.monitor.subscribe(ApplicationStarted) {
-        launch {
+        appScope.launch {
             startBigQueryScheduler(
                 projectId = environment.config.property("app.gcp.projectId").getString(),
                 database = database
             )
         }
+    }
+
+    environment.monitor.subscribe(ApplicationStopping) {
+        appScope.cancel()
     }
 
     val norg2Client = Norg2Client(environment.getNorg2Url())
