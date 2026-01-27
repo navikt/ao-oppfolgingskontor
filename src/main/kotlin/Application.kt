@@ -68,7 +68,7 @@ fun Application.module() {
         launch {
             val projectId = environment.config.property("app.gcp.projectId").getString()
             val bigQueryClient = BigQueryClient(projectId)
-            bigQueryClient.sendTestRow()
+            bigQueryClient.lastOpp2990AvvikSnapshot()
         }
     }
 
