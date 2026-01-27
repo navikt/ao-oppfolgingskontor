@@ -128,9 +128,10 @@ class BigQueryClient(projectId: String) {
                             "antall_arena_endringer" to rs.getInt("antall_arena_endringer"),
                             "arenakontor_endret" to rs.getString("arenakontor_endret"),
                             "tid_diff_sek" to rs.getObject("tid_diff_sek") as Long?,
-                            "oppfolging_startet_tidspunkt" to rs.getTimestamp("oppfolging_startet_tidspunkt"),
-                            "arena_siste_endret_tidspunkt" to rs.getTimestamp("arena_siste_endret_tidspunkt"),
-                            "datasett_sist_oppdatert" to com.google.cloud.Timestamp.now()
+                            "oppfolging_startet_tidspunkt"  to rs.getTimestamp("oppfolging_startet_tidspunkt")?.toInstant()?.toString(),
+                            "arena_siste_endret_tidspunkt"  to rs.getTimestamp("arena_siste_endret_tidspunkt")?.toInstant()?.toString(),
+                            "datasett_sist_oppdatert"       to java.time.Instant.now().toString()
+
                         )
                     )
                 }
