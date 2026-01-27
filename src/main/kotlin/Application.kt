@@ -2,20 +2,14 @@ package no.nav
 
 import dab.poao.nav.no.health.CriticalErrorNotificationFunction
 import eventsLogger.BigQueryClient
-import http.client.AaregClient
-import http.client.EregClient
-import http.client.VeilarbArenaClient
-import http.client.getAaregScope
-import http.client.getVeilarbarenaScope
+import http.client.*
 import http.configureContentNegotiation
 import http.configureHentArbeidsoppfolgingskontorBulkModule
-import io.ktor.server.application.Application
-import io.ktor.server.application.ApplicationEnvironment
-import io.ktor.server.application.ApplicationStarted
-import io.ktor.server.application.install
+import io.ktor.server.application.*
 import io.ktor.server.netty.*
 import kafka.producers.KontorEndringProducer
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
+import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
 import no.nav.db.IdentSomKanLagres
 import no.nav.db.configureDatabase
 import no.nav.domain.OppfolgingsperiodeId
@@ -27,56 +21,41 @@ import no.nav.http.client.poaoTilgang.PoaoTilgangKtorHttpClient
 import no.nav.http.client.poaoTilgang.getPoaoTilgangScope
 import no.nav.http.client.tokenexchange.TexasSystemTokenClient
 import no.nav.http.client.tokenexchange.getNaisTokenEndpoint
-import no.nav.http.configureArbeidsoppfolgingskontorModule
 import no.nav.http.configureAdminModule
+import no.nav.http.configureArbeidsoppfolgingskontorModule
 import no.nav.http.configureFinnKontorModule
-import no.nav.http.graphql.AuthenticateRequest
-import no.nav.http.graphql.configureGraphQlModule
-import no.nav.http.graphql.getAaregUrl
-import no.nav.http.graphql.getEregUrl
-import no.nav.http.graphql.getNorg2Url
-import no.nav.http.graphql.getPDLUrl
-import no.nav.http.graphql.getPoaoTilgangUrl
-import no.nav.http.graphql.getVeilarbArenaUrl
+import no.nav.http.graphql.*
+import no.nav.http.log
 import no.nav.kafka.KafkaStreamsPlugin
 import no.nav.kafka.config.createKafkaProducer
 import no.nav.kafka.config.toKafkaEnv
-import no.nav.services.AutomatiskKontorRutingService
-import no.nav.services.GTNorgService
-import no.nav.services.KontorNavnService
-import no.nav.services.KontorTilhorighetService
-import no.nav.services.KontorTilordningService
-import no.nav.services.OppfolgingsperiodeDao
-import no.nav.services.TilordningResultat
-import services.ArenaSyncService
-import services.IdentService
-import services.KontorForBrukerMedMangelfullGtService
-import services.KontorRepubliseringService
-import services.KontorTilhorighetBulkService
-import services.OppfolgingsperiodeService
+import no.nav.services.*
+import org.jetbrains.exposed.sql.Database
+import services.*
 import topics
 import utils.Outcome
+import java.time.Duration
 import java.time.ZonedDateTime
-import java.util.UUID
+import java.util.*
 
 fun main(args: Array<String>) {
     EngineMain.main(args)
 }
 
 fun Application.module() {
-    environment.monitor.subscribe(ApplicationStarted) {
-        launch {
-            val projectId = environment.config.property("app.gcp.projectId").getString()
-            val bigQueryClient = BigQueryClient(projectId)
-            bigQueryClient.lastOpp2990AvvikSnapshot()
-        }
-    }
-
-
     val meterRegistry = configureMonitoring()
     val setCriticalError: CriticalErrorNotificationFunction = configureHealthAndCompression()
     configureSecurity()
     val (datasource, database) = configureDatabase()
+
+    environment.monitor.subscribe(ApplicationStarted) {
+        launch {
+            startBigQueryScheduler(
+                projectId = environment.config.property("app.gcp.projectId").getString(),
+                database = database
+            )
+        }
+    }
 
     val norg2Client = Norg2Client(environment.getNorg2Url())
 
@@ -202,4 +181,26 @@ fun ApplicationEnvironment.getBrukAoRuting(): Boolean {
 
 fun ApplicationEnvironment.getPubliserArenaKontor(): Boolean {
     return !getBrukAoRuting()
+}
+
+private suspend fun startBigQueryScheduler(
+    projectId: String,
+    database: Database,
+    interval: Duration = Duration.ofMinutes(5)
+    //interval: Duration = Duration.ofHours(1)
+) {
+    val bigQueryClient = BigQueryClient(
+        projectId,
+        ExposedLockProvider(database)
+    )
+
+    while (true) {
+        try {
+            bigQueryClient.sendAlle2990AvvikTilBigQuery()
+        } catch (e: Exception) {
+            log.error("Feil i periodisk BigQuery-jobb", e)
+        }
+
+        delay(interval.toMillis())
+    }
 }

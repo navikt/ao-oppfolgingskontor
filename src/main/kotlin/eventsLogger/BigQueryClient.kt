@@ -3,40 +3,53 @@ package eventsLogger
 import com.google.cloud.bigquery.BigQueryOptions
 import com.google.cloud.bigquery.InsertAllRequest
 import com.google.cloud.bigquery.TableId
+import net.javacrumbs.shedlock.core.LockConfiguration
+import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
 import org.jetbrains.exposed.sql.statements.StatementType
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
+import java.time.Duration
+import java.time.Instant
 
-class BigQueryClient(projectId: String) {
+class BigQueryClient(
+    projectId: String,
+    private val lockProvider: ExposedLockProvider
+) {
 
     private val DATASET_NAME = "kontor_metrikker"
     private val bigQuery = BigQueryOptions.newBuilder().setProjectId(projectId).build().service
 
     val log = LoggerFactory.getLogger(this::class.java)
 
-    fun sendTestRow() {
-        log.info("BigQuery Sending test row")
-        val tableId = TableId.of(DATASET_NAME, "test_table")
-        val row = mapOf(
-            "id" to System.currentTimeMillis(),
-            "name" to "TestBruker",
-            "created_at" to java.time.Instant.now().toString()
+    fun sendAlle2990AvvikTilBigQuery() {
+        val lockConfig = LockConfiguration(
+            Instant.now(),
+            "bigquery_avvik_2990_snapshot",
+            Duration.ofMinutes(65),
+            Duration.ofMinutes(3)
         )
 
-        val insertRequest = InsertAllRequest.newBuilder(tableId)
-            .addRow(row)
-            .build()
+        val maybeLock = lockProvider.lock(lockConfig)
+        if (maybeLock.isPresent) {
+            val acquiredLock = maybeLock.get()
+            try {
+                log.info("Starter BigQuery-jobb med lås")
+                log.info("Henter avviksdata fra Postgres")
 
-        log.info("BigQuery inserterer rad: $row")
+                val rows = hentAvvik2990AoKontorVsArenakontor()
 
-        val response = bigQuery.insertAll(insertRequest)
+                log.info("Fant ${rows.size} rader – laster sender til BigQuery")
 
-        log.info("BigQuery response: $response")
-
-        if (response.hasErrors()) {
-            log.error("BigQuery Feil ved insert: ${response.insertErrors}")
+                log.info("Tømmer eksisterende snapshot-tabell i BigQuery")
+                truncateSnapshotTable()
+                log.info("Sender rader til BigQuery")
+                insert2990AvvikRows(rows)
+                log.info("BigQuery-jobb ferdig")
+            } finally {
+                acquiredLock.unlock()
+            }
         } else {
-            log.info("BigQuery Insert OK! BigQuery-kontakt fungerer.")
+            log.info("BigQuery-jobben hoppet over – lås allerede tatt av en annen pod")
         }
     }
 
@@ -128,9 +141,11 @@ class BigQueryClient(projectId: String) {
                             "antall_arena_endringer" to rs.getInt("antall_arena_endringer"),
                             "arenakontor_endret" to rs.getString("arenakontor_endret"),
                             "tid_diff_sek" to rs.getObject("tid_diff_sek") as Long?,
-                            "oppfolging_startet_tidspunkt"  to rs.getTimestamp("oppfolging_startet_tidspunkt")?.toInstant()?.toString(),
-                            "arena_siste_endret_tidspunkt"  to rs.getTimestamp("arena_siste_endret_tidspunkt")?.toInstant()?.toString(),
-                            "datasett_sist_oppdatert"       to java.time.Instant.now().toString()
+                            "oppfolging_startet_tidspunkt" to rs.getTimestamp("oppfolging_startet_tidspunkt")
+                                ?.toInstant()?.toString(),
+                            "arena_siste_endret_tidspunkt" to rs.getTimestamp("arena_siste_endret_tidspunkt")
+                                ?.toInstant()?.toString(),
+                            "datasett_sist_oppdatert" to java.time.Instant.now().toString()
 
                         )
                     )
@@ -140,6 +155,12 @@ class BigQueryClient(projectId: String) {
             rows
         }
 
+
+    private fun truncateSnapshotTable() {
+        val query = "TRUNCATE TABLE `$DATASET_NAME.avvik_2990_snapshot`"
+        bigQuery.query(com.google.cloud.bigquery.QueryJobConfiguration.newBuilder(query).build())
+        log.info("BigQuery snapshot-tabell tømt")
+    }
 
     private fun insert2990AvvikRows(rows: List<Map<String, Any?>>) {
         val tableId = TableId.of(DATASET_NAME, "avvik_2990_snapshot")
@@ -157,25 +178,5 @@ class BigQueryClient(projectId: String) {
         } else {
             log.info("BigQuery OK – ${rows.size} rader lastet opp")
         }
-    }
-
-    private fun truncateSnapshotTable() {
-        val query = "TRUNCATE TABLE `$DATASET_NAME.avvik_2990_snapshot`"
-        bigQuery.query(com.google.cloud.bigquery.QueryJobConfiguration.newBuilder(query).build())
-        log.info("BigQuery snapshot-tabell tømt")
-    }
-
-
-    fun lastOpp2990AvvikSnapshot() {
-        log.info("Henter avviksdata fra Postgres")
-
-        val rows = hentAvvik2990AoKontorVsArenakontor()
-
-        log.info("Fant ${rows.size} rader – laster sender til BigQuery")
-
-        log.info("Tømmer eksisterende snapshot-tabell i BigQuery")
-        truncateSnapshotTable()
-        log.info("Sender rader til BigQuery")
-        insert2990AvvikRows(rows)
     }
 }
