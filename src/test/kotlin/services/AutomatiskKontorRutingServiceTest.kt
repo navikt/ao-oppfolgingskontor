@@ -69,6 +69,7 @@ import domain.kontorForGt.KontorForGtFeil
 import domain.kontorForGt.KontorForGtNrFantFallbackKontorForManglendeGt
 import domain.kontorForGt.KontorForGtResultat
 import domain.kontorForGt.KontorForGtSuccess
+import no.nav.domain.events.OppfolgingsperiodeStartetManuellTilordning
 import no.nav.http.client.GeografiskTilknytningKommuneNr
 import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingperiodeOppslagFeil
@@ -173,6 +174,68 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                                 HarStrengtFortroligAdresse(false)
                             ),
                             skjermetBruker.gtKontor as KontorForGtFantKontor
+                        )
+                    )
+                )
+            }
+
+            it("skal ikke overstyre til foretrukket kontor for skjermet bruker når foretrukket kontor er satt") {
+                val foretrukketKontor = KontorId("9999")
+                gitt(skjermetBruker).tilordneKontorAutomatiskVedStartOppfolging(
+                    oppfolgingsperiodeStartet(skjermetBruker, foretrukketKontor = foretrukketKontor)
+                ) shouldBe TilordningSuccessKontorEndret(
+                    KontorEndringer(
+                        gtKontorEndret = skjermetBruker.defaultGtKontorVedOppfolgStart(),
+                        aoKontorEndret = OppfolgingsPeriodeStartetSensitivKontorTilordning(
+                            KontorTilordning(
+                                skjermetBruker.fnr(),
+                                skjermetBruker.gtKontor(),
+                                skjermetBruker.oppfolgingsperiodeId()
+                            ),
+                            skjermetBruker.gtKontor as KontorForGtFantKontor
+                        )
+                    )
+                )
+            }
+
+            it("skal ikke overstyre til foretrukket kontor for adressebeskyttet bruker når foretrukket kontor er satt") {
+                val foretrukketKontor = KontorId("8888")
+                gitt(adressebeskyttetBruker).tilordneKontorAutomatiskVedStartOppfolging(
+                    oppfolgingsperiodeStartet(adressebeskyttetBruker, foretrukketKontor = foretrukketKontor)
+                ) shouldBe TilordningSuccessKontorEndret(
+                    KontorEndringer(
+                        gtKontorEndret = GTKontorEndret(
+                            kontorTilordning = KontorTilordning(
+                                adressebeskyttetBruker.fnr(),
+                                VIKAFOSSEN,
+                                adressebeskyttetBruker.oppfolgingsperiodeId()
+                            ),
+                            KontorEndringsType.GTKontorVedOppfolgingStart,
+                            adressebeskyttetBruker.gtForBruker as GtForBrukerFunnet,
+                        ),
+                        aoKontorEndret = OppfolgingsPeriodeStartetSensitivKontorTilordning(
+                            KontorTilordning(
+                                adressebeskyttetBruker.fnr(),
+                                 VIKAFOSSEN,
+                                adressebeskyttetBruker.oppfolgingsperiodeId()
+                            ),
+                            adressebeskyttetBruker.gtKontor as KontorForGtFantKontor
+                        )
+                    )
+                )
+            }
+
+            it("skal overstyre til foretrukket kontor for eldre bruker når foretrukket kontor er satt") {
+                val foretrukketKontor = KontorId("7777")
+                gitt(eldreBrukerMedGodeMuligheter).tilordneKontorAutomatiskVedStartOppfolging(
+                    oppfolgingsperiodeStartet(eldreBrukerMedGodeMuligheter, foretrukketKontor = foretrukketKontor)
+                ) shouldBe TilordningSuccessKontorEndret(
+                    KontorEndringer(
+                        gtKontorEndret = eldreBrukerMedGodeMuligheter.defaultGtKontorVedOppfolgStart(),
+                        aoKontorEndret = OppfolgingsperiodeStartetManuellTilordning(
+                            eldreBrukerMedGodeMuligheter.fnr(),
+                            eldreBrukerMedGodeMuligheter.oppfolgingsperiodeId(),
+                            foretrukketKontor
                         )
                     )
                 )
@@ -819,24 +882,28 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
 
 fun oppfolgingsperiodeStartet(
     bruker: Bruker,
-    tidligArenaKontor: TidligArenaKontor? = null
+    tidligArenaKontor: TidligArenaKontor? = null,
+    foretrukketKontor: KontorId? = null
 ) =
     oppfolgingsperiodeStartet(
         bruker.fnr(),
         tidligArenaKontor,
-        (bruker.oppfolgingsPeriodeResult as AktivOppfolgingsperiode).startDato
+        (bruker.oppfolgingsPeriodeResult as AktivOppfolgingsperiode).startDato,
+        foretrukketKontor
     )
 
 fun oppfolgingsperiodeStartet(
     fnr: IdentSomKanLagres,
     tidligArenaKontor: TidligArenaKontor? = null,
     startDato: OffsetDateTime = OffsetDateTime.now(),
+    foretrukketKontor: KontorId? = null
 ): OppfolgingsperiodeStartet {
     return OppfolgingsperiodeStartet(
         fnr = fnr,
         startDato = startDato.toZonedDateTime(),
         periodeId = OppfolgingsperiodeId(UUID.randomUUID()),
-        erArbeidssøkerRegistrering = true
+        erArbeidssøkerRegistrering = true,
+        foretrukketKontor
     )
 }
 

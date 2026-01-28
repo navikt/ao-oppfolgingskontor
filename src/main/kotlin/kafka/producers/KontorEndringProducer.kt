@@ -163,6 +163,7 @@ enum class Tilordningstype {
     companion object {
         fun fraKontorEndringsType(kontorEndringsType: KontorEndringsType): Tilordningstype {
             return when (kontorEndringsType) {
+                KontorEndringsType.StartKontorSattManueltAvVeileder,
                 KontorEndringsType.AutomatiskRutetTilNOE,
                 KontorEndringsType.AutomatiskNorgRuting,
                 KontorEndringsType.AutomatiskNorgRutingFallback,

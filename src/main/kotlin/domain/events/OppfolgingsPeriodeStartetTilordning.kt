@@ -23,6 +23,7 @@ import domain.kontorForGt.KontorForGtSuccess
 
 enum class RutingResultat {
     RutetTilNOE,
+    RutetManuelt,
     FallbackIngenGTFunnet,
     FallbackLandGTFunnet,
     FallbackIngenKontorFunnetForGT,
@@ -33,6 +34,7 @@ enum class RutingResultat {
     fun toKontorEndringsType(): KontorEndringsType {
         return when (this) {
             RutetTilNOE -> KontorEndringsType.AutomatiskRutetTilNOE
+            RutetManuelt -> KontorEndringsType.StartKontorSattManueltAvVeileder
             RutetViaNorg -> KontorEndringsType.AutomatiskNorgRuting
             RutetViaNorgFallback -> KontorEndringsType.AutomatiskNorgRutingFallback
             FallbackIngenGTFunnet -> KontorEndringsType.AutomatiskRutetTilNavItManglerGt
@@ -166,5 +168,29 @@ data class OppfolgingsPeriodeStartetSensitivKontorTilordning(
         logger.info(
             "OppfolgingsPeriodeStartetSensitivKontorTilordning: kontorId=${tilordning.kontorId}, rutingResultat=$rutingResultat, registrant=${registrant.getType()}, sensitivitet=$sensitivitet"
         )
+    }
+}
+
+
+data class OppfolgingsperiodeStartetManuellTilordning(
+    val fnr: IdentSomKanLagres,
+    val oppfolgingsperiodeId: OppfolgingsperiodeId,
+    val kontorId: KontorId,
+) : AOKontorEndret(KontorTilordning(fnr, kontorId, oppfolgingsperiodeId), System()) {
+    private val rutingResultat: RutingResultat = RutingResultat.RutetTilNOE
+    override fun kontorEndringsType(): KontorEndringsType = rutingResultat.toKontorEndringsType()
+    override fun toHistorikkInnslag(): KontorHistorikkInnslag {
+        return KontorHistorikkInnslag(
+            kontorId = tilordning.kontorId,
+            ident = tilordning.fnr,
+            registrant = registrant,
+            kontorendringstype = rutingResultat.toKontorEndringsType(),
+            kontorType = KontorType.ARBEIDSOPPFOLGING,
+            oppfolgingId = tilordning.oppfolgingsperiodeId
+        )
+    }
+
+    override fun logg() {
+        logger.info("bruker ble rutet til NOE")
     }
 }
