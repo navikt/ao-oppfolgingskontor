@@ -83,4 +83,4 @@ kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-version" }
 ktor = { id = "io.ktor.plugin", version.ref = "ktor-version" }
 kotlin-plugin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin-version" }
 expedia-graphql = { id = "com.expediagroup.graphql", version.ref = "graphql-kotlin-version" }
-sonar = { id = "org.sonarqube", version = "6.3.1.5724" }
+sonar = { id = "org.sonarqube", version = "7.2.2.6593" }
