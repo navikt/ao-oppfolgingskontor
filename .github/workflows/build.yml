@@ -32,7 +32,7 @@ jobs:
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
       - name: Test and build
-        run: ./gradlew build --scan
+        run: ./gradlew clean build installDist --scan
 
       - name: Generate and output SBOM
         uses: anchore/sbom-action@v0
