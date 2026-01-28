@@ -56,8 +56,7 @@ fun Application.module() {
     val pdlClient = PdlClient(environment.getPDLUrl(), texasClient.tokenProvider(environment.getPdlScope()))
     val arbeidssokerregisterClient = ArbeidssokerregisterClient(
         environment.getArbeidssokerregisteretUrl(),
-        texasClient.tokenProvider(environment.getArbeidssokerregisteretScope())
-    )
+        texasClient.tokenProvider(environment.getArbeidssokerregisteretScope()))
     val skjermingsClient = SkjermingsClient(
         environment.getSkjermedePersonerUrl(),
         texasClient.tokenProvider(environment.getSkjermedePersonerScope())
@@ -79,43 +78,23 @@ fun Application.module() {
     )
 
     val kontorForBrukerMedMangelfullGtService = KontorForBrukerMedMangelfullGtService(
-        { aaregClient.hentArbeidsforhold(it) },
-        { eregClient.hentNøkkelinfoOmArbeidsgiver(it) },
-        { gt, strengtFortroligAdresse, skjermet -> norg2Client.hentKontorForGt(gt, strengtFortroligAdresse, skjermet) },
+        {aaregClient.hentArbeidsforhold(it)},
+        {eregClient.hentNøkkelinfoOmArbeidsgiver(it)},
+        {gt, strengtFortroligAdresse, skjermet -> norg2Client.hentKontorForGt(gt,strengtFortroligAdresse, skjermet)},
         pdlClient::sokAdresseFritekst
     )
     val identService = IdentService({ pdlClient.hentIdenterFor(it) })
     val gtNorgService = GTNorgService(
         { pdlClient.hentGt(it) },
         { gt, strengtFortroligAdresse, skjermet -> norg2Client.hentKontorForGt(gt, strengtFortroligAdresse, skjermet) },
-        { gt, strengtFortroligAdresse, skjermet ->
-            norg2Client.hentKontorForBrukerMedMangelfullGT(
-                gt,
-                strengtFortroligAdresse,
-                skjermet
-            )
-        },
-        { ident, gt, strengtFortroligAdresse, skjermet ->
-            kontorForBrukerMedMangelfullGtService.finnKontorForGtBasertPåArbeidsforhold(
-                ident,
-                gt,
-                strengtFortroligAdresse,
-                skjermet
-            )
-        }
+        { gt, strengtFortroligAdresse, skjermet -> norg2Client.hentKontorForBrukerMedMangelfullGT(gt, strengtFortroligAdresse, skjermet) },
+        { ident, gt, strengtFortroligAdresse, skjermet -> kontorForBrukerMedMangelfullGtService.finnKontorForGtBasertPåArbeidsforhold(ident,gt, strengtFortroligAdresse, skjermet) }
     )
     val kontorNavnService = KontorNavnService(norg2Client)
-    val kontorTilhorighetService =
-        KontorTilhorighetService(kontorNavnService, poaoTilgangHttpClient, identService::hentAlleIdenter)
+    val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangHttpClient, identService::hentAlleIdenter)
     val oppfolgingsperiodeService = OppfolgingsperiodeService(identService::hentAlleIdenter)
     val automatiskKontorRutingService = AutomatiskKontorRutingService(
-        { fnr, strengtFortroligAdresse, skjermet ->
-            gtNorgService.hentGtKontorForBruker(
-                fnr,
-                strengtFortroligAdresse,
-                skjermet
-            )
-        },
+        { fnr, strengtFortroligAdresse, skjermet -> gtNorgService.hentGtKontorForBruker(fnr, strengtFortroligAdresse, skjermet) },
         { pdlClient.hentAlder(it) },
         { arbeidssokerregisterClient.hentProfilering(it) },
         { skjermingsClient.hentSkjerming(it) },
@@ -123,10 +102,7 @@ fun Application.module() {
         { oppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) },
         { _, oppfolgingsperiodeId -> OppfolgingsperiodeDao.finnesAoKontorPåPeriode(oppfolgingsperiodeId) },
     )
-    val dryRunKontorRutingService =
-        automatiskKontorRutingService.copy(harAlleredeTilordnetAoKontorForOppfolgingsperiode = { Ident, b: OppfolgingsperiodeId ->
-            Outcome.Success(false)
-        })
+    val dryRunKontorRutingService = automatiskKontorRutingService.copy(harAlleredeTilordnetAoKontorForOppfolgingsperiode = { Ident, b: OppfolgingsperiodeId -> Outcome.Success(false) })
     val simulerKontorTilordning: suspend (IdentSomKanLagres, Boolean) -> TilordningResultat =
         { ident, erArbeidssøker ->
             dryRunKontorRutingService.tilordneKontorAutomatisk(
@@ -144,23 +120,13 @@ fun Application.module() {
         hentAlleIdenter = { identSomKanLagres -> identService.hentAlleIdenter(identSomKanLagres) },
         brukAoRuting = this.environment.getBrukAoRuting()
     )
-    val republiseringService = KontorRepubliseringService(
-        kontorEndringProducer::republiserKontor,
-        datasource,
-        kontorNavnService::friskOppAlleKontorNavn
-    )
-    val arenaSyncService = ArenaSyncService(
-        veilarbArenaClient,
-        KontorTilordningService,
-        kontorTilhorighetService,
-        oppfolgingsperiodeService,
-        environment.getBrukAoRuting()
-    )
+    val republiseringService = KontorRepubliseringService(kontorEndringProducer::republiserKontor, datasource, kontorNavnService::friskOppAlleKontorNavn)
+    val arenaSyncService = ArenaSyncService(veilarbArenaClient, KontorTilordningService, kontorTilhorighetService, oppfolgingsperiodeService, environment.getBrukAoRuting())
     val brukAoRuting = environment.getBrukAoRuting()
 
     install(KafkaStreamsPlugin) {
         this.automatiskKontorRutingService = automatiskKontorRutingService
-        this.fnrProvider = { ident -> identService.veksleAktorIdIForetrukketIdent(ident) }
+        this.fnrProvider = { ident ->  identService.veksleAktorIdIForetrukketIdent(ident) }
         this.database = database
         this.meterRegistry = meterRegistry
         this.oppfolgingsperiodeService = oppfolgingsperiodeService
