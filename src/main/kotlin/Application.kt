@@ -186,7 +186,7 @@ fun Application.installBigQueryDailyScheduler(database: Database) {
             )
 
             while (currentCoroutineContext().isActive) {
-                val ventetid = beregnVentetid(13, 32)
+                val ventetid = beregnVentetid(13, 35)
                 delay(ventetid)
 
                 client.runDaily2990AoKontorJob(database)
@@ -200,26 +200,5 @@ fun beregnVentetid(klokkeTime: Int, klokkeMinutt: Int): Long {
     var nextRun = now.withHour(klokkeTime).withMinute(klokkeMinutt)
     if (nextRun.isBefore(now)) nextRun = nextRun.plusDays(1)
     return Duration.between(now, nextRun).toMillis()
-}
-
-private suspend fun startBigQueryScheduler(
-    projectId: String,
-    database: Database,
-    interval: Duration,
-) {
-    val bigQueryClient = BigQueryClient(
-        projectId,
-        ExposedLockProvider(database)
-    )
-
-    while (currentCoroutineContext().isActive) {
-        try {
-            bigQueryClient.sendAlle2990AvvikTilBigQuery()
-        } catch (e: Exception) {
-            log.error("Feil i periodisk BigQuery-jobb", e)
-        }
-        log.info("BigQuery-scheduler venter ${interval.toMinutes()} minutter før neste kjøring")
-        delay(interval.toMillis())
-    }
 }
 
