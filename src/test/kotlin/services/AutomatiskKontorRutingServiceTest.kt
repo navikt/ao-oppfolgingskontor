@@ -241,6 +241,22 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                 )
             }
 
+            it("skal overstyre kontor for bruker som mangler gt foretrukket kontor er satt") {
+                val foretrukketKontor = KontorId("7777")
+                gitt(brukerSomManglerGt).tilordneKontorAutomatiskVedStartOppfolging(
+                    oppfolgingsperiodeStartet(brukerSomManglerGt, foretrukketKontor = foretrukketKontor)
+                ) shouldBe TilordningSuccessKontorEndret(
+                    KontorEndringer(
+                        gtKontorEndret = null,
+                        aoKontorEndret = OppfolgingsperiodeStartetManuellTilordning(
+                            brukerSomManglerGt.fnr(),
+                            brukerSomManglerGt.oppfolgingsperiodeId(),
+                            foretrukketKontor
+                        )
+                    )
+                )
+            }
+
             it("skal sette AO kontor til lokalkontor hvis har antatt behov for veiledening") {
                 gitt(ungBrukerMedbehovForVeiledning).tilordneKontorAutomatiskVedStartOppfolging(
                     oppfolgingsperiodeStartet(ungBrukerMedbehovForVeiledning)
