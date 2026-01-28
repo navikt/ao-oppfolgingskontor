@@ -17,26 +17,14 @@ class BigQueryClient(
 ) {
 
     private val DATASET_NAME = "kontor_metrikker"
+    private val TABLE_NAME = "antall_2990_kontor"
     private val bigQuery = BigQueryOptions.newBuilder().setProjectId(projectId).build().service
     private val log = LoggerFactory.getLogger(this::class.java)
 
-    /**
-     * Generisk funksjon for å kjøre daglige BigQuery-jobber.
-     *
-     * @param database Exposed Database
-     * @param dbTabell Navn på tabellen i databasen
-     * @param bigQueryTabell Navn på tabellen i BigQuery
-     * @param sqlBuilder Lambda som returnerer SQL-spørring for å hente antall
-     */
-    private fun runDailyBigQueryJob(
-        database: Database,
-        dbTabell: String,
-        bigQueryTabell: String,
-        sqlBuilder: (String) -> String
-    ) {
+    fun antall2990Kontor(database: Database) {
         val lockConfig = LockConfiguration(
             ZonedDateTime.now().toInstant(),
-            "bigquery_job_$bigQueryTabell",
+            "bigquery_job_all_kontor",
             Duration.ofMinutes(60),
             Duration.ofMinutes(5)
         )
@@ -45,19 +33,19 @@ class BigQueryClient(
         if (maybeLock.isPresent) {
             val lock = maybeLock.get()
             try {
-                val antall = transaction(database) {
-                    exec(sqlBuilder(dbTabell)) { rs ->
-                        if (rs.next()) rs.getLong("ao_2990_count") else 0L
-                    } ?: 0L
-                }
+                val antallAlternativAoKontor = hentAntall(database, "alternativ_aokontor")
+                val antallArbeidsoppfolgingskontor = hentAntall(database, "arbeidsoppfolgingskontor")
+                val antallArenaKontor = hentAntall(database, "arenakontor")
 
                 val row = mapOf(
                     "jobb_timestamp" to ZonedDateTime.now().toInstant().toString(),
                     "dato" to ZonedDateTime.now().toLocalDate().toString(),
-                    "antall_2990_ao_kontor" to antall
+                    "alternativ_aokontor" to antallAlternativAoKontor,
+                    "arenakontor" to antallArenaKontor,
+                    "arbeidsoppfolgingskontor" to antallArbeidsoppfolgingskontor
                 )
 
-                val tableId = TableId.of(DATASET_NAME, bigQueryTabell)
+                val tableId = TableId.of(DATASET_NAME, TABLE_NAME)
                 val insertRequest = InsertAllRequest.newBuilder(tableId)
                     .addRow(row)
                     .build()
@@ -65,41 +53,44 @@ class BigQueryClient(
                 val response = bigQuery.insertAll(insertRequest)
 
                 if (response.hasErrors()) {
-                    log.error("Feil ved innsending til BigQuery ($bigQueryTabell): ${response.insertErrors}")
+                    log.error("Feil ved innsending til BigQuery: ${response.insertErrors}")
                 } else {
-                    log.info("BigQuery OK – $bigQueryTabell: $antall")
+                    log.info("BigQuery OK – antall 2990 per kontor: $row")
                 }
             } finally {
                 lock.unlock()
             }
         } else {
-            log.info("Jobben $bigQueryTabell hoppet over – en annen pod har allerede lås")
+            log.info("Jobben hoppet over – en annen pod har allerede lås")
         }
     }
 
-    // === Spesifikke jobber ===
-
-    fun antallAlternativAoKontorSomEr2990(database: Database) {
-        runDailyBigQueryJob(database, "alternativ_aokontor", "antall_alternativ_ao_kontor_2990") { table ->
-            """
-            SELECT COUNT(*) AS ao_2990_count
-            FROM (
-                SELECT DISTINCT ON (fnr) fnr, kontor_id
-                FROM $table
-                ORDER BY fnr, created_at DESC
-            ) siste_per_person
-            WHERE kontor_id = '2990';
-            """.trimIndent()
-        }
-    }
-
-    fun antallArbeidsoppfolgingskontorSomEr2990(database: Database) {
-        runDailyBigQueryJob(database, "arbeidsoppfolgingskontor", "antall_arbeidsoppfolgingskontor_2990") { table ->
-            """
-            SELECT COUNT(*) AS ao_2990_count
-            FROM $table
-            WHERE kontor_id = '2990';
-            """.trimIndent()
+    private fun hentAntall(database: Database, tabell: String): Long {
+        return transaction(database) {
+            exec(
+                when (tabell) {
+                    "alternativ_aokontor" -> """
+                        SELECT COUNT(*) AS antall
+                        FROM (
+                            SELECT DISTINCT ON (fnr) fnr, kontor_id
+                            FROM alternativ_aokontor
+                            ORDER BY fnr, created_at DESC
+                        ) siste_per_person
+                        WHERE kontor_id = '2990';
+                    """.trimIndent()
+                    "arbeidsoppfolgingskontor" -> """
+                        SELECT COUNT(*) AS antall
+                        FROM arbeidsoppfolgingskontor
+                        WHERE kontor_id = '2990';
+                    """.trimIndent()
+                    "arenakontor" -> """
+                        SELECT COUNT(*) AS antall
+                        FROM arenakontor
+                        WHERE kontor_id = '2990';
+                    """.trimIndent()
+                    else -> throw IllegalArgumentException("Ukjent tabell: $tabell")
+                }
+            ) { rs -> if (rs.next()) rs.getLong("antall") else 0L } ?: 0L
         }
     }
 }

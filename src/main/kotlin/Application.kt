@@ -185,7 +185,7 @@ fun Application.installBigQueryDailyScheduler(database: Database) {
             )
 
             while (currentCoroutineContext().isActive) {
-                val ventetid = beregnVentetid(14, 47) // Beregn hvor mange millisekunder til neste kjøring
+                val ventetid = beregnVentetid(15, 21) // Beregn hvor mange millisekunder til neste kjøring
 
                 val totalSeconds = ventetid / 1000
                 val hours = totalSeconds / 3600
@@ -197,8 +197,7 @@ fun Application.installBigQueryDailyScheduler(database: Database) {
 
                 withContext(Dispatchers.IO) {
                     log.info("Starter BigQuery-jobb for antall 2990 AO-kontor")
-                    client.antallAlternativAoKontorSomEr2990(database)
-                    client.antallArbeidsoppfolgingskontorSomEr2990(database)
+                    client.antall2990Kontor(database)
                     log.info("BigQuery-jobb ferdig")
                 }
             }
