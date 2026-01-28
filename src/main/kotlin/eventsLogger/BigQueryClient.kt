@@ -26,7 +26,7 @@ class BigQueryClient(
             Instant.now(),
             "bigquery_avvik_2990_snapshot",
             Duration.ofMinutes(65),
-            Duration.ofMinutes(3)
+            Duration.ofMinutes(6) // lavt inntil videre for å kunne trigge ved redeploy
         )
 
         val maybeLock = lockProvider.lock(lockConfig)
