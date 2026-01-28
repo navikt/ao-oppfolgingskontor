@@ -25,7 +25,6 @@ import no.nav.http.configureAdminModule
 import no.nav.http.configureArbeidsoppfolgingskontorModule
 import no.nav.http.configureFinnKontorModule
 import no.nav.http.graphql.*
-import no.nav.http.log
 import no.nav.kafka.KafkaStreamsPlugin
 import no.nav.kafka.config.createKafkaProducer
 import no.nav.kafka.config.toKafkaEnv
@@ -186,18 +185,48 @@ fun Application.installBigQueryDailyScheduler(database: Database) {
             )
 
             while (currentCoroutineContext().isActive) {
-                val ventetid = beregnVentetid(13, 48) // f.eks. 13:35
+                val ventetid = beregnVentetid(13, 57) // Beregn hvor mange millisekunder til neste kjøring
+
+                val totalSeconds = ventetid / 1000
+                val hours = totalSeconds / 3600
+                val minutes = (totalSeconds % 3600) / 60
+                val seconds = totalSeconds % 60
+
+                log.info("Neste BigQuery-jobb kjører om $hours timer, $minutes minutter og $seconds sekunder")
                 delay(ventetid)
-                client.runDaily2990AoKontorJob(database)
-                delay(Duration.ofDays(1).toMillis())
+
+                withContext(Dispatchers.IO) {
+                    log.info("Starter BigQuery-jobb for antall 2990 AO-kontor")
+                    client.antallAlternativAoKontorSomEr2990(database)
+                    log.info("BigQuery-jobb ferdig")
+                }
             }
         }
     }
 }
+
+/**
+ * Beregner ventetid fra nå til neste kjøring på gitt klokkeslett (time + minutt).
+ *
+ * Eksempel: Nå er 13:45, ønsket kjøring 13:57 → ventetid = 12 minutter.
+ * Hvis ønsket tidspunkt allerede har passert, settes det til samme klokkeslett neste dag
+ *
+ * @param klokkeTime ønsket time for kjøring (0-23)
+ * @param klokkeMinutt ønsket minutt for kjøring (0-59)
+ * @return ventetid i millisekunder
+ */
 fun beregnVentetid(klokkeTime: Int, klokkeMinutt: Int): Long {
     val now = ZonedDateTime.now(ZoneId.of("Europe/Oslo"))
-    var nextRun = now.withHour(klokkeTime).withMinute(klokkeMinutt).withSecond(0).withNano(0)
-    if (!nextRun.isAfter(now)) nextRun = nextRun.plusDays(1)
+    var nextRun = now
+        .withHour(klokkeTime)
+        .withMinute(klokkeMinutt)
+        .withSecond(0)
+        .withNano(0)
+
+    // Hvis ønsket tidspunkt allerede har passert, sett til samme tid neste dag
+    if (!nextRun.isAfter(now)) {
+        nextRun = nextRun.plusDays(1)
+    }
+
     return Duration.between(now, nextRun).toMillis()
 }
-

@@ -22,10 +22,10 @@ class BigQueryClient(
     val log = LoggerFactory.getLogger(this::class.java)
 
 
-    fun runDaily2990AoKontorJob(database: Database) {
+    fun antallAlternativAoKontorSomEr2990(database: Database) {
         val lockConfig = LockConfiguration(
             ZonedDateTime.now().toInstant(),
-            "antall_2990_ao_kontor_i_dag",
+            "antall_alternativ_ao_kontor_2990",
             Duration.ofMinutes(60),
             Duration.ofMinutes(5)
         )
@@ -57,7 +57,7 @@ class BigQueryClient(
                     "antall_2990_ao_kontor" to antall2990AoKontor
                 )
 
-                val tableId = TableId.of(DATASET_NAME, "antall_2990_ao_kontor_i_dag")
+                val tableId = TableId.of(DATASET_NAME, "antall_alternativ_ao_kontor_2990")
                 val insertRequest = InsertAllRequest.newBuilder(tableId)
                     .addRow(row)
                     .build()
@@ -77,4 +77,6 @@ class BigQueryClient(
             log.info("Jobben hoppet over – en annen pod har allerede lås")
         }
     }
+
+
 }
