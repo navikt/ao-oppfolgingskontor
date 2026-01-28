@@ -185,7 +185,7 @@ fun Application.installBigQueryDailyScheduler(database: Database) {
             )
 
             while (currentCoroutineContext().isActive) {
-                val ventetid = beregnVentetid(13, 57) // Beregn hvor mange millisekunder til neste kjøring
+                val ventetid = beregnVentetid(14, 47) // Beregn hvor mange millisekunder til neste kjøring
 
                 val totalSeconds = ventetid / 1000
                 val hours = totalSeconds / 3600
@@ -209,7 +209,7 @@ fun Application.installBigQueryDailyScheduler(database: Database) {
 /**
  * Beregner ventetid fra nå til neste kjøring på gitt klokkeslett (time + minutt).
  *
- * Eksempel: Nå er 13:45, ønsket kjøring 13:57 → ventetid = 12 minutter.
+ * Eksempel: Hvis nå er 13:45, ønsket kjøring 13:57 → ventetid = 12 minutter.
  * Hvis ønsket tidspunkt allerede har passert, settes det til samme klokkeslett neste dag
  *
  * @param klokkeTime ønsket time for kjøring (0-23)
