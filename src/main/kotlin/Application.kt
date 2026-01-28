@@ -35,6 +35,7 @@ import services.*
 import topics
 import utils.Outcome
 import java.time.Duration
+import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.*
 
@@ -48,7 +49,7 @@ fun Application.module() {
     configureSecurity()
     val (datasource, database) = configureDatabase()
 
-    installBigQueryScheduler(database)
+    installBigQueryDailyScheduler(database)
 
     val norg2Client = Norg2Client(environment.getNorg2Url())
 
@@ -176,19 +177,29 @@ fun ApplicationEnvironment.getPubliserArenaKontor(): Boolean {
     return !getBrukAoRuting()
 }
 
-fun Application.installBigQueryScheduler(database: Database) {
-    val projectId = environment.config.property("app.gcp.projectId").getString()
-    val jobInterval = Duration.ofMinutes(60)
-
+fun Application.installBigQueryDailyScheduler(database: Database) {
     environment.monitor.subscribe(ApplicationStarted) {
-        launch(Dispatchers.IO) {
-            startBigQueryScheduler(
-                projectId = projectId,
-                database = database,
-                interval = jobInterval
+        launch {
+            val client = BigQueryClient(
+                environment.config.property("app.gcp.projectId").getString(),
+                ExposedLockProvider(database)
             )
+
+            while (currentCoroutineContext().isActive) {
+                val ventetid = beregnVentetid(13, 30)
+                delay(ventetid)
+
+                client.runDaily2990AoKontorJob(database)
+            }
         }
     }
+}
+
+fun beregnVentetid(klokkeTime: Int, klokkeMinutt: Int): Long {
+    val now = ZonedDateTime.now(ZoneId.of("Europe/Oslo"))
+    var nextRun = now.withHour(klokkeTime).withMinute(klokkeMinutt)
+    if (nextRun.isBefore(now)) nextRun = nextRun.plusDays(1)
+    return Duration.between(now, nextRun).toMillis()
 }
 
 private suspend fun startBigQueryScheduler(
