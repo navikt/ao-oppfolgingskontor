@@ -94,7 +94,6 @@ dependencies {
     implementation(libs.google.cloud.bigquery)
     implementation(platform(libs.google.cloud.libraries.bom))
 
-//    implementation("com.google.cloud:google-cloud-bigquery:2.44.0")
     testImplementation(libs.ktor.client.mock)
     testImplementation(libs.embedded.postgres)
     testImplementation(libs.ktor.server.test.host)

@@ -215,7 +215,7 @@ fun Application.installBigQueryScheduler(database: Database) {
     val jobInterval = Duration.ofMinutes(60)
 
     environment.monitor.subscribe(ApplicationStarted) {
-        launch {
+        launch(Dispatchers.IO) {
             startBigQueryScheduler(
                 projectId = projectId,
                 database = database,
@@ -228,14 +228,14 @@ fun Application.installBigQueryScheduler(database: Database) {
 private suspend fun startBigQueryScheduler(
     projectId: String,
     database: Database,
-    interval: Duration
+    interval: Duration,
 ) {
     val bigQueryClient = BigQueryClient(
         projectId,
         ExposedLockProvider(database)
     )
 
-    while (currentCoroutineContext().isActive) { // sjekker korrekt om coroutine fortsatt er aktiv
+    while (currentCoroutineContext().isActive) {
         try {
             bigQueryClient.sendAlle2990AvvikTilBigQuery()
         } catch (e: Exception) {

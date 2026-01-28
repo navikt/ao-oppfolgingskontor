@@ -162,7 +162,6 @@ class BigQueryClient(
     }
 
     private fun insert2990AvvikRows(rows: List<Map<String, Any?>>) {
-
         log.info("Sender rader til BigQuery")
         val tableId = TableId.of(DATASET_NAME, "avvik_2990_snapshot")
         val builder = InsertAllRequest.newBuilder(tableId)
