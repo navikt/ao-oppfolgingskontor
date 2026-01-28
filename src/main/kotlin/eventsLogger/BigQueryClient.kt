@@ -34,15 +34,9 @@ class BigQueryClient(
             val acquiredLock = maybeLock.get()
             try {
                 log.info("Starter BigQuery-jobb med lås")
-                log.info("Henter avviksdata fra Postgres")
-
                 val rows = hentAvvik2990AoKontorVsArenakontor()
-
                 log.info("Fant ${rows.size} rader – laster sender til BigQuery")
-
-                log.info("Tømmer eksisterende snapshot-tabell i BigQuery")
                 truncateSnapshotTable()
-                log.info("Sender rader til BigQuery")
                 insert2990AvvikRows(rows)
                 log.info("BigQuery-jobb ferdig")
             } finally {
@@ -55,6 +49,8 @@ class BigQueryClient(
 
     private fun hentAvvik2990AoKontorVsArenakontor(): List<Map<String, Any?>> =
         transaction {
+
+            log.info("Henter avvik 2990 for ao-kontor vs arenakontor")
             val rows = mutableListOf<Map<String, Any?>>()
 
             exec(
@@ -157,26 +153,29 @@ class BigQueryClient(
 
 
     private fun truncateSnapshotTable() {
+        log.info("Tømmer eksisterende snapshot-tabell i BigQuery")
+
         val query = "TRUNCATE TABLE `$DATASET_NAME.avvik_2990_snapshot`"
         bigQuery.query(com.google.cloud.bigquery.QueryJobConfiguration.newBuilder(query).build())
+
         log.info("BigQuery snapshot-tabell tømt")
     }
 
     private fun insert2990AvvikRows(rows: List<Map<String, Any?>>) {
-        val tableId = TableId.of(DATASET_NAME, "avvik_2990_snapshot")
 
+        log.info("Sender rader til BigQuery")
+        val tableId = TableId.of(DATASET_NAME, "avvik_2990_snapshot")
         val builder = InsertAllRequest.newBuilder(tableId)
 
         rows.forEach { row ->
             builder.addRow(row)
         }
-
         val response = bigQuery.insertAll(builder.build())
 
         if (response.hasErrors()) {
             log.error("BigQuery insert-feil: ${response.insertErrors}")
         } else {
-            log.info("BigQuery OK – ${rows.size} rader lastet opp")
+            log.info("Sending til BigQuery OK – ${rows.size} rader lastet opp")
         }
     }
 }
