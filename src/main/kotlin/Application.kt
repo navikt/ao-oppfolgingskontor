@@ -192,8 +192,7 @@ fun ApplicationEnvironment.getPubliserArenaKontor(): Boolean {
 private suspend fun startBigQueryScheduler(
     projectId: String,
     database: Database,
-    interval: Duration = Duration.ofMinutes(5)
-    //interval: Duration = Duration.ofHours(1)
+    interval: Duration = Duration.ofHours(1)
 ) {
     val bigQueryClient = BigQueryClient(
         projectId,
