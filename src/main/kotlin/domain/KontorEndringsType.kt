@@ -10,6 +10,7 @@ enum class KontorEndringsType {
     AutomatiskRutetTilNavItGtErLand,
     AutomatiskRutetTilNavItUgyldigGt,
     AutomatiskRutetTilNavItIngenKontorFunnetForGt,
+    StartKontorSattManueltAvVeileder,
     FlyttetAvVeileder,
 
     /* Både Arbeidsoppfølgingskontor og GT kontor  */

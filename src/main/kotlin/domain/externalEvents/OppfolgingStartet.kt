@@ -23,6 +23,7 @@ data class OppfolgingsperiodeStartet(
     val startDato: ZonedDateTime,
     override val periodeId: OppfolgingsperiodeId,
     val erArbeidssøkerRegistrering: Boolean,
+    val foretrukketArbeidsoppfolgingskontor: KontorId?
 ): OppfolgingsperiodeEndret()
 
 class OppfolgingsperiodeAvsluttet(

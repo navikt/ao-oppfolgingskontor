@@ -7,6 +7,7 @@ import kafka.consumers.oppfolgingsHendelser.OppfolgingsHendelseDto
 import kafka.consumers.oppfolgingsHendelser.oppfolgingsHendelseJson
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
+import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeEndret
@@ -87,7 +88,8 @@ fun OppfolgingStartetHendelseDto.toDomainObject() = OppfolgingsperiodeStartet(
         ?: throw IllegalStateException("Ident i oppfolgingshendelse-topic kan ikke være aktorId"),
     startDato = this.startetTidspunkt,
     periodeId = OppfolgingsperiodeId(UUID.fromString(this.oppfolgingsPeriodeId)),
-    erArbeidssøkerRegistrering = startetBegrunnelse == ARBEIDSSOKER_REGISTRERING
+    erArbeidssøkerRegistrering = startetBegrunnelse == ARBEIDSSOKER_REGISTRERING,
+    foretrukketArbeidsoppfolgingskontor = this.foretrukketArbeidsoppfolgingskontor?.let { KontorId(it) }
 )
 
 fun OppfolgingsAvsluttetHendelseDto.toDomainObject() = OppfolgingsperiodeAvsluttet(

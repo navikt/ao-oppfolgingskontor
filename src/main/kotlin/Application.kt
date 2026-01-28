@@ -125,7 +125,8 @@ fun Application.module() {
                 ident = ident,
                 oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
                 erArbeidssøkerRegistrering = erArbeidssøker,
-                oppfolgingStartDato = ZonedDateTime.now().minusMinutes(1)
+                oppfolgingStartDato = ZonedDateTime.now().minusMinutes(1),
+                null
             )
         }
 

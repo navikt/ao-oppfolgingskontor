@@ -37,6 +37,7 @@ import domain.kontorForGt.KontorForGtFantKontor
 import domain.kontorForGt.KontorForGtFantKontorForArbeidsgiverAdresse
 import domain.kontorForGt.KontorForGtResultat
 import domain.kontorForGt.KontorForGtSuccess
+import no.nav.domain.events.OppfolgingsperiodeStartetManuellTilordning
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseIkkeFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseOppslagFeil
@@ -111,7 +112,8 @@ data class AutomatiskKontorRutingService(
                 ident,
                 oppfolgingsperiodeId,
                 oppfolgingsperiodeStartet.erArbeidssøkerRegistrering,
-                oppfolgingsperiodeStartet.startDato
+                oppfolgingsperiodeStartet.startDato,
+                oppfolgingsperiodeStartet.foretrukketArbeidsoppfolgingskontor
             )
 
         } catch (e: Exception) {
@@ -123,7 +125,8 @@ data class AutomatiskKontorRutingService(
         ident: IdentSomKanLagres,
         oppfolgingsperiodeId: OppfolgingsperiodeId,
         erArbeidssøkerRegistrering: Boolean,
-        oppfolgingStartDato: ZonedDateTime
+        oppfolgingStartDato: ZonedDateTime,
+        manueltSattKontor : KontorId?
     ): TilordningResultat {
         try {
 
@@ -160,7 +163,6 @@ data class AutomatiskKontorRutingService(
                                     }
                             }
                         }
-
                         is ProfileringOppslagFeil -> return TilordningFeil("Kunne ikke hente profilering: ${profileringResultat.error.message}")
                     }
                 }
@@ -174,7 +176,8 @@ data class AutomatiskKontorRutingService(
                     alder,
                     profilering,
                     oppfolgingsperiodeId,
-                    gtKontorResultat
+                    gtKontorResultat,
+                    manueltSattKontor
                 )
 
                 is KontorForGtFantKontor -> velgKontorForBruker(
@@ -182,7 +185,8 @@ data class AutomatiskKontorRutingService(
                     gtKontorResultat,
                     alder,
                     profilering,
-                    oppfolgingsperiodeId
+                    oppfolgingsperiodeId,
+                    manueltSattKontor
                 )
 
                 is KontorForGtFeil -> return TilordningFeil("Feil ved henting av gt-kontor: ${gtKontorResultat.melding}")
@@ -215,9 +219,16 @@ data class AutomatiskKontorRutingService(
         alder: Int,
         profilering: Profilering,
         oppfolgingsperiodeId: OppfolgingsperiodeId,
-        gtResultat: KontorForGtFantIkkeKontor
+        gtResultat: KontorForGtFantIkkeKontor,
+        manueltSattKontor: KontorId?
     ): AOKontorEndret {
         return when {
+            manueltSattKontor != null && !gtResultat.sensitivitet().erSensitiv() -> OppfolgingsperiodeStartetManuellTilordning(
+                fnr,
+                oppfolgingsperiodeId,
+                manueltSattKontor
+            )
+
             skalTilNasjonalOppfølgingsEnhet(
                 gtResultat.sensitivitet(),
                 profilering,
@@ -249,11 +260,18 @@ data class AutomatiskKontorRutingService(
         alder: Int,
         profilering: Profilering,
         oppfolgingsperiodeId: OppfolgingsperiodeId,
+        manueltSattKontor: KontorId?
     ): AOKontorEndret {
-        val skalTilNOE = skalTilNasjonalOppfølgingsEnhet(gtKontor.sensitivitet(), profilering, alder)
+        val skalTilNOE by lazy { skalTilNasjonalOppfølgingsEnhet(gtKontor.sensitivitet(), profilering, alder) }
+        val erSensitiv = gtKontor.sensitivitet().erSensitiv()
         return when {
+            manueltSattKontor != null && !erSensitiv -> OppfolgingsperiodeStartetManuellTilordning(
+                fnr,
+                oppfolgingsperiodeId,
+                manueltSattKontor
+            )
             skalTilNOE -> OppfolgingsperiodeStartetNoeTilordning(fnr, oppfolgingsperiodeId)
-            gtKontor.sensitivitet().erSensitiv() -> {
+            erSensitiv -> {
                 if (gtKontor.erStrengtFortrolig()) {
                     OppfolgingsPeriodeStartetSensitivKontorTilordning(
                         KontorTilordning(fnr, VIKAFOSSEN, oppfolgingsperiodeId),
