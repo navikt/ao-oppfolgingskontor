@@ -186,7 +186,7 @@ fun Application.installBigQueryDailyScheduler(database: Database) {
             )
 
             while (currentCoroutineContext().isActive) {
-                val ventetid = beregnVentetid(13, 30)
+                val ventetid = beregnVentetid(13, 32)
                 delay(ventetid)
 
                 client.runDaily2990AoKontorJob(database)
