@@ -198,6 +198,7 @@ fun Application.installBigQueryDailyScheduler(database: Database) {
                 withContext(Dispatchers.IO) {
                     log.info("Starter BigQuery-jobb for antall 2990 AO-kontor")
                     client.antallAlternativAoKontorSomEr2990(database)
+                    client.antallArbeidsoppfolgingskontorSomEr2990(database)
                     log.info("BigQuery-jobb ferdig")
                 }
             }

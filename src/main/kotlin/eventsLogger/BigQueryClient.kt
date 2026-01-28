@@ -79,4 +79,54 @@ class BigQueryClient(
     }
 
 
+
+    fun antallArbeidsoppfolgingskontorSomEr2990(database: Database) {
+        val lockConfig = LockConfiguration(
+            ZonedDateTime.now().toInstant(),
+            "antall_arbeidsoppfolgingskontor_2990",
+            Duration.ofMinutes(60),
+            Duration.ofMinutes(5)
+        )
+        val maybeLock = lockProvider.lock(lockConfig)
+        if (maybeLock.isPresent) {
+            val lock = maybeLock.get()
+            try {
+                val antall2990AoKontor = transaction(database) {
+                    exec(
+                        """
+                            SELECT COUNT(*) AS ao_2990_count
+                            FROM arbeidsoppfolgingskontor
+                            WHERE kontor_id = '2990';
+                            """.trimIndent()
+                    ) { rs ->
+                        if (rs.next()) rs.getLong("ao_2990_count") else 0L
+                    } ?: 0L
+                }
+
+                val row = mapOf(
+                    "jobb_timestamp" to ZonedDateTime.now().toInstant().toString(),
+                    "dato" to ZonedDateTime.now().toLocalDate().toString(),
+                    "antall_2990_ao_kontor" to antall2990AoKontor
+                )
+
+                val tableId = TableId.of(DATASET_NAME, "antall_arbeidsoppfolgingskontor_2990")
+                val insertRequest = InsertAllRequest.newBuilder(tableId)
+                    .addRow(row)
+                    .build()
+
+                val response = bigQuery.insertAll(insertRequest)
+
+                if (response.hasErrors()) {
+                    log.error("Feil ved innsending til BigQuery: ${response.insertErrors}")
+                } else {
+                    log.info("BigQuery OK – antall AO 2990: $antall2990AoKontor")
+                }
+
+            } finally {
+                lock.unlock()
+            }
+        } else {
+            log.info("Jobben hoppet over – en annen pod har allerede lås")
+        }
+    }
 }
