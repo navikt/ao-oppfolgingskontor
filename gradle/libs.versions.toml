@@ -18,7 +18,7 @@ mockk-version = "1.14.7"
 poao-tilgang-version = "test.2025.07.10_07.06-c60532d0938f"
 caffeine-version = "3.2.1"
 kafka-avro = "8.0.0"
-shedlock-version = "6.9.0"
+shedlock-version = "7.6.0"
 micrometer-version = "1.16.1"
 bigquery-version = "2.44"
 
