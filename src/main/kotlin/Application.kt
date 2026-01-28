@@ -186,15 +186,14 @@ fun Application.installBigQueryDailyScheduler(database: Database) {
             )
 
             while (currentCoroutineContext().isActive) {
-                val ventetid = beregnVentetid(13, 35)
+                val ventetid = beregnVentetid(13, 48) // f.eks. 13:35
                 delay(ventetid)
-
                 client.runDaily2990AoKontorJob(database)
+                delay(Duration.ofDays(1).toMillis())
             }
         }
     }
 }
-
 fun beregnVentetid(klokkeTime: Int, klokkeMinutt: Int): Long {
     val now = ZonedDateTime.now(ZoneId.of("Europe/Oslo"))
     var nextRun = now.withHour(klokkeTime).withMinute(klokkeMinutt)
