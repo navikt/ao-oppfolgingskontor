@@ -3,7 +3,7 @@
 exposed-version = "0.61.0"
 kotlin-version = "2.3.0"
 kafka-streams = "4.0.0"
-ktor-version = "3.3.3"
+ktor-version = "3.4.0"
 logback-version = "1.4.14"
 postgres-version = "42.7.5"
 flyway-version = "11.13.0"
