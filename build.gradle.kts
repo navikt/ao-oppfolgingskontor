@@ -104,6 +104,7 @@ dependencies {
     testImplementation(libs.kotest.runner)
     testImplementation(libs.mockk)
 //    testImplementation(kotlin("test"))
+    testImplementation(kotlin("test"))
 }
 
 graphql {
