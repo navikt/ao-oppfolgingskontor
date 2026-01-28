@@ -196,8 +196,8 @@ fun Application.installBigQueryDailyScheduler(database: Database) {
 }
 fun beregnVentetid(klokkeTime: Int, klokkeMinutt: Int): Long {
     val now = ZonedDateTime.now(ZoneId.of("Europe/Oslo"))
-    var nextRun = now.withHour(klokkeTime).withMinute(klokkeMinutt)
-    if (nextRun.isBefore(now)) nextRun = nextRun.plusDays(1)
+    var nextRun = now.withHour(klokkeTime).withMinute(klokkeMinutt).withSecond(0).withNano(0)
+    if (!nextRun.isAfter(now)) nextRun = nextRun.plusDays(1)
     return Duration.between(now, nextRun).toMillis()
 }
 
