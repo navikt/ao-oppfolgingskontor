@@ -191,6 +191,6 @@ data class OppfolgingsperiodeStartetManuellTilordning(
     }
 
     override fun logg() {
-        logger.info("bruker ble rutet til NOE")
+        logger.info("brukers kontor ved start oppfolging ble satt manuelt (overstyrt)")
     }
 }
