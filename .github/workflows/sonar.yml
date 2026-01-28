@@ -24,12 +24,12 @@ jobs:
     steps:
       - name: Checkout
         if: ${{ github.event_name != 'pull_request_target' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Checkout Dependabot PR
         if: ${{ github.event_name == 'pull_request_target' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.sha }}
       - uses: actions/setup-java@v4
@@ -41,7 +41,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Cache SonarCloud packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.sonar/cache
           key: ${{ runner.os }}-sonar
