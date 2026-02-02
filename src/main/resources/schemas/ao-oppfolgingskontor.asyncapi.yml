@@ -1,0 +1,84 @@
+asyncapi: 3.0.0
+info:
+  title: Endringer i arbeidsoppfølgingskontor
+  version: 0.0.1
+  description: |
+    Endringer i arbeidsoppfølgingskontor
+  contact:
+    name: Team Dab
+    url: 'https://nav-it.slack.com/archives/C04HS60F283'
+defaultContentType: application/json
+channels:
+  arbeidsoppfolgingskontortilordninger-v1:
+    address: arbeidsoppfolgingskontortilordninger-v1
+    description: >
+      ## Endringer på brukers arbeidsoppfølgingskontor
+
+      Key er oppfolgingsperiodeId, en intern uuid som er identifiserer en oppfølgingsperiode tilhørende en bruker. Samme bruker kan dukke opp flere ganger hvis man leser meldinger før de har blitt compacted, men tilslutt vil det maksimalt være 1 kontor per bruker. Når oppfølgingen til en bruker avsluttes (periode får start-dato) så blir meldingen tombstoned (hele verdien blir null) 
+      
+      Topicen er **compacted** og har **evig retention**.
+      
+      Det kommer melding når:
+
+      - Bruker får tilordnet kontor ved oppfølgings startet
+
+      - Bruker blir manuelt flyttet til nytt kontor av en veileder
+
+      - Bruker blir automatisk flyttet fordi hen ble skjermet eller adressebeskyttet
+
+      - Tombstone når en oppfølgingsperiode blir avsluttet (hele valuen til meldingen er null)
+    messages:
+      kontortilordning:
+        $ref: '#/components/messages/KontorTilordningMeldingDto'
+        bindings:
+          kafka:
+            key:
+              type: uuid
+              description: oppfolgingsperiodeId
+    bindings:
+      kafka:
+        topic: arbeidsoppfolgingskontortilordninger-v1
+operations:
+  arbeidsoppfolgingskontortilordninger-v1:
+    description: >-
+      Kontorendringer innad EN oppfølgingperiode compacted på oppfolgingsperiodeId
+    action: send
+    channel:
+      $ref: '#/channels/arbeidsoppfolgingskontortilordninger-v1'
+components:
+  schemas:
+    KontorTilordning:
+      required:
+        - kontorNavn
+        - kontorId
+        - oppfolgingsperiodeId
+        - aktorId
+        - ident
+        - tilordningstype
+      properties:
+        kontorNavn:
+          type: string
+        kontorId:
+          type: string
+        oppfolgingsperiodeId:
+          type: string
+        aktorId:
+          type: string
+        ident:
+          type: string
+        tilordningstype:
+          type: string
+          enum:
+            - KONTOR_VED_OPPFOLGINGSPERIODE_START
+            - ENDRET_KONTOR
+  messages:
+    KontorTilordningMeldingDto:
+      name: KontorTilordningMeldingDto
+      title: Kontortilordning
+      summary: >-
+        Trenger mer info??
+      tags:
+        - name: arbeidsoppfolgingskontortilordninger-v1
+          description: Arbeidsoppfolgingskontortilordninger v1
+      payload:
+        $ref: '#/components/schemas/KontorTilordning'
