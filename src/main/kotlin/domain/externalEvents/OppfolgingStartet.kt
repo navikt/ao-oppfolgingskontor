@@ -6,7 +6,6 @@ import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
 import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
-import no.nav.domain.Registrant
 import no.nav.utils.OffsetDateTimeSerializer
 import no.nav.utils.ZonedDateTimeSerializer
 import java.time.OffsetDateTime
