@@ -1,0 +1,40 @@
+name: AsyncAPI documents gh pages
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/asyncApiDoc.yml'
+      - 'src/main/resources/schemas/**'
+permissions:
+  contents: write
+
+concurrency:
+  group: ao-oppfolgingskontor.asyncapi.doc
+  cancel-in-progress: true
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install AsyncApi/cli
+        run: bun install -g @asyncapi/cli
+
+      - name: Generating HTML from my AsyncAPI document
+        working-directory: src/main/resources/schemas
+        run: asyncapi generate fromTemplate ao-oppfolgingskontor.asyncapi.yml @asyncapi/html-template@3.1.0 --use-new-generator -o ./ao-oppfolgingskontor-doc
+
+      - name: Deploy 🚀
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          folder: src/main/resources/schemas/ao-oppfolgingskontor-doc
+          target-folder: veilarboppfolgingV1
