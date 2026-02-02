@@ -177,7 +177,7 @@ data class OppfolgingsperiodeStartetManuellTilordning(
     val oppfolgingsperiodeId: OppfolgingsperiodeId,
     val kontorId: KontorId,
 ) : AOKontorEndret(KontorTilordning(fnr, kontorId, oppfolgingsperiodeId), System()) {
-    private val rutingResultat: RutingResultat = RutingResultat.RutetTilNOE
+    private val rutingResultat: RutingResultat = RutingResultat.RutetManuelt
     override fun kontorEndringsType(): KontorEndringsType = rutingResultat.toKontorEndringsType()
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(
