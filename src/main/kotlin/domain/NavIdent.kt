@@ -1,4 +1,4 @@
 package no.nav.domain
 
-class NavIdent(val id: String) {
+data class NavIdent(val id: String) {
 }

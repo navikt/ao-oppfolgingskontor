@@ -12,12 +12,12 @@ class System() : Registrant() {
     override fun getType() = "SYSTEM"
 }
 
-class Veileder(val navIdent: NavIdent) : Registrant() {
+data class Veileder(val navIdent: NavIdent) : Registrant() {
     override fun getIdent() = navIdent.id
     override fun getType() = "VEILEDER"
 }
 
-class Bruker(val ident: IdentSomKanLagres) : Registrant() {
+data class Bruker(val ident: IdentSomKanLagres) : Registrant() {
     override fun getIdent() = ident.value
     override fun getType() = "BRUKER"
 }

@@ -221,13 +221,13 @@ data class AutomatiskKontorRutingService(
         profilering: Profilering,
         oppfolgingsperiodeId: OppfolgingsperiodeId,
         gtResultat: KontorForGtFantIkkeKontor,
-        manueltSattKontor: KontorOverstyring?
+        kontorOverstyring: KontorOverstyring?
     ): AOKontorEndret {
         return when {
-            manueltSattKontor != null && !gtResultat.sensitivitet().erSensitiv() -> OppfolgingsperiodeStartetManuellTilordning(
+            kontorOverstyring != null && !gtResultat.sensitivitet().erSensitiv() -> OppfolgingsperiodeStartetManuellTilordning(
                 fnr,
                 oppfolgingsperiodeId,
-                manueltSattKontor
+                kontorOverstyring
             )
 
             skalTilNasjonalOppfølgingsEnhet(
@@ -261,15 +261,15 @@ data class AutomatiskKontorRutingService(
         alder: Int,
         profilering: Profilering,
         oppfolgingsperiodeId: OppfolgingsperiodeId,
-        manueltSattKontor: KontorOverstyring?
+        kontorOverstyring: KontorOverstyring?
     ): AOKontorEndret {
         val skalTilNOE by lazy { skalTilNasjonalOppfølgingsEnhet(gtKontor.sensitivitet(), profilering, alder) }
         val erSensitiv = gtKontor.sensitivitet().erSensitiv()
         return when {
-            manueltSattKontor != null && !erSensitiv -> OppfolgingsperiodeStartetManuellTilordning(
+            kontorOverstyring != null && !erSensitiv -> OppfolgingsperiodeStartetManuellTilordning(
                 fnr,
                 oppfolgingsperiodeId,
-                manueltSattKontor
+                kontorOverstyring
             )
             skalTilNOE -> OppfolgingsperiodeStartetNoeTilordning(fnr, oppfolgingsperiodeId)
             erSensitiv -> {
