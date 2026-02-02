@@ -30,7 +30,7 @@ jobs:
 
       - name: Generating HTML from my AsyncAPI document
         working-directory: src/main/resources/schemas
-        run: asyncapi generate fromTemplate ao-oppfolgingskontor.asyncapi.yml @asyncapi/html-template@3.1.0 -o ./ao-oppfolgingskontor-doc
+        run: asyncapi generate fromTemplate ao-oppfolgingskontor.asyncapi.yml @asyncapi/html-template@3.5.4 -o ./ao-oppfolgingskontor-doc
 
       - name: Deploy 🚀
         uses: JamesIves/github-pages-deploy-action@v4
