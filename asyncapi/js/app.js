@@ -14,7 +14,7 @@
   "channels": {
     "arbeidsoppfolgingskontortilordninger-v1": {
       "address": "arbeidsoppfolgingskontortilordninger-v1",
-      "description": "## Endringer på brukers arbeidsoppfølgingskontor\n### Key: OppfolgingsperiodeId\nKey er oppfolgingsperiodeId, en intern uuid som er identifiserer en oppfølgingsperiode tilhørende en bruker. Topicen er **compacted** og har **evig retention**.\n\nDet kommer melding når:\n- Bruker får tilordnet kontor ved oppfølgings startet\n- Bruker blir manuelt flyttet til nytt kontor av en veileder\n- Bruker blir automatisk flyttet fordi hen ble skjermet eller adressebeskyttet\n- Tombstone når en oppfølgingsperiode blir avsluttet (hele valuen til meldingen er null)\n",
+      "description": "## Endringer på brukers arbeidsoppfølgingskontor\nKey er oppfolgingsperiodeId, en intern uuid som er identifiserer en oppfølgingsperiode tilhørende en bruker. Samme bruker kan dukke opp flere ganger hvis man leser meldinger før de har blitt compacted, men tilslutt vil det maksimalt være 1 kontor per bruker. Når oppfølgingen til en bruker avsluttes (periode får start-dato) så blir meldingen tombstoned (hele verdien blir null) \nTopicen er **compacted** og har **evig retention**.\nDet kommer melding når:\n- Bruker får tilordnet kontor ved oppfølgings startet\n- Bruker blir manuelt flyttet til nytt kontor av en veileder\n- Bruker blir automatisk flyttet fordi hen ble skjermet eller adressebeskyttet\n- Tombstone når en oppfølgingsperiode blir avsluttet (hele valuen til meldingen er null)\n",
       "messages": {
         "kontortilordning": {
           "name": "KontorTilordningMeldingDto",
@@ -74,7 +74,7 @@
   },
   "operations": {
     "arbeidsoppfolgingskontortilordninger-v1": {
-      "description": "Kontorendringer i EN oppfølgingperiode compacted på oppfolgingsperiodeId",
+      "description": "Kontorendringer innad EN oppfølgingperiode compacted på oppfolgingsperiodeId",
       "action": "send",
       "channel": "$ref:$.channels.arbeidsoppfolgingskontortilordninger-v1",
       "x-parser-unique-object-id": "arbeidsoppfolgingskontortilordninger-v1"
