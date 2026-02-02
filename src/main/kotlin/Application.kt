@@ -186,7 +186,7 @@ fun Application.installBigQueryDailyScheduler(database: Database) {
             )
 
             while (currentCoroutineContext().isActive) {
-                val ventetid = beregnVentetid(14, 45) // Beregn hvor mange millisekunder til neste kjøring
+                val ventetid = beregnVentetid(23, 45) // Beregn hvor mange millisekunder til neste kjøring
 
                 val totalSeconds = ventetid / 1000
                 val hours = totalSeconds / 3600
