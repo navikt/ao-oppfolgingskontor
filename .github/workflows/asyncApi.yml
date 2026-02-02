@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - '.github/workflows/asyncApiDoc.yml'
+      - '.github/workflows/asyncApi.yml'
       - 'src/main/resources/schemas/**'
 permissions:
   contents: write
