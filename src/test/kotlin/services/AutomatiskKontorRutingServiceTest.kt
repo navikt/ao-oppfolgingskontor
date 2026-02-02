@@ -413,7 +413,10 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
             it("skal ikke sette Arenakontor selvom det kommer med i start-oppfolging melding") {
                 val arenaKontor = KontorId("3311")
                 gitt(ungBrukerMedGodeMuligheter).tilordneKontorAutomatiskVedStartOppfolging(
-                    oppfolgingsperiodeStartet(ungBrukerMedGodeMuligheter)
+                    oppfolgingsperiodeStartet(
+                        bruker = ungBrukerMedGodeMuligheter,
+                        tidligArenaKontor = TidligArenaKontor(OffsetDateTime.now(), arenaKontor)
+                    )
                 ) shouldBe TilordningSuccessKontorEndret(
                     KontorEndringer(
                         gtKontorEndret = ungBrukerMedGodeMuligheter.defaultGtKontorVedOppfolgStart(),
