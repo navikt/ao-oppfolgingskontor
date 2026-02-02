@@ -16,7 +16,10 @@ import java.time.ZonedDateTime
 
 object TopicUtils {
 
-    fun oppfolgingStartetMelding(bruker: Bruker, arenaKontor: KontorId? = KontorId("4141")): Record<String, String> {
+    fun oppfolgingStartetMelding(
+        bruker: Bruker,
+        arenaKontor: KontorId? = KontorId("4141"),
+        foretrukketArbeidsoppfolgingskontor: KontorId? = null): Record<String, String> {
         return Record(bruker.ident.value, """
             {
                 "hendelseType": "OPPFOLGING_STARTET",
@@ -26,7 +29,7 @@ object TopicUtils {
                 "startetAvType": "VEILEDER",
                 "startetBegrunnelse": "ARBEIDSSOKER_REGISTRERING",
                 "arenaKontor": ${arenaKontor?.id?.let { "\"$it\"" } ?: "null" },
-                "foretrukketArbeidsoppfolgingskontor": null,
+                "foretrukketArbeidsoppfolgingskontor": ${foretrukketArbeidsoppfolgingskontor?.let { "\"${it.id}\"" } ?: "null" },
                 "fnr": "${bruker.ident.value}"
             }
         """, System.currentTimeMillis())

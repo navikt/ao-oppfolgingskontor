@@ -142,6 +142,20 @@ class OppfolgingshendelseProcessorTest {
     }
 
     @Test
+    fun `Skal videresende kontoroverstyring hvis melding inneholder kontoroverstyring`() = testApplication {
+        val bruker = testBruker()
+        val overstyrtKontor = KontorId("7899")
+        val oppfolgingshendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
+        val record = oppfolgingStartetMelding(bruker, foretrukketKontor = overstyrtKontor)
+
+        val result = oppfolgingshendelseProcessor.process(record)
+
+        result.shouldBeInstanceOf<Forward<Ident, OppfolgingsperiodeStartet>>()
+        result.forwardedRecord.value().kontorOverstyring.shouldNotBeNull()
+        bruker.skalVæreUnderOppfølging()
+    }
+
+    @Test
     fun `Skal slette periode når avslutningsmelding kommer `() = testApplication {
         val bruker = testBruker()
         val oppfolgingshendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
@@ -482,8 +496,8 @@ class OppfolgingshendelseProcessorTest {
         }
     }
 
-    fun oppfolgingStartetMelding(bruker: Bruker, arenaKontor: KontorId = KontorId("4141")): Record<String, String> =
-        TopicUtils.oppfolgingStartetMelding(bruker, arenaKontor)
+    fun oppfolgingStartetMelding(bruker: Bruker, arenaKontor: KontorId = KontorId("4141"), foretrukketKontor: KontorId? = null): Record<String, String> =
+        TopicUtils.oppfolgingStartetMelding(bruker, arenaKontor, foretrukketKontor)
 
     fun oppfolgingAvsluttetMelding(bruker: Bruker, sluttDato: ZonedDateTime): Record<String, String> =
         TopicUtils.oppfolgingAvsluttetMelding(bruker, sluttDato)
