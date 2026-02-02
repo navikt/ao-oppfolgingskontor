@@ -1,18 +1,15 @@
 package no.nav
 
 import dab.poao.nav.no.health.CriticalErrorNotificationFunction
-import http.client.AaregClient
-import http.client.EregClient
-import http.client.VeilarbArenaClient
-import http.client.getAaregScope
-import http.client.getVeilarbarenaScope
+import eventsLogger.BigQueryClient
+import http.client.*
 import http.configureContentNegotiation
 import http.configureHentArbeidsoppfolgingskontorBulkModule
-import io.ktor.server.application.Application
-import io.ktor.server.application.ApplicationEnvironment
-import io.ktor.server.application.install
+import io.ktor.server.application.*
 import io.ktor.server.netty.*
 import kafka.producers.KontorEndringProducer
+import kotlinx.coroutines.*
+import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
 import no.nav.db.IdentSomKanLagres
 import no.nav.db.configureDatabase
 import no.nav.domain.OppfolgingsperiodeId
@@ -24,37 +21,22 @@ import no.nav.http.client.poaoTilgang.PoaoTilgangKtorHttpClient
 import no.nav.http.client.poaoTilgang.getPoaoTilgangScope
 import no.nav.http.client.tokenexchange.TexasSystemTokenClient
 import no.nav.http.client.tokenexchange.getNaisTokenEndpoint
-import no.nav.http.configureArbeidsoppfolgingskontorModule
 import no.nav.http.configureAdminModule
+import no.nav.http.configureArbeidsoppfolgingskontorModule
 import no.nav.http.configureFinnKontorModule
-import no.nav.http.graphql.AuthenticateRequest
-import no.nav.http.graphql.configureGraphQlModule
-import no.nav.http.graphql.getAaregUrl
-import no.nav.http.graphql.getEregUrl
-import no.nav.http.graphql.getNorg2Url
-import no.nav.http.graphql.getPDLUrl
-import no.nav.http.graphql.getPoaoTilgangUrl
-import no.nav.http.graphql.getVeilarbArenaUrl
+import no.nav.http.graphql.*
 import no.nav.kafka.KafkaStreamsPlugin
 import no.nav.kafka.config.createKafkaProducer
 import no.nav.kafka.config.toKafkaEnv
-import no.nav.services.AutomatiskKontorRutingService
-import no.nav.services.GTNorgService
-import no.nav.services.KontorNavnService
-import no.nav.services.KontorTilhorighetService
-import no.nav.services.KontorTilordningService
-import no.nav.services.OppfolgingsperiodeDao
-import no.nav.services.TilordningResultat
-import services.ArenaSyncService
-import services.IdentService
-import services.KontorForBrukerMedMangelfullGtService
-import services.KontorRepubliseringService
-import services.KontorTilhorighetBulkService
-import services.OppfolgingsperiodeService
+import no.nav.services.*
+import org.jetbrains.exposed.sql.Database
+import services.*
 import topics
 import utils.Outcome
+import java.time.Duration
+import java.time.ZoneId
 import java.time.ZonedDateTime
-import java.util.UUID
+import java.util.*
 
 fun main(args: Array<String>) {
     EngineMain.main(args)
@@ -65,6 +47,8 @@ fun Application.module() {
     val setCriticalError: CriticalErrorNotificationFunction = configureHealthAndCompression()
     configureSecurity()
     val (datasource, database) = configureDatabase()
+
+    installBigQueryDailyScheduler(database)
 
     val norg2Client = Norg2Client(environment.getNorg2Url())
 
@@ -191,4 +175,59 @@ fun ApplicationEnvironment.getBrukAoRuting(): Boolean {
 
 fun ApplicationEnvironment.getPubliserArenaKontor(): Boolean {
     return !getBrukAoRuting()
+}
+
+fun Application.installBigQueryDailyScheduler(database: Database) {
+    environment.monitor.subscribe(ApplicationStarted) {
+        launch {
+            val client = BigQueryClient(
+                environment.config.property("app.gcp.projectId").getString(),
+                ExposedLockProvider(database)
+            )
+
+            while (currentCoroutineContext().isActive) {
+                val ventetid = beregnVentetid(14, 45) // Beregn hvor mange millisekunder til neste kjøring
+
+                val totalSeconds = ventetid / 1000
+                val hours = totalSeconds / 3600
+                val minutes = (totalSeconds % 3600) / 60
+                val seconds = totalSeconds % 60
+
+                log.info("Neste BigQuery-jobb kjører om $hours timer, $minutes minutter og $seconds sekunder")
+                delay(ventetid)
+
+                withContext(Dispatchers.IO) {
+                    log.info("Starter BigQuery-jobb for antall 2990 AO-kontor")
+                    client.antall2990Kontor(database)
+                    log.info("BigQuery-jobb ferdig")
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Beregner ventetid fra nå til neste kjøring på gitt klokkeslett (time + minutt).
+ *
+ * Eksempel: Hvis nå er 13:45, ønsket kjøring 13:57 → ventetid = 12 minutter.
+ * Hvis ønsket tidspunkt allerede har passert, settes det til samme klokkeslett neste dag
+ *
+ * @param klokkeTime ønsket time for kjøring (0-23)
+ * @param klokkeMinutt ønsket minutt for kjøring (0-59)
+ * @return ventetid i millisekunder
+ */
+fun beregnVentetid(klokkeTime: Int, klokkeMinutt: Int): Long {
+    val now = ZonedDateTime.now(ZoneId.of("Europe/Oslo"))
+    var nextRun = now
+        .withHour(klokkeTime)
+        .withMinute(klokkeMinutt)
+        .withSecond(0)
+        .withNano(0)
+
+    // Hvis ønsket tidspunkt allerede har passert, sett til samme tid neste dag
+    if (!nextRun.isAfter(now)) {
+        nextRun = nextRun.plusDays(1)
+    }
+
+    return Duration.between(now, nextRun).toMillis()
 }
