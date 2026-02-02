@@ -235,7 +235,8 @@ class OppfolgingshendelseProcessorTest {
             nyereStartDato,
             OppfolgingsperiodeId(nyerePeriodeId),
             true,
-             null
+             null,
+            null
         )
         processingResult.topic shouldBe null
         transaction {

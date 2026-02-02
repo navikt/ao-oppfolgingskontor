@@ -38,6 +38,7 @@ import domain.kontorForGt.KontorForGtFantKontorForArbeidsgiverAdresse
 import domain.kontorForGt.KontorForGtResultat
 import domain.kontorForGt.KontorForGtSuccess
 import no.nav.domain.events.OppfolgingsperiodeStartetManuellTilordning
+import no.nav.domain.externalEvents.KontorOverstyring
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseIkkeFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseOppslagFeil
@@ -113,7 +114,7 @@ data class AutomatiskKontorRutingService(
                 oppfolgingsperiodeId,
                 oppfolgingsperiodeStartet.erArbeidssøkerRegistrering,
                 oppfolgingsperiodeStartet.startDato,
-                oppfolgingsperiodeStartet.foretrukketArbeidsoppfolgingskontor
+                oppfolgingsperiodeStartet.kontorOverstyring
             )
 
         } catch (e: Exception) {
@@ -126,7 +127,7 @@ data class AutomatiskKontorRutingService(
         oppfolgingsperiodeId: OppfolgingsperiodeId,
         erArbeidssøkerRegistrering: Boolean,
         oppfolgingStartDato: ZonedDateTime,
-        manueltSattKontor : KontorId?
+        manueltSattKontor : KontorOverstyring?
     ): TilordningResultat {
         try {
 
@@ -220,7 +221,7 @@ data class AutomatiskKontorRutingService(
         profilering: Profilering,
         oppfolgingsperiodeId: OppfolgingsperiodeId,
         gtResultat: KontorForGtFantIkkeKontor,
-        manueltSattKontor: KontorId?
+        manueltSattKontor: KontorOverstyring?
     ): AOKontorEndret {
         return when {
             manueltSattKontor != null && !gtResultat.sensitivitet().erSensitiv() -> OppfolgingsperiodeStartetManuellTilordning(
@@ -260,7 +261,7 @@ data class AutomatiskKontorRutingService(
         alder: Int,
         profilering: Profilering,
         oppfolgingsperiodeId: OppfolgingsperiodeId,
-        manueltSattKontor: KontorId?
+        manueltSattKontor: KontorOverstyring?
     ): AOKontorEndret {
         val skalTilNOE by lazy { skalTilNasjonalOppfølgingsEnhet(gtKontor.sensitivitet(), profilering, alder) }
         val erSensitiv = gtKontor.sensitivitet().erSensitiv()
