@@ -20,7 +20,8 @@ caffeine-version = "3.2.1"
 kafka-avro = "8.0.0"
 shedlock-version = "6.9.0"
 micrometer-version = "1.16.1"
-bigquery-version = "2.44"
+bigquery-version = "2.57.1"
+google-libraries-bom-version = "26.11.0"
 
 
 [libraries]
@@ -76,7 +77,7 @@ mock-oauth2-server = { module = "no.nav.security:mock-oauth2-server", version.re
 mockk = { module = "io.mockk:mockk", version.ref = "mockk-version" }
 nav-poaotilgang-client-core = { module = "no.nav.poao-tilgang:client-core", version.ref = "poao-tilgang-version" }
 google-cloud-bigquery = { module = "com.google.cloud:google-cloud-bigquery", version.ref = "bigquery-version" }
-
+google-cloud-libraries-bom = { module = "com.google.cloud:libraries-bom", version.ref = "google-libraries-bom-version" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-version" }
