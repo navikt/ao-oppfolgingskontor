@@ -95,7 +95,9 @@ class KontortilordningsProcessorTest {
             Fnr("12211221333", Ident.HistoriskStatus.AKTIV),
             ZonedDateTime.now(),
             OppfolgingsperiodeId(UUID.randomUUID()),
-            true
+            true,
+            null,
+            null
         )
     }
 
