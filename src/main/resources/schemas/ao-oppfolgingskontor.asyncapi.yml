@@ -30,7 +30,7 @@ channels:
 
       - Tombstone når en oppfølgingsperiode blir avsluttet (hele valuen til meldingen er null)
     messages:
-      oppfolgingsperiodeV2:
+      kontortilordning:
         $ref: '#/components/messages/KontorTilordningMeldingDto'
         bindings:
           kafka:
@@ -44,9 +44,6 @@ operations:
   arbeidsoppfolgingskontortilordninger-v1:
     description: >-
       Kontorendringer i EN oppfølgingperiode compacted på oppfolgingsperiodeId
-    tags:
-      - name: Oppfolgingsperiode
-        description: Oppfolgingsperioden til bruker
     action: send
     channel:
       $ref: '#/channels/arbeidsoppfolgingskontortilordninger-v1'
