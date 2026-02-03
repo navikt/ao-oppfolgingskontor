@@ -17,11 +17,21 @@ import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
 import no.nav.db.Npid
+import no.nav.domain.HarSkjerming
+import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
+import no.nav.domain.Sensitivitet
 import no.nav.domain.events.KontorSattAvVeileder
 import no.nav.getIssuer
+import no.nav.http.client.HarStrengtFortroligAdresseFunnet
+import no.nav.http.client.HarStrengtFortroligAdresseIkkeFunnet
+import no.nav.http.client.HarStrengtFortroligAdresseOppslagFeil
+import no.nav.http.client.HarStrengtFortroligAdresseResult
 import no.nav.http.client.IdentFunnet
+import no.nav.http.client.SkjermingFunnet
+import no.nav.http.client.SkjermingIkkeFunnet
+import no.nav.http.client.SkjermingResult
 import no.nav.http.client.poaoTilgang.HarIkkeTilgang
 import no.nav.http.client.poaoTilgang.HarTilgang
 import no.nav.http.client.poaoTilgang.PoaoTilgangKtorHttpClient
@@ -46,6 +56,8 @@ fun Application.configureArbeidsoppfolgingskontorModule(
     oppfolgingsperiodeService: OppfolgingsperiodeService,
     publiserKontorEndring: suspend (KontorSattAvVeileder) -> Result<Unit>,
     authenticateRequest: AuthenticateRequest = { req -> req.call.authenticateCall(environment.getIssuer()) },
+    hentSkjerming: suspend (IdentSomKanLagres) -> SkjermingResult,
+    hentAdresseBeskyttelse: suspend (IdentSomKanLagres) -> HarStrengtFortroligAdresseResult,
     brukAoRuting: Boolean
 ) {
     val log = LoggerFactory.getLogger("Application.configureArbeidsoppfolgingskontorModule")
@@ -115,6 +127,42 @@ fun Application.configureArbeidsoppfolgingskontorModule(
                             is OppfolgingperiodeOppslagFeil -> {
                                 log.error("Klarte ikke hente oppfølgingsperiode: ${oppfolgingsperiode.message}")
                                 call.respond(HttpStatusCode.InternalServerError, "Klarte ikke hente oppfølgingsperiode")
+                                return@post
+                            }
+                        }
+
+                        when(val adressebeskyttelse = hentAdresseBeskyttelse(ident)) {
+                            is HarStrengtFortroligAdresseFunnet -> {
+                                if (adressebeskyttelse.harStrengtFortroligAdresse.value) {
+                                    val errorMessage = "Kan ikke bytte kontor på strengt fortrolig bruker"
+                                    log.error(errorMessage)
+                                    call.respond(HttpStatusCode.Conflict, errorMessage)
+                                    return@post
+                                }
+                            }
+                            is HarStrengtFortroligAdresseIkkeFunnet -> {
+                                log.error("Fant ikke adressebeskyttelse ved flytting av bruker: ${adressebeskyttelse.message}")
+                                call.respond(HttpStatusCode.InternalServerError, adressebeskyttelse.message)
+                                return@post
+                            }
+                            is HarStrengtFortroligAdresseOppslagFeil -> {
+                                log.error("Fant ikke adressebeskyttelse ved flytting av bruker: ${adressebeskyttelse.message}")
+                                call.respond(HttpStatusCode.InternalServerError, adressebeskyttelse.message)
+                                return@post
+                            }
+                        }
+                        when(val skjerming = hentSkjerming(ident)) {
+                            is SkjermingFunnet -> {
+                                if (skjerming.skjermet.value) {
+                                    val errorMessage = "Kan ikke bytte kontor på skjermet bruker"
+                                    log.error(errorMessage)
+                                    call.respond(HttpStatusCode.Conflict, errorMessage)
+                                    return@post
+                                }
+                            }
+                            is SkjermingIkkeFunnet -> {
+                                log.error("Fant ikke skjerming ved flytting av bruker: ${skjerming.melding}")
+                                call.respond(HttpStatusCode.InternalServerError, skjerming.melding)
                                 return@post
                             }
                         }

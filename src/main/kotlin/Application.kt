@@ -150,6 +150,8 @@ fun Application.module() {
         poaoTilgangHttpClient,
         oppfolgingsperiodeService,
         { kontorEndringProducer.publiserEndringPåKontor(it) },
+        hentSkjerming = { skjermingsClient.hentSkjerming(it) },
+        hentAdresseBeskyttelse = { pdlClient.harStrengtFortroligAdresse(it) },
         brukAoRuting = environment.getBrukAoRuting(),
     )
     configureFinnKontorModule(simulerKontorTilordning, kontorNavnService::getKontorNavn)
