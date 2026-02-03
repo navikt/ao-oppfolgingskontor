@@ -2,6 +2,9 @@ package http.handlers
 
 import io.kotest.matchers.shouldBe
 import io.ktor.http.HttpStatusCode
+import io.mockk.Called
+import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.test.runTest
 import no.nav.AOPrincipal
 import no.nav.NavAnsatt
@@ -11,6 +14,7 @@ import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorNavn
 import no.nav.domain.NavIdent
 import no.nav.domain.OppfolgingsperiodeId
+import no.nav.domain.events.KontorEndretEvent
 import no.nav.http.ArbeidsoppfolgingsKontorTilordningDTO
 import no.nav.http.Kontor
 import no.nav.http.KontorByttetOkResponseDto
@@ -93,12 +97,28 @@ class SettKontorHandlerTest {
         ) shouldBe SettKontorFailure(HttpStatusCode.Forbidden, "Du har ikke tilgang til å endre kontor for denne brukeren")
     }
 
+    @Test
+    fun `Skal ikke publisere kontorendring hvis lagring av kontor feiler`() = runTest {
+        val publiserMockk = mockk<(KontorEndretEvent) -> Result<Unit>>()
+        val handler = defaultHandler(fnr,
+            tilordneKontor = { a,b -> throw Exception("Noe gikk galt") },
+            publiserKontorEndring = publiserMockk
+        )
+
+        handler.settKontor(
+            kontortilordning, navAnsatt,
+        ) shouldBe SettKontorFailure(HttpStatusCode.InternalServerError, "Kunne ikke oppdatere kontor")
+        verify { publiserMockk wasNot Called }
+    }
+
     fun defaultHandler(
         ident: IdentSomKanLagres,
         harTilgang: TilgangResult = HarTilgang,
         skjermingResult: SkjermingResult = SkjermingFunnet(HarSkjerming(false)),
         adresseResult: HarStrengtFortroligAdresseResult = HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)),
-        oppfolgingsperiodeResult: OppfolgingsperiodeOppslagResult = AktivOppfolgingsperiode(ident, OppfolgingsperiodeId(UUID.randomUUID()), startDato = OffsetDateTime.now())
+        oppfolgingsperiodeResult: OppfolgingsperiodeOppslagResult = AktivOppfolgingsperiode(ident, OppfolgingsperiodeId(UUID.randomUUID()), startDato = OffsetDateTime.now()),
+        tilordneKontor: (event: KontorEndretEvent, brukAORuting: Boolean) -> Unit = { a, b -> Unit },
+        publiserKontorEndring: (event: KontorEndretEvent) -> Result<Unit> = { a -> Result.success(Unit) },
     ): SettKontorHandler {
         val hentAoKontor = suspend { a: AOPrincipal, i: IdentSomKanLagres -> null }
         val harTilgang = suspend { a: AOPrincipal, b: IdentSomKanLagres, -> harTilgang }
@@ -107,8 +127,8 @@ class SettKontorHandlerTest {
             hentAoKontor,
             harTilgang,
             { oppfolgingsperiodeResult },
-            { event, brukAoRuting -> Unit },
-            { event -> Result.success(Unit) },
+            tilordneKontor,
+            publiserKontorEndring,
             { skjermingResult },
             { adresseResult },
             true,

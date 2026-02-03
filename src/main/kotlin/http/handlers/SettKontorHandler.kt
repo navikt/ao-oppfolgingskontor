@@ -147,7 +147,6 @@ class SettKontorHandler(
                     .flatMap { ident -> sjekkHarTilgang(principal, ident).map { ident } }
                     .flatMap { ident -> sjekkBrukerHarIkkeAdressebeskyttelse(ident).map { ident } }
                     .flatMap { ident -> sjekkBrukerErIkkeSkjermet(ident).map { ident } }
-                    .validate { ident -> runBlocking { sjekkBrukerHarIkkeAdressebeskyttelse(ident) } }
                     .flatMap { ident -> hentOppfolgingsperiode(ident).map { it to ident } }
                     .map { (periodeId: OppfolgingsperiodeId, ident: IdentSomKanLagres) ->
                         val gammeltKontor = hentAoKontor(principal, ident)
