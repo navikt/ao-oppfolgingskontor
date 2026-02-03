@@ -93,6 +93,7 @@ dependencies {
     implementation(libs.micrometer.core)
     implementation(libs.google.cloud.bigquery)
     implementation(platform(libs.google.cloud.libraries.bom))
+    implementation(libs.arrow.core)
 
     testImplementation(libs.ktor.client.mock)
     testImplementation(libs.embedded.postgres)

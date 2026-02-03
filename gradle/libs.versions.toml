@@ -22,6 +22,7 @@ shedlock-version = "6.9.0"
 micrometer-version = "1.16.1"
 bigquery-version = "2.57.1"
 google-libraries-bom-version = "26.11.0"
+arrow-version = "2.2.1.1"
 
 
 [libraries]
@@ -78,6 +79,7 @@ mockk = { module = "io.mockk:mockk", version.ref = "mockk-version" }
 nav-poaotilgang-client-core = { module = "no.nav.poao-tilgang:client-core", version.ref = "poao-tilgang-version" }
 google-cloud-bigquery = { module = "com.google.cloud:google-cloud-bigquery", version.ref = "bigquery-version" }
 google-cloud-libraries-bom = { module = "com.google.cloud:libraries-bom", version.ref = "google-libraries-bom-version" }
+arrow-core = { module = "io.arrow-kt:arrow-core", version.ref = "arrow-version" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-version" }
