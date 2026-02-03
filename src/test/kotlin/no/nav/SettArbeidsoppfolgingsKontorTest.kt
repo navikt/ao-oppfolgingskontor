@@ -191,14 +191,14 @@ class SettArbeidsoppfolgingsKontorTest {
             val aktorId = randomAktorId(UKJENT)
             val kontorId = "4444"
             val veilederIdent = NavIdent("Z990000")
-            setupTestAppWithAuthAndGraphql(fnr, aktorId) {
+            setupTestAppWithAuthAndGraphql(fnr, aktorId, brukAoRuting = true) {
                 gittIdentIMapping(fnr)
             }
             val httpClient = getJsonHttpClient()
 
             val response = httpClient.settKontor(server, fnr = fnr, kontorId = kontorId, navIdent = veilederIdent)
 
-            response.status shouldBe HttpStatusCode.NotImplemented // TODO: Skal returnere conflict uten toggle
+            response.status shouldBe HttpStatusCode.Conflict
         }
     }
 
