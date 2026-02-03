@@ -28,6 +28,7 @@ import no.nav.http.graphql.generated.client.SokAdresseFritekstQuery
 import no.nav.http.graphql.generated.client.enums.AdressebeskyttelseGradering
 import no.nav.http.graphql.generated.client.enums.GtType
 import no.nav.http.graphql.generated.client.inputs.Criterion
+import no.nav.http.graphql.generated.client.inputs.Paging
 import no.nav.http.graphql.generated.client.inputs.SearchRule
 import org.slf4j.LoggerFactory
 import services.toKnownHistoriskStatus
@@ -207,6 +208,10 @@ class PdlClient(
         try {
             val query = SokAdresseFritekstQuery(
                 SokAdresseFritekstQuery.Variables(
+                    paging = Paging(
+                        pageNumber = 1,
+                        resultsPerPage = 50
+                    ),
                     criteria = listOf(
                         Criterion(
                             fieldName = "vegadresse.kommunenummer",
