@@ -13,6 +13,12 @@ import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.time.ZonedDateTime
 
+enum class KontorTypeForBigQuery {
+    ARBEIDSOPPFOLGINGSKONTOR,
+    ALTERNATIV_AOKONTOR,
+    ARENAKONTOR
+}
+
 class BigQueryClient(
     projectId: String,
     private val lockProvider: ExposedLockProvider
@@ -24,12 +30,13 @@ class BigQueryClient(
     private val log = LoggerFactory.getLogger(this::class.java)
     val kontorEventsTable = TableId.of(DATASET_NAME, KONTOR_EVENTS)
 
-    fun loggSattKontorEvent(kontorId: KontorId, kontorEndringsType: KontorEndringsType) {
+    fun loggSattKontorEvent(kontorId: KontorId, kontorEndringsType: KontorEndringsType?, kontorType: KontorTypeForBigQuery) {
         insertIntoKontorEvents(kontorEventsTable) {
             mapOf(
                 "kontorId" to kontorId.toString(),
                 "timestamp" to ZonedDateTime.now().toOffsetDateTime().toString(),
-                "kontorEndringsType" to kontorEndringsType.toString()
+                "kontorEndringsType" to kontorEndringsType.toString(),
+                "kontorType" to kontorType.toString(),
             )
         }
     }

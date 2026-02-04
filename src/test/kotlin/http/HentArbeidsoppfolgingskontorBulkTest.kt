@@ -10,9 +10,11 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.testApplication
+import io.mockk.mockk
 import no.nav.db.Ident
 import no.nav.domain.KontorId
 import no.nav.security.mock.oauth2.MockOAuth2Server
+import no.nav.services.KontorTilordningService
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.getJsonHttpClient
 import no.nav.utils.getMockOauth2ServerConfig
@@ -35,6 +37,7 @@ class HentArbeidsoppfolgingskontorBulkTest {
         @BeforeAll
         fun setup() {
             flywayMigrationInTest()
+            KontorTilordningService.bigQueryClient = mockk(relaxed = true)
         }
     }
 
