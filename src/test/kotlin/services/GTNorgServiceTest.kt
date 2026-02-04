@@ -1,5 +1,6 @@
 package services
 
+import domain.gtForBruker.GtForBrukerFunnet
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.test.runTest
 import no.nav.db.Fnr
@@ -28,6 +29,7 @@ import org.junit.jupiter.api.Test
 
 class GTNorgServiceTest {
     val fnr = Fnr("12345678901", Ident.HistoriskStatus.UKJENT)
+    val utenAdresseBeskyttelse = HarStrengtFortroligAdresse(false)
 
     @Test
     fun `skal svare KontorForGtFinnesIkke for bruker uten GT og uten arbeigiver-fallback og uten norg-fallback`() = runTest {
