@@ -48,6 +48,7 @@ internal class RetryMetrics(
     private val retriesFailedSensor: Sensor = metrics.addSensor("retries-failed", Sensor.RecordingLevel.INFO)
     private val messagesDeadLetteredSensor: Sensor = metrics.addSensor("messages-dead-lettered", Sensor.RecordingLevel.INFO)
     private val failedMessagesCurrentSensor: Sensor = metrics.addSensor("failed-messages-current", Sensor.RecordingLevel.INFO)
+    private val failedMessagesOlderThan20MinutesSensor: Sensor = metrics.addSensor("failed-messages-older-than-20-minutes", Sensor.RecordingLevel.INFO)
 
     init {
         // --- Definer Telle-metrikker (Counters) ---
@@ -63,6 +64,8 @@ internal class RetryMetrics(
         // Vi bruker Value(), som er en MeasurableStat som bare rapporterer den siste registrerte verdien.
         val gaugeMetricName = MetricName("failed-messages-current", groupName, "Current number of messages in the failure queue", tags)
         failedMessagesCurrentSensor.add(gaugeMetricName, Value())
+        val olderThan20MinutesGaugeMetricName = MetricName("failed-messages-older-than-20-minutes", groupName, "Current number of messages in the failure queue older than 20 minutes", tags)
+        failedMessagesOlderThan20MinutesSensor.add(olderThan20MinutesGaugeMetricName, Value())
     }
 
     private val logger = LoggerFactory.getLogger(RetryMetrics::class.java)
@@ -76,6 +79,8 @@ internal class RetryMetrics(
         try {
             val count = repository.countTotalFailedMessages().toDouble()
             failedMessagesCurrentSensor.record(count)
+            val olderThan20Minutes = repository.countFailedMessagesOlderThan20Minutes().toDouble()
+            failedMessagesOlderThan20MinutesSensor.record(olderThan20Minutes)
         } catch (e: Exception) {
             logger.error("Could not fetch failed message count for metrics: ${e.message}")
         }

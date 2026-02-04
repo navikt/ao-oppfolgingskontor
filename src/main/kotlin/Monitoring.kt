@@ -14,11 +14,10 @@ import io.micrometer.core.instrument.binder.system.UptimeMetrics
 import io.micrometer.prometheusmetrics.PrometheusConfig
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
 import org.slf4j.event.*
-import javax.sql.DataSource
 
 val excludedPaths = listOf("/isAlive", "/isReady", "/metrics")
 
-fun Application.configureMonitoring(dataSource: DataSource): MeterRegistry {
+fun Application.configureMonitoring(): MeterRegistry {
     val appMicrometerRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
 
     install(MicrometerMetrics) {
@@ -29,30 +28,6 @@ fun Application.configureMonitoring(dataSource: DataSource): MeterRegistry {
             ProcessorMetrics(),
             UptimeMetrics()
         )
-    }
-
-    appMicrometerRegistry.gauge(
-        "failed_messages_older_than_20_minutes",
-        dataSource
-    ) { ds ->
-        try {
-            ds.connection.use { connection ->
-                connection.prepareStatement(
-                    """
-                    SELECT COUNT(*)
-                    FROM failed_messages
-                    WHERE queue_timestamp < NOW() - INTERVAL '20 minutes'
-                    """
-                ).use { statement ->
-                    statement.executeQuery().use { rs ->
-                        if (rs.next()) rs.getInt(1).toDouble() else 0.0
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            log.error("Failed to query failed_messages for metrics", e)
-            0.0
-        }
     }
 
     routing {

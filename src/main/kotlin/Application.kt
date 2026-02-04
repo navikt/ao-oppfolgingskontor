@@ -44,7 +44,7 @@ fun main(args: Array<String>) {
 
 fun Application.module() {
     val (datasource, database) = configureDatabase()
-    val meterRegistry = configureMonitoring(datasource)
+    val meterRegistry = configureMonitoring()
     val setCriticalError: CriticalErrorNotificationFunction = configureHealthAndCompression()
     configureSecurity()
 
