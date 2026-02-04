@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  apply-alerts:
+  apply-alerts-dev:
     name: Apply alerts
     runs-on: ubuntu-latest
     permissions:
@@ -25,4 +25,18 @@ jobs:
         uses: nais/deploy/actions/deploy@v2
         env:
           CLUSTER: dev-gcp
+          RESOURCE: nais/kafka-streams-alerts.yaml
+
+  apply-alerts-prod:
+    name: Apply alerts
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: deploy alerts to prod
+        uses: nais/deploy/actions/deploy@v2
+        env:
+          CLUSTER: prod-gcp
           RESOURCE: nais/kafka-streams-alerts.yaml
