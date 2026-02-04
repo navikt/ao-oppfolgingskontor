@@ -24,9 +24,11 @@ import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.SkjermingResult
 import no.nav.http.client.poaoTilgang.HarIkkeTilgang
 import no.nav.http.client.poaoTilgang.HarTilgang
+import no.nav.http.client.poaoTilgang.TilgangOppslagFeil
 import no.nav.http.client.poaoTilgang.TilgangResult
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.NotUnderOppfolging
+import no.nav.services.OppfolgingperiodeOppslagFeil
 import no.nav.services.OppfolgingsperiodeOppslagResult
 import no.nav.utils.randomFnr
 import org.junit.jupiter.api.Test
@@ -95,6 +97,24 @@ class SettKontorHandlerTest {
         handler.settKontor(
             kontortilordning, navAnsatt,
         ) shouldBe SettKontorFailure(HttpStatusCode.Forbidden, "Du har ikke tilgang til å endre kontor for denne brukeren")
+    }
+
+    @Test
+    fun `Skal svare med 500 når tilgangsjekk får en teknisk feil`() = runTest {
+        val handler = defaultHandler(fnr, harTilgang = TilgangOppslagFeil("Fordi"))
+
+        handler.settKontor(
+            kontortilordning, navAnsatt,
+        ) shouldBe SettKontorFailure(HttpStatusCode.InternalServerError, "Noe gikk galt under oppslag av tilgang for bruker: Fordi")
+    }
+
+    @Test
+    fun `Skal svare med 500 når henting av periode feiler`() = runTest {
+        val handler = defaultHandler(fnr, oppfolgingsperiodeResult = OppfolgingperiodeOppslagFeil("Fordi"))
+
+        handler.settKontor(
+            kontortilordning, navAnsatt,
+        ) shouldBe SettKontorFailure(HttpStatusCode.InternalServerError, "Klarte ikke hente oppfølgingsperiode")
     }
 
     @Test

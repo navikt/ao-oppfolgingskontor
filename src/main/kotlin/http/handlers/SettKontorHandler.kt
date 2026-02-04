@@ -40,7 +40,6 @@ import arrow.core.Either
 import arrow.core.flatMap
 import arrow.core.flatten
 import arrow.core.getOrElse
-import kotlinx.coroutines.runBlocking
 import no.nav.domain.OppfolgingsperiodeId
 
 sealed class SettKontorResult
@@ -83,7 +82,7 @@ class SettKontorHandler(
             }
             is TilgangOppslagFeil -> {
                 logger.warn(harTilgang.message)
-                Either.Left(SettKontorFailure(HttpStatusCode.Forbidden,"Noe gikk galt under oppslag av tilgang for bruker: ${harTilgang.message}"))
+                Either.Left(SettKontorFailure(HttpStatusCode.InternalServerError,"Noe gikk galt under oppslag av tilgang for bruker: ${harTilgang.message}"))
             }
         }
     }
@@ -163,7 +162,7 @@ class SettKontorHandler(
                     }
                     .map { (kontorId, gammeltKontor) ->
                         val kontorNavn = Either.catch { hentKontorNavn(kontorId) }.getOrElse { KontorNavn("<Ukjent kontornavn>") }
-                        val response = collectResponse(kontorNavn, kontorId, gammeltKontor)
+                        val response = buildResponse(kontorNavn, kontorId, gammeltKontor)
                         SettKontorSuccess(response)
                     }
             }
@@ -177,7 +176,7 @@ class SettKontorHandler(
     }
 }
 
-fun collectResponse(kontorNavn: KontorNavn, kontorId: KontorId, gammeltKontor: ArbeidsoppfolgingsKontor?) = KontorByttetOkResponseDto(
+fun buildResponse(kontorNavn: KontorNavn, kontorId: KontorId, gammeltKontor: ArbeidsoppfolgingsKontor?) = KontorByttetOkResponseDto(
     fraKontor = gammeltKontor?.let {
         Kontor(
             kontorNavn = it.kontorNavn.navn,
