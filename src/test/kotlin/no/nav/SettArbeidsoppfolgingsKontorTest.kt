@@ -4,6 +4,7 @@ import com.expediagroup.graphql.server.ktor.graphQLPostRoute
 import http.configureContentNegotiation
 import io.kotest.matchers.shouldBe
 import io.ktor.client.call.body
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.auth.authenticate
@@ -14,11 +15,17 @@ import kafka.producers.KontorEndringProducer
 import no.nav.db.AktorId
 import no.nav.db.Ident.HistoriskStatus.UKJENT
 import no.nav.db.IdentSomKanLagres
+import no.nav.domain.HarSkjerming
+import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorNavn
 import no.nav.domain.KontorType
 import no.nav.domain.NavIdent
 import no.nav.domain.OppfolgingsperiodeId
+import no.nav.http.client.HarStrengtFortroligAdresseFunnet
+import no.nav.http.client.HarStrengtFortroligAdresseResult
 import no.nav.http.client.IdenterFunnet
+import no.nav.http.client.SkjermingFunnet
+import no.nav.http.client.SkjermingResult
 import no.nav.http.client.mockNorg2Host
 import no.nav.http.client.mockPoaoTilgangHost
 import no.nav.http.client.settKontor
@@ -68,12 +75,14 @@ class SettArbeidsoppfolgingsKontorTest {
     fun ApplicationTestBuilder.setupTestAppWithAuthAndGraphql(
         ident: IdentSomKanLagres,
         aktorId: AktorId,
+        skjerming: SkjermingResult = SkjermingFunnet(HarSkjerming(false)),
+        adressebeskyttelse: HarStrengtFortroligAdresseResult = HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)),
+        brukAoRuting: Boolean = false,
         extraDatabaseSetup: Application.() -> Unit = {},
-    ): MockProducer<String, String?> {
+        ): MockProducer<String, String?> {
         environment {
             config = server.getMockOauth2ServerConfig()
         }
-        val brukAoRuting = false
         val norg2Client = mockNorg2Host()
         val poaoTilgangClient = mockPoaoTilgangHost(null)
         val kontorNavnService = KontorNavnService(norg2Client)
@@ -87,7 +96,7 @@ class SettArbeidsoppfolgingsKontorTest {
             "arbeidsoppfolgingskontortilordninger",
             { KontorNavn("Test KontorNavn") },
             { identerFunnet },
-            false
+            brukAoRuting
         )
         application {
             flywayMigrationInTest()
@@ -101,6 +110,8 @@ class SettArbeidsoppfolgingsKontorTest {
                 poaoTilgangClient,
                 oppfolgingsperiodeService,
                 { kontorEndringProducer.publiserEndringPåKontor(it) },
+                hentSkjerming = { skjerming },
+                hentAdresseBeskyttelse = { adressebeskyttelse },
                 brukAoRuting = brukAoRuting
             )
             routing {
@@ -180,14 +191,58 @@ class SettArbeidsoppfolgingsKontorTest {
             val aktorId = randomAktorId(UKJENT)
             val kontorId = "4444"
             val veilederIdent = NavIdent("Z990000")
-            setupTestAppWithAuthAndGraphql(fnr, aktorId) {
+            setupTestAppWithAuthAndGraphql(fnr, aktorId, brukAoRuting = true) {
                 gittIdentIMapping(fnr)
             }
             val httpClient = getJsonHttpClient()
 
             val response = httpClient.settKontor(server, fnr = fnr, kontorId = kontorId, navIdent = veilederIdent)
 
-            response.status shouldBe HttpStatusCode.NotImplemented // TODO: Skal returnere conflict uten toggle
+            response.status shouldBe HttpStatusCode.Conflict
+        }
+    }
+
+    @Test
+    fun `skal svare med 409 når bruker ikke er skjermet (de kan ikke flyttes)`() = testApplication {
+        withMockOAuth2Server {
+            val fnr = randomFnr(UKJENT)
+            val aktorId = randomAktorId(UKJENT)
+            val kontorId = "4444"
+            val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
+            val veilederIdent = NavIdent("Z990000")
+            val harSkjerming = SkjermingFunnet(HarSkjerming(true))
+            setupTestAppWithAuthAndGraphql(fnr, aktorId, brukAoRuting = true, skjerming = harSkjerming) {
+                gittBrukerUnderOppfolging(fnr, oppfolgingsperiodeId)
+                gittIdentIMapping(fnr)
+            }
+            val httpClient = getJsonHttpClient()
+
+            val response = httpClient.settKontor(server, fnr = fnr, kontorId = kontorId, navIdent = veilederIdent)
+
+            response.status shouldBe HttpStatusCode.Conflict
+            response.bodyAsText() shouldBe "Kan ikke bytte kontor på skjermet bruker"
+        }
+    }
+
+    @Test
+    fun `skal svare med 409 når bruker ikke har strengt fortrolig adresse (de kan ikke flyttes)`() = testApplication {
+        withMockOAuth2Server {
+            val fnr = randomFnr(UKJENT)
+            val aktorId = randomAktorId(UKJENT)
+            val kontorId = "4444"
+            val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
+            val veilederIdent = NavIdent("Z990000")
+            val adressebeskyttelse = HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(true))
+            setupTestAppWithAuthAndGraphql(fnr, aktorId, brukAoRuting = true, adressebeskyttelse = adressebeskyttelse) {
+                gittBrukerUnderOppfolging(fnr, oppfolgingsperiodeId)
+                gittIdentIMapping(fnr)
+            }
+            val httpClient = getJsonHttpClient()
+
+            val response = httpClient.settKontor(server, fnr = fnr, kontorId = kontorId, navIdent = veilederIdent)
+
+            response.status shouldBe HttpStatusCode.Conflict
+            response.bodyAsText() shouldBe "Kan ikke bytte kontor på strengt fortrolig bruker"
         }
     }
 
