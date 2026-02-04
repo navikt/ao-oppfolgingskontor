@@ -30,10 +30,10 @@ class BigQueryClient(
     private val log = LoggerFactory.getLogger(this::class.java)
     val kontorEventsTable = TableId.of(DATASET_NAME, KONTOR_EVENTS)
 
-    fun loggSattKontorEvent(kontorId: KontorId, kontorEndringsType: KontorEndringsType?, kontorType: KontorTypeForBigQuery) {
+    fun loggSattKontorEvent(kontorId: String, kontorEndringsType: KontorEndringsType?, kontorType: KontorTypeForBigQuery) {
         insertIntoKontorEvents(kontorEventsTable) {
             mapOf(
-                "kontorId" to kontorId.toString(),
+                "kontorId" to kontorId,
                 "timestamp" to ZonedDateTime.now().toOffsetDateTime().toString(),
                 "kontorEndringsType" to kontorEndringsType.toString(),
                 "kontorType" to kontorType.toString(),

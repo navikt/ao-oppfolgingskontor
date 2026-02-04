@@ -44,7 +44,7 @@ object KontorTilordningService {
                             it[historikkEntry] = entryId.value
                         }
                         bigQueryClient.loggSattKontorEvent(
-                            kontorTilhorighet.kontorId,
+                            kontorTilhorighet.kontorId.id,
                             kontorEndring.kontorEndringsType(),
                             KontorTypeForBigQuery.ARBEIDSOPPFOLGINGSKONTOR
                         )
@@ -59,7 +59,7 @@ object KontorTilordningService {
                             it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
                         }
                         bigQueryClient.loggSattKontorEvent(
-                            kontorTilhorighet.kontorId,
+                            kontorTilhorighet.kontorId.id,
                             kontorEndring.kontorEndringsType(),
                             KontorTypeForBigQuery.ALTERNATIV_AOKONTOR
                         )
@@ -77,7 +77,7 @@ object KontorTilordningService {
                             it[historikkEntry] = entryId.value
                         }
                         bigQueryClient.loggSattKontorEvent(
-                            kontorTilhorighet.kontorId,
+                            kontorTilhorighet.kontorId.id,
                             null,
                             KontorTypeForBigQuery.ARBEIDSOPPFOLGINGSKONTOR
                         )
@@ -90,7 +90,7 @@ object KontorTilordningService {
                         it[historikkEntry] = entryId
                     }
                     bigQueryClient.loggSattKontorEvent(
-                        kontorTilhorighet.kontorId,
+                        kontorTilhorighet.kontorId.id,
                         null,
                         KontorTypeForBigQuery.ARENAKONTOR
                     )
