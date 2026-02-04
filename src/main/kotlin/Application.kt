@@ -54,7 +54,7 @@ fun Application.module() {
 
     val texasClient = TexasSystemTokenClient(environment.getNaisTokenEndpoint())
     val pdlClient = PdlClient(environment.getPDLUrl(), texasClient.tokenProvider(environment.getPdlScope()))
-    val arbeidssokerregisterClient = ArbeidssokerRegisterClient(
+    val arbeidssokerregisterClient = ArbeidssokerregisterClient(
         environment.getArbeidssokerregisteretUrl(),
         texasClient.tokenProvider(environment.getArbeidssokerregisteretScope()))
     val skjermingsClient = SkjermingsClient(
