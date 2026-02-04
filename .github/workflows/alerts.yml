@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   apply-alerts-dev:
-    name: Apply alerts
+    name: Apply alerts til dev
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -28,7 +28,7 @@ jobs:
           RESOURCE: nais/kafka-streams-alerts.yaml
 
   apply-alerts-prod:
-    name: Apply alerts
+    name: Apply alerts til prod
     runs-on: ubuntu-latest
     permissions:
       id-token: write
