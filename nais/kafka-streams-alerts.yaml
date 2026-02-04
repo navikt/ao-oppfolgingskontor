@@ -35,9 +35,9 @@ spec:
             kafka_retry_processor_failed_messages_older_than_20_minutes{app="ao-oppfolgingskontor"} > 0
           for: 1s
           annotations:
-            consequence: "Det finnes én eller flere feilede meldinger som er eldre enn 20 minutter i ao-oppfolgingskontor."
+            consequence: "Det finnes en person under oppfølging som ikke vil få tildelt arbeidsoppfølgingskontor"
             action: "Undersøk årsaken til dette og gjør nødvendige endringer."
-            summary: "Én eller flere eldre feilede meldinger i ao-oppfolgingskontor"
+            summary: "Det finnes én eller flere feilede meldinger som er eldre enn 20 minutter i ao-oppfolgingskontor."
           labels:
             namespace: dab
             severity: critical
