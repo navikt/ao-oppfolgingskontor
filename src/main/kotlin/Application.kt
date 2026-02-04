@@ -29,6 +29,7 @@ import no.nav.kafka.KafkaStreamsPlugin
 import no.nav.kafka.config.createKafkaProducer
 import no.nav.kafka.config.toKafkaEnv
 import no.nav.services.*
+import no.nav.services.KontorTilordningService.bigQueryClient
 import org.jetbrains.exposed.sql.Database
 import services.*
 import topics
@@ -48,7 +49,7 @@ fun Application.module() {
     val setCriticalError: CriticalErrorNotificationFunction = configureHealthAndCompression()
     configureSecurity()
 
-    installBigQueryDailyScheduler(database)
+    installBigQueryDailyScheduler(database, bigQueryClient = bigQueryClient)
 
     val norg2Client = Norg2Client(environment.getNorg2Url())
 
@@ -76,6 +77,11 @@ fun Application.module() {
     val eregClient = EregClient(
         baseUrl = environment.getEregUrl(),
     )
+    val bigQueryClient = BigQueryClient(
+        environment.config.property("app.gcp.projectId").getString(),
+        ExposedLockProvider(database)
+    )
+    KontorTilordningService.bigQueryClient = bigQueryClient
 
     val kontorForBrukerMedMangelfullGtService = KontorForBrukerMedMangelfullGtService(
         {aaregClient.hentArbeidsforhold(it)},
@@ -179,13 +185,9 @@ fun ApplicationEnvironment.getPubliserArenaKontor(): Boolean {
     return !getBrukAoRuting()
 }
 
-fun Application.installBigQueryDailyScheduler(database: Database) {
+fun Application.installBigQueryDailyScheduler(database: Database, bigQueryClient: BigQueryClient) {
     environment.monitor.subscribe(ApplicationStarted) {
         launch {
-            val client = BigQueryClient(
-                environment.config.property("app.gcp.projectId").getString(),
-                ExposedLockProvider(database)
-            )
 
             while (currentCoroutineContext().isActive) {
                 val ventetid = beregnVentetid(23, 45) // Beregn hvor mange millisekunder til neste kjøring
@@ -200,7 +202,7 @@ fun Application.installBigQueryDailyScheduler(database: Database) {
 
                 withContext(Dispatchers.IO) {
                     log.info("Starter BigQuery-jobb for antall 2990 AO-kontor")
-                    client.antall2990Kontor(database)
+                    bigQueryClient.antall2990Kontor(database)
                     log.info("BigQuery-jobb ferdig")
                 }
             }
