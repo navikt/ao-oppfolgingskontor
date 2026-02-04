@@ -33,7 +33,7 @@ spec:
         - alert: EldreFeiledeMeldinger
           expr: |
             kafka_retry_processor_failed_messages_older_than_20_minutes{app="ao-oppfolgingskontor"} > 0
-          for: 1s
+          for: 5m
           annotations:
             consequence: "Det finnes en person under oppfølging som ikke vil få tildelt arbeidsoppfølgingskontor"
             action: "Undersøk årsaken til dette og gjør nødvendige endringer."
