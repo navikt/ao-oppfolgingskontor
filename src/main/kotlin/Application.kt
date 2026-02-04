@@ -43,10 +43,10 @@ fun main(args: Array<String>) {
 }
 
 fun Application.module() {
-    val meterRegistry = configureMonitoring()
+    val (datasource, database) = configureDatabase()
+    val meterRegistry = configureMonitoring(datasource)
     val setCriticalError: CriticalErrorNotificationFunction = configureHealthAndCompression()
     configureSecurity()
-    val (datasource, database) = configureDatabase()
 
     installBigQueryDailyScheduler(database)
 
@@ -54,7 +54,7 @@ fun Application.module() {
 
     val texasClient = TexasSystemTokenClient(environment.getNaisTokenEndpoint())
     val pdlClient = PdlClient(environment.getPDLUrl(), texasClient.tokenProvider(environment.getPdlScope()))
-    val arbeidssokerregisterClient = ArbeidssokerregisterClient(
+    val arbeidssokerregisterClient = ArbeidssokerRegisterClient(
         environment.getArbeidssokerregisteretUrl(),
         texasClient.tokenProvider(environment.getArbeidssokerregisteretScope()))
     val skjermingsClient = SkjermingsClient(
