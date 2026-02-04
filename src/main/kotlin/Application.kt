@@ -49,7 +49,6 @@ fun Application.module() {
     val setCriticalError: CriticalErrorNotificationFunction = configureHealthAndCompression()
     configureSecurity()
 
-    installBigQueryDailyScheduler(database, bigQueryClient = bigQueryClient)
 
     val norg2Client = Norg2Client(environment.getNorg2Url())
 
@@ -82,6 +81,7 @@ fun Application.module() {
         ExposedLockProvider(database)
     )
     KontorTilordningService.bigQueryClient = bigQueryClient
+    installBigQueryDailyScheduler(database, bigQueryClient = bigQueryClient)
 
     val kontorForBrukerMedMangelfullGtService = KontorForBrukerMedMangelfullGtService(
         {aaregClient.hentArbeidsforhold(it)},
