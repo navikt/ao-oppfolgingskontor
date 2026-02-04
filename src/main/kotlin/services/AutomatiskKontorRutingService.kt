@@ -528,7 +528,7 @@ data class AutomatiskKontorRutingService(
                     VIKAFOSSEN
                 } else if (gtKontorResultat.sensitivitet().skjermet.value) {
                     throw IllegalStateException(
-                        "Skjermede brukere uten geografisk tilknytning eller med land som GT kan ikke tilordnes kontor"
+                        "Skjermede brukere uten geografisk tilknytning eller med land som GT kan ikke tilordnes kontor: gt - ${gtKontorResultat.gtForBruker}"
                     )
                 } else INGEN_GT_KONTOR_FALLBACK
             }
