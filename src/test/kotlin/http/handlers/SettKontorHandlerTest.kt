@@ -19,6 +19,8 @@ import no.nav.http.ArbeidsoppfolgingsKontorTilordningDTO
 import no.nav.http.Kontor
 import no.nav.http.KontorByttetOkResponseDto
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
+import no.nav.http.client.HarStrengtFortroligAdresseIkkeFunnet
+import no.nav.http.client.HarStrengtFortroligAdresseOppslagFeil
 import no.nav.http.client.HarStrengtFortroligAdresseResult
 import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.SkjermingIkkeFunnet
@@ -125,6 +127,24 @@ class SettKontorHandlerTest {
         handler.settKontor(
             kontortilordning, navAnsatt,
         ) shouldBe SettKontorFailure(HttpStatusCode.InternalServerError, "Klarte ikke hente oppfølgingsperiode")
+    }
+
+    @Test
+    fun `Skal svare med 500 når henting av adresssebeskyttelse feiler`() = runTest {
+        val handler = defaultHandler(fnr, adresseResult = HarStrengtFortroligAdresseOppslagFeil("Fordi"))
+
+        handler.settKontor(
+            kontortilordning, navAnsatt,
+        ) shouldBe SettKontorFailure(HttpStatusCode.InternalServerError, "Fordi")
+    }
+
+    @Test
+    fun `Skal svare med 500 når henting av adresssebeskyttelse retunerer ingenting`() = runTest {
+        val handler = defaultHandler(fnr, adresseResult = HarStrengtFortroligAdresseIkkeFunnet("lol"))
+
+        handler.settKontor(
+            kontortilordning, navAnsatt,
+        ) shouldBe SettKontorFailure(HttpStatusCode.InternalServerError, "lol")
     }
 
     @Test
