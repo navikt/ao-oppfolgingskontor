@@ -50,6 +50,12 @@ class AlleKontorQuery(
                 AlleKontorQueryDto("2990","Nav IT-avdelingen")
             )
 
+            val sykefraværskontorer = listOf(
+                AlleKontorQueryDto("1476","Nav sjukefråværsavdeling region Sunnfjord"),
+                AlleKontorQueryDto("0491","Arbeidslivssenter Innlandet"),
+                AlleKontorQueryDto("0676","ROE Regional oppfølgingsenhet Vest-Viken"),
+            )
+
             val lokalKontorer = norg2Client.hentAlleEnheter()
                 .filter { erValgbartKontor(it) }
                 .map { AlleKontorQueryDto(it.kontorId,it.navn) }
@@ -58,7 +64,7 @@ class AlleKontorQuery(
                 .firstOrNull { it.kontorId == gtKontor?.kontorId }
                 ?.takeIf { skalSortereGtKontorFørst }
 
-            val kontorerSortertPåEnhetId = (lokalKontorer + andreSpesialKontorer)
+            val kontorerSortertPåEnhetId = (lokalKontorer + andreSpesialKontorer + sykefraværskontorer)
                 .filterNot { it.kontorId == gtKontorDto?.kontorId }
                 .sortedBy { it.kontorId.toLong() }
 
