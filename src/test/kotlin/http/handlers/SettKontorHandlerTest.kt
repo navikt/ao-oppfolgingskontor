@@ -21,6 +21,7 @@ import no.nav.http.KontorByttetOkResponseDto
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseResult
 import no.nav.http.client.SkjermingFunnet
+import no.nav.http.client.SkjermingIkkeFunnet
 import no.nav.http.client.SkjermingResult
 import no.nav.http.client.poaoTilgang.HarIkkeTilgang
 import no.nav.http.client.poaoTilgang.HarTilgang
@@ -106,6 +107,15 @@ class SettKontorHandlerTest {
         handler.settKontor(
             kontortilordning, navAnsatt,
         ) shouldBe SettKontorFailure(HttpStatusCode.InternalServerError, "Noe gikk galt under oppslag av tilgang for bruker: Fordi")
+    }
+
+    @Test
+    fun `Skal svare med 500 når henting av skjerming feiler`() = runTest {
+        val handler = defaultHandler(fnr, skjermingResult = SkjermingIkkeFunnet("Fordi"))
+
+        handler.settKontor(
+            kontortilordning, navAnsatt,
+        ) shouldBe SettKontorFailure(HttpStatusCode.InternalServerError, "Fordi")
     }
 
     @Test
