@@ -1,8 +1,11 @@
 package no.nav.services
 
+import arrow.core.Either
+import arrow.core.right
 import db.table.AlternativAoKontorTable
 import eventsLogger.BigQueryClient
 import eventsLogger.KontorTypeForBigQuery
+import no.nav.db.IdentSomKanLagres
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.db.table.ArenaKontorTable
 import no.nav.db.table.GeografiskTilknytningKontorTable
@@ -14,6 +17,8 @@ import no.nav.domain.events.GTKontorEndret
 import no.nav.domain.events.KontorEndretEvent
 import no.nav.kafka.consumers.KontorEndringer
 import org.jetbrains.exposed.dao.id.EntityID
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.upsert
@@ -105,6 +110,19 @@ object KontorTilordningService {
                         it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
                         it[historikkEntry] = entryId.value
                     }
+                }
+            }
+        }
+    }
+
+    fun fjernArbeidsoppfølgingskontorTilordning(ident: IdentSomKanLagres): Either<Throwable, Unit> {
+        return Either.catch {
+            transaction {
+                val antallRaderSlettet = ArbeidsOppfolgingKontorTable.deleteWhere { id eq ident.value }
+                when (antallRaderSlettet) {
+                    0 -> throw Exception("Fant ingen arbeidsoppfølgingskontortilordning å slette.")
+                    1 -> Unit
+                    else -> throw Exception("Fant flere arbeidsoppfølgingskontortilordninger å slette, slettet $antallRaderSlettet rader.")
                 }
             }
         }
