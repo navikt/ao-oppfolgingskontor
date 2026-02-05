@@ -98,7 +98,7 @@ fun Application.module() {
     )
     val kontorNavnService = KontorNavnService(norg2Client)
     val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangHttpClient, identService::hentAlleIdenter)
-    val oppfolgingsperiodeService = OppfolgingsperiodeService(identService::hentAlleIdenter)
+    val oppfolgingsperiodeService = OppfolgingsperiodeService(identService::hentAlleIdenter, KontorTilordningService::fjernArbeidsoppfølgingskontorTilordning)
     val automatiskKontorRutingService = AutomatiskKontorRutingService(
         { fnr, strengtFortroligAdresse, skjermet -> gtNorgService.hentGtKontorForBruker(fnr, strengtFortroligAdresse, skjermet) },
         { pdlClient.hentAlder(it) },
