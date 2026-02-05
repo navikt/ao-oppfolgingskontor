@@ -5,6 +5,9 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - 'nais/kafka-streams-alerts.yaml'
+      - '.github/workflows/alerts.yaml'
   workflow_dispatch:
 
 env:
