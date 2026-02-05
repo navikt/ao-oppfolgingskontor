@@ -32,10 +32,10 @@ spec:
             severity: warning
         - alert: EldreFeiledeMeldinger
           expr: |
-            max(
+            max_over_time(
               max_over_time(
-                kafka_retry_processor_failed_messages_older_than_20_minutes{app="ao-oppfolgingskontor"}[10m]
-              )
+                kafka_retry_processor_failed_messages_older_than_20_minutes{app="ao-oppfolgingskontor"}[2m]
+              )[15m:]
             ) > 0
           for: 5m
           annotations:
