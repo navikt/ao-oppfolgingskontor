@@ -3,6 +3,7 @@ package no.nav.services
 import arrow.core.Either
 import db.table.AlternativAoKontorTable
 import eventsLogger.BigQueryClient
+import eventsLogger.KontorTypeForBigQuery
 import no.nav.db.IdentSomKanLagres
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.db.table.ArenaKontorTable
@@ -130,11 +131,6 @@ object KontorTilordningService {
         kontorEndring: KontorEndretEvent
     ): EntityID<Int> {
         val historikkInnslag = kontorEndring.toHistorikkInnslag()
-        bigQueryClient.loggSattKontorEvent(
-            historikkInnslag.kontorId.id,
-            historikkInnslag.kontorendringstype,
-            historikkInnslag.kontorType
-        )
         return KontorhistorikkTable.insert {
             it[kontorId] = historikkInnslag.kontorId.id
             it[ident] = historikkInnslag.ident.value

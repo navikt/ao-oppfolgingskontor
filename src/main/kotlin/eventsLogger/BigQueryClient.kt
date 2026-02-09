@@ -6,7 +6,6 @@ import com.google.cloud.bigquery.TableId
 import net.javacrumbs.shedlock.core.LockConfiguration
 import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
 import no.nav.domain.KontorEndringsType
-import no.nav.domain.KontorType
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
@@ -30,7 +29,7 @@ class BigQueryClient(
     private val log = LoggerFactory.getLogger(this::class.java)
     val kontorEventsTable = TableId.of(DATASET_NAME, KONTOR_EVENTS)
 
-    fun loggSattKontorEvent(kontorId: String, kontorEndringsType: KontorEndringsType?, kontorType: KontorType) {
+    fun loggSattKontorEvent(kontorId: String, kontorEndringsType: KontorEndringsType?, kontorType: KontorTypeForBigQuery) {
         insertIntoKontorEvents(kontorEventsTable) {
             mapOf(
                 "kontorId" to kontorId,
