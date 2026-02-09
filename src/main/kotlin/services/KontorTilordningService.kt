@@ -46,6 +46,11 @@ object KontorTilordningService {
                             it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
                             it[historikkEntry] = entryId.value
                         }
+                        bigQueryClient.loggSattKontorEvent(
+                            kontorTilhorighet.kontorId.id,
+                            kontorEndring.kontorEndringsType(),
+                            KontorTypeForBigQuery.ARBEIDSOPPFOLGINGSKONTOR
+                        )
                     } else
                     {
                         AlternativAoKontorTable.insert {
@@ -56,6 +61,11 @@ object KontorTilordningService {
                             it[kontorendringstype] = kontorEndring.kontorEndringsType().name
                             it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
                         }
+                        bigQueryClient.loggSattKontorEvent(
+                            kontorTilhorighet.kontorId.id,
+                            kontorEndring.kontorEndringsType(),
+                            KontorTypeForBigQuery.ALTERNATIV_AOKONTOR
+                        )
                     }
                 }
                 is ArenaKontorEndret -> {
@@ -69,6 +79,11 @@ object KontorTilordningService {
                             it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
                             it[historikkEntry] = entryId.value
                         }
+                        bigQueryClient.loggSattKontorEvent(
+                            kontorTilhorighet.kontorId.id,
+                            null,
+                            KontorTypeForBigQuery.ARBEIDSOPPFOLGINGSKONTOR
+                        )
                     }
                     ArenaKontorTable.upsert {
                         it[kontorId] = kontorTilhorighet.kontorId.id
@@ -77,6 +92,11 @@ object KontorTilordningService {
                         it[sistEndretDatoArena] = kontorEndring.sistEndretDatoArena
                         it[historikkEntry] = entryId
                     }
+                    bigQueryClient.loggSattKontorEvent(
+                        kontorTilhorighet.kontorId.id,
+                        null,
+                        KontorTypeForBigQuery.ARENAKONTOR
+                    )
                 }
                 is GTKontorEndret -> {
                     val entryId = settKontorIHistorikk(kontorEndring)
