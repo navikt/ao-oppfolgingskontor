@@ -1,14 +1,18 @@
 package no.nav
 
 import dab.poao.nav.no.health.CriticalErrorNotificationFunction
-import http.client.VeilarbArenaClient
-import http.client.getVeilarbarenaScope
+import eventsLogger.BigQueryClient
+import http.client.*
 import http.configureContentNegotiation
 import http.configureHentArbeidsoppfolgingskontorBulkModule
 import io.ktor.server.application.*
 import io.ktor.server.netty.*
 import kafka.producers.KontorEndringProducer
+import kotlinx.coroutines.*
+import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
+import no.nav.db.IdentSomKanLagres
 import no.nav.db.configureDatabase
+import no.nav.domain.OppfolgingsperiodeId
 import no.nav.http.client.*
 import no.nav.http.client.arbeidssogerregisteret.ArbeidssokerregisterClient
 import no.nav.http.client.arbeidssogerregisteret.getArbeidssokerregisteretScope
@@ -17,39 +21,33 @@ import no.nav.http.client.poaoTilgang.PoaoTilgangKtorHttpClient
 import no.nav.http.client.poaoTilgang.getPoaoTilgangScope
 import no.nav.http.client.tokenexchange.TexasSystemTokenClient
 import no.nav.http.client.tokenexchange.getNaisTokenEndpoint
-import no.nav.http.configureArbeidsoppfolgingskontorModule
 import no.nav.http.configureAdminModule
-import no.nav.http.graphql.AuthenticateRequest
-import no.nav.http.graphql.configureGraphQlModule
-import no.nav.http.graphql.getNorg2Url
-import no.nav.http.graphql.getPDLUrl
-import no.nav.http.graphql.getPoaoTilgangUrl
-import no.nav.http.graphql.getVeilarbArenaUrl
+import no.nav.http.configureFinnKontorModule
+import no.nav.http.configureArbeidsoppfolgingskontorModule
+import no.nav.http.graphql.*
 import no.nav.kafka.KafkaStreamsPlugin
 import no.nav.kafka.config.createKafkaProducer
 import no.nav.kafka.config.toKafkaEnv
-import no.nav.services.AutomatiskKontorRutingService
-import no.nav.services.GTNorgService
-import no.nav.services.KontorNavnService
-import no.nav.services.KontorTilhorighetService
-import no.nav.services.KontorTilordningService
-import no.nav.services.OppfolgingsperiodeDao
-import services.ArenaSyncService
-import services.IdentService
-import services.KontorRepubliseringService
-import services.KontorTilhorighetBulkService
-import services.OppfolgingsperiodeService
+import no.nav.services.*
+import org.jetbrains.exposed.sql.Database
+import services.*
 import topics
+import utils.Outcome
+import java.time.Duration
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.util.*
 
 fun main(args: Array<String>) {
     EngineMain.main(args)
 }
 
 fun Application.module() {
+    val (datasource, database) = configureDatabase()
     val meterRegistry = configureMonitoring()
     val setCriticalError: CriticalErrorNotificationFunction = configureHealthAndCompression()
     configureSecurity()
-    val (datasource, database) = configureDatabase()
+
 
     val norg2Client = Norg2Client(environment.getNorg2Url())
 
@@ -70,18 +68,37 @@ fun Application.module() {
         baseUrl = environment.getVeilarbArenaUrl(),
         azureTokenProvider = texasClient.tokenProvider(environment.getVeilarbarenaScope())
     )
+    val aaregClient = AaregClient(
+        baseUrl = environment.getAaregUrl(),
+        azureTokenProvider = texasClient.tokenProvider(environment.getAaregScope())
+    )
+    val eregClient = EregClient(
+        baseUrl = environment.getEregUrl(),
+    )
+    val bigQueryClient = BigQueryClient(
+        environment.config.property("app.gcp.projectId").getString(),
+        ExposedLockProvider(database)
+    )
+    KontorTilordningService.bigQueryClient = bigQueryClient
+    installBigQueryDailyScheduler(database, bigQueryClient = bigQueryClient)
 
+    val kontorForBrukerMedMangelfullGtService = KontorForBrukerMedMangelfullGtService(
+        {aaregClient.hentArbeidsforhold(it)},
+        {eregClient.hentNøkkelinfoOmArbeidsgiver(it)},
+        {gt, strengtFortroligAdresse, skjermet -> norg2Client.hentKontorForGt(gt,strengtFortroligAdresse, skjermet)},
+        pdlClient::sokAdresseFritekst
+    )
     val identService = IdentService({ pdlClient.hentIdenterFor(it) })
     val gtNorgService = GTNorgService(
         { pdlClient.hentGt(it) },
         { gt, strengtFortroligAdresse, skjermet -> norg2Client.hentKontorForGt(gt, strengtFortroligAdresse, skjermet) },
         { gt, strengtFortroligAdresse, skjermet -> norg2Client.hentKontorForBrukerMedMangelfullGT(gt, strengtFortroligAdresse, skjermet) },
+        { ident, gt, strengtFortroligAdresse, skjermet -> kontorForBrukerMedMangelfullGtService.finnKontorForGtBasertPåArbeidsforhold(ident,gt, strengtFortroligAdresse, skjermet) }
     )
     val kontorNavnService = KontorNavnService(norg2Client)
     val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, identService::hentAlleIdenter)
-    val oppfolgingsperiodeService = OppfolgingsperiodeService(identService::hentAlleIdenter)
+    val oppfolgingsperiodeService = OppfolgingsperiodeService(identService::hentAlleIdenter, KontorTilordningService::slettArbeidsoppfølgingskontorTilordning)
     val automatiskKontorRutingService = AutomatiskKontorRutingService(
-        KontorTilordningService::tilordneKontor,
         { fnr, strengtFortroligAdresse, skjermet -> gtNorgService.hentGtKontorForBruker(fnr, strengtFortroligAdresse, skjermet) },
         { pdlClient.hentAlder(it) },
         { arbeidssokerregisterClient.hentProfilering(it) },
@@ -90,14 +107,28 @@ fun Application.module() {
         { oppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) },
         { _, oppfolgingsperiodeId -> OppfolgingsperiodeDao.finnesAoKontorPåPeriode(oppfolgingsperiodeId) },
     )
+    val dryRunKontorRutingService = automatiskKontorRutingService.copy(harAlleredeTilordnetAoKontorForOppfolgingsperiode = { Ident, b: OppfolgingsperiodeId -> Outcome.Success(false) })
+    val simulerKontorTilordning: suspend (IdentSomKanLagres, Boolean) -> TilordningResultat =
+        { ident, erArbeidssøker ->
+            dryRunKontorRutingService.tilordneKontorAutomatisk(
+                ident = ident,
+                oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
+                erArbeidssøkerRegistrering = erArbeidssøker,
+                oppfolgingStartDato = ZonedDateTime.now().minusMinutes(1),
+                null
+            )
+        }
+
     val kontorEndringProducer = KontorEndringProducer(
         producer = createKafkaProducer(this.environment.config.toKafkaEnv()),
         kontorTopicNavn = this.environment.topics().ut.arbeidsoppfolgingskontortilordninger.name,
         kontorNavnProvider = { kontorId -> kontorNavnService.getKontorNavn(kontorId) },
-        hentAlleIdenter = { identSomKanLagres -> identService.hentAlleIdenter(identSomKanLagres) }
+        hentAlleIdenter = { identSomKanLagres -> identService.hentAlleIdenter(identSomKanLagres) },
+        brukAoRuting = this.environment.getBrukAoRuting()
     )
     val republiseringService = KontorRepubliseringService(kontorEndringProducer::republiserKontor, datasource, kontorNavnService::friskOppAlleKontorNavn)
-    val arenaSyncService = ArenaSyncService(veilarbArenaClient, KontorTilordningService, kontorTilhorighetService, oppfolgingsperiodeService)
+    val arenaSyncService = ArenaSyncService(veilarbArenaClient, KontorTilordningService, kontorTilhorighetService, oppfolgingsperiodeService, environment.getBrukAoRuting())
+    val brukAoRuting = environment.getBrukAoRuting()
 
     install(KafkaStreamsPlugin) {
         this.automatiskKontorRutingService = automatiskKontorRutingService
@@ -111,6 +142,7 @@ fun Application.module() {
         this.kontorTilhorighetService = kontorTilhorighetService
         this.kontorEndringProducer = kontorEndringProducer
         this.veilarbArenaClient = veilarbArenaClient
+        this.brukAoRuting = brukAoRuting
     }
 
     val issuer = environment.getIssuer()
@@ -128,9 +160,13 @@ fun Application.module() {
         kontorTilhorighetService,
         poaoTilgangHttpClient,
         oppfolgingsperiodeService,
-        { kontorEndringProducer.publiserEndringPåKontor(it) }
+        { kontorEndringProducer.publiserEndringPåKontor(it) },
+        hentSkjerming = { skjermingsClient.hentSkjerming(it) },
+        hentAdresseBeskyttelse = { pdlClient.harStrengtFortroligAdresse(it) },
+        brukAoRuting = environment.getBrukAoRuting(),
     )
-    configureAdminModule(republiseringService, arenaSyncService, identService)
+    configureFinnKontorModule(simulerKontorTilordning, kontorNavnService::getKontorNavn)
+    configureAdminModule(simulerKontorTilordning, republiseringService, arenaSyncService, identService)
     configureHentArbeidsoppfolgingskontorBulkModule(KontorTilhorighetBulkService)
 }
 
@@ -146,5 +182,61 @@ fun ApplicationEnvironment.isProduction(): Boolean {
         ?.contentEquals("prod-gcp") ?: false
 }
 
-val BRUK_AO_RUTING: Boolean = false
-val PUBLISER_ARENA_KONTOR: Boolean = !BRUK_AO_RUTING
+fun ApplicationEnvironment.getBrukAoRuting(): Boolean {
+    return config.property("brukAoRuting").getString().toBoolean()
+}
+
+fun ApplicationEnvironment.getPubliserArenaKontor(): Boolean {
+    return !getBrukAoRuting()
+}
+
+fun Application.installBigQueryDailyScheduler(database: Database, bigQueryClient: BigQueryClient) {
+    environment.monitor.subscribe(ApplicationStarted) {
+        launch {
+
+            while (currentCoroutineContext().isActive) {
+                val ventetid = beregnVentetid(23, 45) // Beregn hvor mange millisekunder til neste kjøring
+
+                val totalSeconds = ventetid / 1000
+                val hours = totalSeconds / 3600
+                val minutes = (totalSeconds % 3600) / 60
+                val seconds = totalSeconds % 60
+
+                log.info("Neste BigQuery-jobb kjører om $hours timer, $minutes minutter og $seconds sekunder")
+                delay(ventetid)
+
+                withContext(Dispatchers.IO) {
+                    log.info("Starter BigQuery-jobb for antall 2990 AO-kontor")
+                    bigQueryClient.antall2990Kontor(database)
+                    log.info("BigQuery-jobb ferdig")
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Beregner ventetid fra nå til neste kjøring på gitt klokkeslett (time + minutt).
+ *
+ * Eksempel: Hvis nå er 13:45, ønsket kjøring 13:57 → ventetid = 12 minutter.
+ * Hvis ønsket tidspunkt allerede har passert, settes det til samme klokkeslett neste dag
+ *
+ * @param klokkeTime ønsket time for kjøring (0-23)
+ * @param klokkeMinutt ønsket minutt for kjøring (0-59)
+ * @return ventetid i millisekunder
+ */
+fun beregnVentetid(klokkeTime: Int, klokkeMinutt: Int): Long {
+    val now = ZonedDateTime.now(ZoneId.of("Europe/Oslo"))
+    var nextRun = now
+        .withHour(klokkeTime)
+        .withMinute(klokkeMinutt)
+        .withSecond(0)
+        .withNano(0)
+
+    // Hvis ønsket tidspunkt allerede har passert, sett til samme tid neste dag
+    if (!nextRun.isAfter(now)) {
+        nextRun = nextRun.plusDays(1)
+    }
+
+    return Duration.between(now, nextRun).toMillis()
+}

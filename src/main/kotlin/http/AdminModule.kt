@@ -9,10 +9,17 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import no.nav.db.Ident
+import no.nav.db.IdentSomKanLagres
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.security.token.support.v3.RequiredClaims
 import no.nav.security.token.support.v3.tokenValidationSupport
+import no.nav.services.TilordningFeil
+import no.nav.services.TilordningResultat
+import no.nav.services.TilordningRetry
+import no.nav.services.TilordningSuccessIngenEndring
+import no.nav.services.TilordningSuccessKontorEndret
 import org.slf4j.LoggerFactory
 import services.ArenaSyncService
 import services.IdentService
@@ -21,7 +28,9 @@ import java.util.UUID
 
 val log = LoggerFactory.getLogger("AdminModule")
 
+
 fun Application.configureAdminModule(
+    simulerKontorTilordning: suspend (ident: IdentSomKanLagres, erArbeidssøker: Boolean) -> TilordningResultat,
     kontorRepubliseringService: KontorRepubliseringService,
     arenaSyncService: ArenaSyncService,
     identService: IdentService,
@@ -29,11 +38,12 @@ fun Application.configureAdminModule(
     routing {
         val config = environment.config
 
-        fun AuthenticationConfig.setUpAdminAuth () {
+        fun AuthenticationConfig.setUpAdminAuth() {
             tokenValidationSupport(
                 config = config,
                 requiredClaims = RequiredClaims(
-                    issuer = config.configList("no.nav.security.jwt.issuers").first().property("issuer_name").getString(),
+                    issuer = config.configList("no.nav.security.jwt.issuers").first().property("issuer_name")
+                        .getString(),
                     claimMap = arrayOf("scp=admin"),
                 ),
                 resourceRetriever = DefaultResourceRetriever(),
@@ -85,7 +95,8 @@ fun Application.configureAdminModule(
                     log.info("Setter i gang syncing av Arena-kontor")
                     val input = call.receive<IdenterInputBody>()
                     val identer = input.identer.split(",")
-                    val godkjenteIdenter = identer.map { Ident.validateIdentSomKanLagres(it, Ident.HistoriskStatus.UKJENT) }
+                    val godkjenteIdenter =
+                        identer.map { Ident.validateIdentSomKanLagres(it, Ident.HistoriskStatus.UKJENT) }
 
                     log.info("Setter i gang sync av arena-kontor for ${godkjenteIdenter.size} identer av ${identer.size} mottatte identer")
                     arenaSyncService.refreshArenaKontor(godkjenteIdenter)
@@ -98,12 +109,49 @@ fun Application.configureAdminModule(
                     )
                 }
             }
+
+            post("/admin/finn-kontor") {
+                runCatching {
+                    val bodyText = call.receiveText()
+                    log.info("Setter i gang dry-run av kontor-ruting med input")
+                    val input = Json.decodeFromString<IdenterInputBody>(bodyText)
+                    val identer = input.identer.split(",")
+                    val godkjenteIdenter =
+                        identer.map { Ident.validateIdentSomKanLagres(it, Ident.HistoriskStatus.UKJENT) }
+                    val result: Map<String, String> = godkjenteIdenter.associateWith { godkjentIdent ->
+                        val res = simulerKontorTilordning(godkjentIdent, true)
+                        val output: String = when (res) {
+                            is TilordningFeil -> res.message
+                            is TilordningRetry -> res.message
+                            TilordningSuccessIngenEndring -> "Ingen endring"
+                            is TilordningSuccessKontorEndret -> """
+                                FNR: ${godkjentIdent.value}
+                                ao-kontor: ${res.kontorEndretEvent.aoKontorEndret?.tilordning?.kontorId?.id}
+                                arenakontor: ${res.kontorEndretEvent.arenaKontorEndret?.tilordning?.kontorId?.id}
+                                gt-kontor: ${res.kontorEndretEvent.gtKontorEndret?.tilordning?.kontorId?.id}
+                            """.trimIndent()
+                        }
+                        output
+                    }.mapKeys { it.key.value }
+                    call.respond(
+                        HttpStatusCode.Accepted,
+                        result
+                    )
+                }.onFailure { e ->
+                    log.error("Feil ved finn kontor", e)
+                    call.respond(
+                        HttpStatusCode.InternalServerError,
+                        "Klarte ikke kjøre dry-run av kontor-ruting: ${e.message} \n" + e.stackTraceToString()
+                    )
+                }
+            }
         }
     }
 }
 
 @Serializable
 private data class IdenterInputBody(val identer: String)
+
 @Serializable
 private data class OppfolgingsperiodeInputBody(
     val oppfolgingsperioder: String // Kommeseparert liste over oppfolgingsperioder-id-er

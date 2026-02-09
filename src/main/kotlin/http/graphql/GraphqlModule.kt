@@ -22,14 +22,12 @@ import no.nav.NotAuthenticated
 import no.nav.db.Ident
 import no.nav.http.client.IdenterResult
 import no.nav.http.client.Norg2Client
-import no.nav.http.client.poaoTilgang.PoaoTilgangKtorHttpClient
 import no.nav.http.client.poaoTilgang.TilgangResult
 import no.nav.http.graphql.queries.AlleKontorQuery
 import no.nav.http.graphql.queries.KontorHistorikkQuery
 import no.nav.http.graphql.queries.KontorQuery
 import no.nav.services.KontorTilhorighetService
 import org.slf4j.LoggerFactory
-import services.IdentService
 
 typealias AuthenticateRequest = (request: ApplicationRequest) -> AuthResult
 
@@ -97,6 +95,14 @@ fun ApplicationEnvironment.getPDLUrl(): String {
 
 fun ApplicationEnvironment.getVeilarbArenaUrl(): String {
     return config.property("apis.veilarbarena.url").getString()
+}
+
+fun ApplicationEnvironment.getAaregUrl(): String {
+    return config.property("apis.aareg.url").getString()
+}
+
+fun ApplicationEnvironment.getEregUrl(): String {
+    return config.property("apis.ereg.url").getString()
 }
 
 fun Application.configureGraphQlModule(

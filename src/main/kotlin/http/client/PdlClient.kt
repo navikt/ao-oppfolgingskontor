@@ -24,8 +24,12 @@ import no.nav.http.graphql.generated.client.HentAdresseBeskyttelseQuery
 import no.nav.http.graphql.generated.client.HentAlderQuery
 import no.nav.http.graphql.generated.client.HentFnrQuery
 import no.nav.http.graphql.generated.client.HentGtQuery
+import no.nav.http.graphql.generated.client.SokAdresseFritekstQuery
 import no.nav.http.graphql.generated.client.enums.AdressebeskyttelseGradering
 import no.nav.http.graphql.generated.client.enums.GtType
+import no.nav.http.graphql.generated.client.inputs.Criterion
+import no.nav.http.graphql.generated.client.inputs.Paging
+import no.nav.http.graphql.generated.client.inputs.SearchRule
 import org.slf4j.LoggerFactory
 import services.toKnownHistoriskStatus
 import java.net.URI
@@ -66,6 +70,11 @@ class HarStrengtFortroligAdresseFunnet(val harStrengtFortroligAdresse: HarStreng
 
 class HarStrengtFortroligAdresseIkkeFunnet(val message: String) : HarStrengtFortroligAdresseResult()
 class HarStrengtFortroligAdresseOppslagFeil(val message: String) : HarStrengtFortroligAdresseResult()
+
+sealed class AdresseFritekstSokResult
+class AdresseFunnet(val bydelsnummer: GeografiskTilknytningBydelNr): AdresseFritekstSokResult()
+class AdresseIkkeFunnet(val message: String): AdresseFritekstSokResult()
+class AdresseOppslagFeil(val message: String): AdresseFritekstSokResult()
 
 fun ApplicationEnvironment.getPdlScope(): String {
     return config.property("apis.pdl.scope").getString()
@@ -192,6 +201,52 @@ class PdlClient(
             log.error("Henting av strengt fortrolig adresse for bruker feilet: ${e.message ?: e.toString()}", e)
             return HarStrengtFortroligAdresseOppslagFeil("Henting av strengt fortrolig adresse for bruker feilet: ${e.message ?: e.toString()}")
                 .also { log.error(it.message, e) }
+        }
+    }
+
+    suspend fun sokAdresseFritekst(adressseTekst: String, kommuneNr: GeografiskTilknytningKommuneNr): AdresseFritekstSokResult {
+        try {
+            val query = SokAdresseFritekstQuery(
+                SokAdresseFritekstQuery.Variables(
+                    paging = Paging(
+                        pageNumber = 1,
+                        resultsPerPage = 50
+                    ),
+                    criteria = listOf(
+                        Criterion(
+                            fieldName = "vegadresse.kommunenummer",
+                            searchRule = SearchRule(
+                                equals = kommuneNr.value
+                            )
+                        ),
+                        Criterion(
+                            fieldName = "vegadresse.fritekst",
+                            searchRule = SearchRule(
+                                contains = adressseTekst,
+                            )
+                        )
+                    )
+                )
+            )
+            val response = client.execute(query)
+            if (response.errors != null && response.errors!!.isNotEmpty()) {
+                log.error("Feil ved sok på adresse: \n\t${response.errors!!.joinToString { it.message }}")
+                return AdresseOppslagFeil(response.errors!!.joinToString {
+                    "${it.message}: ${
+                        it.extensions?.get(
+                            "details"
+                        )
+                    }"
+                })
+            }
+
+            val treff = response.data?.sokAdresse?.hits ?: emptyList()
+            if (treff.isEmpty()) return AdresseIkkeFunnet("Ingen treff på adressesok")
+            val bydelsnummer = treff.firstOrNull { it.vegadresse?.bydelsnummer != null }?.vegadresse?.bydelsnummer
+            if (bydelsnummer == null) return AdresseIkkeFunnet("Fant ingen adresser med bydelsnummer blant ${treff.size} treff")
+            return AdresseFunnet(GeografiskTilknytningBydelNr(bydelsnummer))
+        } catch (e: Throwable) {
+            return AdresseOppslagFeil("Kunne ikke hente adresse: ${e.message}")
         }
     }
 }

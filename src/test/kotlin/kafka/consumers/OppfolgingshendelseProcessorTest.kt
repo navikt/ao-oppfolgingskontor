@@ -1,5 +1,6 @@
 package kafka.consumers
 
+import arrow.core.Either
 import db.entity.TidligArenaKontorEntity
 import domain.ArenaKontorUtvidet
 import io.kotest.assertions.withClue
@@ -29,6 +30,8 @@ import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
 import no.nav.services.AktivOppfolgingsperiode
 import domain.kontorForGt.KontorForGtFantDefaultKontor
+import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
+import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.services.KontorTilordningService
 import no.nav.services.NotUnderOppfolging
 import no.nav.utils.flywayMigrationInTest
@@ -79,6 +82,13 @@ class OppfolgingshendelseProcessorTest {
         }
     }
 
+    fun Bruker.skalIkkeHaArbeidsoppfølgingskontor() {
+        transaction {
+            val entity = ArbeidsOppfolgingKontorEntity.findById(this@skalIkkeHaArbeidsoppfølgingskontor.ident.value)
+            entity.shouldBeNull()
+        }
+    }
+
     fun Bruker.gittAOKontorTilordning(kontorId: KontorId) {
         KontorTilordningService.tilordneKontor(
             OppfolgingsPeriodeStartetLokalKontorTilordning(
@@ -124,7 +134,10 @@ class OppfolgingshendelseProcessorTest {
     /* Mock at oppslag for å hente alle mappede identer bare returnerer 1 ident (happu path)  */
     fun Bruker.defaultOppfolgingsHendelseProcessor(publiserTombstone: (oppfolgingsperiodeId: OppfolgingsperiodeId) -> Result<Unit> = { _ -> Result.success(Unit) }): OppfolgingsHendelseProcessor {
         return OppfolgingsHendelseProcessor(
-            oppfolgingsPeriodeService = OppfolgingsperiodeService { IdenterFunnet(listOf(this.ident, AktorId(this.aktorId, AKTIV)), this.ident) },
+            oppfolgingsPeriodeService = OppfolgingsperiodeService(
+                { IdenterFunnet(listOf(this.ident, AktorId(this.aktorId, AKTIV)), this.ident) },
+                KontorTilordningService::slettArbeidsoppfølgingskontorTilordning
+            ),
             publiserTombstone = publiserTombstone
         )
     }
@@ -142,6 +155,20 @@ class OppfolgingshendelseProcessorTest {
     }
 
     @Test
+    fun `Skal videresende kontoroverstyring hvis melding inneholder kontoroverstyring`() = testApplication {
+        val bruker = testBruker()
+        val overstyrtKontor = KontorId("7899")
+        val oppfolgingshendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
+        val record = oppfolgingStartetMelding(bruker, foretrukketKontor = overstyrtKontor)
+
+        val result = oppfolgingshendelseProcessor.process(record)
+
+        result.shouldBeInstanceOf<Forward<Ident, OppfolgingsperiodeStartet>>()
+        result.forwardedRecord.value().kontorOverstyring.shouldNotBeNull()
+        bruker.skalVæreUnderOppfølging()
+    }
+
+    @Test
     fun `Skal slette periode når avslutningsmelding kommer `() = testApplication {
         val bruker = testBruker()
         val oppfolgingshendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
@@ -153,6 +180,18 @@ class OppfolgingshendelseProcessorTest {
 
         hendelseResult.shouldBeInstanceOf<Commit<*, *>>()
         bruker.skalIkkeVæreUnderOppfølging()
+    }
+
+    @Test
+    fun `Skal slette arbeidsoppfølgingskontortilordning når avslutningsmelding kommer `() = testApplication {
+        val bruker = testBruker()
+        val oppfolgingshendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
+        val hendelseStartResult = oppfolgingshendelseProcessor.process(oppfolgingStartetMelding(bruker))
+        hendelseStartResult.shouldBeInstanceOf<Forward<*, *>>()
+
+        oppfolgingshendelseProcessor.process(oppfolgingAvsluttetMelding(bruker, ZonedDateTime.now()))
+
+        bruker.skalIkkeHaArbeidsoppfølgingskontor()
     }
 
     @Test
@@ -234,7 +273,9 @@ class OppfolgingshendelseProcessorTest {
             bruker.ident,
             nyereStartDato,
             OppfolgingsperiodeId(nyerePeriodeId),
-            true
+            true,
+             null,
+            null
         )
         processingResult.topic shouldBe null
         transaction {
@@ -378,7 +419,8 @@ class OppfolgingshendelseProcessorTest {
             { NotUnderOppfolging },
             { sistLagreArenaKontor },
             {},
-            { Result.success(Unit) }
+            { Result.success(Unit) },
+            true
         )
         endringPaOppfolgingsBrukerProcessor.process(
             TopicUtils.endringPaaOppfolgingsBrukerMessage(
@@ -445,7 +487,10 @@ class OppfolgingshendelseProcessorTest {
                 }
             }
             val identChangeProcessor = IdentChangeProcessor(identService)
-            val oppfolgingsPeriodeService = OppfolgingsperiodeService(identService::hentAlleIdenter)
+            val oppfolgingsPeriodeService = OppfolgingsperiodeService(
+                identService::hentAlleIdenter,
+                KontorTilordningService::slettArbeidsoppfølgingskontorTilordning
+            )
             val oppfolgingshendelseProcessor = OppfolgingsHendelseProcessor(oppfolgingsPeriodeService, { _ -> Result.success(Unit) })
             val startResult = oppfolgingshendelseProcessor
                 .process(oppfolgingStartetMelding(brukerMedDnr))
@@ -479,8 +524,8 @@ class OppfolgingshendelseProcessorTest {
         }
     }
 
-    fun oppfolgingStartetMelding(bruker: Bruker, arenaKontor: KontorId = KontorId("4141")): Record<String, String> =
-        TopicUtils.oppfolgingStartetMelding(bruker, arenaKontor)
+    fun oppfolgingStartetMelding(bruker: Bruker, arenaKontor: KontorId = KontorId("4141"), foretrukketKontor: KontorId? = null): Record<String, String> =
+        TopicUtils.oppfolgingStartetMelding(bruker, arenaKontor, foretrukketKontor)
 
     fun oppfolgingAvsluttetMelding(bruker: Bruker, sluttDato: ZonedDateTime): Record<String, String> =
         TopicUtils.oppfolgingAvsluttetMelding(bruker, sluttDato)

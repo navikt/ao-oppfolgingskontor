@@ -2,6 +2,8 @@ appName: "$NAIS_APP_NAME"
 
 cluster: "$NAIS_CLUSTER_NAME: local"
 
+brukAoRuting: "$BRUK_AO_RUTING"
+
 ktor:
     application:
         modules:
@@ -22,6 +24,12 @@ no:
                       issuer_name: "EntraAD"
 
 apis:
+  aareg:
+    url: "$AAREG_URL"
+    scope: "$AAREG_SCOPE"
+  ereg:
+    url: "$EREG_URL"
+    scope: "$EREG_SCOPE"
   norg2:
     url: "$NORG2_URL"
   poaoTilgang:
@@ -81,4 +89,4 @@ topics:
 
 app:
   gcp:
-    projectId: ao-oppfolgingskontor
+    projectId: "$GCP_TEAM_PROJECT_ID"

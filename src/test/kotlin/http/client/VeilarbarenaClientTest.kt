@@ -11,7 +11,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import no.nav.http.client.tokenexchange.TexasTokenSuccessResult
 import no.nav.utils.randomFnr
-import kotlin.test.Test
+import org.junit.jupiter.api.Test
 
 class VeilarbarenaClientTest {
 

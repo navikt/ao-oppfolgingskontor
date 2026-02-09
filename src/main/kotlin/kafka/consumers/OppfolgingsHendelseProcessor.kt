@@ -5,14 +5,14 @@ import kafka.consumers.oppfolgingsHendelser.OppfolgingStartetHendelseDto
 import kafka.consumers.oppfolgingsHendelser.OppfolgingsAvsluttetHendelseDto
 import kafka.consumers.oppfolgingsHendelser.OppfolgingsHendelseDto
 import kafka.consumers.oppfolgingsHendelser.oppfolgingsHendelseJson
-import no.nav.BRUK_AO_RUTING
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
+import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
+import no.nav.domain.externalEvents.KontorOverstyring
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeEndret
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
-import no.nav.domain.externalEvents.TidligArenaKontor
 import no.nav.kafka.processor.*
 import org.apache.kafka.streams.processor.api.Record
 import org.slf4j.LoggerFactory
@@ -89,7 +89,15 @@ fun OppfolgingStartetHendelseDto.toDomainObject() = OppfolgingsperiodeStartet(
         ?: throw IllegalStateException("Ident i oppfolgingshendelse-topic kan ikke være aktorId"),
     startDato = this.startetTidspunkt,
     periodeId = OppfolgingsperiodeId(UUID.fromString(this.oppfolgingsPeriodeId)),
-    erArbeidssøkerRegistrering = startetBegrunnelse == ARBEIDSSOKER_REGISTRERING
+    erArbeidssøkerRegistrering = startetBegrunnelse == ARBEIDSSOKER_REGISTRERING,
+    foretrukketArbeidsoppfolgingskontor = this.foretrukketArbeidsoppfolgingskontor?.let { KontorId(it) },
+    kontorOverstyring = this.foretrukketArbeidsoppfolgingskontor?.let {
+        KontorOverstyring(
+            this.startetAv,
+            this.startetAvType,
+            KontorId(it),
+        )
+    }
 )
 
 fun OppfolgingsAvsluttetHendelseDto.toDomainObject() = OppfolgingsperiodeAvsluttet(

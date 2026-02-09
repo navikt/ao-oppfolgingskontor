@@ -99,6 +99,16 @@ class RetryableRepository(val repositoryTopic: String) {
         FailedMessagesTable.selectAll().where(FailedMessagesTable.topic eq repositoryTopic).count()
     }
 
+    fun countFailedMessagesOlderThan20Minutes(): Long = transaction {
+        FailedMessagesTable
+            .selectAll()
+            .where {
+                (FailedMessagesTable.topic eq repositoryTopic) and
+                (queueTimestamp less OffsetDateTime.now().minusMinutes(20))
+            }
+            .count()
+    }
+
     fun saveOffsetIfGreater(partition: Int, offset: Long): Boolean = transaction {
         KafkaOffsetTable.upsert(where = { KafkaOffsetTable.offset less offset }) {
             it[KafkaOffsetTable.topic] = repositoryTopic

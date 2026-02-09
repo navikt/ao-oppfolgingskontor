@@ -19,8 +19,8 @@ import no.nav.http.client.mockNorg2Host
 import domain.kontorForGt.KontorForBrukerMedMangelfullGtFeil
 import domain.kontorForGt.KontorForBrukerMedMangelfullGtFunnet
 import domain.kontorForGt.KontorForBrukerMedMangelfullGtIkkeFunnet
-import domain.kontorForGt.KontorForGtFantDefaultKontor
-import domain.kontorForGt.KontorForGtFeil
+import no.nav.http.client.NorgKontorForGtFantKontor
+import no.nav.http.client.NorgKontorForGtFeil
 import org.junit.jupiter.api.Test
 
 class Norg2ClientTest {
@@ -65,12 +65,7 @@ class Norg2ClientTest {
             HarSkjerming(false)
         )
 
-        response shouldBe KontorForGtFantDefaultKontor(
-            kontorId = KontorId(vanligKontor),
-            HarSkjerming(false),
-            HarStrengtFortroligAdresse(true),
-            gt
-        )
+        response shouldBe NorgKontorForGtFantKontor(KontorId(vanligKontor))
     }
 
     @Test
@@ -82,12 +77,7 @@ class Norg2ClientTest {
             HarSkjerming(true)
         )
 
-        response shouldBe KontorForGtFantDefaultKontor(
-            kontorId = KontorId(vanligKontor),
-            HarSkjerming(true),
-            HarStrengtFortroligAdresse(false),
-            gt
-        )
+        response shouldBe NorgKontorForGtFantKontor(KontorId(vanligKontor))
     }
 
     @Test
@@ -99,12 +89,7 @@ class Norg2ClientTest {
             HarSkjerming(false)
         )
 
-        response shouldBe KontorForGtFantDefaultKontor(
-            kontorId = KontorId(vanligKontor),
-            HarSkjerming(false),
-            HarStrengtFortroligAdresse(false),
-            gt
-        )
+        response shouldBe NorgKontorForGtFantKontor(KontorId(vanligKontor))
     }
 
     @Test
@@ -116,7 +101,7 @@ class Norg2ClientTest {
             HarSkjerming(false)
         )
 
-        response shouldBe KontorForGtFeil("Kunne ikke hente kontor for GT i norg, http-status: 500 Internal Server Error, gt: 634576 Bydel, body: ")
+        response shouldBe NorgKontorForGtFeil("Kunne ikke hente kontor for GT i norg, http-status: 500 Internal Server Error, gt: 634576 Bydel, body: ")
     }
 
     @Test

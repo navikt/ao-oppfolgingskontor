@@ -40,11 +40,13 @@ class ArenakontorProcessorTest {
 
     @Test
     fun `Skal ignorere OppfolgingsperiodeAvsluttet-hendelser`() {
-        val processor = `ArenakontorVedOppfolgingStartetProcessor`(
+        val processor = ArenakontorVedOppfolgingStartetProcessor(
             { ArenakontorIkkeFunnet() },
             { KontorTilordningService.tilordneKontor(it, true) },
             { null },
-            { Result.success(Unit) })
+            { Result.success(Unit) },
+            true
+        )
         val record = oppfolgingsperiodeAvsluttetRecord()
         val result = processor.process(record)
         result.shouldBeInstanceOf<Skip<*, *>>()
@@ -58,7 +60,7 @@ class ArenakontorProcessorTest {
         val record = oppfolgingsperiodeStartetRecord()
         val kontorId = KontorId("1234")
         val gammelKontorId = KontorId("4321")
-        val processor = `ArenakontorVedOppfolgingStartetProcessor`(
+        val processor = ArenakontorVedOppfolgingStartetProcessor(
             { ArenakontorFunnet(kontorId, ZonedDateTime.now()) },
             { KontorTilordningService.tilordneKontor(it, true) },
             {
@@ -68,7 +70,8 @@ class ArenakontorProcessorTest {
                     sistEndretDatoArena = OffsetDateTime.now().minusDays(1)
                 )
             },
-            { Result.success(Unit) }
+            { Result.success(Unit) },
+            true
         )
         val result = processor.process(record)
         result.shouldBeInstanceOf<Commit<*, *>>()
@@ -93,7 +96,8 @@ class ArenakontorProcessorTest {
                     sistEndretDatoArena = OffsetDateTime.now().minusDays(1)
                 )
             },
-            { Result.success(Unit) }
+            { Result.success(Unit) },
+            true
         )
         val result = processor.process(record)
         result.shouldBeInstanceOf<Skip<*, *>>()
@@ -106,7 +110,7 @@ class ArenakontorProcessorTest {
         val nyereKontorId = KontorId("4321")
         val tidspunktSynkronHenting = ZonedDateTime.now().minusSeconds(30)
         val tidspunktKontorIdIDatabasen = OffsetDateTime.now().minusSeconds(20)
-        val processor = `ArenakontorVedOppfolgingStartetProcessor`(
+        val processor = ArenakontorVedOppfolgingStartetProcessor(
             { ArenakontorFunnet(kontorIdHentetSynkront, tidspunktSynkronHenting) },
             { throw Exception("Skal ikke lagre når det ikke har vært en endring") },
             {
@@ -116,7 +120,8 @@ class ArenakontorProcessorTest {
                     sistEndretDatoArena = tidspunktKontorIdIDatabasen
                 )
             },
-            { Result.success(Unit) }
+            { Result.success(Unit) },
+            true
         )
         val result = processor.process(record)
         result.shouldBeInstanceOf<Skip<*, *>>()
@@ -129,7 +134,8 @@ class ArenakontorProcessorTest {
             { ArenakontorIkkeFunnet() },
             { KontorTilordningService.tilordneKontor(it, true) },
             { null },
-            { Result.success(Unit) }
+            { Result.success(Unit) },
+            true
         )
         val result = processor.process(record)
         result.shouldBeInstanceOf<Commit<*, *>>()
@@ -144,7 +150,7 @@ class ArenakontorProcessorTest {
         val kontorId = KontorId("1234")
         val gammelKontorId = KontorId("4321")
         var harPublisertMelding = false
-        val processor = `ArenakontorVedOppfolgingStartetProcessor`(
+        val processor = ArenakontorVedOppfolgingStartetProcessor(
             { ArenakontorFunnet(kontorId, ZonedDateTime.now()) },
             { KontorTilordningService.tilordneKontor(it, true) },
             {
@@ -171,7 +177,7 @@ class ArenakontorProcessorTest {
         val kontorId = KontorId("1234")
         val gammelKontorId = KontorId("4321")
         var harPublisertMelding = false
-        val processor = `ArenakontorVedOppfolgingStartetProcessor`(
+        val processor = ArenakontorVedOppfolgingStartetProcessor(
             { ArenakontorFunnet(kontorId, ZonedDateTime.now()) },
             { KontorTilordningService.tilordneKontor(it, true) },
             {
@@ -214,7 +220,9 @@ class ArenakontorProcessorTest {
             fnr,
             ZonedDateTime.now(),
             OppfolgingsperiodeId(UUID.randomUUID()),
-            true
+            true,
+            null,
+            null
         )
     }
 

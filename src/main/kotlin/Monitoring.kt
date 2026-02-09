@@ -29,6 +29,7 @@ fun Application.configureMonitoring(): MeterRegistry {
             UptimeMetrics()
         )
     }
+
     routing {
         get("/metrics") {
             call.respond(appMicrometerRegistry.scrape())

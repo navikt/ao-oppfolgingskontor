@@ -18,24 +18,35 @@ import domain.kontorForGt.KontorForGtFantIkkeKontor
 import domain.kontorForGt.KontorForGtFantDefaultKontor
 import domain.kontorForGt.KontorForGtNrFantFallbackKontorForManglendeGt
 import domain.kontorForGt.KontorForGtFantKontor
+import domain.kontorForGt.KontorForGtFantKontorForArbeidsgiverAdresse
 import domain.kontorForGt.KontorForGtSuccess
+import kafka.consumers.oppfolgingsHendelser.StartetAvType
+import no.nav.db.Ident
+import no.nav.domain.Bruker
+import no.nav.domain.NavIdent
+import no.nav.domain.Veileder
+import no.nav.domain.externalEvents.KontorOverstyring
 
 enum class RutingResultat {
     RutetTilNOE,
+    RutetManuelt,
     FallbackIngenGTFunnet,
     FallbackLandGTFunnet,
     FallbackIngenKontorFunnetForGT,
     RutetViaNorgFallback,
+    RutetViaArbeidsgiversAdresseFallback,
     RutetViaNorg;
 
     fun toKontorEndringsType(): KontorEndringsType {
         return when (this) {
             RutetTilNOE -> KontorEndringsType.AutomatiskRutetTilNOE
+            RutetManuelt -> KontorEndringsType.StartKontorSattManueltAvVeileder
             RutetViaNorg -> KontorEndringsType.AutomatiskNorgRuting
             RutetViaNorgFallback -> KontorEndringsType.AutomatiskNorgRutingFallback
             FallbackIngenGTFunnet -> KontorEndringsType.AutomatiskRutetTilNavItManglerGt
             FallbackLandGTFunnet -> KontorEndringsType.AutomatiskRutetTilNavItGtErLand
             FallbackIngenKontorFunnetForGT -> KontorEndringsType.AutomatiskRutetTilNavItUgyldigGt
+            RutetViaArbeidsgiversAdresseFallback -> KontorEndringsType.AutomatiskRutingArbeidsgiverFallback
         }
     }
 }
@@ -69,6 +80,7 @@ data class OppfolgingsPeriodeStartetLokalKontorTilordning(
     val rutingResultat: RutingResultat = when (kontorForGt) {
         is KontorForGtFantDefaultKontor -> RutingResultat.RutetViaNorg
         is KontorForGtNrFantFallbackKontorForManglendeGt -> RutingResultat.RutetViaNorgFallback
+        is KontorForGtFantKontorForArbeidsgiverAdresse -> RutingResultat.RutetViaArbeidsgiversAdresseFallback
     }
 
     override fun kontorEndringsType(): KontorEndringsType = rutingResultat.toKontorEndringsType()
@@ -162,5 +174,33 @@ data class OppfolgingsPeriodeStartetSensitivKontorTilordning(
         logger.info(
             "OppfolgingsPeriodeStartetSensitivKontorTilordning: kontorId=${tilordning.kontorId}, rutingResultat=$rutingResultat, registrant=${registrant.getType()}, sensitivitet=$sensitivitet"
         )
+    }
+}
+
+
+data class OppfolgingsperiodeStartetManuellTilordning(
+    val fnr: IdentSomKanLagres,
+    val oppfolgingsperiodeId: OppfolgingsperiodeId,
+    val kontorOverstyring: KontorOverstyring,
+) : AOKontorEndret(KontorTilordning(fnr, kontorOverstyring.foretrukketArbeidsoppfolgingskontor, oppfolgingsperiodeId), System()) {
+    private val rutingResultat: RutingResultat = RutingResultat.RutetManuelt
+    override fun kontorEndringsType(): KontorEndringsType = rutingResultat.toKontorEndringsType()
+    override fun toHistorikkInnslag(): KontorHistorikkInnslag {
+        return KontorHistorikkInnslag(
+            kontorId = tilordning.kontorId,
+            ident = tilordning.fnr,
+            registrant = when (kontorOverstyring.registrantType) {
+                StartetAvType.SYSTEM -> System()
+                StartetAvType.BRUKER -> Bruker(Ident.validateIdentSomKanLagres(kontorOverstyring.registrantIdent, Ident.HistoriskStatus.UKJENT))
+                StartetAvType.VEILEDER -> Veileder(NavIdent(kontorOverstyring.registrantIdent))
+            },
+            kontorendringstype = rutingResultat.toKontorEndringsType(),
+            kontorType = KontorType.ARBEIDSOPPFOLGING,
+            oppfolgingId = tilordning.oppfolgingsperiodeId
+        )
+    }
+
+    override fun logg() {
+        logger.info("brukers kontor ved start oppfolging ble satt manuelt (overstyrt)")
     }
 }

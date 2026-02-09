@@ -62,6 +62,7 @@ class BigAppTest {
     @Test
     fun `app should forward messages to KontorTilordning in prod`() = testApplication {
         val fnr = randomFnr()
+        val brukAoRuting = true
         val aktorId = AktorId("4444447890246", Ident.HistoriskStatus.AKTIV)
         val kontor = KontorId("2232")
         val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
@@ -73,7 +74,6 @@ class BigAppTest {
             val oppfolgingsperiodeProvider =
                 { _: Ident -> AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, OffsetDateTime.now()) }
             val automatiskKontorRutingService = AutomatiskKontorRutingService(
-                { KontorTilordningService.tilordneKontor(it, true)},
                 { _, a, b -> KontorForGtFantDefaultKontor(kontor, b, a, GeografiskTilknytningBydelNr("3131")) },
                 { AlderFunnet(40) },
                 { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
@@ -82,20 +82,23 @@ class BigAppTest {
                 oppfolgingsperiodeProvider,
                 { _, _ -> Outcome.Success(false) }
             )
-            val tilordningProcessor = KontortilordningsProcessor(automatiskKontorRutingService)
+            val tilordningProcessor = KontortilordningsProcessor(automatiskKontorRutingService, false, brukAoRuting)
             val leesahProcessor = LeesahProcessor(
                 automatiskKontorRutingService,
                 { IdentFunnet(fnr) },
                 false,
+                brukAoRuting,
             )
             val skjermingProcessor = SkjermingProcessor(
-                automatiskKontorRutingService
+                automatiskKontorRutingService,
+                brukAoRuting
             )
             val endringPaaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
                 oppfolgingsperiodeProvider,
                 { null }, // TODO: Mer realitisk test-oppsett
                 {},
-                { Result.success(Unit) }
+                { Result.success(Unit) },
+                true
             )
             val identService = IdentService { IdenterFunnet(emptyList(), fnr) }
             val identendringsProcessor = IdentChangeProcessor(identService)
@@ -121,7 +124,7 @@ class BigAppTest {
                 endringPaaOppfolgingsBrukerProcessor,
                 identendringsProcessor,
                 OppfolgingsHendelseProcessor(
-                    OppfolgingsperiodeService(identService::hentAlleIdenter),
+                    OppfolgingsperiodeService(identService::hentAlleIdenter, KontorTilordningService::slettArbeidsoppfølgingskontorTilordning),
                     kontorEndringProducer::publiserTombstone,
                 ),
                 mockk<`ArenakontorVedOppfolgingStartetProcessor`>()

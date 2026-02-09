@@ -5,10 +5,12 @@ enum class KontorEndringsType {
     AutomatiskRutetTilNOE,
     AutomatiskNorgRuting, // navkontor/{{geografisk-tilhørighet}}
     AutomatiskNorgRutingFallback, // /arbeidsfordeling/bestmatch
+    AutomatiskRutingArbeidsgiverFallback, // adresse fra arbeidsgiver forhold hentet fra aareg
     AutomatiskRutetTilNavItManglerGt,
     AutomatiskRutetTilNavItGtErLand,
     AutomatiskRutetTilNavItUgyldigGt,
     AutomatiskRutetTilNavItIngenKontorFunnetForGt,
+    StartKontorSattManueltAvVeileder,
     FlyttetAvVeileder,
 
     /* Både Arbeidsoppfølgingskontor og GT kontor  */

@@ -146,6 +146,7 @@ class GraphqlApplicationTest {
         kontorhistorikk.kontorType shouldBe KontorType.ARENA
         kontorhistorikk.endringsType shouldBe KontorEndringsType.EndretIArena
         kontorhistorikk.endretAv shouldBe System().getIdent()
+        kontorhistorikk.kontorNavn shouldBe null
         Instant.parse(kontorhistorikk.endretTidspunkt).shouldBeCloseTo(Instant.now(), 500.milliseconds)
     }
 
@@ -166,17 +167,21 @@ class GraphqlApplicationTest {
         val antallSpesialkontorer = 4
         val antallEgneAnsatteKontorer = 14
         val antallLokalkontorer = 248
+        val antallSykefraværskontorer = 3
         response.status shouldBe OK
         val payload = response.body<GraphqlResponse<AlleKontor>>()
         payload.errors shouldBe null
         val kontorer = payload.data!!.alleKontor
-        kontorer shouldHaveSize (antallLokalkontorer + antallSpesialkontorer + antallEgneAnsatteKontorer)
+        kontorer shouldHaveSize (antallLokalkontorer + antallSpesialkontorer + antallEgneAnsatteKontorer + antallSykefraværskontorer)
 
         kontorer[0].kontorId shouldBe geografiskKontorId
         kontorer[1] shouldBe AlleKontorQueryDto("4154","Nasjonal oppfølgingsenhet")
         kontorer[2] shouldBe AlleKontorQueryDto("0393","Nav utland og fellestjenester Oslo")
         kontorer shouldContain AlleKontorQueryDto("2103","Nav Vikafossen")
         kontorer shouldContain AlleKontorQueryDto("2990","Nav IT-avdelingen")
+        kontorer shouldContain AlleKontorQueryDto("1476","Nav sjukefråværsavdeling region Sunnfjord")
+        kontorer shouldContain AlleKontorQueryDto("0491","Arbeidslivssenter Innlandet")
+        kontorer shouldContain AlleKontorQueryDto("0676","ROE Regional oppfølgingsenhet Vest-Viken")
         val kontorerEtterSpesialkontorOgGtKontor = kontorer.subList(3, kontorer.size)
         val sorterteKontorer = kontorerEtterSpesialkontorOgGtKontor.sortedBy { it.kontorId.toInt() }
         kontorerEtterSpesialkontorOgGtKontor shouldBe sorterteKontorer

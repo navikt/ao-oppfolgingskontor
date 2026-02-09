@@ -1,7 +1,10 @@
 package no.nav.services
 
+import arrow.core.Either
 import db.table.AlternativAoKontorTable
-import no.nav.BRUK_AO_RUTING
+import eventsLogger.BigQueryClient
+import eventsLogger.KontorTypeForBigQuery
+import no.nav.db.IdentSomKanLagres
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.db.table.ArenaKontorTable
 import no.nav.db.table.GeografiskTilknytningKontorTable
@@ -13,18 +16,22 @@ import no.nav.domain.events.GTKontorEndret
 import no.nav.domain.events.KontorEndretEvent
 import no.nav.kafka.consumers.KontorEndringer
 import org.jetbrains.exposed.dao.id.EntityID
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.upsert
 import java.time.ZonedDateTime
 
 object KontorTilordningService {
-    fun tilordneKontor(kontorEndringer: KontorEndringer, brukAoRuting: Boolean = BRUK_AO_RUTING) {
+    lateinit var bigQueryClient: BigQueryClient
+
+    fun tilordneKontor(kontorEndringer: KontorEndringer, brukAoRuting: Boolean) {
         kontorEndringer.aoKontorEndret?.let { tilordneKontor(it, brukAoRuting) }
         kontorEndringer.arenaKontorEndret?.let { tilordneKontor(it, brukAoRuting) }
         kontorEndringer.gtKontorEndret?.let { tilordneKontor(it, brukAoRuting) }
     }
-    fun tilordneKontor(kontorEndring: KontorEndretEvent, brukAoRuting: Boolean = BRUK_AO_RUTING) {
+    fun tilordneKontor(kontorEndring: KontorEndretEvent, brukAoRuting: Boolean) {
         val kontorTilhorighet = kontorEndring.tilordning
         transaction {
             kontorEndring.logg()
@@ -40,6 +47,11 @@ object KontorTilordningService {
                             it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
                             it[historikkEntry] = entryId.value
                         }
+                        bigQueryClient.loggSattKontorEvent(
+                            kontorTilhorighet.kontorId.id,
+                            kontorEndring.kontorEndringsType(),
+                            KontorTypeForBigQuery.ARBEIDSOPPFOLGINGSKONTOR
+                        )
                     } else
                     {
                         AlternativAoKontorTable.insert {
@@ -50,6 +62,11 @@ object KontorTilordningService {
                             it[kontorendringstype] = kontorEndring.kontorEndringsType().name
                             it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
                         }
+                        bigQueryClient.loggSattKontorEvent(
+                            kontorTilhorighet.kontorId.id,
+                            kontorEndring.kontorEndringsType(),
+                            KontorTypeForBigQuery.ALTERNATIV_AOKONTOR
+                        )
                     }
                 }
                 is ArenaKontorEndret -> {
@@ -63,6 +80,11 @@ object KontorTilordningService {
                             it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
                             it[historikkEntry] = entryId.value
                         }
+                        bigQueryClient.loggSattKontorEvent(
+                            kontorTilhorighet.kontorId.id,
+                            kontorEndring.toHistorikkInnslag().kontorendringstype,
+                            KontorTypeForBigQuery.ARBEIDSOPPFOLGINGSKONTOR
+                        )
                     }
                     ArenaKontorTable.upsert {
                         it[kontorId] = kontorTilhorighet.kontorId.id
@@ -71,6 +93,11 @@ object KontorTilordningService {
                         it[sistEndretDatoArena] = kontorEndring.sistEndretDatoArena
                         it[historikkEntry] = entryId
                     }
+                    bigQueryClient.loggSattKontorEvent(
+                        kontorTilhorighet.kontorId.id,
+                        kontorEndring.toHistorikkInnslag().kontorendringstype,
+                        KontorTypeForBigQuery.ARENAKONTOR
+                    )
                 }
                 is GTKontorEndret -> {
                     val entryId = settKontorIHistorikk(kontorEndring)
@@ -82,6 +109,19 @@ object KontorTilordningService {
                         it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
                         it[historikkEntry] = entryId.value
                     }
+                }
+            }
+        }
+    }
+
+    fun slettArbeidsoppfølgingskontorTilordning(ident: IdentSomKanLagres): Either<Throwable, Unit> {
+        return Either.catch {
+            transaction {
+                val antallRaderSlettet = ArbeidsOppfolgingKontorTable.deleteWhere { id eq ident.value }
+                when (antallRaderSlettet) {
+                    0 -> throw Exception("Fant ingen arbeidsoppfølgingskontortilordning å slette.")
+                    1 -> Unit
+                    else -> throw Exception("Fant flere arbeidsoppfølgingskontortilordninger å slette, slettet $antallRaderSlettet rader.")
                 }
             }
         }

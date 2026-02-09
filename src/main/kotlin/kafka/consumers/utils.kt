@@ -6,12 +6,17 @@ import org.apache.kafka.common.serialization.Serde
 import org.apache.kafka.common.serialization.Serializer
 
 
+val json = Json {
+    ignoreUnknownKeys = true
+    explicitNulls = false
+}
+
 inline fun <reified T> jsonSerde(): Serde<T> {
     return object : Serde<T> {
         override fun serializer(): Serializer<T> =
-            Serializer<T> { topic, data -> Json.encodeToString(data).toByteArray() }
+            Serializer<T> { topic, data -> json.encodeToString(data).toByteArray() }
 
         override fun deserializer(): Deserializer<T> =
-            Deserializer<T> { topic, data -> Json.decodeFromString(data.decodeToString()) }
+            Deserializer<T> { topic, data -> json.decodeFromString(data.decodeToString()) }
     }
 }
