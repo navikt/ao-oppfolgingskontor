@@ -18,7 +18,9 @@ import no.nav.domain.events.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMed
 import no.nav.domain.events.OppfolgingsperiodeStartetNoeTilordning
 import no.nav.kafka.consumers.KontorEndringer
 import no.nav.services.KontorTilordningService
+import no.nav.utils.bigQueryClient
 import no.nav.utils.flywayMigrationInTest
+import no.nav.utils.kontorTilordningService
 import no.nav.utils.randomFnr
 import org.jetbrains.exposed.dao.exceptions.EntityNotFoundException
 import org.jetbrains.exposed.sql.selectAll
@@ -31,14 +33,6 @@ import java.util.*
 
 class KontorTilordningServiceTest {
 
-    companion object {
-        @BeforeAll
-        @JvmStatic
-        fun setup() {
-            KontorTilordningService.bigQueryClient = mockk(relaxed = true)
-        }
-    }
-
     @Test
     fun `Kontortilordning skal peke på historikkentry`() {
         flywayMigrationInTest()
@@ -46,8 +40,8 @@ class KontorTilordningServiceTest {
         val oppfolginsperiodeUuid = OppfolgingsperiodeId(UUID.randomUUID())
         val kontorEndretEvent = OppfolgingsperiodeStartetNoeTilordning(Fnr(fnr, AKTIV), oppfolginsperiodeUuid)
 
-        KontorTilordningService.tilordneKontor(kontorEndretEvent, true)
-        KontorTilordningService.tilordneKontor(kontorEndretEvent, true)
+        kontorTilordningService.tilordneKontor(kontorEndretEvent, true)
+        kontorTilordningService.tilordneKontor(kontorEndretEvent, true)
 
         val (arbeidsoppfolgingskontor, historikkEntries) = transaction {
             val arbeidsoppfolgingskontor = ArbeidsOppfolgingKontorEntity[fnr]
@@ -77,7 +71,7 @@ class KontorTilordningServiceTest {
             sistEndretIArena = OffsetDateTime.now(),
         )
 
-        KontorTilordningService.tilordneKontor(KontorEndringer(
+        kontorTilordningService.tilordneKontor(KontorEndringer(
             aoKontorEndret = aoEndring,
             arenaKontorEndret = arenaEndring,
         ), true)
@@ -100,7 +94,7 @@ class KontorTilordningServiceTest {
             sistEndretIArena = OffsetDateTime.now(),
         )
 
-        KontorTilordningService.tilordneKontor(KontorEndringer(
+        kontorTilordningService.tilordneKontor(KontorEndringer(
             arenaKontorEndret = arenaEndring,
         ), brukAoRuting = false)
 
@@ -123,7 +117,7 @@ class KontorTilordningServiceTest {
             sistEndretIArena = OffsetDateTime.now(),
         )
 
-        KontorTilordningService.tilordneKontor(KontorEndringer(
+        kontorTilordningService.tilordneKontor(KontorEndringer(
             arenaKontorEndret = arenaEndring,
         ), brukAoRuting = true)
 
@@ -140,7 +134,7 @@ class KontorTilordningServiceTest {
         val oppfolginsperiodeUuid = OppfolgingsperiodeId(UUID.randomUUID())
         val aoEndring =  OppfolgingsperiodeStartetNoeTilordning(Fnr(fnr, AKTIV), oppfolginsperiodeUuid)
 
-        KontorTilordningService.tilordneKontor(KontorEndringer(
+        kontorTilordningService.tilordneKontor(KontorEndringer(
             aoKontorEndret = aoEndring,
         ), brukAoRuting = true)
 
@@ -154,7 +148,7 @@ class KontorTilordningServiceTest {
         val oppfolginsperiodeUuid = OppfolgingsperiodeId(UUID.randomUUID())
         val aoEndring =  OppfolgingsperiodeStartetNoeTilordning(Fnr(fnr, AKTIV), oppfolginsperiodeUuid)
 
-        KontorTilordningService.tilordneKontor(KontorEndringer(
+        kontorTilordningService.tilordneKontor(KontorEndringer(
             aoKontorEndret = aoEndring,
         ), brukAoRuting = false)
 

@@ -16,7 +16,9 @@ import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Skip
 import no.nav.services.KontorTilordningService
+import no.nav.utils.bigQueryClient
 import no.nav.utils.flywayMigrationInTest
+import no.nav.utils.kontorTilordningService
 import no.nav.utils.randomFnr
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -42,7 +44,7 @@ class ArenakontorProcessorTest {
     fun `Skal ignorere OppfolgingsperiodeAvsluttet-hendelser`() {
         val processor = ArenakontorVedOppfolgingStartetProcessor(
             { ArenakontorIkkeFunnet() },
-            { KontorTilordningService.tilordneKontor(it, true) },
+            { kontorTilordningService.tilordneKontor(it, true) },
             { null },
             { Result.success(Unit) },
             true
@@ -62,7 +64,7 @@ class ArenakontorProcessorTest {
         val gammelKontorId = KontorId("4321")
         val processor = ArenakontorVedOppfolgingStartetProcessor(
             { ArenakontorFunnet(kontorId, ZonedDateTime.now()) },
-            { KontorTilordningService.tilordneKontor(it, true) },
+            { kontorTilordningService.tilordneKontor(it, true) },
             {
                 ArenaKontorUtvidet(
                     kontorId = gammelKontorId,
@@ -132,7 +134,7 @@ class ArenakontorProcessorTest {
         val record = oppfolgingsperiodeStartetRecord()
         val processor = `ArenakontorVedOppfolgingStartetProcessor`(
             { ArenakontorIkkeFunnet() },
-            { KontorTilordningService.tilordneKontor(it, true) },
+            { kontorTilordningService.tilordneKontor(it, true) },
             { null },
             { Result.success(Unit) },
             true
@@ -152,7 +154,7 @@ class ArenakontorProcessorTest {
         var harPublisertMelding = false
         val processor = ArenakontorVedOppfolgingStartetProcessor(
             { ArenakontorFunnet(kontorId, ZonedDateTime.now()) },
-            { KontorTilordningService.tilordneKontor(it, true) },
+            { kontorTilordningService.tilordneKontor(it, true) },
             {
                 ArenaKontorUtvidet(
                     kontorId = gammelKontorId,
@@ -179,7 +181,7 @@ class ArenakontorProcessorTest {
         var harPublisertMelding = false
         val processor = ArenakontorVedOppfolgingStartetProcessor(
             { ArenakontorFunnet(kontorId, ZonedDateTime.now()) },
-            { KontorTilordningService.tilordneKontor(it, true) },
+            { kontorTilordningService.tilordneKontor(it, true) },
             {
                 ArenaKontorUtvidet(
                     kontorId = gammelKontorId,

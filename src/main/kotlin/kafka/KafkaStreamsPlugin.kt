@@ -63,6 +63,7 @@ class KafkaStreamsPluginConfig(
     var kontorTilhorighetService: KontorTilhorighetService? = null,
     var kontorEndringProducer: KontorEndringProducer? = null,
     var veilarbArenaClient: VeilarbArenaClient? = null,
+    var kontorTilordningService: KontorTilordningService? = null,
     var brukAoRuting: Boolean? = null,
 )
 
@@ -102,6 +103,9 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val veilarbArenaClient = requireNotNull(this.pluginConfig.veilarbArenaClient) {
         "VeilarbArenaClient must be configured for KafkaStreamPlugin"
     }
+    val kontorTilordningService = requireNotNull(this.pluginConfig.kontorTilordningService) {
+        "KontorTilordningService must be configured for KafkaStreamPlugin"
+    }
     val brukAoRuting = requireNotNull(this.pluginConfig.brukAoRuting) {
         "BrukAoRuting must be configured for KafkaStreamPlugin"
     }
@@ -112,19 +116,20 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
         { oppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) },
         { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },
-        { KontorTilordningService.tilordneKontor(it, brukAoRuting) },
+        { kontorTilordningService.tilordneKontor(it, brukAoRuting) },
         { kontorProducer.publiserEndringPåKontor(it) },
         environment.getPubliserArenaKontor()
     )
 
     val kontorTilordningsProcessor = KontortilordningsProcessor(
         automatiskKontorRutingService,
+        kontorTilordningService,
         // Hopp over personer som ikke finnes alder på i nytt felt i dev
         skipPersonIkkeFunnet = !isProduction,
         brukAoRuting
     )
-    val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, fnrProvider, isProduction, brukAoRuting)
-    val skjermingProcessor = SkjermingProcessor(automatiskKontorRutingService, brukAoRuting)
+    val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, fnrProvider, isProduction, brukAoRuting)
+    val skjermingProcessor = SkjermingProcessor(automatiskKontorRutingService, kontorTilordningService, brukAoRuting)
     val identEndringProcessor = IdentChangeProcessor(identService)
     val oppfolgingsHendelseProcessor = OppfolgingsHendelseProcessor(
         oppfolgingsperiodeService,
@@ -137,7 +142,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     )
     val arenakontorProcessor = ArenakontorVedOppfolgingStartetProcessor(
         veilarbArenaClient::hentArenaKontor,
-        { KontorTilordningService.tilordneKontor(it, brukAoRuting) },
+        { kontorTilordningService.tilordneKontor(it, brukAoRuting) },
         { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },
         { kontorProducer.publiserEndringPåKontor(it) },
         environment.getPubliserArenaKontor(),
