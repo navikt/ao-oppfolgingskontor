@@ -124,7 +124,7 @@ class BigAppTest {
                 endringPaaOppfolgingsBrukerProcessor,
                 identendringsProcessor,
                 OppfolgingsHendelseProcessor(
-                    OppfolgingsperiodeService(identService::hentAlleIdenter),
+                    OppfolgingsperiodeService(identService::hentAlleIdenter, KontorTilordningService::slettArbeidsoppfølgingskontorTilordning),
                     kontorEndringProducer::publiserTombstone,
                 ),
                 mockk<`ArenakontorVedOppfolgingStartetProcessor`>()

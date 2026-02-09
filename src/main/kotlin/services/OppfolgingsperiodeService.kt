@@ -1,5 +1,6 @@
 package services
 
+import arrow.core.Either
 import kotlinx.coroutines.runBlocking
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
@@ -22,7 +23,8 @@ import org.slf4j.LoggerFactory
 import utils.Outcome
 
 class OppfolgingsperiodeService(
-    val hentAlleIdenter: suspend (Ident) -> IdenterResult
+    val hentAlleIdenter: suspend (Ident) -> IdenterResult,
+    val slettArbeidsoppfolgingskontorTilordning: (IdentSomKanLagres) -> Either<Throwable, Unit>
 ) {
     val log = LoggerFactory.getLogger(OppfolgingsperiodeService::class.java)
 
@@ -39,6 +41,12 @@ class OppfolgingsperiodeService(
             else -> false
         }
         val innkommendePeriodeBleAvsluttet = OppfolgingsperiodeDao.deleteOppfolgingsperiode(oppfolgingsperiode.periodeId) > 0
+
+        slettArbeidsoppfolgingskontorTilordning(oppfolgingsperiode.fnr).fold(
+            ifLeft = { log.warn("Uventet feil ved sletting av arbeidsoppfølgingskontor: ${it.message}") },
+            ifRight = { log.info("Slettet arbeidsoppfølgingskontor fordi oppfølgingsperiode ble avsluttet") }
+        )
+
         return when {
             nåværendePeriodeBleAvsluttet && innkommendePeriodeBleAvsluttet -> throw Exception("Dette skal aldri skje! Skal ikke være flere perioder på samme person samtidig ${oppfolgingsperiode.periodeId}, ${nåværendeOppfolgingsperiode?.periodeId}")
             nåværendePeriodeBleAvsluttet -> GammelPeriodeAvsluttet
