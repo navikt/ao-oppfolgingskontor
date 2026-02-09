@@ -143,6 +143,7 @@ fun Application.module() {
         this.kontorTilhorighetService = kontorTilhorighetService
         this.kontorEndringProducer = kontorEndringProducer
         this.veilarbArenaClient = veilarbArenaClient
+        this.kontorTilordningService = kontorTilordningService
         this.brukAoRuting = brukAoRuting
     }
 
