@@ -30,3 +30,18 @@ spec:
           labels:
             namespace: dab
             severity: warning
+        - alert: EldreFeiledeMeldinger
+          expr: |
+            max_over_time(
+              max_over_time(
+                kafka_retry_processor_failed_messages_older_than_20_minutes{app="ao-oppfolgingskontor"}[2m]
+              )[15m:]
+            ) > 0
+          for: 5m
+          annotations:
+            consequence: "Det finnes en person under oppfølging som ikke vil få tildelt arbeidsoppfølgingskontor"
+            action: "Undersøk årsaken til dette og gjør nødvendige endringer."
+            summary: "Det finnes én eller flere feilede meldinger som er eldre enn 20 minutter i ao-oppfolgingskontor."
+          labels:
+            namespace: dab
+            severity: critical

@@ -69,6 +69,7 @@ import domain.kontorForGt.KontorForGtFeil
 import domain.kontorForGt.KontorForGtNrFantFallbackKontorForManglendeGt
 import domain.kontorForGt.KontorForGtResultat
 import domain.kontorForGt.KontorForGtSuccess
+import io.kotest.matchers.equals.shouldBeEqual
 import kafka.consumers.oppfolgingsHendelser.StartetAvType
 import no.nav.domain.events.OppfolgingsperiodeStartetManuellTilordning
 import no.nav.domain.externalEvents.KontorOverstyring
@@ -605,6 +606,18 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                     )
                 )
             )
+        }
+
+        it("skal ikke sette AO kontor men GT kontor til skjermet kontor når bruker blir skjermet også når bruker har landskode og norg svarer 404") {
+            gitt(brukerMedManglendeKontorForGtOgSkjerming).handterEndringISkjermingStatus(
+                SkjermetStatusEndret(
+                    brukerMedManglendeKontorForGtOgSkjerming.fnr(),
+                    HarSkjerming(true)
+                )
+            ).let {
+                it.isFailure shouldBe true
+                it.exceptionOrNull()?.message shouldBe "Skjermede brukere uten geografisk tilknytning eller med land som GT kan ikke tilordnes kontor: gt - 5050 type: Kommune"
+            }
         }
 
         it("skal sette AO og GT kontor til skjermet kontor når bruker blir skjermet også når bruker har landskode men ikke arbeidsfordeling fallback") {
@@ -1218,6 +1231,19 @@ val brukerMedTilordnetKontorForOppfolgingStartet = Bruker(
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)),
     AktivOppfolgingsperiode(Fnr("94345678901", UKJENT), OppfolgingsperiodeId(UUID.randomUUID()), OffsetDateTime.now()),
     Outcome.Success(true)
+)
+val brukerMedManglendeKontorForGtOgSkjerming = Bruker(
+    IdentFunnet(Fnr("11112111211", AKTIV)),
+    AlderFunnet(20),
+    ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
+    KontorForGtFantIkkeKontor(
+        HarSkjerming(true),
+        HarStrengtFortroligAdresse(false),
+        GtNummerForBrukerFunnet(GeografiskTilknytningKommuneNr("5050"))
+    ),
+    GtNummerForBrukerFunnet(GeografiskTilknytningKommuneNr("5050")),
+    SkjermingFunnet(HarSkjerming(true)),
+    HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false))
 )
 
 /* Brukere med feil */

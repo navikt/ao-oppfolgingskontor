@@ -4,6 +4,7 @@ import db.table.AlternativAoKontorTable
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
+import io.mockk.mockk
 import no.nav.db.Fnr
 import no.nav.db.Ident.HistoriskStatus.AKTIV
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
@@ -22,12 +23,21 @@ import no.nav.utils.randomFnr
 import org.jetbrains.exposed.dao.exceptions.EntityNotFoundException
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import java.time.OffsetDateTime
 import java.util.*
 
 
 class KontorTilordningServiceTest {
+
+    companion object {
+        @BeforeAll
+        @JvmStatic
+        fun setup() {
+            KontorTilordningService.bigQueryClient = mockk(relaxed = true)
+        }
+    }
 
     @Test
     fun `Kontortilordning skal peke på historikkentry`() {

@@ -13,6 +13,12 @@ import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.time.ZonedDateTime
 
+enum class KontorTypeForBigQuery {
+    ARBEIDSOPPFOLGINGSKONTOR,
+    ALTERNATIV_AOKONTOR,
+    ARENAKONTOR
+}
+
 class BigQueryClient(
     projectId: String,
     private val lockProvider: ExposedLockProvider
