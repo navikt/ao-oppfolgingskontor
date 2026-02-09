@@ -1,6 +1,7 @@
 package no.nav.services
 
 import db.table.AlternativAoKontorTable
+import eventsLogger.BigQueryClient
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.db.table.ArenaKontorTable
 import no.nav.db.table.GeografiskTilknytningKontorTable
@@ -18,6 +19,8 @@ import org.jetbrains.exposed.sql.upsert
 import java.time.ZonedDateTime
 
 object KontorTilordningService {
+    lateinit var bigQueryClient: BigQueryClient
+
     fun tilordneKontor(kontorEndringer: KontorEndringer, brukAoRuting: Boolean) {
         kontorEndringer.aoKontorEndret?.let { tilordneKontor(it, brukAoRuting) }
         kontorEndringer.arenaKontorEndret?.let { tilordneKontor(it, brukAoRuting) }
@@ -90,6 +93,11 @@ object KontorTilordningService {
         kontorEndring: KontorEndretEvent
     ): EntityID<Int> {
         val historikkInnslag = kontorEndring.toHistorikkInnslag()
+        bigQueryClient.loggSattKontorEvent(
+            historikkInnslag.kontorId.id,
+            historikkInnslag.kontorendringstype,
+            historikkInnslag.kontorType
+        )
         return KontorhistorikkTable.insert {
             it[kontorId] = historikkInnslag.kontorId.id
             it[ident] = historikkInnslag.ident.value
