@@ -82,7 +82,7 @@ object KontorTilordningService {
                         }
                         bigQueryClient.loggSattKontorEvent(
                             kontorTilhorighet.kontorId.id,
-                            null,
+                            kontorEndring.toHistorikkInnslag().kontorendringstype,
                             KontorTypeForBigQuery.ARBEIDSOPPFOLGINGSKONTOR
                         )
                     }
@@ -95,7 +95,7 @@ object KontorTilordningService {
                     }
                     bigQueryClient.loggSattKontorEvent(
                         kontorTilhorighet.kontorId.id,
-                        null,
+                        kontorEndring.toHistorikkInnslag().kontorendringstype,
                         KontorTypeForBigQuery.ARENAKONTOR
                     )
                 }
