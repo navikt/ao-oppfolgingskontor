@@ -6,18 +6,12 @@ import com.google.cloud.bigquery.TableId
 import net.javacrumbs.shedlock.core.LockConfiguration
 import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
 import no.nav.domain.KontorEndringsType
-import no.nav.domain.KontorId
+import no.nav.domain.KontorType
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.time.ZonedDateTime
-
-enum class KontorTypeForBigQuery {
-    ARBEIDSOPPFOLGINGSKONTOR,
-    ALTERNATIV_AOKONTOR,
-    ARENAKONTOR
-}
 
 class BigQueryClient(
     projectId: String,
@@ -30,7 +24,7 @@ class BigQueryClient(
     private val log = LoggerFactory.getLogger(this::class.java)
     val kontorEventsTable = TableId.of(DATASET_NAME, KONTOR_EVENTS)
 
-    fun loggSattKontorEvent(kontorId: String, kontorEndringsType: KontorEndringsType?, kontorType: KontorTypeForBigQuery) {
+    fun loggSattKontorEvent(kontorId: String, kontorEndringsType: KontorEndringsType?, kontorType: KontorType) {
         insertIntoKontorEvents(kontorEventsTable) {
             mapOf(
                 "kontorId" to kontorId,
