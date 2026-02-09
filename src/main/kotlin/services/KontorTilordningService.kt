@@ -1,7 +1,6 @@
 package no.nav.services
 
 import arrow.core.Either
-import arrow.core.right
 import db.table.AlternativAoKontorTable
 import eventsLogger.BigQueryClient
 import eventsLogger.KontorTypeForBigQuery
@@ -115,7 +114,7 @@ object KontorTilordningService {
         }
     }
 
-    fun fjernArbeidsoppfølgingskontorTilordning(ident: IdentSomKanLagres): Either<Throwable, Unit> {
+    fun slettArbeidsoppfølgingskontorTilordning(ident: IdentSomKanLagres): Either<Throwable, Unit> {
         return Either.catch {
             transaction {
                 val antallRaderSlettet = ArbeidsOppfolgingKontorTable.deleteWhere { id eq ident.value }

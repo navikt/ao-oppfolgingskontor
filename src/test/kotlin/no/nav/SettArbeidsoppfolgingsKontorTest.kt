@@ -35,6 +35,7 @@ import no.nav.http.graphql.schemas.RegistrantTypeDto
 import no.nav.security.mock.oauth2.MockOAuth2Server
 import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
+import no.nav.services.KontorTilordningService
 import no.nav.utils.GraphqlResponse
 import no.nav.utils.KontorTilhorighet
 import no.nav.utils.flywayMigrationInTest
@@ -89,7 +90,10 @@ class SettArbeidsoppfolgingsKontorTest {
         val identerFunnet = IdenterFunnet(listOf(ident, aktorId), ident)
         val identService = IdentService { identerFunnet }
         val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangClient, identService::hentAlleIdenter)
-        val oppfolgingsperiodeService = OppfolgingsperiodeService(identService::hentAlleIdenter)
+        val oppfolgingsperiodeService = OppfolgingsperiodeService(
+            identService::hentAlleIdenter,
+            KontorTilordningService::slettArbeidsoppfølgingskontorTilordning
+        )
         val producer = MockProducer(true, partitioner, StringSerializer(), StringSerializer())
         val kontorEndringProducer = KontorEndringProducer(
             producer,
