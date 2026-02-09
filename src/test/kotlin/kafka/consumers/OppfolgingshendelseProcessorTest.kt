@@ -1,6 +1,5 @@
 package kafka.consumers
 
-import arrow.core.Either
 import db.entity.TidligArenaKontorEntity
 import domain.ArenaKontorUtvidet
 import io.kotest.assertions.withClue
@@ -31,11 +30,9 @@ import no.nav.kafka.processor.Skip
 import no.nav.services.AktivOppfolgingsperiode
 import domain.kontorForGt.KontorForGtFantDefaultKontor
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
-import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.services.KontorTilordningService
 import no.nav.services.NotUnderOppfolging
 import no.nav.utils.flywayMigrationInTest
-import no.nav.utils.hentInternId
 import no.nav.utils.gittIdentIMapping
 import no.nav.utils.randomAktorId
 import no.nav.utils.randomFnr
