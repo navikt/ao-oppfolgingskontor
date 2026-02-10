@@ -44,9 +44,155 @@ Oppfølgingskontor for Arbeidsrettet Oppfølging
 | `/graphql (kontorHistorikk)` | Alle historiske **Kontortilhørighet**-er                                                                                    |
 | `topic for kontorendringer`  | Alle endringer? Bare "overstyringer"? Bare Arena + arbeidsoppfølging?                                                       |
 
+## Automatisk kontortilordning - forklaring
 
-### Fallback ruting om bruker mangler geografisk tilknytning (GT)
-Når bruker mangler GT brukes endepunktet `/api/v1/arbeidsfordeling/enheter/bestmatch` istedetfor `/api/v1/enhet/navkontor/{geografiskOmraade}` siden det ikke finnes noe geografiskOmraade (gt) i ha i URL. Nå er det implementert med Behanlingstema "Oppfølging" (ae0253) siden det var nesten slik Arena gjorde det
+### Beslutningsflyt for automatisk tilordning
+
+```mermaid
+flowchart TD
+    Start([Oppfølgingsperiode starter]) --> HentData[Hent brukerdata:<br/>- Alder<br/>- Geografisk tilknytning GT<br/>- Adressebeskyttelse<br/>- Skjerming<br/>- Profilering kun ved arbeidssøkerregistrering]
+    
+    HentData --> SjekkAlleredeTilordnet{Har allerede<br/>AO-kontor for<br/>denne perioden?}
+    SjekkAlleredeTilordnet -->|Ja| IngenEndring([Ingen endring])
+    SjekkAlleredeTilordnet -->|Nei| SjekkProfilering{Er arbeidssøker-<br/>registrering OG<br/>profilering mangler?}
+    
+    SjekkProfilering -->|Ja, og registrert<br/>for < 30 min siden| Retry([Retry senere:<br/>Venter på profilering])
+    SjekkProfilering -->|Nei eller<br/>registrert for lenge siden| SjekkOverstyring{Har manuell<br/>kontorOverstyring?}
+    
+    SjekkOverstyring -->|Ja| SjekkSensitivForOverstyring{Er brukeren sensitiv?}
+    SjekkSensitivForOverstyring -->|Nei| TilManuelt[Tilordne til<br/>manuelt valgt kontor]
+    SjekkSensitivForOverstyring -->|Ja| IgnorerOverstyring[Ignorer overstyring<br/>pga sikkerhet]
+    
+    SjekkOverstyring -->|Nei| SjekkSensitiv{Er brukeren sensitiv?<br/>Skjermet eller<br/>strengt fortrolig adresse}
+    IgnorerOverstyring --> SjekkSensitiv
+    
+    SjekkSensitiv -->|Ja| HåndterSensitiv[Håndter sensitiv bruker]
+    SjekkSensitiv -->|Nei| SjekkNOE{Skal til NOE?<br/>Alder 30-66 år OG<br/>gode muligheter}
+    
+    SjekkNOE -->|Ja| TilNOE[Tilordne til<br/>Nasjonal Oppfølgingsenhet NOE<br/>Kontor: 4154]
+    SjekkNOE -->|Nei| SjekkGT{Har bruker<br/>geografisk tilknytning?}
+    
+    SjekkGT -->|Ja, GT-nummer| TilLokal[Tilordne til<br/>lokalkontor basert på GT]
+    SjekkGT -->|Ja, men landskode| ForsøkArbeidsgiver[Forsøk arbeidsgiveradresse:<br/>Hent siste arbeidsforhold<br/>og arbeidsgivers adresse]
+    SjekkGT -->|Nei, mangler GT| ForsøkArbeidsgiver
+    
+    ForsøkArbeidsgiver --> ArbeidsgiverOK{Fant kontor basert<br/>på arbeidsgiver?}
+    ArbeidsgiverOK -->|Ja| TilArbeidsgiverKontor[Tilordne til kontor<br/>basert på arbeidsgivers<br/>kommunenummer]
+    ArbeidsgiverOK -->|Nei| SjekkFallback{Finnes arbeidsfordeling<br/>bestmatch-kontor?}
+    
+    SjekkFallback -->|Ja| TilFallbackKontor[Tilordne til<br/>arbeidsfordeling-fallback]
+    SjekkFallback -->|Nei| TilFallback[Tilordne til<br/>IT-fallback-kontor<br/>NAV IT<br/>Kontor: 2990]
+    
+    HåndterSensitiv --> SjekkStrengtFortrolig{Strengt fortrolig<br/>adresse?}
+    SjekkStrengtFortrolig -->|Ja| TilVikafossen[Tilordne til<br/>Vikafossen<br/>Kontor: 2103]
+    SjekkStrengtFortrolig -->|Nei, kun skjermet| SjekkGTSensitiv{Har bruker GT?}
+    
+    SjekkGTSensitiv -->|Ja| TilSensitivtLokal[Tilordne til<br/>GT-kontor som håndterer<br/>skjermede brukere]
+    SjekkGTSensitiv -->|Nei| Error[Feil: Kan ikke håndtere<br/>skjermet uten GT]
+    
+    TilManuelt --> LagreKontor[Lagre både<br/>AO-kontor og GT-kontor]
+    TilNOE --> LagreKontor
+    TilLokal --> LagreKontor
+    TilArbeidsgiverKontor --> LagreKontor
+    TilFallbackKontor --> LagreKontor
+    TilFallback --> LagreKontor
+    TilVikafossen --> LagreKontor
+    TilSensitivtLokal --> LagreKontor
+    
+    LagreKontor --> Slutt([Kontortilordning fullført])
+```
+
+### Kriterier for Nasjonal Oppfølgingsenhet (NOE)
+Brukere blir rutet til NOE (kontor 4154) når **alle** følgende kriterier er oppfylt:
+- Alder mellom 30 og 66 år (inkludert 30 og 66)
+- Profilering viser "antatt gode muligheter"
+- Brukeren er **ikke** skjermet
+- Brukeren har **ikke** strengt fortrolig adresse
+- Ingen manuell kontorOverstyring er satt
+
+
+### Eksempler på kontortilordning
+
+| Brukertype | Alder | GT | Skjermet | Adressebeskyttelse | Profilering | Manuell overstyring | Resultat |
+|------------|-------|-----|----------|-------------------|-------------|---------------------|----------|
+| Ung med gode muligheter | 25 | 0301 | Nei | Nei | Gode muligheter | Nei | **Lokalkontor** (Oslo) |
+| Eldre med gode muligheter | 40 | 5001 | Nei | Nei | Gode muligheter | Nei | **NOE** (4154) |
+| Voksen med behov for veiledning | 35 | 1103 | Nei | Nei | Behov for veiledning | Nei | **Lokalkontor** (Stavanger) |
+| Strengt fortrolig | 30 | 0301 | Nei | Ja, kode 6 | Gode muligheter | Nei | **Vikafossen** (2103) |
+| Skjermet bruker | 45 | 5001 | Ja | Nei | Gode muligheter | Nei | **Lokalkontor** med skjerming (Trondheim) |
+| Mangler GT | 28 | - | Nei | Nei | Behov for veiledning | Nei | **IT-fallback** (NAV IT, 2990) |
+| Bor i utlandet, arbeidsgiver-fallback | 32 | SWE | Nei | Nei | Gode muligheter | Nei | **Kontor basert på arbeidsgiver** (f.eks. 0219 hvis arbeidsgiver i Oslo) |
+| Bor i utlandet med bestmatch-fallback | 32 | SWE | Nei | Nei | Gode muligheter | Nei | **Arbeidsfordeling-fallback** |
+| Manuell overstyring akseptert | 40 | 5001 | Nei | Nei | Gode muligheter | Ja, kontor 7777 | **Kontor 7777** (overstyrer NOE) |
+| Manuell overstyring ignorert | 45 | 5001 | Ja | Nei | Gode muligheter | Ja, kontor 9999 | **Lokalkontor** (Trondheim, ignorerer 9999 pga skjerming) |
+| Strengt fortrolig med overstyring | 30 | 0301 | Nei | Ja, kode 6 | Gode muligheter | Ja, kontor 8888 | **Vikafossen** (2103, ignorerer 8888 pga sikkerhet) |
+
+### Hendelser som trigger oppdatering av kontortilhørighet
+
+```mermaid
+sequenceDiagram
+    participant Kafka
+    participant System
+    participant PDL
+    participant Norg2
+    participant Aareg
+    participant Ereg
+    participant Database
+    
+    Note over Kafka,Database: Scenario: Oppfølgingsperiode starter
+    
+    Kafka->>System: OppfolgingsperiodeStartet
+    
+    alt Har allerede AO-kontor for perioden
+        System->>Database: Sjekk om kontor finnes
+        Database-->>System: Ja, kontor finnes
+        System->>System: Ingen endring
+    else Ny tilordning nødvendig
+        System->>PDL: Hent alder
+        System->>PDL: Hent adressebeskyttelse
+        System->>PDL: Hent skjerming
+        
+        alt Er arbeidssøkerregistrering
+            System->>PDL: Hent arbeidsøkerprofilering
+            PDL-->>System: Profilering (eller retry hvis < 30 min)
+        end
+        
+        PDL-->>System: Brukerdata
+        
+        System->>PDL: Hent geografisk tilknytning (GT)
+        PDL-->>System: GT (f.eks. 0301, SWE, eller ingen)
+        
+        alt GT er norsk kommunenr/bydelnr
+            System->>Norg2: Finn kontor for GT
+            Norg2-->>System: Kontor-ID (f.eks. 0219 for NAV Oslo)
+        else GT er landskode eller mangler
+            Note over System,Ereg: Forsøk arbeidsgiver-fallback først
+            System->>Aareg: Hent arbeidsforhold
+            Aareg-->>System: Arbeidsforhold (nyeste prioriteres)
+            
+            opt Har arbeidsforhold
+                System->>Ereg: Hent arbeidsgiver adresse
+                Ereg-->>System: Adresse med kommunenummer
+                System->>Norg2: Finn kontor for arbeidsgivers kommunenr
+                Norg2-->>System: Kontor-ID basert på arbeidsgiver
+            end
+            
+            opt Arbeidsgiver-fallback feilet
+                Note over System,Norg2: Forsøk arbeidsfordeling bestmatch
+                System->>Norg2: Arbeidsfordeling bestmatch
+                Norg2-->>System: Fallback kontor-ID
+            end
+        end
+        
+        System->>System: Evaluer regler for kontortilordning
+        
+        System->>Database: Lagre AO-kontor tilordning
+        System->>Database: Lagre GT-kontor tilordning
+        System->>Kafka: Publiser KontorEndret event
+        
+        Note over System: Både AO-kontor og GT-kontor lagres.<br/>GT-kontor brukes hvis ingen AO-kontor eller Arena-kontor finnes.
+    end
+```
 
 ## Built with
 - Kotlin
