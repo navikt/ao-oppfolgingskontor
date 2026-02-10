@@ -16,6 +16,7 @@ class ArbeidsOppfolgingKontorEntity(id: EntityID<String>): Entity<String>(id), K
     val createdAt by ArbeidsOppfolgingKontorTable.createdAt
     val updatedAt by ArbeidsOppfolgingKontorTable.updatedAt
     val historikkEntry by ArbeidsOppfolgingKontorTable.historikkEntry
+    val oppfolgingsperiodeId by ArbeidsOppfolgingKontorTable.oppfolgingsperiodeId
 
     override fun getKontorId(): KontorId {
         return KontorId(kontorId)

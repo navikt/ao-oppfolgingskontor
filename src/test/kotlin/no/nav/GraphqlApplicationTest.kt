@@ -193,9 +193,10 @@ class GraphqlApplicationTest {
         val arenaKontorId = "4150"
         graphqlServerInTest(fnr)
         application {
+            val oppfølgingsperiodeId = gittBrukerUnderOppfolging(fnr)
             gittBrukerMedKontorIArena(fnr, arenaKontorId)
             gittBrukerMedGeografiskTilknyttetKontor(fnr, GTkontorId)
-            gittBrukerMedAOKontor(fnr, AOKontor)
+            gittBrukerMedAOKontor(fnr, AOKontor, oppfølgingsperiodeId)
         }
         val client = getJsonHttpClient()
 
@@ -246,10 +247,10 @@ class GraphqlApplicationTest {
         )
     }
 
-    private fun gittBrukerMedAOKontor(fnr: Fnr, kontorId: String) {
+    private fun gittBrukerMedAOKontor(fnr: Fnr, kontorId: String, oppfølgingsperiodeId: OppfolgingsperiodeId) {
         kontorTilordningService.tilordneKontor(
             OppfolgingsPeriodeStartetLokalKontorTilordning(
-                kontorTilordning = KontorTilordning(fnr, KontorId(kontorId), OppfolgingsperiodeId(UUID.randomUUID())),
+                kontorTilordning = KontorTilordning(fnr, KontorId(kontorId), oppfølgingsperiodeId),
                 kontorForGt = KontorForGtFantDefaultKontor(
                     KontorId(kontorId),
                     ingenSensitivitet.skjermet,
