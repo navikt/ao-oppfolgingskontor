@@ -40,6 +40,10 @@ class OppfolgingsperiodeService(
         val nåværendePeriodeBleAvsluttet = when {
             nåværendeOppfolgingsperiode != null -> {
                 if (nåværendeOppfolgingsperiode.startDato.isBefore(oppfolgingsperiode.startDato.toOffsetDateTime())) {
+                    slettArbeidsoppfolgingskontorTilordning(oppfolgingsperiode.fnr).fold(
+                        ifLeft = { log.warn("Uventet feil ved sletting av arbeidsoppfølgingskontor: ${it.message}") },
+                        ifRight = { log.info("Slettet arbeidsoppfølgingskontor fordi oppfølgingsperiode ble avsluttet") }
+                    )
                     OppfolgingsperiodeDao.deleteOppfolgingsperiode(nåværendeOppfolgingsperiode.periodeId) > 0
                 } else {
                     false

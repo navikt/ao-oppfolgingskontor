@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory
 
 class SkjermingProcessor(
     val automatiskKontorRutingService: AutomatiskKontorRutingService,
+    val kontorTilordningService: KontorTilordningService,
     val brukAoRuting: Boolean
 ) {
     val log = LoggerFactory.getLogger(SkjermingProcessor::class.java)
@@ -38,7 +39,7 @@ class SkjermingProcessor(
                         true -> {
                             log.info("Behandling endring i skjerming med resultat: ${result.getOrNull()}")
                             result.getOrNull()
-                                ?.let { KontorTilordningService.tilordneKontor(it.endringer, brukAoRuting) }
+                                ?.let { kontorTilordningService.tilordneKontor(it.endringer, brukAoRuting) }
                             Commit()
                         }
                         false -> {
