@@ -29,17 +29,12 @@ class OppfolgingsperiodeService(
     val log = LoggerFactory.getLogger(OppfolgingsperiodeService::class.java)
 
     fun handterPeriodeAvsluttet(oppfolgingsperiode: OppfolgingsperiodeAvsluttet): HandterPeriodeAvsluttetResultat {
-        // TODO: Endre til å slette vha. oppfølgingsperiode-ID når alle arbeidsoppfølgingskontor har fått dette
-        // da skal det aldri skje at man ikke kan slette arbeidsoppfølgingskontoret
-        slettArbeidsoppfolgingskontorTilordning(oppfolgingsperiode.fnr).fold(
-            ifLeft = { throw Exception("Uventet feil ved sletting av arbeidsoppfølgingskontor når oppfølgingsperiode skal avsluttes: ${it.message}") },
-            ifRight = { log.info("Slettet arbeidsoppfølgingskontor fordi oppfølgingsperiode ble avsluttet") }
-        )
-
         val nåværendeOppfolgingsperiode = getNåværendePeriode(oppfolgingsperiode.fnr)
         val nåværendePeriodeBleAvsluttet = when {
             nåværendeOppfolgingsperiode != null -> {
                 if (nåværendeOppfolgingsperiode.startDato.isBefore(oppfolgingsperiode.startDato.toOffsetDateTime())) {
+                    // TODO: Endre til å slette vha. oppfølgingsperiode-ID når alle arbeidsoppfølgingskontor har fått dette
+                    // da skal det aldri skje at man ikke kan slette arbeidsoppfølgingskontoret
                     slettArbeidsoppfolgingskontorTilordning(oppfolgingsperiode.fnr).fold(
                         ifLeft = { log.warn("Uventet feil ved sletting av arbeidsoppfølgingskontor: ${it.message}") },
                         ifRight = { log.info("Slettet arbeidsoppfølgingskontor fordi oppfølgingsperiode ble avsluttet") }
@@ -51,6 +46,10 @@ class OppfolgingsperiodeService(
             }
             else -> false
         }
+        slettArbeidsoppfolgingskontorTilordning(oppfolgingsperiode.fnr).fold(
+            ifLeft = { log.warn("Uventet feil ved sletting av arbeidsoppfølgingskontor: ${it.message}") },
+            ifRight = { log.info("Slettet arbeidsoppfølgingskontor fordi oppfølgingsperiode ble avsluttet") }
+        )
         val innkommendePeriodeBleAvsluttet = OppfolgingsperiodeDao.deleteOppfolgingsperiode(oppfolgingsperiode.periodeId) > 0
 
         return when {

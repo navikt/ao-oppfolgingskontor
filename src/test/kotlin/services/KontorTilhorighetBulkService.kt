@@ -6,6 +6,7 @@ import no.nav.db.InvalidIdent
 import no.nav.db.ValidIdent
 import no.nav.domain.KontorId
 import no.nav.utils.flywayMigrationInTest
+import no.nav.utils.gittBrukerUnderOppfolging
 import no.nav.utils.gittIdentIMapping
 import no.nav.utils.gittIdentMedKontor
 import no.nav.utils.randomDnr
@@ -33,9 +34,9 @@ class KontorTilhorighetBulkServiceTest {
         val brukerUtenKontor = randomFnr()
         val ugyldigIdent = "321312"
         gittIdentIMapping(bruker1)
-        gittIdentMedKontor(bruker1, kontorId1)
+        gittIdentMedKontor(bruker1, kontorId1, gittBrukerUnderOppfolging(bruker1))
         gittIdentIMapping(bruker2)
-        gittIdentMedKontor(bruker2, kontorId2)
+        gittIdentMedKontor(bruker2, kontorId2, gittBrukerUnderOppfolging(bruker2))
 
         val result = KontorTilhorighetBulkService.getKontorTilhorighetBulk(
             listOf(
@@ -58,9 +59,10 @@ class KontorTilhorighetBulkServiceTest {
         val kontorId1 = KontorId("2121")
         val dnr = randomDnr()
         val kontorId2 = KontorId("3121")
+        val oppfølgingsperiode = gittBrukerUnderOppfolging(fnr)
         gittIdentIMapping(listOf(fnr, dnr))
-        gittIdentMedKontor(fnr, kontorId1)
-        gittIdentMedKontor(dnr, kontorId2)
+        gittIdentMedKontor(fnr, kontorId1, oppfølgingsperiode)
+        gittIdentMedKontor(dnr, kontorId2, oppfølgingsperiode)
 
         val result = KontorTilhorighetBulkService.getKontorTilhorighetBulk(
             listOf(ValidIdent(fnr)),
@@ -74,8 +76,9 @@ class KontorTilhorighetBulkServiceTest {
     fun `skal ikke bruke slettede identer`() {
         val dnr = randomDnr()
         val kontorId2 = KontorId("3121")
+        val oppfølgingsperiodeId = gittBrukerUnderOppfolging(dnr)
         gittIdentIMapping(dnr, slettet = OffsetDateTime.now())
-        gittIdentMedKontor(dnr, kontorId2)
+        gittIdentMedKontor(dnr, kontorId2, oppfølgingsperiodeId)
 
         val result = KontorTilhorighetBulkService.getKontorTilhorighetBulk(
             listOf(ValidIdent(dnr)),
