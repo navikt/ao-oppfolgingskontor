@@ -23,8 +23,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.upsert
 import java.time.ZonedDateTime
 
-object KontorTilordningService {
-    lateinit var bigQueryClient: BigQueryClient
+class KontorTilordningService(private val bigQueryClient: BigQueryClient) {
 
     fun tilordneKontor(kontorEndringer: KontorEndringer, brukAoRuting: Boolean) {
         kontorEndringer.aoKontorEndret?.let { tilordneKontor(it, brukAoRuting) }

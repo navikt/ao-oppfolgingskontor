@@ -23,6 +23,9 @@ import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
 import domain.kontorForGt.KontorForGtFantDefaultKontor
 import no.nav.domain.externalEvents.OppfolgingsperiodeEndret
+import no.nav.services.KontorTilordningService
+import no.nav.utils.bigQueryClient
+import no.nav.utils.kontorTilordningService
 import org.apache.kafka.streams.processor.api.Record
 import org.junit.jupiter.api.Test
 import utils.Outcome
@@ -37,6 +40,7 @@ class KontortilordningsProcessorTest {
         val oppfolgingsperiode = oppfolgingsperiodeStartet()
         val processor = KontortilordningsProcessor(
             hardtFeilendeAutomatiskKontorRutingService(),
+            kontorTilordningService,
             false,
             false
         )
@@ -57,6 +61,7 @@ class KontortilordningsProcessorTest {
         val oppfolgingsperiode = oppfolgingsperiodeStartet()
         val processor = KontortilordningsProcessor(
             feilendeAutomatiskKontorRutingService(oppfolgingsperiode),
+            kontorTilordningService,
             false,
             false
         )
@@ -76,6 +81,7 @@ class KontortilordningsProcessorTest {
         val oppfolgingsperiode = oppfolgingsperiodeStartet()
         val processor = KontortilordningsProcessor(
             feilendeAutomatiskKontorRutingService(oppfolgingsperiode),
+            kontorTilordningService,
             true,
             false
         )

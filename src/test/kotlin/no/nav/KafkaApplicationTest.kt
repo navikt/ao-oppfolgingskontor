@@ -42,8 +42,10 @@ import no.nav.services.AutomatiskKontorRutingService
 import domain.kontorForGt.KontorForGtFantDefaultKontor
 import no.nav.services.KontorTilhorighetService
 import no.nav.services.KontorTilordningService
+import no.nav.utils.bigQueryClient
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.gittBrukerUnderOppfolging
+import no.nav.utils.kontorTilordningService
 import no.nav.utils.randomFnr
 import no.nav.utils.randomTopicName
 import org.apache.kafka.common.serialization.Serde
@@ -73,11 +75,11 @@ class KafkaApplicationTest {
         val topic = randomTopicName()
         val fnr = randomFnr()
         val oppfolgingsperiodeService = OppfolgingsperiodeService({ IdenterFunnet(listOf(fnr), fnr) },
-            KontorTilordningService::slettArbeidsoppfølgingskontorTilordning)
+            kontorTilordningService::slettArbeidsoppfølgingskontorTilordning)
         val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
             oppfolgingsperiodeService::getCurrentOppfolgingsperiode,
             { null },
-            { KontorTilordningService.tilordneKontor(it, true)},
+            { kontorTilordningService.tilordneKontor(it, true)},
             { Result.success(Unit) },
             true
         )
@@ -112,14 +114,14 @@ class KafkaApplicationTest {
         val fnr = randomFnr()
         val topic = randomTopicName()
         val oppfolgingsperiodeService = OppfolgingsperiodeService({ IdenterFunnet(listOf(fnr), fnr) },
-            KontorTilordningService::slettArbeidsoppfølgingskontorTilordning)
+            kontorTilordningService::slettArbeidsoppfølgingskontorTilordning)
         val kontorTilhorighetService = KontorTilhorighetService(
             kontorNavnService = mockk(),
         ) { IdenterFunnet(listOf(fnr), fnr) }
         val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
             oppfolgingsperiodeService::getCurrentOppfolgingsperiode,
             { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },
-            { KontorTilordningService.tilordneKontor(it, true)},
+            { kontorTilordningService.tilordneKontor(it, true)},
             { Result.success(Unit) },
             true
         )
@@ -178,7 +180,7 @@ class KafkaApplicationTest {
             { AktivOppfolgingsperiode(fnr, OppfolgingsperiodeId(UUID.randomUUID()), OffsetDateTime.now()) },
             { _, _ -> Outcome.Success(false) }
         )
-        val skjermingProcessor = SkjermingProcessor(automatiskKontorRutingService, brukAoRuting)
+        val skjermingProcessor = SkjermingProcessor(automatiskKontorRutingService, kontorTilordningService, brukAoRuting)
 
         application {
             flywayMigrationInTest()

@@ -35,7 +35,6 @@ import no.nav.http.graphql.schemas.RegistrantTypeDto
 import no.nav.security.mock.oauth2.MockOAuth2Server
 import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
-import no.nav.services.KontorTilordningService
 import no.nav.utils.GraphqlResponse
 import no.nav.utils.KontorTilhorighet
 import no.nav.utils.flywayMigrationInTest
@@ -45,6 +44,7 @@ import no.nav.utils.gittBrukerUnderOppfolging
 import no.nav.utils.gittIdentIMapping
 import no.nav.utils.issueToken
 import no.nav.utils.kontorTilhorighet
+import no.nav.utils.kontorTilordningService
 import no.nav.utils.randomAktorId
 import no.nav.utils.randomFnr
 import org.apache.kafka.clients.producer.MockProducer
@@ -92,7 +92,7 @@ class SettArbeidsoppfolgingsKontorTest {
         val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, identService::hentAlleIdenter)
         val oppfolgingsperiodeService = OppfolgingsperiodeService(
             identService::hentAlleIdenter,
-            KontorTilordningService::slettArbeidsoppfølgingskontorTilordning
+            kontorTilordningService::slettArbeidsoppfølgingskontorTilordning
         )
         val producer = MockProducer(true, partitioner, StringSerializer(), StringSerializer())
         val kontorEndringProducer = KontorEndringProducer(
@@ -119,6 +119,7 @@ class SettArbeidsoppfolgingsKontorTest {
                 kontorTilhorighetService,
                 poaoTilgangClient,
                 oppfolgingsperiodeService,
+                kontorTilordningService,
                 { kontorEndringProducer.publiserEndringPåKontor(it) },
                 hentSkjerming = { skjerming },
                 hentAdresseBeskyttelse = { adressebeskyttelse },

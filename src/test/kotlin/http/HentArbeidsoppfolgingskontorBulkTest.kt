@@ -37,7 +37,6 @@ class HentArbeidsoppfolgingskontorBulkTest {
         @BeforeAll
         fun setup() {
             flywayMigrationInTest()
-            KontorTilordningService.bigQueryClient = mockk(relaxed = true)
         }
     }
 

@@ -92,7 +92,7 @@ fun hentInternId(ident: Ident): Long {
 }
 
 fun gittIdentMedKontor(ident: IdentSomKanLagres, kontorId: KontorId, oppfolgingsperiodeId: OppfolgingsperiodeId? = null) {
-    KontorTilordningService.tilordneKontor(
+    kontorTilordningService.tilordneKontor(
         OppfolgingsPeriodeStartetLokalKontorTilordning(
             KontorTilordning(
                 ident,

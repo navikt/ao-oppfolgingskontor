@@ -34,9 +34,11 @@ import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.services.KontorTilordningService
 import no.nav.services.NotUnderOppfolging
+import no.nav.utils.bigQueryClient
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.hentInternId
 import no.nav.utils.gittIdentIMapping
+import no.nav.utils.kontorTilordningService
 import no.nav.utils.randomAktorId
 import no.nav.utils.randomFnr
 import org.apache.kafka.streams.processor.api.Record
@@ -90,7 +92,7 @@ class OppfolgingshendelseProcessorTest {
     }
 
     fun Bruker.gittAOKontorTilordning(kontorId: KontorId) {
-        KontorTilordningService.tilordneKontor(
+        kontorTilordningService.tilordneKontor(
             OppfolgingsPeriodeStartetLokalKontorTilordning(
                 KontorTilordning(this.ident, kontorId, this.oppfolgingsperiodeId),
                 KontorForGtFantDefaultKontor(
@@ -105,7 +107,7 @@ class OppfolgingshendelseProcessorTest {
     }
 
     fun Bruker.gittArenaKontorTilordning(kontorId: KontorId) {
-        KontorTilordningService.tilordneKontor(
+        kontorTilordningService.tilordneKontor(
             ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep(
                 KontorTilordning(this.ident, kontorId, this.oppfolgingsperiodeId),
                 OffsetDateTime.now()
@@ -136,7 +138,7 @@ class OppfolgingshendelseProcessorTest {
         return OppfolgingsHendelseProcessor(
             oppfolgingsPeriodeService = OppfolgingsperiodeService(
                 { IdenterFunnet(listOf(this.ident, AktorId(this.aktorId, AKTIV)), this.ident) },
-                KontorTilordningService::slettArbeidsoppfølgingskontorTilordning
+                kontorTilordningService::slettArbeidsoppfølgingskontorTilordning
             ),
             publiserTombstone = publiserTombstone
         )
@@ -489,7 +491,7 @@ class OppfolgingshendelseProcessorTest {
             val identChangeProcessor = IdentChangeProcessor(identService)
             val oppfolgingsPeriodeService = OppfolgingsperiodeService(
                 identService::hentAlleIdenter,
-                KontorTilordningService::slettArbeidsoppfølgingskontorTilordning
+                kontorTilordningService::slettArbeidsoppfølgingskontorTilordning
             )
             val oppfolgingshendelseProcessor = OppfolgingsHendelseProcessor(oppfolgingsPeriodeService, { _ -> Result.success(Unit) })
             val startResult = oppfolgingshendelseProcessor
