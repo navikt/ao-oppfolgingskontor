@@ -32,13 +32,9 @@ import no.nav.services.AutomatiskKontorRutingService.Companion.VIKAFOSSEN
 import domain.kontorForGt.KontorForGtFantDefaultKontor
 import domain.kontorForGt.KontorForGtFeil
 import domain.kontorForGt.KontorForGtResultat
-import eventsLogger.BigQueryClient
 import io.kotest.assertions.withClue
-import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
-import no.nav.services.KontorTilordningService
-import no.nav.utils.TestDb
-import no.nav.utils.bigQueryClient
 import no.nav.utils.flywayMigrationInTest
+import no.nav.utils.gittBrukerUnderOppfolging
 import no.nav.utils.kontorTilordningService
 import no.nav.utils.randomFnr
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -78,10 +74,11 @@ class LeesahProcessorTest {
         val brukAoRuting = true
         application {
             flywayMigrationInTest()
+            val oppfølgingsperiodeId = gittBrukerUnderOppfolging(fnr)
             gittNåværendeGtKontor(fnr, KontorId(gammeltKontorId))
             val automatiskKontorRutingService = defaultAutomatiskKontorRutingService(
                 { a, b, c -> KontorForGtFantDefaultKontor(KontorId(nyKontorId), c, b, GeografiskTilknytningBydelNr("3131")) },
-                { ident -> HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(true)) }
+                { ident -> HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(true)) }, oppfølgingsperiodeId
             )
             val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, { IdentFunnet(fnr) }, false, brukAoRuting)
 
@@ -105,7 +102,8 @@ class LeesahProcessorTest {
         val brukAoRuting = true
         application {
             flywayMigrationInTest()
-            gittNåværendeAOKontor(fnr, KontorId(gammelKontorId))
+            val oppfølgingsperiodeId = gittBrukerUnderOppfolging(fnr)
+            gittNåværendeAOKontor(fnr, KontorId(gammelKontorId), oppfølgingsperiodeId)
             gittNåværendeGtKontor(fnr, KontorId(gammelKontorId))
             val automatiskKontorRutingService = gittRutingServiceMedGtKontor(KontorId(nyKontorId))
             val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService,  { IdentFunnet(fnr) }, false, brukAoRuting)
@@ -158,7 +156,8 @@ class LeesahProcessorTest {
 
     private fun defaultAutomatiskKontorRutingService(
         gtProvider: suspend (ident: Ident, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming) -> KontorForGtResultat,
-        strengtFortroligAdresseProvider: suspend (ident: Ident) -> HarStrengtFortroligAdresseResult = { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) }
+        strengtFortroligAdresseProvider: suspend (ident: Ident) -> HarStrengtFortroligAdresseResult = { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
+        oppfølgingsperiodeId: OppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
     ): AutomatiskKontorRutingService {
         return AutomatiskKontorRutingService(
             // TODO: Sjekk om test krever denne
@@ -168,7 +167,7 @@ class LeesahProcessorTest {
             hentProfilering = { throw Throwable("Denne skal ikke brukes") },
             hentSkjerming = { SkjermingFunnet(HarSkjerming(false)) },
             hentHarStrengtFortroligAdresse = strengtFortroligAdresseProvider,
-            hentGjeldendeOppfolgingsperiode = { AktivOppfolgingsperiode(Fnr("66666666666", Ident.HistoriskStatus.AKTIV), OppfolgingsperiodeId(UUID.randomUUID()), OffsetDateTime.now()) },
+            hentGjeldendeOppfolgingsperiode = { AktivOppfolgingsperiode(Fnr("66666666666", Ident.HistoriskStatus.AKTIV), oppfølgingsperiodeId, OffsetDateTime.now()) },
             harAlleredeTilordnetAoKontorForOppfolgingsperiode = { _, _ -> Outcome.Success(false)  }
         )
     }
@@ -191,11 +190,10 @@ class LeesahProcessorTest {
         )
     }
 
-    private fun gittNåværendeAOKontor(fnr: Fnr, kontorId: KontorId) {
-        val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
+    private fun gittNåværendeAOKontor(fnr: Fnr, kontorId: KontorId, oppfølgingsperiodeId: OppfolgingsperiodeId) {
         kontorTilordningService.tilordneKontor(
             OppfolgingsPeriodeStartetLokalKontorTilordning(
-                kontorTilordning = KontorTilordning(fnr, kontorId, oppfolgingsperiodeId),
+                kontorTilordning = KontorTilordning(fnr, kontorId, oppfølgingsperiodeId),
                 kontorForGt = KontorForGtFantDefaultKontor(
                     kontorId,
                     HarSkjerming(false),

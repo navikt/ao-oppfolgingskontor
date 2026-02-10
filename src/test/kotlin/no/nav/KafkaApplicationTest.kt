@@ -163,6 +163,7 @@ class KafkaApplicationTest {
         val skjermetKontor = "4555"
         val topic = randomTopicName()
         val brukAoRuting = true
+        val oppfølgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
 
         val automatiskKontorRutingService = AutomatiskKontorRutingService(
             { _, b, a ->
@@ -177,13 +178,14 @@ class KafkaApplicationTest {
             { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
             { SkjermingFunnet(HarSkjerming(false)) },
             { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
-            { AktivOppfolgingsperiode(fnr, OppfolgingsperiodeId(UUID.randomUUID()), OffsetDateTime.now()) },
+            { AktivOppfolgingsperiode(fnr, oppfølgingsperiodeId, OffsetDateTime.now()) },
             { _, _ -> Outcome.Success(false) }
         )
         val skjermingProcessor = SkjermingProcessor(automatiskKontorRutingService, kontorTilordningService, brukAoRuting)
 
         application {
             flywayMigrationInTest()
+            gittBrukerUnderOppfolging(fnr, oppfølgingsperiodeId)
             val topology = configureStringStringInputTopology(skjermingProcessor::process, topic)
             val kafkaMockTopic = setupKafkaMock(topology, topic)
 

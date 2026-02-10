@@ -45,6 +45,7 @@ class KontorTilordningService(private val bigQueryClient: BigQueryClient) {
                             it[endretAvType] = kontorEndring.registrant.getType()
                             it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
                             it[historikkEntry] = entryId.value
+                            it[oppfolgingsperiodeId] = kontorEndring.tilordning.oppfolgingsperiodeId.value
                         }
                         bigQueryClient.loggSattKontorEvent(
                             kontorTilhorighet.kontorId.id,
@@ -78,6 +79,7 @@ class KontorTilordningService(private val bigQueryClient: BigQueryClient) {
                             it[endretAvType] = System().getType()
                             it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
                             it[historikkEntry] = entryId.value
+                            it[oppfolgingsperiodeId] = kontorEndring.tilordning.oppfolgingsperiodeId.value
                         }
                         bigQueryClient.loggSattKontorEvent(
                             kontorTilhorighet.kontorId.id,
