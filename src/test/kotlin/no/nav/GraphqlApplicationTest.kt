@@ -226,7 +226,7 @@ class GraphqlApplicationTest {
     }
 
     private fun gittBrukerMedKontorIArena(fnr: Fnr, kontorId: String, insertTime: ZonedDateTime = ZonedDateTime.now()) {
-        KontorTilordningService.tilordneKontor(
+        kontorTilordningService.tilordneKontor(
             EndringPaaOppfolgingsBrukerFraArena(
                 kontorTilordning = KontorTilordning(fnr, KontorId(kontorId), OppfolgingsperiodeId(UUID.randomUUID())),
                 sistEndretIArena = insertTime.toOffsetDateTime()
@@ -236,7 +236,7 @@ class GraphqlApplicationTest {
     }
 
     private fun gittBrukerMedGeografiskTilknyttetKontor(fnr: Fnr, kontorId: String) {
-        KontorTilordningService.tilordneKontor(
+        kontorTilordningService.tilordneKontor(
             GTKontorEndret(
                 kontorTilordning = KontorTilordning(fnr, KontorId(kontorId), OppfolgingsperiodeId(UUID.randomUUID())),
                 kontorEndringsType = KontorEndringsType.FlyttetAvVeileder,
@@ -247,7 +247,7 @@ class GraphqlApplicationTest {
     }
 
     private fun gittBrukerMedAOKontor(fnr: Fnr, kontorId: String) {
-        KontorTilordningService.tilordneKontor(
+        kontorTilordningService.tilordneKontor(
             OppfolgingsPeriodeStartetLokalKontorTilordning(
                 kontorTilordning = KontorTilordning(fnr, KontorId(kontorId), OppfolgingsperiodeId(UUID.randomUUID())),
                 kontorForGt = KontorForGtFantDefaultKontor(

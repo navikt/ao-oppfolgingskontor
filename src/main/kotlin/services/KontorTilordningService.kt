@@ -4,6 +4,7 @@ import arrow.core.Either
 import db.table.AlternativAoKontorTable
 import eventsLogger.BigQueryClient
 import eventsLogger.KontorTypeForBigQuery
+import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
 import no.nav.db.IdentSomKanLagres
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.db.table.ArenaKontorTable
@@ -23,8 +24,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.upsert
 import java.time.ZonedDateTime
 
-object KontorTilordningService {
-    lateinit var bigQueryClient: BigQueryClient
+class KontorTilordningService(private val bigQueryClient: BigQueryClient) {
 
     fun tilordneKontor(kontorEndringer: KontorEndringer, brukAoRuting: Boolean) {
         kontorEndringer.aoKontorEndret?.let { tilordneKontor(it, brukAoRuting) }
