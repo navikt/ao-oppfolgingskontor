@@ -13,6 +13,7 @@ import kotlinx.serialization.Serializable
 import no.nav.AOPrincipal
 import no.nav.Authenticated
 import no.nav.NotAuthenticated
+import no.nav.audit.AuditLogger
 import no.nav.authenticateCall
 import no.nav.db.IdentSomKanLagres
 import no.nav.domain.events.KontorEndretEvent
@@ -54,6 +55,7 @@ fun Application.configureArbeidsoppfolgingskontorModule(
         hentSkjerming,
         hentAdresseBeskyttelse,
         brukAoRuting,
+        { auditEntry -> AuditLogger.logSettKontor(auditEntry) }
     )
 
     routing {
@@ -69,7 +71,12 @@ fun Application.configureArbeidsoppfolgingskontorModule(
                             return@post
                         }
                     }
-                    val result = settKontorHandler.settKontor(kontorTilordning, principal)
+
+                    val traceId = call.request.headers["traceparent"]?.split("-")?.getOrNull(1)
+                        ?: throw IllegalStateException("Missing traceparent header")
+
+                    val result = settKontorHandler.settKontor(kontorTilordning, principal, traceId)
+
                     when (result) {
                         is SettKontorFailure -> call.respond(result.statusCode, result.message)
                         is SettKontorSuccess -> call.respond(HttpStatusCode.OK, result.response)

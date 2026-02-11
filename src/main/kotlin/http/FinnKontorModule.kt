@@ -8,9 +8,16 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import no.nav.Authenticated
+import no.nav.NotAuthenticated
+import no.nav.audit.AuditLogger
+import no.nav.audit.Decision
+import no.nav.audit.traceId
+import no.nav.authenticateCall
 import no.nav.db.IdentSomKanLagres
 import no.nav.domain.KontorId
 import no.nav.domain.KontorNavn
+import no.nav.getIssuer
 import no.nav.services.TilordningFeil
 import no.nav.services.TilordningResultat
 import no.nav.services.TilordningRetry
@@ -23,11 +30,24 @@ fun Application.configureFinnKontorModule(
     kontorNavn: suspend (KontorId) -> KontorNavn
 ) {
     val log = LoggerFactory.getLogger("FinnKontorModule")
+    val issuer = environment.getIssuer()
 
     routing {
         authenticate("EntraAD") {
             post("/api/finn-kontor") {
                 val (ident, erArbeidssøker) = Json.decodeFromString<FinnKontorInputDto>(call.receiveText())
+
+                val traceId = traceId() ?: throw IllegalStateException("Missing traceparent header")
+
+                val principal = when (val authResult = call.authenticateCall(issuer)) {
+                    is Authenticated -> authResult.principal
+                    is NotAuthenticated -> {
+                        log.warn("Not authorized ${authResult.reason}")
+                        call.respond(HttpStatusCode.Unauthorized)
+                        return@post
+                    }
+                }
+
                 val resultat = simulerKontorTilordning(ident, erArbeidssøker)
 
                 when (resultat) {
@@ -48,6 +68,7 @@ fun Application.configureFinnKontorModule(
                             kontorId = kontorId.id,
                             kontorNavn = kontorNavn.navn
                         ))
+                        AuditLogger.logFinnKontor(traceId, principal,ident,Decision.PERMIT)
                     }
                 }
             }

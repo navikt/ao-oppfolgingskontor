@@ -2,7 +2,11 @@ package no.nav.http.graphql.queries
 
 import com.expediagroup.graphql.server.operations.Query
 import graphql.schema.DataFetchingEnvironment
+import io.ktor.server.application.*
 import kotlinx.coroutines.runBlocking
+import no.nav.AOPrincipal
+import no.nav.audit.AuditLogger
+import no.nav.audit.Decision
 import no.nav.db.Ident
 import no.nav.db.table.KontorNavnTable
 import no.nav.db.table.KontorNavnTable.kontorNavn
@@ -27,10 +31,13 @@ class KontorHistorikkQuery(
     val logger = LoggerFactory.getLogger(KontorHistorikkQuery::class.java)
 
     fun kontorHistorikk(ident: String, dataFetchingEnvironment: DataFetchingEnvironment): List<KontorHistorikkQueryDto> {
-        return runCatching {
+        val principal = dataFetchingEnvironment.graphQlContext.get<AOPrincipal>("principal")
+        val traceId = dataFetchingEnvironment.graphQlContext.get<String>("traceId")
+            ?: throw IllegalStateException("Missing traceparent header")
+
+        runCatching {
+            val inputIdent = Ident.validateOrThrow(ident, Ident.HistoriskStatus.UKJENT)
             transaction {
-                // TODO Flytt dette til en service??
-                val inputIdent = Ident.validateOrThrow(ident, Ident.HistoriskStatus.UKJENT)
                 val alleIdenter = runBlocking { hentAlleIdenter(inputIdent).getOrThrow() }
                 KontorhistorikkTable
                     .join(
@@ -64,13 +71,22 @@ class KontorHistorikkQuery(
                             kontorNavn = it[kontorNavn]
                         )
                     }
-            }
+            } to inputIdent
         }
-            .onFailure {
-                logger.error("Feil ved henting av kontorhistorikk", it)
-                throw it
-            }
-            .onSuccess { return it }
-            .getOrThrow()
+            .fold(
+                { (historikk, inputIdent) ->
+                    AuditLogger.logLesKontorhistorikk(
+                        traceId = traceId,
+                        principal = principal,
+                        duid = inputIdent,
+                        decision = Decision.PERMIT
+                    )
+                    return historikk
+                },
+                {
+                    logger.error("Feil ved henting av kontorhistorikk", it)
+                    throw it
+                }
+            )
     }
 }

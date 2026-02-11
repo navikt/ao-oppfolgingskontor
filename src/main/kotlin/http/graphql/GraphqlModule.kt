@@ -19,6 +19,7 @@ import no.nav.AOPrincipal
 import no.nav.AuthResult
 import no.nav.Authenticated
 import no.nav.NotAuthenticated
+import no.nav.audit.traceId
 import no.nav.db.Ident
 import no.nav.http.client.IdenterResult
 import no.nav.http.client.Norg2Client
@@ -47,6 +48,7 @@ class AppContextFactory(val authenticateRequest: AuthenticateRequest) : KtorGrap
         }
         return mapOf(
             "principal" to principal,
+            "traceId" to request.call.traceId(),
         ).toGraphQLContext()
     }
 }

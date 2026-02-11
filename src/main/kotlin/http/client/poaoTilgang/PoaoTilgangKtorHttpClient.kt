@@ -30,7 +30,12 @@ fun ApplicationEnvironment.getPoaoTilgangScope(): String {
 
 sealed class TilgangResult
 object HarTilgang: TilgangResult()
-class HarIkkeTilgang(val message: String) : TilgangResult()
+class HarIkkeTilgang(
+    val subject: NavAnsatt,
+    val target: Ident,
+    val message: String,
+    val traceId: String,
+) : TilgangResult()
 class TilgangOppslagFeil(val message: String) : TilgangResult()
 
 class PoaoTilgangKtorHttpClient(
@@ -71,13 +76,13 @@ class PoaoTilgangKtorHttpClient(
 //        }
     }
 
-    private suspend fun harLeseTilgangTilBruker(navAnsatt: NavAnsatt, fnr: Ident): TilgangResult {
-        return evaluatePolicy(evaluatePoliciesUrl, fnr, navAnsatt)
+    private suspend fun harLeseTilgangTilBruker(navAnsatt: NavAnsatt, fnr: Ident, traceId: String): TilgangResult {
+        return evaluatePolicy(evaluatePoliciesUrl, fnr, navAnsatt, traceId)
     }
 
-    suspend fun harLeseTilgang(principal: AOPrincipal, fnr: Ident): TilgangResult {
+    suspend fun harLeseTilgang(principal: AOPrincipal, fnr: Ident, traceId: String): TilgangResult {
         return when (principal) {
-            is NavAnsatt ->  harLeseTilgangTilBruker(principal, fnr)
+            is NavAnsatt ->  harLeseTilgangTilBruker(principal, fnr, traceId)
             is SystemPrincipal -> HarTilgang
         }
     }
@@ -85,7 +90,8 @@ class PoaoTilgangKtorHttpClient(
     private suspend fun evaluatePolicy(
         fullUrl: String,
         fnr: Ident,
-        navAnsatt: NavAnsatt
+        navAnsatt: NavAnsatt,
+        traceId: String
     ): TilgangResult {
         return try {
             val requestId = UUID.randomUUID().toString()
@@ -117,7 +123,12 @@ class PoaoTilgangKtorHttpClient(
                 if (result.decision.type == DecisionType.PERMIT) {
                     HarTilgang
                 } else {
-                    HarIkkeTilgang("Har ikke tilgang: ${result.decision.message} - ${result.decision.reason}")
+                    HarIkkeTilgang(
+                        navAnsatt,
+                        fnr,
+                        "Har ikke tilgang: ${result.decision.message} - ${result.decision.reason}",
+                        traceId
+                    )
                 }
             }
         } catch (e: Throwable) {
