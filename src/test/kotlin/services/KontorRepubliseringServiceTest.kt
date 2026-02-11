@@ -254,49 +254,4 @@ class KontorRepubliseringServiceTest {
             kontorEndringsType = KontorEndringsType.AutomatiskNorgRuting
         )
     }
-
-    @Disabled("Skal ikke lenger eksistere tilordninger for personer som ikke er under oppfølging, så denne testen er ikke lenger relevant – slettes når not null fk er implementert")
-    @Test
-    fun `Skal ikke republisere kontor for personer som ikke er under oppfølging`() = runTest {
-        transaction {
-            ArbeidsOppfolgingKontorTable.deleteAll()
-            OppfolgingsperiodeTable.deleteAll()
-        }
-        val republiserteKontorer = mutableListOf<KontortilordningSomSkalRepubliseres>()
-
-        val kontorRepubliseringService = KontorRepubliseringService(
-            {
-                republiserteKontorer.add(it)
-                Result.success(Unit)
-            },
-            dataSource,
-            {}
-        )
-        val fnr = randomFnr()
-        val aktorId = randomAktorId()
-        val kontorId = KontorId("2121")
-        val kontorNavn = KontorNavn("Nav Helsfyr")
-        gittIdentIMapping(listOf(fnr, aktorId), null, 20311)
-        gittKontorNavn(kontorNavn, kontorId)
-        gittIdentMedKontor(
-            ident = fnr,
-            kontorId = kontorId,
-            oppfolgingsperiodeId = null,
-        )
-
-        var count = 0L
-        newSuspendedTransaction {
-            count = OppfolgingsperiodeEntity.count()
-            kontorRepubliseringService.republiserKontorer()
-        }
-
-        withClue("Forventet ${count} republiserte kontoret men fikk ${republiserteKontorer.size}") {
-            republiserteKontorer.size shouldBe count
-        }
-        val testKontor = republiserteKontorer
-            .find { it.aktorId == aktorId }
-
-        testKontor shouldBe null
-    }
-
 }

@@ -4,6 +4,7 @@ import arrow.core.Either
 import kotlinx.coroutines.runBlocking
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
+import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.http.client.IdentFunnet
@@ -24,7 +25,7 @@ import utils.Outcome
 
 class OppfolgingsperiodeService(
     val hentAlleIdenter: suspend (Ident) -> IdenterResult,
-    val slettArbeidsoppfolgingskontorTilordning: (IdentSomKanLagres) -> Either<Throwable, Unit>
+    val slettArbeidsoppfolgingskontorTilordning: (OppfolgingsperiodeId) -> Either<Throwable, Unit>
 ) {
     val log = LoggerFactory.getLogger(OppfolgingsperiodeService::class.java)
 
@@ -33,9 +34,7 @@ class OppfolgingsperiodeService(
         val nåværendePeriodeBleAvsluttet = when {
             nåværendeOppfolgingsperiode != null -> {
                 if (nåværendeOppfolgingsperiode.startDato.isBefore(oppfolgingsperiode.startDato.toOffsetDateTime())) {
-                    // TODO: Endre til å slette vha. oppfølgingsperiode-ID når alle arbeidsoppfølgingskontor har fått dette
-                    // da skal det aldri skje at man ikke kan slette arbeidsoppfølgingskontoret – kan da vurdere å kaste feil
-                    slettArbeidsoppfolgingskontorTilordning(oppfolgingsperiode.fnr).fold(
+                    slettArbeidsoppfolgingskontorTilordning(oppfolgingsperiode.periodeId).fold(
                         ifLeft = { log.info("Uventet feil ved sletting av arbeidsoppfølgingskontor: ${it.message}") },
                         ifRight = { log.info("Slettet arbeidsoppfølgingskontor fordi oppfølgingsperiode ble avsluttet") }
                     )
@@ -46,7 +45,7 @@ class OppfolgingsperiodeService(
             }
             else -> false
         }
-        slettArbeidsoppfolgingskontorTilordning(oppfolgingsperiode.fnr).fold(
+        slettArbeidsoppfolgingskontorTilordning(oppfolgingsperiode.periodeId).fold(
             ifLeft = { log.info("Uventet feil ved sletting av arbeidsoppfølgingskontor: ${it.message}") },
             ifRight = { log.info("Slettet arbeidsoppfølgingskontor fordi oppfølgingsperiode ble avsluttet") }
         )
