@@ -2,6 +2,7 @@ package kafka.consumers
 
 import db.table.KafkaOffsetTable
 import domain.kontorForGt.KontorForGtFantDefaultKontor
+import eventsLogger.BigQueryClient
 import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -35,8 +36,12 @@ import no.nav.kafka.consumers.SkjermingProcessor
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.KontorTilordningService
+import no.nav.utils.TestDb
+import no.nav.utils.bigQueryClient
 import no.nav.utils.flywayMigrationInTest
+import no.nav.utils.kontorTilordningService
 import no.nav.utils.randomFnr
+import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.deleteAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.BeforeEach
@@ -82,15 +87,17 @@ class BigAppTest {
                 oppfolgingsperiodeProvider,
                 { _, _ -> Outcome.Success(false) }
             )
-            val tilordningProcessor = KontortilordningsProcessor(automatiskKontorRutingService, false, brukAoRuting)
+            val tilordningProcessor = KontortilordningsProcessor(automatiskKontorRutingService, kontorTilordningService, false, brukAoRuting)
             val leesahProcessor = LeesahProcessor(
                 automatiskKontorRutingService,
+                kontorTilordningService,
                 { IdentFunnet(fnr) },
                 false,
                 brukAoRuting,
             )
             val skjermingProcessor = SkjermingProcessor(
                 automatiskKontorRutingService,
+                kontorTilordningService,
                 brukAoRuting
             )
             val endringPaaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
@@ -124,7 +131,7 @@ class BigAppTest {
                 endringPaaOppfolgingsBrukerProcessor,
                 identendringsProcessor,
                 OppfolgingsHendelseProcessor(
-                    OppfolgingsperiodeService(identService::hentAlleIdenter),
+                    OppfolgingsperiodeService(identService::hentAlleIdenter, kontorTilordningService::slettArbeidsoppfølgingskontorTilordning),
                     kontorEndringProducer::publiserTombstone,
                 ),
                 mockk<`ArenakontorVedOppfolgingStartetProcessor`>()

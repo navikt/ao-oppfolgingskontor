@@ -18,6 +18,7 @@ import no.nav.services.KontorTilordningService
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.getJsonHttpClient
 import no.nav.utils.getMockOauth2ServerConfig
+import no.nav.utils.gittBrukerUnderOppfolging
 import no.nav.utils.gittIdentIMapping
 import no.nav.utils.gittIdentMedKontor
 import no.nav.utils.randomFnr
@@ -37,7 +38,6 @@ class HentArbeidsoppfolgingskontorBulkTest {
         @BeforeAll
         fun setup() {
             flywayMigrationInTest()
-            KontorTilordningService.bigQueryClient = mockk(relaxed = true)
         }
     }
 
@@ -53,8 +53,9 @@ class HentArbeidsoppfolgingskontorBulkTest {
         val httpClient = getJsonHttpClient()
         val bruker = randomFnr()
         val kontor = KontorId("2112")
+        val oppfølgingsperiodeId = gittBrukerUnderOppfolging(bruker)
         gittIdentIMapping(bruker)
-        gittIdentMedKontor(bruker, kontor)
+        gittIdentMedKontor(bruker, kontor, oppfølgingsperiodeId)
 
         withMockOAuth2Server {
             val result = httpClient.hentKontorBulk(server, listOf(bruker))

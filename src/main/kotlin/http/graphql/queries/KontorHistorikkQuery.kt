@@ -4,7 +4,6 @@ import com.expediagroup.graphql.server.operations.Query
 import graphql.schema.DataFetchingEnvironment
 import kotlinx.coroutines.runBlocking
 import no.nav.db.Ident
-import no.nav.db.entity.KontorHistorikkEntity
 import no.nav.db.table.KontorNavnTable
 import no.nav.db.table.KontorNavnTable.kontorNavn
 import no.nav.db.table.KontorhistorikkTable
@@ -19,7 +18,6 @@ import no.nav.http.client.IdenterResult
 import no.nav.http.graphql.schemas.KontorHistorikkQueryDto
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 
@@ -52,7 +50,7 @@ class KontorHistorikkQuery(
                         kontorType
                     )
                     .where { KontorhistorikkTable.ident inList alleIdenter.identer.map { it.value } }
-                    .orderBy(KontorhistorikkTable.id to SortOrder.ASC)
+                    .orderBy(createdAt to SortOrder.DESC)
                     .map {
                         val endringsType = KontorEndringsType.valueOf(it[KontorhistorikkTable.kontorendringstype])
                         KontorHistorikkQueryDto(

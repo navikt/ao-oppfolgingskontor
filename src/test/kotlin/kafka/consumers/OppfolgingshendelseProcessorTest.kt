@@ -29,11 +29,13 @@ import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
 import no.nav.services.AktivOppfolgingsperiode
 import domain.kontorForGt.KontorForGtFantDefaultKontor
+import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.services.KontorTilordningService
 import no.nav.services.NotUnderOppfolging
+import no.nav.utils.bigQueryClient
 import no.nav.utils.flywayMigrationInTest
-import no.nav.utils.hentInternId
 import no.nav.utils.gittIdentIMapping
+import no.nav.utils.kontorTilordningService
 import no.nav.utils.randomAktorId
 import no.nav.utils.randomFnr
 import org.apache.kafka.streams.processor.api.Record
@@ -79,8 +81,15 @@ class OppfolgingshendelseProcessorTest {
         }
     }
 
+    fun Bruker.skalIkkeHaArbeidsoppfølgingskontor() {
+        transaction {
+            val entity = ArbeidsOppfolgingKontorEntity.findById(this@skalIkkeHaArbeidsoppfølgingskontor.ident.value)
+            entity.shouldBeNull()
+        }
+    }
+
     fun Bruker.gittAOKontorTilordning(kontorId: KontorId) {
-        KontorTilordningService.tilordneKontor(
+        kontorTilordningService.tilordneKontor(
             OppfolgingsPeriodeStartetLokalKontorTilordning(
                 KontorTilordning(this.ident, kontorId, this.oppfolgingsperiodeId),
                 KontorForGtFantDefaultKontor(
@@ -95,7 +104,7 @@ class OppfolgingshendelseProcessorTest {
     }
 
     fun Bruker.gittArenaKontorTilordning(kontorId: KontorId) {
-        KontorTilordningService.tilordneKontor(
+        kontorTilordningService.tilordneKontor(
             ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep(
                 KontorTilordning(this.ident, kontorId, this.oppfolgingsperiodeId),
                 OffsetDateTime.now()
@@ -124,7 +133,10 @@ class OppfolgingshendelseProcessorTest {
     /* Mock at oppslag for å hente alle mappede identer bare returnerer 1 ident (happu path)  */
     fun Bruker.defaultOppfolgingsHendelseProcessor(publiserTombstone: (oppfolgingsperiodeId: OppfolgingsperiodeId) -> Result<Unit> = { _ -> Result.success(Unit) }): OppfolgingsHendelseProcessor {
         return OppfolgingsHendelseProcessor(
-            oppfolgingsPeriodeService = OppfolgingsperiodeService { IdenterFunnet(listOf(this.ident, AktorId(this.aktorId, AKTIV)), this.ident) },
+            oppfolgingsPeriodeService = OppfolgingsperiodeService(
+                { IdenterFunnet(listOf(this.ident, AktorId(this.aktorId, AKTIV)), this.ident) },
+                kontorTilordningService::slettArbeidsoppfølgingskontorTilordning
+            ),
             publiserTombstone = publiserTombstone
         )
     }
@@ -167,6 +179,18 @@ class OppfolgingshendelseProcessorTest {
 
         hendelseResult.shouldBeInstanceOf<Commit<*, *>>()
         bruker.skalIkkeVæreUnderOppfølging()
+    }
+
+    @Test
+    fun `Skal slette arbeidsoppfølgingskontortilordning når avslutningsmelding kommer `() = testApplication {
+        val bruker = testBruker()
+        val oppfolgingshendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
+        val hendelseStartResult = oppfolgingshendelseProcessor.process(oppfolgingStartetMelding(bruker))
+        hendelseStartResult.shouldBeInstanceOf<Forward<*, *>>()
+
+        oppfolgingshendelseProcessor.process(oppfolgingAvsluttetMelding(bruker, ZonedDateTime.now()))
+
+        bruker.skalIkkeHaArbeidsoppfølgingskontor()
     }
 
     @Test
@@ -462,7 +486,10 @@ class OppfolgingshendelseProcessorTest {
                 }
             }
             val identChangeProcessor = IdentChangeProcessor(identService)
-            val oppfolgingsPeriodeService = OppfolgingsperiodeService(identService::hentAlleIdenter)
+            val oppfolgingsPeriodeService = OppfolgingsperiodeService(
+                identService::hentAlleIdenter,
+                kontorTilordningService::slettArbeidsoppfølgingskontorTilordning
+            )
             val oppfolgingshendelseProcessor = OppfolgingsHendelseProcessor(oppfolgingsPeriodeService, { _ -> Result.success(Unit) })
             val startResult = oppfolgingshendelseProcessor
                 .process(oppfolgingStartetMelding(brukerMedDnr))

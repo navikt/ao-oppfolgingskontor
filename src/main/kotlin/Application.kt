@@ -29,7 +29,6 @@ import no.nav.kafka.KafkaStreamsPlugin
 import no.nav.kafka.config.createKafkaProducer
 import no.nav.kafka.config.toKafkaEnv
 import no.nav.services.*
-import no.nav.services.KontorTilordningService.bigQueryClient
 import org.jetbrains.exposed.sql.Database
 import services.*
 import topics
@@ -80,8 +79,9 @@ fun Application.module() {
         environment.config.property("app.gcp.projectId").getString(),
         ExposedLockProvider(database)
     )
-    KontorTilordningService.bigQueryClient = bigQueryClient
+
     installBigQueryDailyScheduler(database, bigQueryClient = bigQueryClient)
+    val kontorTilordningService = KontorTilordningService(bigQueryClient)
 
     val kontorForBrukerMedMangelfullGtService = KontorForBrukerMedMangelfullGtService(
         {aaregClient.hentArbeidsforhold(it)},
@@ -98,7 +98,7 @@ fun Application.module() {
     )
     val kontorNavnService = KontorNavnService(norg2Client)
     val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangHttpClient, identService::hentAlleIdenter)
-    val oppfolgingsperiodeService = OppfolgingsperiodeService(identService::hentAlleIdenter)
+    val oppfolgingsperiodeService = OppfolgingsperiodeService(identService::hentAlleIdenter, kontorTilordningService::slettArbeidsoppfølgingskontorTilordning)
     val automatiskKontorRutingService = AutomatiskKontorRutingService(
         { fnr, strengtFortroligAdresse, skjermet -> gtNorgService.hentGtKontorForBruker(fnr, strengtFortroligAdresse, skjermet) },
         { pdlClient.hentAlder(it) },
@@ -128,7 +128,7 @@ fun Application.module() {
         brukAoRuting = this.environment.getBrukAoRuting()
     )
     val republiseringService = KontorRepubliseringService(kontorEndringProducer::republiserKontor, datasource, kontorNavnService::friskOppAlleKontorNavn)
-    val arenaSyncService = ArenaSyncService(veilarbArenaClient, KontorTilordningService, kontorTilhorighetService, oppfolgingsperiodeService, environment.getBrukAoRuting())
+    val arenaSyncService = ArenaSyncService(veilarbArenaClient, kontorTilordningService, kontorTilhorighetService, oppfolgingsperiodeService, environment.getBrukAoRuting())
     val brukAoRuting = environment.getBrukAoRuting()
 
     install(KafkaStreamsPlugin) {
@@ -143,6 +143,7 @@ fun Application.module() {
         this.kontorTilhorighetService = kontorTilhorighetService
         this.kontorEndringProducer = kontorEndringProducer
         this.veilarbArenaClient = veilarbArenaClient
+        this.kontorTilordningService = kontorTilordningService
         this.brukAoRuting = brukAoRuting
     }
 
@@ -155,6 +156,7 @@ fun Application.module() {
         kontorTilhorighetService,
         poaoTilgangHttpClient,
         oppfolgingsperiodeService,
+        kontorTilordningService,
         { kontorEndringProducer.publiserEndringPåKontor(it) },
         hentSkjerming = { skjermingsClient.hentSkjerming(it) },
         hentAdresseBeskyttelse = { pdlClient.harStrengtFortroligAdresse(it) },

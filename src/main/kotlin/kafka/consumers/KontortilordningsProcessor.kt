@@ -29,6 +29,7 @@ import java.time.ZonedDateTime
 
 class KontortilordningsProcessor(
     private val automatiskKontorRutingService: AutomatiskKontorRutingService,
+    private val kontorTilordningService: KontorTilordningService,
     private val skipPersonIkkeFunnet: Boolean = false,
     private val brukAoRuting: Boolean,
 ) {
@@ -77,7 +78,7 @@ class KontortilordningsProcessor(
                                         log.info("Behandlet start oppfølging uten at noen kontor ble endret")
                                     }
                                     is TilordningSuccessKontorEndret -> {
-                                        KontorTilordningService.tilordneKontor(tilordningResultat.kontorEndretEvent, brukAoRuting)
+                                        kontorTilordningService.tilordneKontor(tilordningResultat.kontorEndretEvent, brukAoRuting)
                                         val aoKontor = tilordningResultat.kontorEndretEvent.aoKontorEndret
                                         if (aoKontor != null)
                                             /* Publishing it done in its own processor to avoid re-setting kontor and creating

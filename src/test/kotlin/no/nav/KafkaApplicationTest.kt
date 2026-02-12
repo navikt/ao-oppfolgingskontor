@@ -42,8 +42,10 @@ import no.nav.services.AutomatiskKontorRutingService
 import domain.kontorForGt.KontorForGtFantDefaultKontor
 import no.nav.services.KontorTilhorighetService
 import no.nav.services.KontorTilordningService
+import no.nav.utils.bigQueryClient
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.gittBrukerUnderOppfolging
+import no.nav.utils.kontorTilordningService
 import no.nav.utils.randomFnr
 import no.nav.utils.randomTopicName
 import org.apache.kafka.common.serialization.Serde
@@ -72,11 +74,12 @@ class KafkaApplicationTest {
     fun `skal lagre alle nye endringer på arena-kontor i historikk tabellen`() = testApplication {
         val topic = randomTopicName()
         val fnr = randomFnr()
-        val oppfolgingsperiodeService = OppfolgingsperiodeService({ IdenterFunnet(listOf(fnr), fnr) })
+        val oppfolgingsperiodeService = OppfolgingsperiodeService({ IdenterFunnet(listOf(fnr), fnr) },
+            kontorTilordningService::slettArbeidsoppfølgingskontorTilordning)
         val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
             oppfolgingsperiodeService::getCurrentOppfolgingsperiode,
             { null },
-            { KontorTilordningService.tilordneKontor(it, true)},
+            { kontorTilordningService.tilordneKontor(it, true)},
             { Result.success(Unit) },
             true
         )
@@ -110,7 +113,8 @@ class KafkaApplicationTest {
     fun `skal kun lagre nyere data i arena-kontor tabell og historikk tabellen`() = testApplication {
         val fnr = randomFnr()
         val topic = randomTopicName()
-        val oppfolgingsperiodeService = OppfolgingsperiodeService({ IdenterFunnet(listOf(fnr), fnr) })
+        val oppfolgingsperiodeService = OppfolgingsperiodeService({ IdenterFunnet(listOf(fnr), fnr) },
+            kontorTilordningService::slettArbeidsoppfølgingskontorTilordning)
         val kontorTilhorighetService = KontorTilhorighetService(
             kontorNavnService = mockk(),
             poaoTilgangClient = mockk()
@@ -118,7 +122,7 @@ class KafkaApplicationTest {
         val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
             oppfolgingsperiodeService::getCurrentOppfolgingsperiode,
             { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },
-            { KontorTilordningService.tilordneKontor(it, true)},
+            { kontorTilordningService.tilordneKontor(it, true)},
             { Result.success(Unit) },
             true
         )
@@ -160,6 +164,7 @@ class KafkaApplicationTest {
         val skjermetKontor = "4555"
         val topic = randomTopicName()
         val brukAoRuting = true
+        val oppfølgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
 
         val automatiskKontorRutingService = AutomatiskKontorRutingService(
             { _, b, a ->
@@ -174,13 +179,14 @@ class KafkaApplicationTest {
             { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
             { SkjermingFunnet(HarSkjerming(false)) },
             { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
-            { AktivOppfolgingsperiode(fnr, OppfolgingsperiodeId(UUID.randomUUID()), OffsetDateTime.now()) },
+            { AktivOppfolgingsperiode(fnr, oppfølgingsperiodeId, OffsetDateTime.now()) },
             { _, _ -> Outcome.Success(false) }
         )
-        val skjermingProcessor = SkjermingProcessor(automatiskKontorRutingService, brukAoRuting)
+        val skjermingProcessor = SkjermingProcessor(automatiskKontorRutingService, kontorTilordningService, brukAoRuting)
 
         application {
             flywayMigrationInTest()
+            gittBrukerUnderOppfolging(fnr, oppfølgingsperiodeId)
             val topology = configureStringStringInputTopology(skjermingProcessor::process, topic)
             val kafkaMockTopic = setupKafkaMock(topology, topic)
 

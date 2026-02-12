@@ -4,7 +4,9 @@ import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.test.runTest
 import no.nav.db.Ident
+import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.OppfolgingsperiodeEntity
+import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.db.table.OppfolgingsperiodeTable
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorId
@@ -22,6 +24,7 @@ import org.jetbrains.exposed.sql.deleteAll
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 
 class KontorRepubliseringServiceTest {
@@ -87,6 +90,7 @@ class KontorRepubliseringServiceTest {
     @Test
     fun `Skal kunne republisere kontor for valgte brukere med kontor både på historisk og nåværende ident`() = runTest {
         transaction {
+            ArbeidsOppfolgingKontorTable.deleteAll()
             OppfolgingsperiodeTable.deleteAll()
         }
         val republiserteKontorer = mutableListOf<KontortilordningSomSkalRepubliseres>()
@@ -144,8 +148,9 @@ class KontorRepubliseringServiceTest {
     }
 
     @Test
-    fun `Skal kunne republisere kontor for valgt bruker med bare kontor på gammel ident`() = runTest {
+     fun `Skal kunne republisere kontor for valgt bruker med bare kontor på gammel ident`() = runTest {
         transaction {
+            ArbeidsOppfolgingKontorTable.deleteAll()
             OppfolgingsperiodeTable.deleteAll()
         }
         val republiserteKontorer = mutableListOf<KontortilordningSomSkalRepubliseres>()
@@ -199,6 +204,7 @@ class KontorRepubliseringServiceTest {
     @Test
     fun `Skal kunne republisere kontor for valgt bruker med perioder på gammel ident og kontor ny ident`() = runTest {
         transaction {
+            ArbeidsOppfolgingKontorTable.deleteAll()
             OppfolgingsperiodeTable.deleteAll()
         }
         val republiserteKontorer = mutableListOf<KontortilordningSomSkalRepubliseres>()
@@ -248,47 +254,4 @@ class KontorRepubliseringServiceTest {
             kontorEndringsType = KontorEndringsType.AutomatiskNorgRuting
         )
     }
-
-    @Test
-    fun `Skal ikke republisere kontor for personer som ikke er under oppfølging`() = runTest {
-        transaction {
-            OppfolgingsperiodeTable.deleteAll()
-        }
-        val republiserteKontorer = mutableListOf<KontortilordningSomSkalRepubliseres>()
-
-        val kontorRepubliseringService = KontorRepubliseringService(
-            {
-                republiserteKontorer.add(it)
-                Result.success(Unit)
-            },
-            dataSource,
-            {}
-        )
-        val fnr = randomFnr()
-        val aktorId = randomAktorId()
-        val kontorId = KontorId("2121")
-        val kontorNavn = KontorNavn("Nav Helsfyr")
-        gittIdentIMapping(listOf(fnr, aktorId), null, 20311)
-        gittKontorNavn(kontorNavn, kontorId)
-        gittIdentMedKontor(
-            ident = fnr,
-            kontorId = kontorId,
-            oppfolgingsperiodeId = null,
-        )
-
-        var count = 0L
-        newSuspendedTransaction {
-            count = OppfolgingsperiodeEntity.count()
-            kontorRepubliseringService.republiserKontorer()
-        }
-
-        withClue("Forventet ${count} republiserte kontoret men fikk ${republiserteKontorer.size}") {
-            republiserteKontorer.size shouldBe count
-        }
-        val testKontor = republiserteKontorer
-            .find { it.aktorId == aktorId }
-
-        testKontor shouldBe null
-    }
-
 }

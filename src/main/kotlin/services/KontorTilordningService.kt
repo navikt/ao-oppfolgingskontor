@@ -1,12 +1,16 @@
 package no.nav.services
 
+import arrow.core.Either
 import db.table.AlternativAoKontorTable
 import eventsLogger.BigQueryClient
 import eventsLogger.KontorTypeForBigQuery
+import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
+import no.nav.db.IdentSomKanLagres
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.db.table.ArenaKontorTable
 import no.nav.db.table.GeografiskTilknytningKontorTable
 import no.nav.db.table.KontorhistorikkTable
+import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.System
 import no.nav.domain.events.AOKontorEndret
 import no.nav.domain.events.ArenaKontorEndret
@@ -14,13 +18,14 @@ import no.nav.domain.events.GTKontorEndret
 import no.nav.domain.events.KontorEndretEvent
 import no.nav.kafka.consumers.KontorEndringer
 import org.jetbrains.exposed.dao.id.EntityID
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.upsert
 import java.time.ZonedDateTime
 
-object KontorTilordningService {
-    lateinit var bigQueryClient: BigQueryClient
+class KontorTilordningService(private val bigQueryClient: BigQueryClient) {
 
     fun tilordneKontor(kontorEndringer: KontorEndringer, brukAoRuting: Boolean) {
         kontorEndringer.aoKontorEndret?.let { tilordneKontor(it, brukAoRuting) }
@@ -42,6 +47,7 @@ object KontorTilordningService {
                             it[endretAvType] = kontorEndring.registrant.getType()
                             it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
                             it[historikkEntry] = entryId.value
+                            it[oppfolgingsperiodeId] = kontorEndring.tilordning.oppfolgingsperiodeId.value
                         }
                         bigQueryClient.loggSattKontorEvent(
                             kontorTilhorighet.kontorId.id,
@@ -75,10 +81,11 @@ object KontorTilordningService {
                             it[endretAvType] = System().getType()
                             it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
                             it[historikkEntry] = entryId.value
+                            it[oppfolgingsperiodeId] = kontorEndring.tilordning.oppfolgingsperiodeId.value
                         }
                         bigQueryClient.loggSattKontorEvent(
                             kontorTilhorighet.kontorId.id,
-                            null,
+                            kontorEndring.toHistorikkInnslag().kontorendringstype,
                             KontorTypeForBigQuery.ARBEIDSOPPFOLGINGSKONTOR
                         )
                     }
@@ -91,7 +98,7 @@ object KontorTilordningService {
                     }
                     bigQueryClient.loggSattKontorEvent(
                         kontorTilhorighet.kontorId.id,
-                        null,
+                        kontorEndring.toHistorikkInnslag().kontorendringstype,
                         KontorTypeForBigQuery.ARENAKONTOR
                     )
                 }
@@ -105,6 +112,19 @@ object KontorTilordningService {
                         it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
                         it[historikkEntry] = entryId.value
                     }
+                }
+            }
+        }
+    }
+
+    fun slettArbeidsoppfølgingskontorTilordning(oppfolgingsperiodeIdSomSkalSlettes: OppfolgingsperiodeId): Either<Throwable, Unit> {
+        return Either.catch {
+            transaction {
+                val antallRaderSlettet = ArbeidsOppfolgingKontorTable.deleteWhere { oppfolgingsperiodeId eq oppfolgingsperiodeIdSomSkalSlettes.value }
+                when (antallRaderSlettet) {
+                    0 -> throw Exception("Fant ingen arbeidsoppfølgingskontortilordning å slette.")
+                    1 -> Unit
+                    else -> throw Exception("Fant flere arbeidsoppfølgingskontortilordninger å slette, slettet $antallRaderSlettet rader.")
                 }
             }
         }

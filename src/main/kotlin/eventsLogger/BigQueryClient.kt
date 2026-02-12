@@ -6,7 +6,6 @@ import com.google.cloud.bigquery.TableId
 import net.javacrumbs.shedlock.core.LockConfiguration
 import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
 import no.nav.domain.KontorEndringsType
-import no.nav.domain.KontorId
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory

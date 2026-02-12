@@ -1,8 +1,10 @@
 package services
 
+import arrow.core.Either
 import kotlinx.coroutines.runBlocking
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
+import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.http.client.IdentFunnet
@@ -22,7 +24,8 @@ import org.slf4j.LoggerFactory
 import utils.Outcome
 
 class OppfolgingsperiodeService(
-    val hentAlleIdenter: suspend (Ident) -> IdenterResult
+    val hentAlleIdenter: suspend (Ident) -> IdenterResult,
+    val slettArbeidsoppfolgingskontorTilordning: (OppfolgingsperiodeId) -> Either<Throwable, Unit>
 ) {
     val log = LoggerFactory.getLogger(OppfolgingsperiodeService::class.java)
 
@@ -31,6 +34,10 @@ class OppfolgingsperiodeService(
         val nåværendePeriodeBleAvsluttet = when {
             nåværendeOppfolgingsperiode != null -> {
                 if (nåværendeOppfolgingsperiode.startDato.isBefore(oppfolgingsperiode.startDato.toOffsetDateTime())) {
+                    slettArbeidsoppfolgingskontorTilordning(oppfolgingsperiode.periodeId).fold(
+                        ifLeft = { log.error("Uventet feil ved sletting av arbeidsoppfølgingskontor: ${it.message}") },
+                        ifRight = { log.info("Slettet arbeidsoppfølgingskontor fordi oppfølgingsperiode ble avsluttet") }
+                    )
                     OppfolgingsperiodeDao.deleteOppfolgingsperiode(nåværendeOppfolgingsperiode.periodeId) > 0
                 } else {
                     false
@@ -38,7 +45,12 @@ class OppfolgingsperiodeService(
             }
             else -> false
         }
+        slettArbeidsoppfolgingskontorTilordning(oppfolgingsperiode.periodeId).fold(
+            ifLeft = { log.error("Uventet feil ved sletting av arbeidsoppfølgingskontor: ${it.message}") },
+            ifRight = { log.info("Slettet arbeidsoppfølgingskontor fordi oppfølgingsperiode ble avsluttet") }
+        )
         val innkommendePeriodeBleAvsluttet = OppfolgingsperiodeDao.deleteOppfolgingsperiode(oppfolgingsperiode.periodeId) > 0
+
         return when {
             nåværendePeriodeBleAvsluttet && innkommendePeriodeBleAvsluttet -> throw Exception("Dette skal aldri skje! Skal ikke være flere perioder på samme person samtidig ${oppfolgingsperiode.periodeId}, ${nåværendeOppfolgingsperiode?.periodeId}")
             nåværendePeriodeBleAvsluttet -> GammelPeriodeAvsluttet

@@ -14,6 +14,6 @@ sealed class MaxRetries {
 
 data class RetryConfig(
     val maxRetries: MaxRetries = MaxRetries.Infinite,
-    val retryInterval: Duration = Duration.ofSeconds(15),
+    val retryInterval: Duration = Duration.ofSeconds(60),
     val retryBatchSize: Int = 1000
 )

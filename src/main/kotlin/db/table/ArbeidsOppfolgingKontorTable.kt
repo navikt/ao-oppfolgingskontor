@@ -13,4 +13,5 @@ object ArbeidsOppfolgingKontorTable: IdTable<String>("arbeidsoppfolgingskontor")
     val createdAt = timestampWithTimeZone("created_at").defaultExpression(CurrentTimestampWithTimeZone) // TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     val updatedAt = timestampWithTimeZone("updated_at").defaultExpression(CurrentTimestampWithTimeZone) // TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     val historikkEntry = reference("historikk_entry", KontorhistorikkTable.id)
+    val oppfolgingsperiodeId = uuid("oppfolgingsperiode_id").references(OppfolgingsperiodeTable.oppfolgingsperiodeId)
 }
