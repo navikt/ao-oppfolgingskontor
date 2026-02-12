@@ -35,7 +35,7 @@ class OppfolgingsperiodeService(
             nåværendeOppfolgingsperiode != null -> {
                 if (nåværendeOppfolgingsperiode.startDato.isBefore(oppfolgingsperiode.startDato.toOffsetDateTime())) {
                     slettArbeidsoppfolgingskontorTilordning(oppfolgingsperiode.periodeId).fold(
-                        ifLeft = { log.info("Uventet feil ved sletting av arbeidsoppfølgingskontor: ${it.message}") },
+                        ifLeft = { log.error("Uventet feil ved sletting av arbeidsoppfølgingskontor: ${it.message}") },
                         ifRight = { log.info("Slettet arbeidsoppfølgingskontor fordi oppfølgingsperiode ble avsluttet") }
                     )
                     OppfolgingsperiodeDao.deleteOppfolgingsperiode(nåværendeOppfolgingsperiode.periodeId) > 0
@@ -46,7 +46,7 @@ class OppfolgingsperiodeService(
             else -> false
         }
         slettArbeidsoppfolgingskontorTilordning(oppfolgingsperiode.periodeId).fold(
-            ifLeft = { log.info("Uventet feil ved sletting av arbeidsoppfølgingskontor: ${it.message}") },
+            ifLeft = { log.error("Uventet feil ved sletting av arbeidsoppfølgingskontor: ${it.message}") },
             ifRight = { log.info("Slettet arbeidsoppfølgingskontor fordi oppfølgingsperiode ble avsluttet") }
         )
         val innkommendePeriodeBleAvsluttet = OppfolgingsperiodeDao.deleteOppfolgingsperiode(oppfolgingsperiode.periodeId) > 0
