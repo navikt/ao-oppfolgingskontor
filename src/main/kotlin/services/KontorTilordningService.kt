@@ -10,6 +10,7 @@ import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.db.table.ArenaKontorTable
 import no.nav.db.table.GeografiskTilknytningKontorTable
 import no.nav.db.table.KontorhistorikkTable
+import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.System
 import no.nav.domain.events.AOKontorEndret
 import no.nav.domain.events.ArenaKontorEndret
@@ -116,10 +117,10 @@ class KontorTilordningService(private val bigQueryClient: BigQueryClient) {
         }
     }
 
-    fun slettArbeidsoppfølgingskontorTilordning(ident: IdentSomKanLagres): Either<Throwable, Unit> {
+    fun slettArbeidsoppfølgingskontorTilordning(oppfolgingsperiodeIdSomSkalSlettes: OppfolgingsperiodeId): Either<Throwable, Unit> {
         return Either.catch {
             transaction {
-                val antallRaderSlettet = ArbeidsOppfolgingKontorTable.deleteWhere { id eq ident.value }
+                val antallRaderSlettet = ArbeidsOppfolgingKontorTable.deleteWhere { oppfolgingsperiodeId eq oppfolgingsperiodeIdSomSkalSlettes.value }
                 when (antallRaderSlettet) {
                     0 -> throw Exception("Fant ingen arbeidsoppfølgingskontortilordning å slette.")
                     1 -> Unit
