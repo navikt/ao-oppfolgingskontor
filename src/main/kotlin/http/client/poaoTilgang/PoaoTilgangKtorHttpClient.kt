@@ -15,10 +15,11 @@ import kotlinx.serialization.json.Json
 import no.nav.AOPrincipal
 import no.nav.NavAnsatt
 import no.nav.SystemPrincipal
-import no.nav.db.Fnr
 import no.nav.db.Ident
+import no.nav.domain.KontorId
 import no.nav.http.client.tokenexchange.SystemTokenPlugin
 import no.nav.http.client.tokenexchange.TexasTokenResponse
+import no.nav.poao_tilgang.api.dto.request.PolicyId
 import no.nav.poao_tilgang.api.dto.request.TilgangType
 import no.nav.poao_tilgang.api.dto.response.DecisionType
 import org.slf4j.LoggerFactory
@@ -28,10 +29,15 @@ fun ApplicationEnvironment.getPoaoTilgangScope(): String {
     return config.property("apis.poaoTilgang.scope").getString()
 }
 
-sealed class TilgangResult
-object HarTilgang: TilgangResult()
-class HarIkkeTilgang(val message: String) : TilgangResult()
-class TilgangOppslagFeil(val message: String) : TilgangResult()
+sealed class TilgangTilKontorResult
+object HarTilgangTilKontor: TilgangTilKontorResult()
+class HarIkkeTilgangTilKontor(val message: String) : TilgangTilKontorResult()
+class TilgangTilKontorOppslagFeil(val message: String) : TilgangTilKontorResult()
+
+sealed class TilgangTilBrukerResult
+object HarTilgangTilBruker: TilgangTilBrukerResult()
+class HarIkkeTilgangTilBruker(val message: String) : TilgangTilBrukerResult()
+class TilgangTilBrukerOppslagFeil(val message: String) : TilgangTilBrukerResult()
 
 class PoaoTilgangKtorHttpClient(
     private val baseUrl: String,
@@ -71,14 +77,62 @@ class PoaoTilgangKtorHttpClient(
 //        }
     }
 
-    private suspend fun harLeseTilgangTilBruker(navAnsatt: NavAnsatt, fnr: Ident): TilgangResult {
+    private suspend fun harTilgangTilKontor(navAnsatt: NavAnsatt): TilgangTilKontorResult {
+        return try {
+            val requestId = UUID.randomUUID().toString()
+            val response = client.post (evaluatePoliciesUrl) {
+                accept(ContentType.Application.Json)
+                contentType(ContentType.Application.Json)
+                setBody(EvalPolicyReq(
+                    requests = listOf(
+                        NavAnsattTilgangTilNavEnhetPolicyRequestDto(
+                            requestId = requestId,
+                            policyInput = Input(
+                                navAnsattAzureId = navAnsatt.navAnsattAzureId.toString(),
+                                norskIdent = fnr.value,
+                                tilgangType = TilgangType.LESE
+                            ),
+                        )
+                    )
+                )
+                )
+            }
+
+            if (response.status != HttpStatusCode.OK) {
+                log.error("http request poao-tilgang evaluatePolicy failed with status ${response.status.value} - ${response.bodyAsText()}")
+                TilgangTilBrukerOppslagFeil("http request poao-tilgang evaluatePolicy failed with status ${response.status.value}")
+            } else {
+                val results = response.body<EvalPolicyRes>()
+                val result = results.results.firstOrNull()
+                    ?: return TilgangTilBrukerOppslagFeil("No results found for requestId $requestId")
+                if (result.decision.type == DecisionType.PERMIT) {
+                    HarTilgangTilBruker
+                } else {
+                    HarIkkeTilgangTilBruker("Har ikke tilgang: ${result.decision.message} - ${result.decision.reason}")
+                }
+            }
+        } catch (e: Throwable) {
+            val message = "Http request til poao-tilgang feilet med exception: ${e.message}"
+            log.error(message, e)
+            TilgangTilBrukerOppslagFeil(message)
+        }
+        return evaluatePolicy(evaluatePoliciesUrl, navAnsatt).let { result ->
+            when (result) {
+                is HarTilgangTilBruker -> HarTilgangTilKontor
+                is HarIkkeTilgangTilBruker -> HarIkkeTilgangTilKontor(result.message)
+                is TilgangTilBrukerOppslagFeil -> TilgangTilKontorOppslagFeil(result.message)
+            }
+        }
+    }
+
+    private suspend fun harLeseTilgangTilBruker(navAnsatt: NavAnsatt, fnr: Ident): TilgangTilBrukerResult {
         return evaluatePolicy(evaluatePoliciesUrl, fnr, navAnsatt)
     }
 
-    suspend fun harLeseTilgang(principal: AOPrincipal, fnr: Ident): TilgangResult {
+    suspend fun harLeseTilgang(principal: AOPrincipal, fnr: Ident): TilgangTilBrukerResult {
         return when (principal) {
             is NavAnsatt ->  harLeseTilgangTilBruker(principal, fnr)
-            is SystemPrincipal -> HarTilgang
+            is SystemPrincipal -> HarTilgangTilBruker
         }
     }
 
@@ -86,7 +140,7 @@ class PoaoTilgangKtorHttpClient(
         fullUrl: String,
         fnr: Ident,
         navAnsatt: NavAnsatt
-    ): TilgangResult {
+    ): TilgangTilBrukerResult {
         return try {
             val requestId = UUID.randomUUID().toString()
             val response = client.post (fullUrl) {
@@ -94,13 +148,14 @@ class PoaoTilgangKtorHttpClient(
                 contentType(ContentType.Application.Json)
                 setBody(EvalPolicyReq(
                         requests = listOf(
-                            NavAnsattTilgangTilEksternBrukerPolicyRequestDto(
+                            NavAnsattTilgangPolicyRequestDto(
                                 requestId = requestId,
-                                policyInput = Input(
+                                policyInput = NavAnsattTilgangTilBrukerPolicyInput(
                                     navAnsattAzureId = navAnsatt.navAnsattAzureId.toString(),
                                     norskIdent = fnr.value,
                                     tilgangType = TilgangType.LESE
                                 ),
+                                policyId = PolicyId.NAV_ANSATT_TILGANG_TIL_EKSTERN_BRUKER_V2
                             )
                         )
                     )
@@ -109,21 +164,66 @@ class PoaoTilgangKtorHttpClient(
 
             if (response.status != HttpStatusCode.OK) {
                 log.error("http request poao-tilgang evaluatePolicy failed with status ${response.status.value} - ${response.bodyAsText()}")
-                TilgangOppslagFeil("http request poao-tilgang evaluatePolicy failed with status ${response.status.value}")
+                TilgangTilBrukerOppslagFeil("http request poao-tilgang evaluatePolicy failed with status ${response.status.value}")
             } else {
                 val results = response.body<EvalPolicyRes>()
                 val result = results.results.firstOrNull()
-                    ?: return TilgangOppslagFeil("No results found for requestId $requestId")
+                    ?: return TilgangTilBrukerOppslagFeil("No results found for requestId $requestId")
                 if (result.decision.type == DecisionType.PERMIT) {
-                    HarTilgang
+                    HarTilgangTilBruker
                 } else {
-                    HarIkkeTilgang("Har ikke tilgang: ${result.decision.message} - ${result.decision.reason}")
+                    HarIkkeTilgangTilBruker("Har ikke tilgang: ${result.decision.message} - ${result.decision.reason}")
                 }
             }
         } catch (e: Throwable) {
             val message = "Http request til poao-tilgang feilet med exception: ${e.message}"
             log.error(message, e)
-            TilgangOppslagFeil(message)
+            TilgangTilBrukerOppslagFeil(message)
+        }
+    }
+
+    private suspend fun evaluatePolicy(
+        fullUrl: String,
+        navAnsatt: NavAnsatt,
+        kontorId: KontorId
+    ): TilgangTilBrukerResult {
+        return try {
+            val requestId = UUID.randomUUID().toString()
+            val response = client.post (fullUrl) {
+                accept(ContentType.Application.Json)
+                contentType(ContentType.Application.Json)
+                setBody(EvalPolicyReq(
+                    requests = listOf(
+                        NavAnsattTilgangPolicyRequestDto(
+                            requestId = requestId,
+                            policyInput = NavAnsattTilgangTilNavEnhetPolicyInput(
+                                navAnsattAzureId = navAnsatt.navAnsattAzureId.toString(),
+                                navEnhetId = kontorId.id
+                            ),
+                            policyId = PolicyId.NAV_ANSATT_NAV_IDENT_TILGANG_TIL_NAV_ENHET_V1
+                        )
+                    )
+                )
+                )
+            }
+
+            if (response.status != HttpStatusCode.OK) {
+                log.error("http request poao-tilgang evaluatePolicy failed with status ${response.status.value} - ${response.bodyAsText()}")
+                TilgangTilBrukerOppslagFeil("http request poao-tilgang evaluatePolicy failed with status ${response.status.value}")
+            } else {
+                val results = response.body<EvalPolicyRes>()
+                val result = results.results.firstOrNull()
+                    ?: return TilgangTilBrukerOppslagFeil("No results found for requestId $requestId")
+                if (result.decision.type == DecisionType.PERMIT) {
+                    HarTilgangTilBruker
+                } else {
+                    HarIkkeTilgangTilBruker("Har ikke tilgang: ${result.decision.message} - ${result.decision.reason}")
+                }
+            }
+        } catch (e: Throwable) {
+            val message = "Http request til poao-tilgang feilet med exception: ${e.message}"
+            log.error(message, e)
+            TilgangTilBrukerOppslagFeil(message)
         }
     }
 

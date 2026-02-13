@@ -7,22 +7,30 @@ import no.nav.poao_tilgang.api.dto.response.DecisionType
 
 @Serializable
 class EvalPolicyReq(
-    val requests: List<NavAnsattTilgangTilEksternBrukerPolicyRequestDto>
+    val requests: List<NavAnsattTilgangPolicyRequestDto>
 )
 
 @Serializable
-class NavAnsattTilgangTilEksternBrukerPolicyRequestDto(
+class NavAnsattTilgangPolicyRequestDto(
     val requestId: String,
     val policyInput: Input,
-    val policyId: PolicyId = PolicyId.NAV_ANSATT_TILGANG_TIL_EKSTERN_BRUKER_V2
+    val policyId: PolicyId
 )
 
+sealed interface Input
+
 @Serializable
-data class Input(
+data class NavAnsattTilgangTilNavEnhetPolicyInput(
+    val navAnsattAzureId: String,
+    val navEnhetId: String
+): Input
+
+@Serializable
+data class NavAnsattTilgangTilBrukerPolicyInput(
     val navAnsattAzureId: String,
     val tilgangType: TilgangType,
     val norskIdent: String
-)
+): Input
 
 @Serializable
 data class EvalPolicyRes(

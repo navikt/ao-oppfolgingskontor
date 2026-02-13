@@ -25,10 +25,10 @@ import no.nav.http.client.HarStrengtFortroligAdresseResult
 import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.SkjermingIkkeFunnet
 import no.nav.http.client.SkjermingResult
-import no.nav.http.client.poaoTilgang.HarIkkeTilgang
-import no.nav.http.client.poaoTilgang.HarTilgang
-import no.nav.http.client.poaoTilgang.TilgangOppslagFeil
-import no.nav.http.client.poaoTilgang.TilgangResult
+import no.nav.http.client.poaoTilgang.HarIkkeTilgangTilBruker
+import no.nav.http.client.poaoTilgang.HarTilgangTilBruker
+import no.nav.http.client.poaoTilgang.TilgangTilBrukerOppslagFeil
+import no.nav.http.client.poaoTilgang.TilgangTilBrukerResult
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingperiodeOppslagFeil
@@ -94,8 +94,17 @@ class SettKontorHandlerTest {
     }
 
     @Test
-    fun `Skal svare med 403 når subject ikke har tilgang`() = runTest {
-        val handler = defaultHandler(fnr, harTilgang = HarIkkeTilgang("Fordi"))
+    fun `Skal svare med 403 når veilder ikke har tilgang og forsøker å sette kontor til noe annet enn eget kontor`() = runTest {
+        val handler = defaultHandler(fnr, harTilgang = HarIkkeTilgangTilBruker("Fordi"))
+
+        handler.settKontor(
+            kontortilordning, navAnsatt,
+        ) shouldBe SettKontorFailure(HttpStatusCode.Forbidden, "Du har ikke tilgang til å endre kontor for denne brukeren")
+    }
+
+    @Test
+    fun `Skal svare med 200 når veilder ikke har tilgang, men forsøker å sette kontor til eget kontor`() = runTest {
+            val handler = defaultHandler(fnr, harTilgang = HarIkkeTilgangTilBruker("Fordi"))
 
         handler.settKontor(
             kontortilordning, navAnsatt,
@@ -104,7 +113,7 @@ class SettKontorHandlerTest {
 
     @Test
     fun `Skal svare med 500 når tilgangsjekk får en teknisk feil`() = runTest {
-        val handler = defaultHandler(fnr, harTilgang = TilgangOppslagFeil("Fordi"))
+        val handler = defaultHandler(fnr, harTilgang = TilgangTilBrukerOppslagFeil("Fordi"))
 
         handler.settKontor(
             kontortilordning, navAnsatt,
@@ -163,7 +172,7 @@ class SettKontorHandlerTest {
 
     fun defaultHandler(
         ident: IdentSomKanLagres,
-        harTilgang: TilgangResult = HarTilgang,
+        harTilgang: TilgangTilBrukerResult = HarTilgangTilBruker,
         skjermingResult: SkjermingResult = SkjermingFunnet(HarSkjerming(false)),
         adresseResult: HarStrengtFortroligAdresseResult = HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)),
         oppfolgingsperiodeResult: OppfolgingsperiodeOppslagResult = AktivOppfolgingsperiode(ident, OppfolgingsperiodeId(UUID.randomUUID()), startDato = OffsetDateTime.now()),

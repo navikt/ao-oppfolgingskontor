@@ -63,7 +63,7 @@ fun Application.configureArbeidsoppfolgingskontorModule(
                     val kontorTilordning = call.receive<ArbeidsoppfolgingsKontorTilordningDTO>()
                     val principal = when (val authresult = authenticateRequest(call.request)) {
                         is Authenticated -> authresult.principal
-                        is NotAuthenticated -> {
+                         is NotAuthenticated -> {
                             log.warn("Not authorized ${authresult.reason}")
                             call.respond(HttpStatusCode.Unauthorized)
                             return@post

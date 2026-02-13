@@ -25,10 +25,10 @@ import no.nav.http.client.IdentFunnet
 import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.SkjermingIkkeFunnet
 import no.nav.http.client.SkjermingResult
-import no.nav.http.client.poaoTilgang.HarIkkeTilgang
-import no.nav.http.client.poaoTilgang.HarTilgang
-import no.nav.http.client.poaoTilgang.TilgangOppslagFeil
-import no.nav.http.client.poaoTilgang.TilgangResult
+import no.nav.http.client.poaoTilgang.HarIkkeTilgangTilBruker
+import no.nav.http.client.poaoTilgang.HarTilgangTilBruker
+import no.nav.http.client.poaoTilgang.TilgangTilBrukerOppslagFeil
+import no.nav.http.client.poaoTilgang.TilgangTilBrukerResult
 import no.nav.http.logger
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.NotUnderOppfolging
@@ -49,7 +49,7 @@ data class SettKontorFailure(val statusCode: HttpStatusCode, val message: String
 class SettKontorHandler(
     private val hentKontorNavn: suspend (KontorId) -> KontorNavn,
     private val hentAoKontor: suspend (AOPrincipal, IdentSomKanLagres) -> ArbeidsoppfolgingsKontor?,
-    private val harLeseTilgang: suspend (AOPrincipal, IdentSomKanLagres) -> TilgangResult,
+    private val harLeseTilgang: suspend (AOPrincipal, IdentSomKanLagres) -> TilgangTilBrukerResult,
     private val hentOppfolgingsPeriode: (IdentFunnet) -> OppfolgingsperiodeOppslagResult,
     private val tilordneKontor: (KontorEndretEvent, Boolean) -> Unit,
     private val publiserKontorEndring: suspend (KontorSattAvVeileder) -> Result<Unit>,
@@ -75,12 +75,12 @@ class SettKontorHandler(
     private suspend fun sjekkHarTilgang(principal: AOPrincipal, ident: IdentSomKanLagres): Either<SettKontorFailure, Unit> {
         val harTilgang = harLeseTilgang(principal, ident)
         return when (harTilgang) {
-            HarTilgang -> Either.Right(Unit)
-            is HarIkkeTilgang -> {
+            HarTilgangTilBruker -> Either.Right(Unit)
+            is HarIkkeTilgangTilBruker -> {
                 logger.warn("Bruker/system har ikke tilgang til å endre kontor for bruker")
                 Either.Left(SettKontorFailure(HttpStatusCode.Forbidden,"Du har ikke tilgang til å endre kontor for denne brukeren"))
             }
-            is TilgangOppslagFeil -> {
+            is TilgangTilBrukerOppslagFeil -> {
                 logger.warn(harTilgang.message)
                 Either.Left(SettKontorFailure(HttpStatusCode.InternalServerError,"Noe gikk galt under oppslag av tilgang for bruker: ${harTilgang.message}"))
             }
