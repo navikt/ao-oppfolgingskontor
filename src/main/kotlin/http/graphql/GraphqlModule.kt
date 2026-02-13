@@ -15,18 +15,20 @@ import io.ktor.server.auth.authenticate
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.request.ApplicationRequest
 import io.ktor.server.routing.routing
+import no.nav.AOPrincipal
 import no.nav.AuthResult
 import no.nav.Authenticated
 import no.nav.NotAuthenticated
+import no.nav.audit.traceId
 import no.nav.db.Ident
 import no.nav.http.client.IdenterResult
 import no.nav.http.client.Norg2Client
+import no.nav.http.client.poaoTilgang.TilgangResult
 import no.nav.http.graphql.queries.AlleKontorQuery
 import no.nav.http.graphql.queries.KontorHistorikkQuery
 import no.nav.http.graphql.queries.KontorQuery
 import no.nav.services.KontorTilhorighetService
 import org.slf4j.LoggerFactory
-import services.IdentService
 
 typealias AuthenticateRequest = (request: ApplicationRequest) -> AuthResult
 
@@ -46,6 +48,7 @@ class AppContextFactory(val authenticateRequest: AuthenticateRequest) : KtorGrap
         }
         return mapOf(
             "principal" to principal,
+            "traceId" to request.call.traceId(),
         ).toGraphQLContext()
     }
 }
@@ -54,7 +57,9 @@ fun Application.installGraphQl(
     norg2Client: Norg2Client,
     kontorTilhorighetService: KontorTilhorighetService,
     authenticateRequest: AuthenticateRequest,
-    hentAlleIdenter: suspend (Ident) -> IdenterResult) {
+    hentAlleIdenter: suspend (Ident) -> IdenterResult,
+    harLeseTilgang: suspend (AOPrincipal, Ident) -> TilgangResult,
+) {
     install(GraphQL) {
         schema {
             packages = listOf(
@@ -62,7 +67,7 @@ fun Application.installGraphQl(
                 "no.nav.http.graphql.queries",
             )
             queries = listOf(
-                KontorQuery(kontorTilhorighetService),
+                KontorQuery(kontorTilhorighetService, { principal, ident -> harLeseTilgang(principal, ident) }, hentAlleIdenter = hentAlleIdenter),
                 KontorHistorikkQuery(hentAlleIdenter),
                 AlleKontorQuery(norg2Client)
             )
@@ -102,8 +107,19 @@ fun ApplicationEnvironment.getEregUrl(): String {
     return config.property("apis.ereg.url").getString()
 }
 
-fun Application.configureGraphQlModule(norg2Client: Norg2Client, kontorTilhorighetService: KontorTilhorighetService, authenticateCall: AuthenticateRequest, hentAlleIdenter: suspend (Ident) -> IdenterResult) {
-    installGraphQl(norg2Client, kontorTilhorighetService, authenticateCall, hentAlleIdenter)
+fun Application.configureGraphQlModule(
+    norg2Client: Norg2Client,
+    kontorTilhorighetService: KontorTilhorighetService,
+    authenticateCall: AuthenticateRequest,
+    hentAlleIdenter: suspend (Ident) -> IdenterResult,
+    harLeseTilgang: suspend (AOPrincipal, Ident) -> TilgangResult) {
+    installGraphQl(
+        norg2Client,
+        kontorTilhorighetService,
+        authenticateCall,
+        hentAlleIdenter,
+        harLeseTilgang,
+    )
 
     routing {
         authenticate("EntraAD") {

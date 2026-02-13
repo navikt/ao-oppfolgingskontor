@@ -117,7 +117,6 @@ class KafkaApplicationTest {
             kontorTilordningService::slettArbeidsoppfølgingskontorTilordning)
         val kontorTilhorighetService = KontorTilhorighetService(
             kontorNavnService = mockk(),
-            poaoTilgangClient = mockk()
         ) { IdenterFunnet(listOf(fnr), fnr) }
         val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
             oppfolgingsperiodeService::getCurrentOppfolgingsperiode,

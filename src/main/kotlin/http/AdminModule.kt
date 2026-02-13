@@ -10,9 +10,16 @@ import io.ktor.server.routing.*
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import no.nav.Authenticated
+import no.nav.NotAuthenticated
+import no.nav.audit.AdminEventType
+import no.nav.audit.AuditLogger
+import no.nav.audit.Decision
+import no.nav.authenticateCall
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
 import no.nav.domain.OppfolgingsperiodeId
+import no.nav.getIssuer
 import no.nav.security.token.support.v3.RequiredClaims
 import no.nav.security.token.support.v3.tokenValidationSupport
 import no.nav.services.TilordningFeil
@@ -56,6 +63,19 @@ fun Application.configureAdminModule(
 
         authenticate("poaoAdmin") {
             post("/admin/republiser-arbeidsoppfolgingskontorendret") {
+                val principal = when (val authResult = call.authenticateCall(environment.getIssuer())) {
+                    is Authenticated -> authResult.principal
+                    is NotAuthenticated -> {
+                        log.warn("Not authorized ${authResult.reason}")
+                        call.respond(HttpStatusCode.Unauthorized)
+                        return@post
+                    }
+                }
+
+                // Extract trace-id for audit logging
+                val traceId = call.request.headers["traceparent"]?.split("-")?.getOrNull(1)
+                    ?: throw IllegalStateException("Missing traceparent header")
+
                 runCatching {
                     log.info("Setter i gang async republisering av kontorer")
                     launch {
@@ -63,9 +83,23 @@ fun Application.configureAdminModule(
                         kontorRepubliseringService.republiserKontorer()
                         log.info("Fullført republisering av kontorer.")
                     }
+
+                    AuditLogger.logAdminRepublishAlleKontorer(
+                        traceId = traceId,
+                        principal = principal,
+                        decision = Decision.PERMIT
+                    )
+
                     call.respond(HttpStatusCode.Accepted, "Republisering startet")
                 }.onFailure { e ->
                     log.error("Feil ved republisering av kontorer", e)
+
+                    AuditLogger.logAdminRepublishAlleKontorer(
+                        traceId = traceId,
+                        principal = principal,
+                        decision = Decision.DENY
+                    )
+
                     call.respond(
                         HttpStatusCode.InternalServerError,
                         "Klarte ikke starte republisering av kontorer: ${e.message} \n" + e.stackTraceToString()
@@ -74,15 +108,47 @@ fun Application.configureAdminModule(
             }
 
             post("/admin/republiser-arbeidsoppfolgingskontorendret-utvalgte-perioder") {
+                val principal = when (val authResult = call.authenticateCall(environment.getIssuer())) {
+                    is Authenticated -> authResult.principal
+                    is NotAuthenticated -> {
+                        log.warn("Not authorized ${authResult.reason}")
+                        call.respond(HttpStatusCode.Unauthorized)
+                        return@post
+                    }
+                }
+
+                // Extract trace-id for audit logging
+                val traceId = call.request.headers["traceparent"]?.split("-")?.getOrNull(1)
+                    ?: throw IllegalStateException("Missing traceparent header")
+
                 runCatching {
                     log.info("Setter i gang republisering av kontorer for utvalgte brukere")
                     val input = call.receive<OppfolgingsperiodeInputBody>()
                     val perioder = input.oppfolgingsperioder.split(",")
                         .map { OppfolgingsperiodeId(UUID.fromString(it)) }
+
+                    // Log each period individually
+                    perioder.forEach { periode ->
+                        AuditLogger.logAdminRepublishUtvalgtePerioder(
+                            traceId = traceId,
+                            principal = principal,
+                            decision = Decision.PERMIT,
+                            oppfolgingsperiodeId = periode
+                        )
+                    }
+
                     kontorRepubliseringService.republiserKontorer(perioder)
                     call.respond(HttpStatusCode.Accepted, "Republisering av kontorer utvalgte brukere fullført.")
                 }.onFailure { e ->
                     log.error("Feil ved republisering av kontorer for utvalgte brukere", e)
+
+                    AuditLogger.logAdminOperationFailure(
+                        traceId = traceId,
+                        principal = principal,
+                        eventType = AdminEventType.REPUBLISH,
+                        description = "ao-oppfolgingskontor audit log - republiser utvalgte perioder"
+                    )
+
                     call.respond(
                         HttpStatusCode.InternalServerError,
                         "Klarte ikke starte republisering av kontorer for utvalgte brukere: ${e.message} \n" + e.stackTraceToString()
@@ -91,6 +157,19 @@ fun Application.configureAdminModule(
             }
 
             post("/admin/sync-arena-kontor") {
+                val principal = when (val authResult = call.authenticateCall(environment.getIssuer())) {
+                    is Authenticated -> authResult.principal
+                    is NotAuthenticated -> {
+                        log.warn("Not authorized ${authResult.reason}")
+                        call.respond(HttpStatusCode.Unauthorized)
+                        return@post
+                    }
+                }
+
+                // Extract trace-id for audit logging
+                val traceId = call.request.headers["traceparent"]?.split("-")?.getOrNull(1)
+                    ?: throw IllegalStateException("Missing traceparent header")
+
                 runCatching {
                     log.info("Setter i gang syncing av Arena-kontor")
                     val input = call.receive<IdenterInputBody>()
@@ -99,10 +178,29 @@ fun Application.configureAdminModule(
                         identer.map { Ident.validateIdentSomKanLagres(it, Ident.HistoriskStatus.UKJENT) }
 
                     log.info("Setter i gang sync av arena-kontor for ${godkjenteIdenter.size} identer av ${identer.size} mottatte identer")
+
+                    // Log each ident individually
+                    godkjenteIdenter.forEach { ident ->
+                        AuditLogger.logAdminSyncArenaKontor(
+                            traceId = traceId,
+                            principal = principal,
+                            duid = ident.value,
+                            decision = Decision.PERMIT
+                        )
+                    }
+
                     arenaSyncService.refreshArenaKontor(godkjenteIdenter)
                     call.respond(HttpStatusCode.Accepted, "Syncing av Arena-kontorer startet")
                 }.onFailure { e ->
                     log.error("Feil ved syncing av Arena-kontor", e)
+
+                    AuditLogger.logAdminOperationFailure(
+                        traceId = traceId,
+                        principal = principal,
+                        eventType = AdminEventType.ARENA_SYNC,
+                        description = "ao-oppfolgingskontor audit log - sync arena kontor"
+                    )
+
                     call.respond(
                         HttpStatusCode.InternalServerError,
                         "Klarte ikke synce Arena-kontor: ${e.message} \n" + e.stackTraceToString()
@@ -111,6 +209,19 @@ fun Application.configureAdminModule(
             }
 
             post("/admin/finn-kontor") {
+                val principal = when (val authResult = call.authenticateCall(environment.getIssuer())) {
+                    is Authenticated -> authResult.principal
+                    is NotAuthenticated -> {
+                        log.warn("Not authorized ${authResult.reason}")
+                        call.respond(HttpStatusCode.Unauthorized)
+                        return@post
+                    }
+                }
+
+                // Extract trace-id for audit logging
+                val traceId = call.request.headers["traceparent"]?.split("-")?.getOrNull(1)
+                    ?: throw IllegalStateException("Missing traceparent header")
+
                 runCatching {
                     val bodyText = call.receiveText()
                     log.info("Setter i gang dry-run av kontor-ruting med input")
@@ -120,6 +231,26 @@ fun Application.configureAdminModule(
                         identer.map { Ident.validateIdentSomKanLagres(it, Ident.HistoriskStatus.UKJENT) }
                     val result: Map<String, String> = godkjenteIdenter.associateWith { godkjentIdent ->
                         val res = simulerKontorTilordning(godkjentIdent, true)
+
+                        // Log each ident individually with decision based on result
+                        val decision = when (res) {
+                            is TilordningFeil, is TilordningRetry -> Decision.DENY
+                            is TilordningSuccessIngenEndring, is TilordningSuccessKontorEndret -> Decision.PERMIT
+                        }
+
+                        val oppfolgingsperiodeId = when (res) {
+                            is TilordningSuccessKontorEndret -> res.kontorEndretEvent.aoKontorEndret?.tilordning?.oppfolgingsperiodeId
+                            else -> null
+                        }
+
+                        AuditLogger.logAdminDryrunFinnKontor(
+                            traceId = traceId,
+                            principal = principal,
+                            duid = godkjentIdent.value,
+                            decision = decision,
+                            oppfolgingsperiodeId = oppfolgingsperiodeId
+                        )
+
                         val output: String = when (res) {
                             is TilordningFeil -> res.message
                             is TilordningRetry -> res.message
@@ -139,6 +270,14 @@ fun Application.configureAdminModule(
                     )
                 }.onFailure { e ->
                     log.error("Feil ved finn kontor", e)
+
+                    AuditLogger.logAdminOperationFailure(
+                        traceId = traceId,
+                        principal = principal,
+                        eventType = AdminEventType.DRYRUN,
+                        description = "ao-oppfolgingskontor audit log - dry-run finn kontor"
+                    )
+
                     call.respond(
                         HttpStatusCode.InternalServerError,
                         "Klarte ikke kjøre dry-run av kontor-ruting: ${e.message} \n" + e.stackTraceToString()

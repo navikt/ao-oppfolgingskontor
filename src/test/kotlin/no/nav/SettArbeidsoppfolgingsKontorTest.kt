@@ -1,8 +1,6 @@
 package no.nav
 
 import com.expediagroup.graphql.server.ktor.graphQLPostRoute
-import com.google.gson.annotations.Expose
-import eventsLogger.BigQueryClient
 import http.configureContentNegotiation
 import io.kotest.matchers.shouldBe
 import io.ktor.client.call.body
@@ -14,7 +12,6 @@ import io.ktor.server.routing.routing
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import kafka.producers.KontorEndringProducer
-import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
 import no.nav.db.AktorId
 import no.nav.db.Ident.HistoriskStatus.UKJENT
 import no.nav.db.IdentSomKanLagres
@@ -38,11 +35,8 @@ import no.nav.http.graphql.schemas.RegistrantTypeDto
 import no.nav.security.mock.oauth2.MockOAuth2Server
 import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
-import no.nav.services.KontorTilordningService
 import no.nav.utils.GraphqlResponse
 import no.nav.utils.KontorTilhorighet
-import no.nav.utils.TestDb
-import no.nav.utils.bigQueryClient
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.getJsonHttpClient
 import no.nav.utils.getMockOauth2ServerConfig
@@ -57,7 +51,6 @@ import org.apache.kafka.clients.producer.MockProducer
 import org.apache.kafka.clients.producer.Partitioner
 import org.apache.kafka.common.Cluster
 import org.apache.kafka.common.serialization.StringSerializer
-import org.jetbrains.exposed.sql.Database
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import services.IdentService
@@ -96,8 +89,7 @@ class SettArbeidsoppfolgingsKontorTest {
         val kontorNavnService = KontorNavnService(norg2Client)
         val identerFunnet = IdenterFunnet(listOf(ident, aktorId), ident)
         val identService = IdentService { identerFunnet }
-        val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangClient, identService::hentAlleIdenter)
-        val kontorTilordningService = kontorTilordningService
+        val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, identService::hentAlleIdenter)
         val oppfolgingsperiodeService = OppfolgingsperiodeService(
             identService::hentAlleIdenter,
             kontorTilordningService::slettArbeidsoppfølgingskontorTilordning
@@ -114,7 +106,13 @@ class SettArbeidsoppfolgingsKontorTest {
             flywayMigrationInTest()
             extraDatabaseSetup()
             configureSecurity()
-            installGraphQl(norg2Client, kontorTilhorighetService, { req -> req.call.authenticateCall(environment.getIssuer()) }, identService::hentAlleIdenter)
+            installGraphQl(
+                norg2Client,
+                kontorTilhorighetService,
+                { req -> req.call.authenticateCall(environment.getIssuer()) },
+                identService::hentAlleIdenter,
+                poaoTilgangClient::harLeseTilgang
+            )
             configureContentNegotiation()
             configureArbeidsoppfolgingskontorModule(
                 kontorNavnService,

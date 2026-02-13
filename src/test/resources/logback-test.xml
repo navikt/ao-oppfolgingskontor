@@ -5,6 +5,12 @@
         </encoder>
     </appender>
 
+    <appender name="NOOP" class="ch.qos.logback.core.helpers.NOPAppender"/>
+
+    <logger level="INFO" name="auditLogger" additivity="false">
+        <appender-ref ref="NOOP" />
+    </logger>
+
     <root level="DEBUG">
         <appender-ref ref="STDOUT" />
     </root>

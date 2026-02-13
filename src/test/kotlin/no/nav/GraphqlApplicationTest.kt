@@ -28,11 +28,11 @@ import no.nav.http.graphql.installGraphQl
 import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
 import no.nav.http.graphql.schemas.RegistrantTypeDto
 import domain.kontorForGt.KontorForGtFantDefaultKontor
-import io.kotest.matchers.collections.shouldBeMonotonicallyDecreasingWith
-import io.kotest.matchers.collections.shouldBeSortedBy
 import io.kotest.matchers.collections.shouldContain
-import io.kotest.matchers.collections.shouldContainExactly
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldNotBe
+import no.nav.AOPrincipal
+import no.nav.NavAnsatt
 import no.nav.http.graphql.schemas.AlleKontorQueryDto
 import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
@@ -46,16 +46,29 @@ import java.time.ZonedDateTime
 import java.util.*
 import kotlin.time.Duration.Companion.milliseconds
 
-fun ApplicationTestBuilder.graphqlServerInTest(ident: Ident) {
+fun ApplicationTestBuilder.graphqlServerInTest(
+    ident: Ident,
+    harTilgang: Boolean = true,
+    principal: AOPrincipal = NavAnsatt(
+        NavIdent("A112211"),
+        UUID.randomUUID()
+    )
+) {
     val norg2Client = mockNorg2Host()
-    val poaoTilgangClient = mockPoaoTilgangHost(null)
+    val poaoTilgangClient = mockPoaoTilgangHost(null, harTilgang)
     val identer = IdenterFunnet(listOf(ident).map { Ident.validateOrThrow(it.value, AKTIV) }, ident)
     application {
         flywayMigrationInTest()
         installGraphQl(
             norg2Client,
-            KontorTilhorighetService(KontorNavnService(norg2Client), poaoTilgangClient, { identer }),
-            { Authenticated(SystemPrincipal("lol")) }, { identer })
+            KontorTilhorighetService(
+                KontorNavnService(norg2Client),
+                { identer }
+            ),
+            { Authenticated(principal) },
+            { identer },
+            poaoTilgangClient::harLeseTilgang
+        )
         routing {
             graphQLPostRoute()
         }
@@ -83,6 +96,33 @@ class GraphqlApplicationTest {
                 KontorTilhorighetQueryDto(kontorId, "NAV test", KontorType.ARENA, "Arena", RegistrantTypeDto.ARENA)
             )
         )
+    }
+
+    @Test
+    fun `skal svare med 200 og error i payload når veileder ikke har tilgang`() = testApplication {
+        val fnr = randomFnr()
+        val client = getJsonHttpClient()
+        graphqlServerInTest(fnr, harTilgang = false)
+
+        client.kontorTilhorighet(fnr)
+            .let { response ->
+                response.status shouldBe OK
+                val payload = response.body<GraphqlResponse<KontorTilhorighet>>()
+                payload.errors.shouldNotBeNull()
+                payload.errors shouldHaveSize 1
+                payload.data?.kontorTilhorighet shouldBe null
+                payload.errors.first().message shouldBe "Exception while fetching data (/kontorTilhorighet) : Bruker har ikke lov å lese kontortilhørighet på denne brukeren"
+            }
+
+        client.alleKontorTilhorigheter(fnr)
+            .let { response ->
+                response.status shouldBe OK
+                val payload = response.body<GraphqlResponse<KontorTilhorigheter>>()
+                payload.errors.shouldNotBeNull()
+                payload.errors shouldHaveSize 1
+                payload.data?.kontorTilhorigheter shouldBe null
+                payload.errors.first().message shouldBe "Exception while fetching data (/kontorTilhorigheter) : Bruker har ikke lov å lese kontortilhørigheter på denne brukeren"
+            }
     }
 
     @Test
