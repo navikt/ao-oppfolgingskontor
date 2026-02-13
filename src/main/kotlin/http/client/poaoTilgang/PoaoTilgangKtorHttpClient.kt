@@ -77,52 +77,8 @@ class PoaoTilgangKtorHttpClient(
 //        }
     }
 
-    private suspend fun harTilgangTilKontor(navAnsatt: NavAnsatt): TilgangTilKontorResult {
-        return try {
-            val requestId = UUID.randomUUID().toString()
-            val response = client.post (evaluatePoliciesUrl) {
-                accept(ContentType.Application.Json)
-                contentType(ContentType.Application.Json)
-                setBody(EvalPolicyReq(
-                    requests = listOf(
-                        NavAnsattTilgangTilNavEnhetPolicyRequestDto(
-                            requestId = requestId,
-                            policyInput = Input(
-                                navAnsattAzureId = navAnsatt.navAnsattAzureId.toString(),
-                                norskIdent = fnr.value,
-                                tilgangType = TilgangType.LESE
-                            ),
-                        )
-                    )
-                )
-                )
-            }
-
-            if (response.status != HttpStatusCode.OK) {
-                log.error("http request poao-tilgang evaluatePolicy failed with status ${response.status.value} - ${response.bodyAsText()}")
-                TilgangTilBrukerOppslagFeil("http request poao-tilgang evaluatePolicy failed with status ${response.status.value}")
-            } else {
-                val results = response.body<EvalPolicyRes>()
-                val result = results.results.firstOrNull()
-                    ?: return TilgangTilBrukerOppslagFeil("No results found for requestId $requestId")
-                if (result.decision.type == DecisionType.PERMIT) {
-                    HarTilgangTilBruker
-                } else {
-                    HarIkkeTilgangTilBruker("Har ikke tilgang: ${result.decision.message} - ${result.decision.reason}")
-                }
-            }
-        } catch (e: Throwable) {
-            val message = "Http request til poao-tilgang feilet med exception: ${e.message}"
-            log.error(message, e)
-            TilgangTilBrukerOppslagFeil(message)
-        }
-        return evaluatePolicy(evaluatePoliciesUrl, navAnsatt).let { result ->
-            when (result) {
-                is HarTilgangTilBruker -> HarTilgangTilKontor
-                is HarIkkeTilgangTilBruker -> HarIkkeTilgangTilKontor(result.message)
-                is TilgangTilBrukerOppslagFeil -> TilgangTilKontorOppslagFeil(result.message)
-            }
-        }
+    private suspend fun harTilgangTilKontor(navAnsatt: NavAnsatt, kontorId: KontorId): TilgangTilKontorResult {
+        return evaluatePolicy(evaluatePoliciesUrl, navAnsatt, kontorId)
     }
 
     private suspend fun harLeseTilgangTilBruker(navAnsatt: NavAnsatt, fnr: Ident): TilgangTilBrukerResult {
@@ -186,7 +142,7 @@ class PoaoTilgangKtorHttpClient(
         fullUrl: String,
         navAnsatt: NavAnsatt,
         kontorId: KontorId
-    ): TilgangTilBrukerResult {
+    ): TilgangTilKontorResult {
         return try {
             val requestId = UUID.randomUUID().toString()
             val response = client.post (fullUrl) {
@@ -209,21 +165,21 @@ class PoaoTilgangKtorHttpClient(
 
             if (response.status != HttpStatusCode.OK) {
                 log.error("http request poao-tilgang evaluatePolicy failed with status ${response.status.value} - ${response.bodyAsText()}")
-                TilgangTilBrukerOppslagFeil("http request poao-tilgang evaluatePolicy failed with status ${response.status.value}")
+                TilgangTilKontorOppslagFeil("http request poao-tilgang evaluatePolicy failed with status ${response.status.value}")
             } else {
                 val results = response.body<EvalPolicyRes>()
                 val result = results.results.firstOrNull()
-                    ?: return TilgangTilBrukerOppslagFeil("No results found for requestId $requestId")
+                    ?: return TilgangTilKontorOppslagFeil("No results found for requestId $requestId")
                 if (result.decision.type == DecisionType.PERMIT) {
-                    HarTilgangTilBruker
+                    HarTilgangTilKontor
                 } else {
-                    HarIkkeTilgangTilBruker("Har ikke tilgang: ${result.decision.message} - ${result.decision.reason}")
+                    HarIkkeTilgangTilKontor("Har ikke tilgang: ${result.decision.message} - ${result.decision.reason}")
                 }
             }
         } catch (e: Throwable) {
             val message = "Http request til poao-tilgang feilet med exception: ${e.message}"
             log.error(message, e)
-            TilgangTilBrukerOppslagFeil(message)
+            TilgangTilKontorOppslagFeil(message)
         }
     }
 
