@@ -77,16 +77,34 @@ class SettKontorHandler(
             }
     }
 
-    private suspend fun sjekkHarTilgang(principal: AOPrincipal, ident: IdentSomKanLagres, kontorId: KontorId): Either<List<SettKontorFailure>, Unit> {
-        val harTilgangTilBruker = sjekkHarLeseTilgangTilBruker(principal, ident)
-        val harTilgangTilKontor = sjekkHarTilgangTilKontor(principal, kontorId)
+    private suspend fun sjekkHarTilgang(principal: AOPrincipal, ident: IdentSomKanLagres, kontorId: KontorId): Either<SettKontorFailure, Unit> {
+        val harTilgangTilBruker = harLeseTilgangTilBruker(principal, ident)
+        val harTilgangTilKontor = harTilgangTilKontor(principal, kontorId)
 
-        if (harTilgangTilKontor.isRight() || harTilgangTilBruker.isRight()) {
+        if(harTilgangTilBruker is HarTilgangTilBruker || harTilgangTilKontor is HarTilgangTilKontor) {
             return Either.Right(Unit)
-        } else {
-            val errors = listOf(harTilgangTilKontor, harTilgangTilBruker).mapNotNull { it.swap().getOrNull() }
-            return Either.Left(errors)
         }
+
+        val tilgangTilBrukerFeil = when (harTilgangTilBruker) {
+            is HarIkkeTilgangTilBruker -> "Bruker/system har ikke tilgang til å endre kontor for bruker"
+            is TilgangTilBrukerOppslagFeil -> "Noe gikk galt under oppslag av tilgang for bruker: ${harTilgangTilBruker.message}"
+            else -> null
+        }
+        val tilgangTilKontorFeil = when (harTilgangTilKontor) {
+            is HarIkkeTilgangTilKontor -> "Bruker/system har ikke tilgang til å endre kontor for ønsket kontor"
+            is TilgangTilKontorOppslagFeil -> "Noe gikk galt under oppslag av tilgang til kontor: ${harTilgangTilKontor.message}"
+            else -> null
+        }
+
+        val statusCode = if (harTilgangTilBruker is TilgangTilBrukerOppslagFeil || harTilgangTilKontor is TilgangTilKontorOppslagFeil) {
+            HttpStatusCode.InternalServerError
+        } else {
+            HttpStatusCode.Forbidden
+        }
+        val errorMessage = listOfNotNull(tilgangTilBrukerFeil, tilgangTilKontorFeil).joinToString("; ")
+        logger.warn(errorMessage)
+        return Either.Left(SettKontorFailure(statusCode, errorMessage))
+
     }
 
     private suspend fun sjekkHarTilgangTilKontor(principal: AOPrincipal, kontorId: KontorId):  Either<SettKontorFailure, Unit> {
@@ -105,20 +123,20 @@ class SettKontorHandler(
         }
     }
 
-    private suspend fun sjekkHarLeseTilgangTilBruker(principal: AOPrincipal, ident: IdentSomKanLagres):  Either<SettKontorFailure, Unit> {
-        val harTilgangTilBruker = harLeseTilgangTilBruker(principal, ident)
+    private suspend fun sjekkHarLeseTilgangTilBruker(principal: AOPrincipal, ident: IdentSomKanLagres):  Either<TilgangTilBrukerResult, Unit> {
+        return harLeseTilgangTilBruker(principal, ident)
 
-        return when (harTilgangTilBruker) {
-            HarTilgangTilBruker -> Either.Right(Unit)
-            is HarIkkeTilgangTilBruker -> {
-                logger.warn("Bruker/system har ikke tilgang til å endre kontor for bruker")
-                Either.Left(SettKontorFailure(HttpStatusCode.Forbidden,"Du har ikke tilgang til å endre kontor for denne brukeren"))
-            }
-            is TilgangTilBrukerOppslagFeil -> {
-                logger.warn(harTilgangTilBruker.message)
-                Either.Left(SettKontorFailure(HttpStatusCode.InternalServerError,"Noe gikk galt under oppslag av tilgang for bruker: ${harTilgangTilBruker.message}"))
-            }
-        }
+//        return when (harTilgangTilBruker) {
+//            HarTilgangTilBruker -> Either.Right(Unit)
+//            is HarIkkeTilgangTilBruker -> {
+//                logger.warn("Bruker/system har ikke tilgang til å endre kontor for bruker")
+//                Either.Left(SettKontorFailure(HttpStatusCode.Forbidden,"Du har ikke tilgang til å endre kontor for denne brukeren"))
+//            }
+//            is TilgangTilBrukerOppslagFeil -> {
+//                logger.warn(harTilgangTilBruker.message)
+//                Either.Left(SettKontorFailure(HttpStatusCode.InternalServerError,"Noe gikk galt under oppslag av tilgang for bruker: ${harTilgangTilBruker.message}"))
+//            }
+//        }
     }
 
     private fun hentOppfolgingsperiode(ident: IdentSomKanLagres): Either<SettKontorFailure, OppfolgingsperiodeId> {
