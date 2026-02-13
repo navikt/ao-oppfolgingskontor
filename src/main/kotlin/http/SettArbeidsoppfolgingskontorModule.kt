@@ -48,6 +48,7 @@ fun Application.configureArbeidsoppfolgingskontorModule(
         kontorNavnService::getKontorNavn,
         { principal: AOPrincipal, ident: IdentSomKanLagres -> kontorTilhorighetService.getArbeidsoppfolgingKontorTilhorighet(ident, principal) },
         { principal, ident -> poaoTilgangClient.harLeseTilgang(principal, ident) },
+        { principal, kontorId -> poaoTilgangClient.harTilgangTilKontor(principal, kontorId) },
         oppfolgingsperiodeService::getCurrentOppfolgingsperiode,
         { event: KontorEndretEvent, brukAoRuting2: Boolean -> kontorTilordningService.tilordneKontor(event, brukAoRuting2) },
         publiserKontorEndring,

@@ -41,6 +41,10 @@ import arrow.core.flatMap
 import arrow.core.flatten
 import arrow.core.getOrElse
 import no.nav.domain.OppfolgingsperiodeId
+import no.nav.http.client.poaoTilgang.HarIkkeTilgangTilKontor
+import no.nav.http.client.poaoTilgang.HarTilgangTilKontor
+import no.nav.http.client.poaoTilgang.TilgangTilKontorOppslagFeil
+import no.nav.http.client.poaoTilgang.TilgangTilKontorResult
 
 sealed class SettKontorResult
 data class SettKontorSuccess(val response: KontorByttetOkResponseDto) : SettKontorResult()
@@ -49,7 +53,8 @@ data class SettKontorFailure(val statusCode: HttpStatusCode, val message: String
 class SettKontorHandler(
     private val hentKontorNavn: suspend (KontorId) -> KontorNavn,
     private val hentAoKontor: suspend (AOPrincipal, IdentSomKanLagres) -> ArbeidsoppfolgingsKontor?,
-    private val harLeseTilgang: suspend (AOPrincipal, IdentSomKanLagres) -> TilgangTilBrukerResult,
+    private val harLeseTilgangTilBruker: suspend (AOPrincipal, IdentSomKanLagres) -> TilgangTilBrukerResult,
+    private val harTilgangTilKontor: suspend (AOPrincipal, KontorId) -> TilgangTilKontorResult,
     private val hentOppfolgingsPeriode: (IdentFunnet) -> OppfolgingsperiodeOppslagResult,
     private val tilordneKontor: (KontorEndretEvent, Boolean) -> Unit,
     private val publiserKontorEndring: suspend (KontorSattAvVeileder) -> Result<Unit>,
@@ -72,17 +77,46 @@ class SettKontorHandler(
             }
     }
 
-    private suspend fun sjekkHarTilgang(principal: AOPrincipal, ident: IdentSomKanLagres): Either<SettKontorFailure, Unit> {
-        val harTilgang = harLeseTilgang(principal, ident)
-        return when (harTilgang) {
+    private suspend fun sjekkHarTilgang(principal: AOPrincipal, ident: IdentSomKanLagres, kontorId: KontorId): Either<List<SettKontorFailure>, Unit> {
+        val harTilgangTilBruker = sjekkHarLeseTilgangTilBruker(principal, ident)
+        val harTilgangTilKontor = sjekkHarTilgangTilKontor(principal, kontorId)
+
+        if (harTilgangTilKontor.isRight() || harTilgangTilBruker.isRight()) {
+            return Either.Right(Unit)
+        } else {
+            val errors = listOf(harTilgangTilKontor, harTilgangTilBruker).mapNotNull { it.swap().getOrNull() }
+            return Either.Left(errors)
+        }
+    }
+
+    private suspend fun sjekkHarTilgangTilKontor(principal: AOPrincipal, kontorId: KontorId):  Either<SettKontorFailure, Unit> {
+        val harTilgangTilKontor = harTilgangTilKontor(principal, kontorId)
+
+        return when (harTilgangTilKontor) {
+            HarTilgangTilKontor -> Either.Right(Unit)
+            is HarIkkeTilgangTilKontor -> {
+                logger.warn("Bruker/system har ikke tilgang til å flytte bruker til ønsket kontor")
+                Either.Left(SettKontorFailure(HttpStatusCode.Forbidden,"Du har ikke tilgang til å endre kontor for denne brukeren til ønsket kontor"))
+            }
+            is TilgangTilKontorOppslagFeil -> {
+                logger.warn(harTilgangTilKontor.message)
+                Either.Left(SettKontorFailure(HttpStatusCode.InternalServerError,"Noe gikk galt under oppslag av tilgang for kontor: ${harTilgangTilKontor.message}"))
+            }
+        }
+    }
+
+    private suspend fun sjekkHarLeseTilgangTilBruker(principal: AOPrincipal, ident: IdentSomKanLagres):  Either<SettKontorFailure, Unit> {
+        val harTilgangTilBruker = harLeseTilgangTilBruker(principal, ident)
+
+        return when (harTilgangTilBruker) {
             HarTilgangTilBruker -> Either.Right(Unit)
             is HarIkkeTilgangTilBruker -> {
                 logger.warn("Bruker/system har ikke tilgang til å endre kontor for bruker")
                 Either.Left(SettKontorFailure(HttpStatusCode.Forbidden,"Du har ikke tilgang til å endre kontor for denne brukeren"))
             }
             is TilgangTilBrukerOppslagFeil -> {
-                logger.warn(harTilgang.message)
-                Either.Left(SettKontorFailure(HttpStatusCode.InternalServerError,"Noe gikk galt under oppslag av tilgang for bruker: ${harTilgang.message}"))
+                logger.warn(harTilgangTilBruker.message)
+                Either.Left(SettKontorFailure(HttpStatusCode.InternalServerError,"Noe gikk galt under oppslag av tilgang for bruker: ${harTilgangTilBruker.message}"))
             }
         }
     }
@@ -143,7 +177,7 @@ class SettKontorHandler(
         } else {
             return Either.catch {
                 validateIdent(tilordning.ident)
-                    .flatMap { ident -> sjekkHarTilgang(principal, ident).map { ident } }
+                    .flatMap { ident -> sjekkHarTilgang(principal, ident, KontorId(tilordning.kontorId)).map { ident } }
                     .flatMap { ident -> sjekkBrukerHarIkkeAdressebeskyttelse(ident).map { ident } }
                     .flatMap { ident -> sjekkBrukerErIkkeSkjermet(ident).map { ident } }
                     .flatMap { ident -> hentOppfolgingsperiode(ident).map { it to ident } }

@@ -11,6 +11,7 @@ import no.nav.NavAnsatt
 import no.nav.db.IdentSomKanLagres
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
+import no.nav.domain.KontorId
 import no.nav.domain.KontorNavn
 import no.nav.domain.NavIdent
 import no.nav.domain.OppfolgingsperiodeId
@@ -27,8 +28,10 @@ import no.nav.http.client.SkjermingIkkeFunnet
 import no.nav.http.client.SkjermingResult
 import no.nav.http.client.poaoTilgang.HarIkkeTilgangTilBruker
 import no.nav.http.client.poaoTilgang.HarTilgangTilBruker
+import no.nav.http.client.poaoTilgang.HarTilgangTilKontor
 import no.nav.http.client.poaoTilgang.TilgangTilBrukerOppslagFeil
 import no.nav.http.client.poaoTilgang.TilgangTilBrukerResult
+import no.nav.http.client.poaoTilgang.TilgangTilKontorResult
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingperiodeOppslagFeil
@@ -173,6 +176,7 @@ class SettKontorHandlerTest {
     fun defaultHandler(
         ident: IdentSomKanLagres,
         harTilgang: TilgangTilBrukerResult = HarTilgangTilBruker,
+        harTilgangTilKontor: TilgangTilKontorResult = HarTilgangTilKontor,
         skjermingResult: SkjermingResult = SkjermingFunnet(HarSkjerming(false)),
         adresseResult: HarStrengtFortroligAdresseResult = HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)),
         oppfolgingsperiodeResult: OppfolgingsperiodeOppslagResult = AktivOppfolgingsperiode(ident, OppfolgingsperiodeId(UUID.randomUUID()), startDato = OffsetDateTime.now()),
@@ -181,10 +185,13 @@ class SettKontorHandlerTest {
     ): SettKontorHandler {
         val hentAoKontor = suspend { a: AOPrincipal, i: IdentSomKanLagres -> null }
         val harTilgang = suspend { a: AOPrincipal, b: IdentSomKanLagres, -> harTilgang }
+        val harTilgangTilKontor = suspend { a: AOPrincipal, b: KontorId -> harTilgangTilKontor }
+
         return SettKontorHandler(
             { KontorNavn("Kontor navn") },
             hentAoKontor,
             harTilgang,
+            harTilgangTilKontor,
             { oppfolgingsperiodeResult },
             tilordneKontor,
             publiserKontorEndring,

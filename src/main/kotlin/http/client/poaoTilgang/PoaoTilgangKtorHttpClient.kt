@@ -77,6 +77,13 @@ class PoaoTilgangKtorHttpClient(
 //        }
     }
 
+    suspend fun harTilgangTilKontor(principal: AOPrincipal, kontorId: KontorId): TilgangTilKontorResult {
+        return when (principal) {
+            is NavAnsatt ->  harTilgangTilKontor(principal, kontorId)
+            is SystemPrincipal -> HarTilgangTilKontor
+        }
+    }
+
     private suspend fun harTilgangTilKontor(navAnsatt: NavAnsatt, kontorId: KontorId): TilgangTilKontorResult {
         return evaluatePolicy(evaluatePoliciesUrl, navAnsatt, kontorId)
     }
