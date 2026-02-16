@@ -51,7 +51,7 @@ fun Application.configureArbeidsoppfolgingskontorModule(
         kontorNavnService::getKontorNavn,
         { principal: AOPrincipal, ident: IdentSomKanLagres -> kontorTilhorighetService.getArbeidsoppfolgingKontorTilhorighet(ident) },
         { principal, ident, traceId ->
-            poaoTilgangClient.harLeseTilgang(principal, ident, traceId)c
+            poaoTilgangClient.harLeseTilgang(principal, ident, traceId)
                 .also { AuditLogger.logSettKontor(it.toAuditEntry()) }
         },
         oppfolgingsperiodeService::getCurrentOppfolgingsperiode,
