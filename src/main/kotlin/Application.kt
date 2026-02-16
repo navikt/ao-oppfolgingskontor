@@ -168,7 +168,7 @@ fun Application.module() {
         hentAdresseBeskyttelse = { pdlClient.harStrengtFortroligAdresse(it) },
         brukAoRuting = environment.getBrukAoRuting(),
     )
-    configureFinnKontorModule(simulerKontorTilordning, kontorNavnService::getKontorNavn)
+    configureFinnKontorModule(simulerKontorTilordning, kontorNavnService::getKontorNavn, { call -> call.authenticateCall(issuer) })
     configureAdminModule(simulerKontorTilordning, republiseringService, arenaSyncService, identService)
     configureHentArbeidsoppfolgingskontorBulkModule(KontorTilhorighetBulkService)
 }

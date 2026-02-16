@@ -1,17 +1,21 @@
 package no.nav.audit
 
+import audit.CefEvent
+import audit.Decision
 import io.ktor.server.application.ApplicationCall
-import io.ktor.server.plugins.callid.callId
-import io.ktor.server.request.*
 import io.ktor.server.routing.RoutingContext
 import no.nav.AOPrincipal
 import no.nav.NavAnsatt
-import no.nav.SystemPrincipal
 import no.nav.db.Ident
+import no.nav.db.IdentSomKanLagres
 import no.nav.domain.OppfolgingsperiodeId
-import no.nav.domain.Veileder
 import no.nav.http.client.poaoTilgang.HarIkkeTilgang
+import no.nav.http.client.poaoTilgang.PersonHarTilgang
+import no.nav.http.client.poaoTilgang.SystemHarTilgang
+import no.nav.http.client.poaoTilgang.TilgangOppslagFeil
+import no.nav.http.client.poaoTilgang.TilgangResult
 import org.slf4j.LoggerFactory
+import java.util.UUID
 import kotlin.text.split
 
 private val auditLog = LoggerFactory.getLogger("auditLogger")
@@ -21,67 +25,25 @@ private val auditLog = LoggerFactory.getLogger("auditLogger")
  * Format: CEF:Version|Device Vendor|Device Product|Device Version|Device Event Class ID|Name|Severity|[Extension]
  */
 object AuditLogger {
-    private const val CEF_VERSION = "0"
-    private const val DEVICE_VENDOR = "ao-oppfolgingskontor"
-    private const val DEVICE_PRODUCT = "auditLog"
-    private const val DEVICE_VERSION = "1.0"
-
-    /**
-     * Extract subject identifier (NavIdent or system name) from principal
-     */
-    private fun AOPrincipal.getSubjectId(): String {
-        return when (this) {
-            is NavAnsatt -> this.navIdent.id
-            is SystemPrincipal -> this.systemName
-        }
-    }
-
-    /**
-     * Build CEF log message
-     */
-    private fun buildCefMessage(
-        eventClassId: String,
-        name: String,
-        severity: String,
-        extensions: Map<String, String>
-    ): String {
-        val extensionString = extensions.entries.joinToString(" ") { "${it.key}=${it.value}" }
-        return "CEF:$CEF_VERSION|$DEVICE_VENDOR|$DEVICE_PRODUCT|$DEVICE_VERSION|$eventClassId|$name|$severity|$extensionString"
-    }
-
     /**
      * Log access event (read operations)
      */
     private fun logAccess(
         traceId: String,
-        principal: AOPrincipal?,
-        duid: String,
+        principal: NavAnsatt,
+        duid: Ident,
         decision: Decision,
         description: String,
         oppfolgingsperiodeId: OppfolgingsperiodeId? = null
     ) {
-        val extensions = mutableMapOf(
-            "end" to System.currentTimeMillis().toString(),
-            "suid" to (principal?.getSubjectId() ?: "UNKNOWN"),
-            "duid" to duid,
-            "sproc" to traceId,
-            "flexString1Label" to "Decision",
-            "flexString1" to decision.value
-        )
-
-        oppfolgingsperiodeId?.let {
-            extensions["flexString2Label"] = "oppfolgingsperiodeId"
-            extensions["flexString2"] = it.value.toString()
-        }
-
-        val message = buildCefMessage(
-            eventClassId = "audit:access",
-            name = description,
-            severity = "INFO",
-            extensions = extensions
-        )
-
-        auditLog.info(message)
+        auditLog.info(CefEvent(
+            description = description,
+            navAnsatt = principal,
+            target = duid,
+            sproc = traceId,
+            decision = decision,
+            oppfolgingsperiodeId = oppfolgingsperiodeId,
+        ).toString())
     }
 
     /**
@@ -89,34 +51,20 @@ object AuditLogger {
      */
     fun logUpdate(
         traceId: String,
-        principal: AOPrincipal,
-        duid: String,
+        principal: NavAnsatt,
+        ident: Ident,
         decision: Decision,
         description: String,
         oppfolgingsperiodeId: OppfolgingsperiodeId? = null
     ) {
-        val extensions = mutableMapOf(
-            "end" to System.currentTimeMillis().toString(),
-            "suid" to principal.getSubjectId(),
-            "duid" to duid,
-            "sproc" to traceId,
-            "flexString1Label" to "Decision",
-            "flexString1" to decision.value
-        )
-
-        oppfolgingsperiodeId?.let {
-            extensions["flexString2Label"] = "oppfolgingsperiodeId"
-            extensions["flexString2"] = it.value.toString()
-        }
-
-        val message = buildCefMessage(
-            eventClassId = "audit:update",
-            name = description,
-            severity = "INFO",
-            extensions = extensions
-        )
-
-        auditLog.info(message)
+        auditLog.info(CefEvent(
+            description = description,
+            navAnsatt = principal,
+            target = ident,
+            sproc = traceId,
+            decision = decision,
+            oppfolgingsperiodeId
+        ).toString())
     }
 
     /**
@@ -124,37 +72,20 @@ object AuditLogger {
      */
     private fun logAdmin(
         traceId: String,
-        principal: AOPrincipal,
-        duid: String?,
+        principal: NavAnsatt,
+        duid: IdentSomKanLagres,
         decision: Decision,
-        eventType: AdminEventType,
         description: String,
         oppfolgingsperiodeId: OppfolgingsperiodeId? = null
     ) {
-        val extensions = mutableMapOf(
-            "end" to System.currentTimeMillis().toString(),
-            "suid" to principal.getSubjectId(),
-            "sproc" to traceId,
-            "flexString1Label" to "Decision",
-            "flexString1" to decision.value
-        )
-
-        duid?.let {
-            extensions["duid"] = it
-        }
-
-        oppfolgingsperiodeId?.let {
-            extensions["flexString2Label"] = "oppfolgingsperiodeId"
-            extensions["flexString2"] = it.value.toString()
-        }
-
-        val message = buildCefMessage(
-            eventClassId = eventType.eventClassId,
-            name = description,
-            severity = "INFO",
-            extensions = extensions
-        )
-
+        val message = CefEvent(
+            description = description,
+            navAnsatt = principal,
+            target = duid,
+            sproc = traceId,
+            decision = decision,
+            oppfolgingsperiodeId
+        ).toString()
         auditLog.info(message)
     }
 
@@ -165,12 +96,14 @@ object AuditLogger {
      * EventClassId: audit:update
      */
     fun logSettKontor(
-        auditEntry: AuditEntry,
+        auditEntry: AuditEntry?,
     ) {
+        if (auditEntry == null) return
+        if (auditEntry.principal !is NavAnsatt) return
         logUpdate(
             traceId = auditEntry.traceId,
             principal = auditEntry.principal,
-            duid = auditEntry.duid.value,
+            ident = auditEntry.duid,
             decision = auditEntry.decision,
             description = "sett kontor",
             oppfolgingsperiodeId = null
@@ -183,14 +116,15 @@ object AuditLogger {
      */
     fun logFinnKontor(
         traceId: String,
-        principal: AOPrincipal?,
+        principal: AOPrincipal,
         duid: Ident,
         decision: Decision,
     ) {
+        if (principal !is NavAnsatt) return
         logAccess(
             traceId = traceId,
             principal = principal,
-            duid = duid.value,
+            duid = duid,
             decision = decision,
             description = "finn kontor",
         )
@@ -201,12 +135,14 @@ object AuditLogger {
      * EventClassId: audit:access
      */
     fun logLesKontortilhorighet(
-        auditEntry: AuditEntry,
+        auditEntry: AuditEntry?,
     ) {
+        if (auditEntry == null) return
+        if (auditEntry.principal !is NavAnsatt) return
         logAccess(
             traceId = auditEntry.traceId,
             principal = auditEntry.principal,
-            duid = auditEntry.duid.value,
+            duid = auditEntry.duid,
             decision = auditEntry.decision,
             description = "les kontortilhørighet"
         )
@@ -217,126 +153,37 @@ object AuditLogger {
      * EventClassId: audit:access
      */
     fun logLesKontorhistorikk(
-        traceId: String,
-        principal: AOPrincipal,
-        duid: Ident,
-        decision: Decision
+        auditEntry: AuditEntry?
     ) {
+        if (auditEntry == null) return
+        if (auditEntry.principal !is NavAnsatt) return
         logAccess(
-            traceId = traceId,
-            principal = principal,
-            duid = duid.value,
-            decision = decision,
+            traceId = auditEntry.traceId,
+            principal = auditEntry.principal,
+            duid = auditEntry.duid,
+            decision = auditEntry.decision,
             description = "les kontorhistorikk"
         )
     }
 
     /**
-     * Log admin operation: republish all kontor assignments
-     * EventClassId: audit:admin:republish
-     */
-    fun logAdminRepublishAlleKontorer(
-        traceId: String,
-        principal: AOPrincipal,
-        decision: Decision
-    ) {
-        logAdmin(
-            traceId = traceId,
-            principal = principal,
-            duid = null,
-            decision = decision,
-            eventType = AdminEventType.REPUBLISH,
-            description = "republiser alle kontorer"
-        )
-    }
-
-    /**
-     * Log admin operation: republish kontor for selected oppfolgingsperioder
-     * EventClassId: audit:admin:republish
-     */
-    fun logAdminRepublishUtvalgtePerioder(
-        traceId: String,
-        principal: AOPrincipal,
-        decision: Decision,
-        oppfolgingsperiodeId: OppfolgingsperiodeId
-    ) {
-        logAdmin(
-            traceId = traceId,
-            principal = principal,
-            duid = null,
-            decision = decision,
-            eventType = AdminEventType.REPUBLISH,
-            description = "republiser utvalgte perioder",
-            oppfolgingsperiodeId = oppfolgingsperiodeId
-        )
-    }
-
-    /**
-     * Log admin operation: sync Arena kontor data for a citizen
-     * EventClassId: audit:admin:arena-sync
-     */
-    fun logAdminSyncArenaKontor(
-        traceId: String,
-        principal: AOPrincipal,
-        duid: String,
-        decision: Decision
-    ) {
-        logAdmin(
-            traceId = traceId,
-            principal = principal,
-            duid = duid,
-            decision = decision,
-            eventType = AdminEventType.ARENA_SYNC,
-            description = "sync arena kontor"
-        )
-    }
-
-    /**
-     * Log admin operation: dry-run to find kontor for a citizen (test7ing without side effects)
+     * Log admin operation: dry-run to find kontor for a citizen (testing without side effects)
      * EventClassId: audit:admin:dryrun
      */
     fun logAdminDryrunFinnKontor(
         traceId: String,
-        principal: AOPrincipal,
-        duid: String,
-        decision: Decision,
-        oppfolgingsperiodeId: OppfolgingsperiodeId? = null
+        principal: NavAnsatt,
+        ident: IdentSomKanLagres,
+        decision: Decision
     ) {
         logAdmin(
             traceId = traceId,
             principal = principal,
-            duid = duid,
+            duid = ident,
             decision = decision,
-            eventType = AdminEventType.DRYRUN,
-            description = "dry-run finn kontor",
-            oppfolgingsperiodeId = oppfolgingsperiodeId
+            description = "finn kontor",
         )
     }
-
-    /**
-     * Log admin operation failure when operation affects multiple items
-     * EventClassId: varies based on eventType
-     */
-    fun logAdminOperationFailure(
-        traceId: String,
-        principal: AOPrincipal,
-        eventType: AdminEventType,
-        description: String
-    ) {
-        logAdmin(
-            traceId = traceId,
-            principal = principal,
-            duid = null,
-            decision = Decision.DENY,
-            eventType = eventType,
-            description = description
-        )
-    }
-}
-
-enum class Decision(val value: String) {
-    PERMIT("Permit"),
-    DENY("Deny")
 }
 
 enum class AdminEventType(val eventClassId: String) {
@@ -352,22 +199,28 @@ class AuditEntry(
     val decision: Decision
 )
 
-fun HarIkkeTilgang.toAuditEntry(traceId: String): AuditEntry {
-    return AuditEntry(
-        traceId,
-        principal = this.subject,
-        this.target,
-        Decision.DENY,
-    )
+fun TilgangResult.toAuditEntry(traceId: String): AuditEntry? {
+    return when (this) {
+        is HarIkkeTilgang -> return AuditEntry(
+            traceId,
+            principal = this.subject,
+            this.target,
+            Decision.Deny,
+        )
+        is PersonHarTilgang -> AuditEntry(
+            traceId = traceId,
+            principal = this.subject,
+            duid = this.target,
+            Decision.Permit,
+        )
+        is SystemHarTilgang -> null
+        is TilgangOppslagFeil -> null
+    }
 }
 
-fun RoutingContext.traceId(): String? {
-    return this.call.request.headers["traceparent"]?.split("-")?.getOrNull(1)
+fun RoutingContext.traceId(): String {
+    return this.call.request.headers["traceparent"]?.split("-")?.getOrNull(1) ?: UUID.randomUUID().toString()
 }
-fun ApplicationCall.traceId(): String? {
-    return this.request.headers["traceid"]?.split("-")?.getOrNull(1)
+fun ApplicationCall.traceId(): String {
+    return this.request.headers["traceid"]?.split("-")?.getOrNull(1) ?: UUID.randomUUID().toString()
 }
-
-
-
-

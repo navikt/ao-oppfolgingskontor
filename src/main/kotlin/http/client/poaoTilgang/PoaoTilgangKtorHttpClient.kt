@@ -29,7 +29,15 @@ fun ApplicationEnvironment.getPoaoTilgangScope(): String {
 }
 
 sealed class TilgangResult
-object HarTilgang: TilgangResult()
+sealed class HarTilgang: TilgangResult()
+object SystemHarTilgang: HarTilgang()
+class PersonHarTilgang(
+    val subject: NavAnsatt,
+    val target: Ident,
+    val traceId: String,
+): HarTilgang()
+
+
 class HarIkkeTilgang(
     val subject: NavAnsatt,
     val target: Ident,
@@ -83,7 +91,7 @@ class PoaoTilgangKtorHttpClient(
     suspend fun harLeseTilgang(principal: AOPrincipal, fnr: Ident, traceId: String): TilgangResult {
         return when (principal) {
             is NavAnsatt ->  harLeseTilgangTilBruker(principal, fnr, traceId)
-            is SystemPrincipal -> HarTilgang
+            is SystemPrincipal -> SystemHarTilgang
         }
     }
 
@@ -121,7 +129,11 @@ class PoaoTilgangKtorHttpClient(
                 val result = results.results.firstOrNull()
                     ?: return TilgangOppslagFeil("No results found for requestId $requestId")
                 if (result.decision.type == DecisionType.PERMIT) {
-                    HarTilgang
+                    PersonHarTilgang(
+                        navAnsatt,
+                        fnr,
+                        traceId
+                    )
                 } else {
                     HarIkkeTilgang(
                         navAnsatt,

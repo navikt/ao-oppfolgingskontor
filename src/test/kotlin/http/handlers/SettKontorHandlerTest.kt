@@ -27,6 +27,7 @@ import no.nav.http.client.SkjermingIkkeFunnet
 import no.nav.http.client.SkjermingResult
 import no.nav.http.client.poaoTilgang.HarIkkeTilgang
 import no.nav.http.client.poaoTilgang.HarTilgang
+import no.nav.http.client.poaoTilgang.PersonHarTilgang
 import no.nav.http.client.poaoTilgang.TilgangOppslagFeil
 import no.nav.http.client.poaoTilgang.TilgangResult
 import no.nav.services.AktivOppfolgingsperiode
@@ -54,7 +55,7 @@ class SettKontorHandlerTest {
         val handler = defaultHandler(fnr)
 
         handler.settKontor(
-            kontortilordning, navAnsatt,
+            kontortilordning, navAnsatt, "trace"
         ) shouldBe SettKontorSuccess(
             KontorByttetOkResponseDto(
                 fraKontor = null,
@@ -71,7 +72,7 @@ class SettKontorHandlerTest {
         val handler = defaultHandler(fnr, oppfolgingsperiodeResult = NotUnderOppfolging)
 
         handler.settKontor(
-            kontortilordning, navAnsatt,
+            kontortilordning, navAnsatt, "trace"
         ) shouldBe SettKontorFailure(HttpStatusCode.Conflict, "Bruker er ikke under oppfølging")
     }
 
@@ -80,7 +81,7 @@ class SettKontorHandlerTest {
         val handler = defaultHandler(fnr, skjermingResult = SkjermingFunnet(HarSkjerming(true)))
 
         handler.settKontor(
-            kontortilordning, navAnsatt,
+            kontortilordning, navAnsatt, "trace"
         ) shouldBe SettKontorFailure(HttpStatusCode.Conflict, "Kan ikke bytte kontor på skjermet bruker")
     }
 
@@ -89,16 +90,16 @@ class SettKontorHandlerTest {
         val handler = defaultHandler(fnr, adresseResult = HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(true)))
 
         handler.settKontor(
-            kontortilordning, navAnsatt,
+            kontortilordning, navAnsatt, "trace"
         ) shouldBe SettKontorFailure(HttpStatusCode.Conflict, "Kan ikke bytte kontor på strengt fortrolig bruker")
     }
 
     @Test
     fun `Skal svare med 403 når subject ikke har tilgang`() = runTest {
-        val handler = defaultHandler(fnr, harTilgang = HarIkkeTilgang("Fordi"))
+        val handler = defaultHandler(fnr, harTilgang = HarIkkeTilgang(navAnsatt, fnr, "Fordi", "trace") )
 
         handler.settKontor(
-            kontortilordning, navAnsatt,
+            kontortilordning, navAnsatt, "trace"
         ) shouldBe SettKontorFailure(HttpStatusCode.Forbidden, "Du har ikke tilgang til å endre kontor for denne brukeren")
     }
 
@@ -107,7 +108,7 @@ class SettKontorHandlerTest {
         val handler = defaultHandler(fnr, harTilgang = TilgangOppslagFeil("Fordi"))
 
         handler.settKontor(
-            kontortilordning, navAnsatt,
+            kontortilordning, navAnsatt, "trace"
         ) shouldBe SettKontorFailure(HttpStatusCode.InternalServerError, "Noe gikk galt under oppslag av tilgang for bruker: Fordi")
     }
 
@@ -116,7 +117,7 @@ class SettKontorHandlerTest {
         val handler = defaultHandler(fnr, skjermingResult = SkjermingIkkeFunnet("Fordi"))
 
         handler.settKontor(
-            kontortilordning, navAnsatt,
+            kontortilordning, navAnsatt, "trace"
         ) shouldBe SettKontorFailure(HttpStatusCode.InternalServerError, "Fordi")
     }
 
@@ -125,7 +126,7 @@ class SettKontorHandlerTest {
         val handler = defaultHandler(fnr, oppfolgingsperiodeResult = OppfolgingperiodeOppslagFeil("Fordi"))
 
         handler.settKontor(
-            kontortilordning, navAnsatt,
+            kontortilordning, navAnsatt, "trace"
         ) shouldBe SettKontorFailure(HttpStatusCode.InternalServerError, "Klarte ikke hente oppfølgingsperiode")
     }
 
@@ -134,7 +135,7 @@ class SettKontorHandlerTest {
         val handler = defaultHandler(fnr, adresseResult = HarStrengtFortroligAdresseOppslagFeil("Fordi"))
 
         handler.settKontor(
-            kontortilordning, navAnsatt,
+            kontortilordning, navAnsatt, "trace"
         ) shouldBe SettKontorFailure(HttpStatusCode.InternalServerError, "Fordi")
     }
 
@@ -143,7 +144,7 @@ class SettKontorHandlerTest {
         val handler = defaultHandler(fnr, adresseResult = HarStrengtFortroligAdresseIkkeFunnet("lol"))
 
         handler.settKontor(
-            kontortilordning, navAnsatt,
+            kontortilordning, navAnsatt, "trace"
         ) shouldBe SettKontorFailure(HttpStatusCode.InternalServerError, "lol")
     }
 
@@ -156,14 +157,18 @@ class SettKontorHandlerTest {
         )
 
         handler.settKontor(
-            kontortilordning, navAnsatt,
+            kontortilordning, navAnsatt, "trace"
         ) shouldBe SettKontorFailure(HttpStatusCode.InternalServerError, "Kunne ikke oppdatere kontor")
         verify { publiserMockk wasNot Called }
     }
 
     fun defaultHandler(
         ident: IdentSomKanLagres,
-        harTilgang: TilgangResult = HarTilgang,
+        harTilgang: TilgangResult = PersonHarTilgang(
+            navAnsatt,
+            ident,
+            "trace"
+        ),
         skjermingResult: SkjermingResult = SkjermingFunnet(HarSkjerming(false)),
         adresseResult: HarStrengtFortroligAdresseResult = HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)),
         oppfolgingsperiodeResult: OppfolgingsperiodeOppslagResult = AktivOppfolgingsperiode(ident, OppfolgingsperiodeId(UUID.randomUUID()), startDato = OffsetDateTime.now()),
@@ -171,7 +176,7 @@ class SettKontorHandlerTest {
         publiserKontorEndring: (event: KontorEndretEvent) -> Result<Unit> = { a -> Result.success(Unit) },
     ): SettKontorHandler {
         val hentAoKontor = suspend { a: AOPrincipal, i: IdentSomKanLagres -> null }
-        val harTilgang = suspend { a: AOPrincipal, b: IdentSomKanLagres, -> harTilgang }
+        val harTilgang = suspend { a: AOPrincipal, b: IdentSomKanLagres, c: String -> harTilgang }
         return SettKontorHandler(
             { KontorNavn("Kontor navn") },
             hentAoKontor,

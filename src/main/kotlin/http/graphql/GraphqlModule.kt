@@ -49,7 +49,8 @@ class AppContextFactory(val authenticateRequest: AuthenticateRequest) : KtorGrap
         return mapOf(
             "principal" to principal,
             "traceId" to request.call.traceId(),
-        ).toGraphQLContext()
+        )
+            .toGraphQLContext()
     }
 }
 
@@ -58,7 +59,7 @@ fun Application.installGraphQl(
     kontorTilhorighetService: KontorTilhorighetService,
     authenticateRequest: AuthenticateRequest,
     hentAlleIdenter: suspend (Ident) -> IdenterResult,
-    harLeseTilgang: suspend (AOPrincipal, Ident) -> TilgangResult,
+    harLeseTilgang: suspend (AOPrincipal, Ident, traceId: String) -> TilgangResult,
 ) {
     install(GraphQL) {
         schema {
@@ -67,8 +68,8 @@ fun Application.installGraphQl(
                 "no.nav.http.graphql.queries",
             )
             queries = listOf(
-                KontorQuery(kontorTilhorighetService, { principal, ident -> harLeseTilgang(principal, ident) }, hentAlleIdenter = hentAlleIdenter),
-                KontorHistorikkQuery(hentAlleIdenter),
+                KontorQuery(kontorTilhorighetService, { principal, ident, traceId -> harLeseTilgang(principal, ident, traceId) }, hentAlleIdenter = hentAlleIdenter),
+                KontorHistorikkQuery(hentAlleIdenter, { principal, ident, traceId -> harLeseTilgang(principal, ident, traceId) }),
                 AlleKontorQuery(norg2Client)
             )
             federation {
@@ -112,7 +113,7 @@ fun Application.configureGraphQlModule(
     kontorTilhorighetService: KontorTilhorighetService,
     authenticateCall: AuthenticateRequest,
     hentAlleIdenter: suspend (Ident) -> IdenterResult,
-    harLeseTilgang: suspend (AOPrincipal, Ident) -> TilgangResult) {
+    harLeseTilgang: suspend (AOPrincipal, Ident, traceId: String) -> TilgangResult) {
     installGraphQl(
         norg2Client,
         kontorTilhorighetService,

@@ -14,6 +14,8 @@ import no.nav.AOPrincipal
 import no.nav.Authenticated
 import no.nav.NotAuthenticated
 import no.nav.audit.AuditLogger
+import no.nav.audit.toAuditEntry
+import no.nav.audit.traceId
 import no.nav.authenticateCall
 import no.nav.db.IdentSomKanLagres
 import no.nav.domain.events.KontorEndretEvent
@@ -48,14 +50,16 @@ fun Application.configureArbeidsoppfolgingskontorModule(
     val settKontorHandler = SettKontorHandler(
         kontorNavnService::getKontorNavn,
         { principal: AOPrincipal, ident: IdentSomKanLagres -> kontorTilhorighetService.getArbeidsoppfolgingKontorTilhorighet(ident) },
-        { principal, ident -> poaoTilgangClient.harLeseTilgang(principal, ident) },
+        { principal, ident, traceId ->
+            poaoTilgangClient.harLeseTilgang(principal, ident, traceId)
+                .also { AuditLogger.logSettKontor(it.toAuditEntry(traceId)) }
+        },
         oppfolgingsperiodeService::getCurrentOppfolgingsperiode,
         { event: KontorEndretEvent, brukAoRuting2: Boolean -> kontorTilordningService.tilordneKontor(event, brukAoRuting2) },
         publiserKontorEndring,
         hentSkjerming,
         hentAdresseBeskyttelse,
         brukAoRuting,
-        { auditEntry -> AuditLogger.logSettKontor(auditEntry) }
     )
 
     routing {
@@ -72,9 +76,7 @@ fun Application.configureArbeidsoppfolgingskontorModule(
                         }
                     }
 
-                    val traceId = call.request.headers["traceparent"]?.split("-")?.getOrNull(1)
-                        ?: throw IllegalStateException("Missing traceparent header")
-
+                    val traceId = call.traceId()
                     val result = settKontorHandler.settKontor(kontorTilordning, principal, traceId)
 
                     when (result) {

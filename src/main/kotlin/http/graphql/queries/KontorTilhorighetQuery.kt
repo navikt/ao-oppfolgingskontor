@@ -3,9 +3,7 @@ package no.nav.http.graphql.queries
 import com.expediagroup.graphql.server.operations.Query
 import graphql.schema.DataFetchingEnvironment
 import no.nav.AOPrincipal
-import no.nav.audit.AuditEntry
-import no.nav.audit.AuditLogger
-import no.nav.audit.Decision
+import no.nav.audit.AuditLogger.logLesKontortilhorighet
 import no.nav.audit.toAuditEntry
 import no.nav.db.Ident
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
@@ -28,7 +26,7 @@ import org.slf4j.LoggerFactory
 
 class KontorQuery(
     val kontorTilhorighetService: KontorTilhorighetService,
-    val harLeseTilgang: suspend (principal: AOPrincipal, ident: Ident) -> TilgangResult,
+    val harLeseTilgang: suspend (principal: AOPrincipal, ident: Ident, traceId: String) -> TilgangResult,
     val hentAlleIdenter: suspend (Ident) -> IdenterResult,
 ) : Query {
     val log = LoggerFactory.getLogger(KontorQuery::class.java)
@@ -40,7 +38,10 @@ class KontorQuery(
 
         val ident = Ident.validateOrThrow(ident, Ident.HistoriskStatus.UKJENT)
         val identer = hentAlleIdenter(ident).getOrThrow()
-        val result = harLeseTilgang(principal, identer.foretrukketIdent)
+        val result = harLeseTilgang(principal, identer.foretrukketIdent, traceId)
+
+        logLesKontortilhorighet(result.toAuditEntry(traceId))
+
         if (result is HarIkkeTilgang) {
             throw Exception("Bruker har ikke lov å lese kontortilhørighet på denne brukeren")
         }
@@ -49,13 +50,6 @@ class KontorQuery(
         }
 
         val kontorTilhorighet = kontorTilhorighetService.getKontorTilhorighet(identer)
-
-        AuditLogger.logLesKontortilhorighet(AuditEntry(
-            traceId = traceId,
-            principal = principal,
-            duid = ident,
-            decision = Decision.PERMIT
-        ))
 
         return kontorTilhorighet
     }
@@ -66,9 +60,12 @@ class KontorQuery(
 
         val ident = Ident.validateOrThrow(ident, Ident.HistoriskStatus.UKJENT)
         val identer = hentAlleIdenter(ident).getOrThrow()
-        val result = harLeseTilgang(principal, ident)
+        val result = harLeseTilgang(principal, ident, traceId)
+
+        logLesKontortilhorighet(result.toAuditEntry(traceId))
+
         if (result is HarIkkeTilgang) {
-            AuditLogger.logLesKontortilhorighet(result.toAuditEntry(traceId))
+            logLesKontortilhorighet(result.toAuditEntry(traceId))
             throw Exception("Bruker har ikke lov å lese kontortilhørigheter på denne brukeren")
         }
         if (result is TilgangOppslagFeil) {
@@ -76,8 +73,6 @@ class KontorQuery(
         }
 
         val (arbeidsoppfolging, arena, gt) = kontorTilhorighetService.getKontorTilhorigheter(identer)
-
-        AuditLogger.logLesKontortilhorighet(AuditEntry(traceId, principal, ident, Decision.PERMIT))
 
         return KontorTilhorigheterQueryDto(
             arena = arena?.toArenaKontorDto(),
