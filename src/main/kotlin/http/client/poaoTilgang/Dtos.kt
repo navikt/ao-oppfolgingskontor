@@ -17,20 +17,21 @@ class NavAnsattTilgangPolicyRequestDto(
     val policyId: PolicyId
 )
 
-sealed interface Input
+@Serializable
+sealed class Input
 
 @Serializable
 data class NavAnsattTilgangTilNavEnhetPolicyInput(
     val navAnsattAzureId: String,
     val navEnhetId: String
-): Input
+): Input()
 
 @Serializable
 data class NavAnsattTilgangTilBrukerPolicyInput(
     val navAnsattAzureId: String,
     val tilgangType: TilgangType,
     val norskIdent: String
-): Input
+): Input()
 
 @Serializable
 data class EvalPolicyRes(
