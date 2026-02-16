@@ -27,10 +27,12 @@ import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.SkjermingIkkeFunnet
 import no.nav.http.client.SkjermingResult
 import no.nav.http.client.poaoTilgang.HarIkkeTilgangTilBruker
+import no.nav.http.client.poaoTilgang.HarIkkeTilgangTilKontor
 import no.nav.http.client.poaoTilgang.HarTilgangTilBruker
 import no.nav.http.client.poaoTilgang.HarTilgangTilKontor
 import no.nav.http.client.poaoTilgang.TilgangTilBrukerOppslagFeil
 import no.nav.http.client.poaoTilgang.TilgangTilBrukerResult
+import no.nav.http.client.poaoTilgang.TilgangTilKontorOppslagFeil
 import no.nav.http.client.poaoTilgang.TilgangTilKontorResult
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.NotUnderOppfolging
@@ -98,29 +100,37 @@ class SettKontorHandlerTest {
 
     @Test
     fun `Skal svare med 403 når veilder ikke har tilgang og forsøker å sette kontor til noe annet enn eget kontor`() = runTest {
-        val handler = defaultHandler(fnr, harTilgang = HarIkkeTilgangTilBruker("Fordi"))
+        val handler = defaultHandler(fnr, harTilgangTilBruker = HarIkkeTilgangTilBruker("Fordi"), harTilgangTilKontor = HarIkkeTilgangTilKontor("Fordi"))
 
         handler.settKontor(
             kontortilordning, navAnsatt,
-        ) shouldBe SettKontorFailure(HttpStatusCode.Forbidden, "Du har ikke tilgang til å endre kontor for denne brukeren")
+        ) shouldBe SettKontorFailure(HttpStatusCode.Forbidden, "Du har ikke tilgang til å endre kontor for bruker; Du har ikke tilgang til å endre kontor for bruker til ønsket kontor")
     }
 
     @Test
     fun `Skal svare med 200 når veilder ikke har tilgang, men forsøker å sette kontor til eget kontor`() = runTest {
-            val handler = defaultHandler(fnr, harTilgang = HarIkkeTilgangTilBruker("Fordi"))
+            val handler = defaultHandler(fnr, harTilgangTilBruker = HarIkkeTilgangTilBruker("Fordi"), harTilgangTilKontor = HarTilgangTilKontor)
 
         handler.settKontor(
             kontortilordning, navAnsatt,
-        ) shouldBe SettKontorFailure(HttpStatusCode.Forbidden, "Du har ikke tilgang til å endre kontor for denne brukeren")
+        ) shouldBe SettKontorSuccess(
+            KontorByttetOkResponseDto(
+                fraKontor = null,
+                tilKontor = Kontor(
+                    "Kontor navn",
+                    "3144"
+                )
+            )
+        )
     }
 
     @Test
     fun `Skal svare med 500 når tilgangsjekk får en teknisk feil`() = runTest {
-        val handler = defaultHandler(fnr, harTilgang = TilgangTilBrukerOppslagFeil("Fordi"))
+        val handler = defaultHandler(fnr, harTilgangTilBruker = TilgangTilBrukerOppslagFeil("Fordi"), harTilgangTilKontor = TilgangTilKontorOppslagFeil("Fordi"))
 
         handler.settKontor(
             kontortilordning, navAnsatt,
-        ) shouldBe SettKontorFailure(HttpStatusCode.InternalServerError, "Noe gikk galt under oppslag av tilgang for bruker: Fordi")
+        ) shouldBe SettKontorFailure(HttpStatusCode.InternalServerError, "Noe gikk galt under oppslag av tilgang for bruker: Fordi; Noe gikk galt under oppslag av tilgang til kontor: Fordi")
     }
 
     @Test
@@ -175,7 +185,7 @@ class SettKontorHandlerTest {
 
     fun defaultHandler(
         ident: IdentSomKanLagres,
-        harTilgang: TilgangTilBrukerResult = HarTilgangTilBruker,
+        harTilgangTilBruker: TilgangTilBrukerResult = HarTilgangTilBruker,
         harTilgangTilKontor: TilgangTilKontorResult = HarTilgangTilKontor,
         skjermingResult: SkjermingResult = SkjermingFunnet(HarSkjerming(false)),
         adresseResult: HarStrengtFortroligAdresseResult = HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)),
@@ -184,7 +194,7 @@ class SettKontorHandlerTest {
         publiserKontorEndring: (event: KontorEndretEvent) -> Result<Unit> = { a -> Result.success(Unit) },
     ): SettKontorHandler {
         val hentAoKontor = suspend { a: AOPrincipal, i: IdentSomKanLagres -> null }
-        val harTilgang = suspend { a: AOPrincipal, b: IdentSomKanLagres, -> harTilgang }
+        val harTilgang = suspend { a: AOPrincipal, b: IdentSomKanLagres, -> harTilgangTilBruker }
         val harTilgangTilKontor = suspend { a: AOPrincipal, b: KontorId -> harTilgangTilKontor }
 
         return SettKontorHandler(

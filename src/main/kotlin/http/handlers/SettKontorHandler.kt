@@ -86,12 +86,12 @@ class SettKontorHandler(
         }
 
         val tilgangTilBrukerFeil = when (harTilgangTilBruker) {
-            is HarIkkeTilgangTilBruker -> "Bruker/system har ikke tilgang til å endre kontor for bruker"
+            is HarIkkeTilgangTilBruker -> "Du har ikke tilgang til å endre kontor for bruker"
             is TilgangTilBrukerOppslagFeil -> "Noe gikk galt under oppslag av tilgang for bruker: ${harTilgangTilBruker.message}"
             else -> null
         }
         val tilgangTilKontorFeil = when (harTilgangTilKontor) {
-            is HarIkkeTilgangTilKontor -> "Bruker/system har ikke tilgang til å endre kontor for ønsket kontor"
+            is HarIkkeTilgangTilKontor -> "Du har ikke tilgang til å endre kontor for bruker til ønsket kontor"
             is TilgangTilKontorOppslagFeil -> "Noe gikk galt under oppslag av tilgang til kontor: ${harTilgangTilKontor.message}"
             else -> null
         }
