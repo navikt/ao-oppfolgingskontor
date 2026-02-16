@@ -104,39 +104,6 @@ class SettKontorHandler(
         val errorMessage = listOfNotNull(tilgangTilBrukerFeil, tilgangTilKontorFeil).joinToString("; ")
         logger.warn(errorMessage)
         return Either.Left(SettKontorFailure(statusCode, errorMessage))
-
-    }
-
-    private suspend fun sjekkHarTilgangTilKontor(principal: AOPrincipal, kontorId: KontorId):  Either<SettKontorFailure, Unit> {
-        val harTilgangTilKontor = harTilgangTilKontor(principal, kontorId)
-
-        return when (harTilgangTilKontor) {
-            HarTilgangTilKontor -> Either.Right(Unit)
-            is HarIkkeTilgangTilKontor -> {
-                logger.warn("Bruker/system har ikke tilgang til å flytte bruker til ønsket kontor")
-                Either.Left(SettKontorFailure(HttpStatusCode.Forbidden,"Du har ikke tilgang til å endre kontor for denne brukeren til ønsket kontor"))
-            }
-            is TilgangTilKontorOppslagFeil -> {
-                logger.warn(harTilgangTilKontor.message)
-                Either.Left(SettKontorFailure(HttpStatusCode.InternalServerError,"Noe gikk galt under oppslag av tilgang for kontor: ${harTilgangTilKontor.message}"))
-            }
-        }
-    }
-
-    private suspend fun sjekkHarLeseTilgangTilBruker(principal: AOPrincipal, ident: IdentSomKanLagres):  Either<TilgangTilBrukerResult, Unit> {
-        return harLeseTilgangTilBruker(principal, ident)
-
-//        return when (harTilgangTilBruker) {
-//            HarTilgangTilBruker -> Either.Right(Unit)
-//            is HarIkkeTilgangTilBruker -> {
-//                logger.warn("Bruker/system har ikke tilgang til å endre kontor for bruker")
-//                Either.Left(SettKontorFailure(HttpStatusCode.Forbidden,"Du har ikke tilgang til å endre kontor for denne brukeren"))
-//            }
-//            is TilgangTilBrukerOppslagFeil -> {
-//                logger.warn(harTilgangTilBruker.message)
-//                Either.Left(SettKontorFailure(HttpStatusCode.InternalServerError,"Noe gikk galt under oppslag av tilgang for bruker: ${harTilgangTilBruker.message}"))
-//            }
-//        }
     }
 
     private fun hentOppfolgingsperiode(ident: IdentSomKanLagres): Either<SettKontorFailure, OppfolgingsperiodeId> {
