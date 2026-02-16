@@ -15,6 +15,7 @@ import no.nav.Authenticated
 import no.nav.NavAnsatt
 import no.nav.NotAuthenticated
 import no.nav.audit.AuditLogger
+import no.nav.audit.traceId
 import no.nav.authenticateCall
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
@@ -29,7 +30,6 @@ import no.nav.services.TilordningSuccessIngenEndring
 import no.nav.services.TilordningSuccessKontorEndret
 import org.slf4j.LoggerFactory
 import services.ArenaSyncService
-import services.IdentService
 import services.KontorRepubliseringService
 import java.util.UUID
 
@@ -40,7 +40,6 @@ fun Application.configureAdminModule(
     simulerKontorTilordning: suspend (ident: IdentSomKanLagres, erArbeidssøker: Boolean) -> TilordningResultat,
     kontorRepubliseringService: KontorRepubliseringService,
     arenaSyncService: ArenaSyncService,
-    identService: IdentService,
 ) {
     routing {
         val config = environment.config
@@ -63,19 +62,6 @@ fun Application.configureAdminModule(
 
         authenticate("poaoAdmin") {
             post("/admin/republiser-arbeidsoppfolgingskontorendret") {
-                val principal = when (val authResult = call.authenticateCall(environment.getIssuer())) {
-                    is Authenticated -> authResult.principal
-                    is NotAuthenticated -> {
-                        log.warn("Not authorized ${authResult.reason}")
-                        call.respond(HttpStatusCode.Unauthorized)
-                        return@post
-                    }
-                }
-
-                // Extract trace-id for audit logging
-                val traceId = call.request.headers["traceparent"]?.split("-")?.getOrNull(1)
-                    ?: throw IllegalStateException("Missing traceparent header")
-
                 runCatching {
                     log.info("Setter i gang async republisering av kontorer")
                     launch {
@@ -96,19 +82,6 @@ fun Application.configureAdminModule(
             }
 
             post("/admin/republiser-arbeidsoppfolgingskontorendret-utvalgte-perioder") {
-                val principal = when (val authResult = call.authenticateCall(environment.getIssuer())) {
-                    is Authenticated -> authResult.principal
-                    is NotAuthenticated -> {
-                        log.warn("Not authorized ${authResult.reason}")
-                        call.respond(HttpStatusCode.Unauthorized)
-                        return@post
-                    }
-                }
-
-                // Extract trace-id for audit logging
-                val traceId = call.request.headers["traceparent"]?.split("-")?.getOrNull(1)
-                    ?: throw IllegalStateException("Missing traceparent header")
-
                 runCatching {
                     log.info("Setter i gang republisering av kontorer for utvalgte brukere")
                     val input = call.receive<OppfolgingsperiodeInputBody>()
@@ -128,19 +101,6 @@ fun Application.configureAdminModule(
             }
 
             post("/admin/sync-arena-kontor") {
-                val principal = when (val authResult = call.authenticateCall(environment.getIssuer())) {
-                    is Authenticated -> authResult.principal
-                    is NotAuthenticated -> {
-                        log.warn("Not authorized ${authResult.reason}")
-                        call.respond(HttpStatusCode.Unauthorized)
-                        return@post
-                    }
-                }
-
-                // Extract trace-id for audit logging
-                val traceId = call.request.headers["traceparent"]?.split("-")?.getOrNull(1)
-                    ?: throw IllegalStateException("Missing traceparent header")
-
                 runCatching {
                     log.info("Setter i gang syncing av Arena-kontor")
                     val input = call.receive<IdenterInputBody>()
@@ -172,9 +132,7 @@ fun Application.configureAdminModule(
                     }
                 } ?: throw IllegalStateException("Må være navansatt")
 
-                // Extract trace-id for audit logging
-                val traceId = call.request.headers["traceparent"]?.split("-")?.getOrNull(1)
-                    ?: throw IllegalStateException("Missing traceparent header")
+                val traceId = call.traceId()
 
                 runCatching {
                     val bodyText = call.receiveText()

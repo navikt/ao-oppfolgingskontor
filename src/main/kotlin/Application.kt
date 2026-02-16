@@ -169,7 +169,7 @@ fun Application.module() {
         brukAoRuting = environment.getBrukAoRuting(),
     )
     configureFinnKontorModule(simulerKontorTilordning, kontorNavnService::getKontorNavn, { call -> call.authenticateCall(issuer) })
-    configureAdminModule(simulerKontorTilordning, republiseringService, arenaSyncService, identService)
+    configureAdminModule(simulerKontorTilordning, republiseringService, arenaSyncService)
     configureHentArbeidsoppfolgingskontorBulkModule(KontorTilhorighetBulkService)
 }
 
