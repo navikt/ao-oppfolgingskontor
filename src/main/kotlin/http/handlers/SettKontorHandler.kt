@@ -40,6 +40,8 @@ import arrow.core.Either
 import arrow.core.flatMap
 import arrow.core.flatten
 import arrow.core.getOrElse
+import no.nav.audit.AuditEntry
+import no.nav.audit.toAuditEntry
 import no.nav.domain.OppfolgingsperiodeId
 
 sealed class SettKontorResult
@@ -49,13 +51,13 @@ data class SettKontorFailure(val statusCode: HttpStatusCode, val message: String
 class SettKontorHandler(
     private val hentKontorNavn: suspend (KontorId) -> KontorNavn,
     private val hentAoKontor: suspend (AOPrincipal, IdentSomKanLagres) -> ArbeidsoppfolgingsKontor?,
-    private val harLeseTilgang: suspend (AOPrincipal, IdentSomKanLagres) -> TilgangResult,
+    private val harLeseTilgang: suspend (AOPrincipal, IdentSomKanLagres, String) -> TilgangResult,
     private val hentOppfolgingsPeriode: (IdentFunnet) -> OppfolgingsperiodeOppslagResult,
     private val tilordneKontor: (KontorEndretEvent, Boolean) -> Unit,
     private val publiserKontorEndring: suspend (KontorSattAvVeileder) -> Result<Unit>,
     private val hentSkjerming: suspend (IdentSomKanLagres) -> SkjermingResult,
     private val hentAdresseBeskyttelse: suspend (IdentSomKanLagres) -> HarStrengtFortroligAdresseResult,
-    private val brukAoRuting: Boolean
+    private val brukAoRuting: Boolean,
 ) {
     private val log = LoggerFactory.getLogger(this::class.java)
 
@@ -72,10 +74,10 @@ class SettKontorHandler(
             }
     }
 
-    private suspend fun sjekkHarTilgang(principal: AOPrincipal, ident: IdentSomKanLagres): Either<SettKontorFailure, Unit> {
-        val harTilgang = harLeseTilgang(principal, ident)
+    private suspend fun sjekkHarTilgang(principal: AOPrincipal, ident: IdentSomKanLagres, traceId: String): Either<SettKontorFailure, Unit> {
+        val harTilgang = harLeseTilgang(principal, ident, traceId)
         return when (harTilgang) {
-            HarTilgang -> Either.Right(Unit)
+            is HarTilgang -> Either.Right(Unit)
             is HarIkkeTilgang -> {
                 logger.warn("Bruker/system har ikke tilgang til å endre kontor for bruker")
                 Either.Left(SettKontorFailure(HttpStatusCode.Forbidden,"Du har ikke tilgang til å endre kontor for denne brukeren"))
@@ -137,13 +139,13 @@ class SettKontorHandler(
         }
     }
 
-    suspend fun settKontor(tilordning: ArbeidsoppfolgingsKontorTilordningDTO, principal: AOPrincipal): SettKontorResult {
+    suspend fun settKontor(tilordning: ArbeidsoppfolgingsKontorTilordningDTO, principal: AOPrincipal, traceId: String): SettKontorResult {
         if(!brukAoRuting) {
             return SettKontorFailure(HttpStatusCode.NotImplemented, "Kan ikke sette kontor for vi er i prod")
         } else {
             return Either.catch {
                 validateIdent(tilordning.ident)
-                    .flatMap { ident -> sjekkHarTilgang(principal, ident).map { ident } }
+                    .flatMap { ident -> sjekkHarTilgang(principal, ident, traceId).map { ident } }
                     .flatMap { ident -> sjekkBrukerHarIkkeAdressebeskyttelse(ident).map { ident } }
                     .flatMap { ident -> sjekkBrukerErIkkeSkjermet(ident).map { ident } }
                     .flatMap { ident -> hentOppfolgingsperiode(ident).map { it to ident } }

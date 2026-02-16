@@ -22,8 +22,8 @@ import no.nav.http.client.poaoTilgang.getPoaoTilgangScope
 import no.nav.http.client.tokenexchange.TexasSystemTokenClient
 import no.nav.http.client.tokenexchange.getNaisTokenEndpoint
 import no.nav.http.configureAdminModule
-import no.nav.http.configureArbeidsoppfolgingskontorModule
 import no.nav.http.configureFinnKontorModule
+import no.nav.http.configureArbeidsoppfolgingskontorModule
 import no.nav.http.graphql.*
 import no.nav.kafka.KafkaStreamsPlugin
 import no.nav.kafka.config.createKafkaProducer
@@ -97,7 +97,7 @@ fun Application.module() {
         { ident, gt, strengtFortroligAdresse, skjermet -> kontorForBrukerMedMangelfullGtService.finnKontorForGtBasertPåArbeidsforhold(ident,gt, strengtFortroligAdresse, skjermet) }
     )
     val kontorNavnService = KontorNavnService(norg2Client)
-    val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, poaoTilgangHttpClient, identService::hentAlleIdenter)
+    val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, identService::hentAlleIdenter)
     val oppfolgingsperiodeService = OppfolgingsperiodeService(identService::hentAlleIdenter, kontorTilordningService::slettArbeidsoppfølgingskontorTilordning)
     val automatiskKontorRutingService = AutomatiskKontorRutingService(
         { fnr, strengtFortroligAdresse, skjermet -> gtNorgService.hentGtKontorForBruker(fnr, strengtFortroligAdresse, skjermet) },
@@ -149,7 +149,13 @@ fun Application.module() {
 
     val issuer = environment.getIssuer()
     val authenticateRequest: AuthenticateRequest = { req -> req.call.authenticateCall(issuer) }
-    configureGraphQlModule(norg2Client, kontorTilhorighetService, authenticateRequest, identService::hentAlleIdenter)
+    configureGraphQlModule(
+        norg2Client,
+        kontorTilhorighetService,
+        authenticateRequest,
+        identService::hentAlleIdenter,
+        poaoTilgangHttpClient::harLeseTilgang,
+    )
     configureContentNegotiation()
     configureArbeidsoppfolgingskontorModule(
         kontorNavnService,
@@ -162,8 +168,8 @@ fun Application.module() {
         hentAdresseBeskyttelse = { pdlClient.harStrengtFortroligAdresse(it) },
         brukAoRuting = environment.getBrukAoRuting(),
     )
-    configureFinnKontorModule(simulerKontorTilordning, kontorNavnService::getKontorNavn)
-    configureAdminModule(simulerKontorTilordning, republiseringService, arenaSyncService, identService)
+    configureFinnKontorModule(simulerKontorTilordning, kontorNavnService::getKontorNavn, { call -> call.authenticateCall(issuer) })
+    configureAdminModule(simulerKontorTilordning, republiseringService, arenaSyncService)
     configureHentArbeidsoppfolgingskontorBulkModule(KontorTilhorighetBulkService)
 }
 

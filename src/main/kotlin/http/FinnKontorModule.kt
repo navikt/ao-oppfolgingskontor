@@ -1,5 +1,6 @@
 package no.nav.http
 
+import audit.Decision
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
@@ -8,6 +9,11 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import no.nav.AuthResult
+import no.nav.Authenticated
+import no.nav.NotAuthenticated
+import no.nav.audit.AuditLogger
+import no.nav.audit.traceId
 import no.nav.db.IdentSomKanLagres
 import no.nav.domain.KontorId
 import no.nav.domain.KontorNavn
@@ -20,7 +26,8 @@ import org.slf4j.LoggerFactory
 
 fun Application.configureFinnKontorModule(
     simulerKontorTilordning: suspend (ident: IdentSomKanLagres, erArbeidssøker: Boolean) -> TilordningResultat,
-    kontorNavn: suspend (KontorId) -> KontorNavn
+    kontorNavn: suspend (KontorId) -> KontorNavn,
+    authenticateCall: (RoutingCall) -> AuthResult,
 ) {
     val log = LoggerFactory.getLogger("FinnKontorModule")
 
@@ -28,6 +35,18 @@ fun Application.configureFinnKontorModule(
         authenticate("EntraAD") {
             post("/api/finn-kontor") {
                 val (ident, erArbeidssøker) = Json.decodeFromString<FinnKontorInputDto>(call.receiveText())
+
+                val traceId = traceId()
+
+                val principal = when (val authResult = authenticateCall(call)) {
+                    is Authenticated -> authResult.principal
+                    is NotAuthenticated -> {
+                        log.warn("Not authorized ${authResult.reason}")
+                        call.respond(HttpStatusCode.Unauthorized)
+                        return@post
+                    }
+                }
+
                 val resultat = simulerKontorTilordning(ident, erArbeidssøker)
 
                 when (resultat) {
@@ -48,6 +67,7 @@ fun Application.configureFinnKontorModule(
                             kontorId = kontorId.id,
                             kontorNavn = kontorNavn.navn
                         ))
+                        AuditLogger.logFinnKontor(traceId, principal,ident, Decision.Permit)
                     }
                 }
             }

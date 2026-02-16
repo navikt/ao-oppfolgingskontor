@@ -3,6 +3,9 @@ package no.nav.http.graphql.queries
 import com.expediagroup.graphql.server.operations.Query
 import graphql.schema.DataFetchingEnvironment
 import kotlinx.coroutines.runBlocking
+import no.nav.AOPrincipal
+import no.nav.audit.AuditLogger
+import no.nav.audit.toAuditEntry
 import no.nav.db.Ident
 import no.nav.db.table.KontorNavnTable
 import no.nav.db.table.KontorNavnTable.kontorNavn
@@ -15,6 +18,8 @@ import no.nav.db.table.KontorhistorikkTable.kontorType
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorType
 import no.nav.http.client.IdenterResult
+import no.nav.http.client.poaoTilgang.HarTilgang
+import no.nav.http.client.poaoTilgang.TilgangResult
 import no.nav.http.graphql.schemas.KontorHistorikkQueryDto
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.SortOrder
@@ -22,15 +27,22 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 
 class KontorHistorikkQuery(
-    val hentAlleIdenter: suspend (Ident) -> IdenterResult
+    val hentAlleIdenter: suspend (Ident) -> IdenterResult,
+    val harLeseTilgangTilBruker: suspend (navAnsatt: AOPrincipal, ident: Ident, traceId: String) -> TilgangResult,
 ) : Query {
     val logger = LoggerFactory.getLogger(KontorHistorikkQuery::class.java)
 
-    fun kontorHistorikk(ident: String, dataFetchingEnvironment: DataFetchingEnvironment): List<KontorHistorikkQueryDto> {
-        return runCatching {
+    suspend fun kontorHistorikk(ident: String, dataFetchingEnvironment: DataFetchingEnvironment): List<KontorHistorikkQueryDto> {
+        val principal = dataFetchingEnvironment.graphQlContext.get<AOPrincipal>("principal")
+        val traceId = dataFetchingEnvironment.graphQlContext.get<String>("traceId")
+
+        runCatching {
+            val inputIdent = Ident.validateOrThrow(ident, Ident.HistoriskStatus.UKJENT)
+            val harTilgang = harLeseTilgangTilBruker(principal, inputIdent, traceId)
+            AuditLogger.logLesKontorhistorikk(harTilgang.toAuditEntry())
+            if (harTilgang !is HarTilgang) throw Exception("Ikke tilgang til bruker")
+
             transaction {
-                // TODO Flytt dette til en service??
-                val inputIdent = Ident.validateOrThrow(ident, Ident.HistoriskStatus.UKJENT)
                 val alleIdenter = runBlocking { hentAlleIdenter(inputIdent).getOrThrow() }
                 KontorhistorikkTable
                     .join(
@@ -66,11 +78,12 @@ class KontorHistorikkQuery(
                     }
             }
         }
-            .onFailure {
-                logger.error("Feil ved henting av kontorhistorikk", it)
-                throw it
-            }
-            .onSuccess { return it }
-            .getOrThrow()
+            .fold(
+                { historikk -> return historikk },
+                {
+                    logger.error("Feil ved henting av kontorhistorikk", it)
+                    throw it
+                }
+            )
     }
 }

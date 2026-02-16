@@ -4,7 +4,6 @@ import arrow.core.Either
 import db.table.AlternativAoKontorTable
 import eventsLogger.BigQueryClient
 import eventsLogger.KontorTypeForBigQuery
-import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
 import no.nav.db.IdentSomKanLagres
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.db.table.ArenaKontorTable

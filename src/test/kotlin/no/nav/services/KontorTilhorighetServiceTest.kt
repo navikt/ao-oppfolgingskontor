@@ -33,7 +33,6 @@ class KontorTilhorighetServiceTest {
 
         KontorTilhorighetService(
             mockk(),
-            mockk(),
             { IdenterFunnet( listOf(ident), ident) }
         ).getArenaKontorMedOppfolgingsperiode(ident)
     }
@@ -52,7 +51,6 @@ class KontorTilhorighetServiceTest {
         }
 
         KontorTilhorighetService(
-            mockk(),
             mockk(),
             { IdenterFunnet( listOf(ident), ident) }
         ).getArenaKontorMedOppfolgingsperiode(ident)

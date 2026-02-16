@@ -10,6 +10,8 @@ import io.ktor.server.auth.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.testing.*
 import kotlinx.serialization.json.Json
+import no.nav.Authenticated
+import no.nav.NavAnsatt
 import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.domain.*
@@ -105,6 +107,7 @@ class FinnKontorModuleIntegrationTest {
         kontorNavn: KontorNavn
     ) {
         install(ContentNegotiation) { json() }
+        /* Denne kreves så lenge ktor-routen ligger under authenticate("EntraAD") */
         install(Authentication) {
             provider("EntraAD") {
                 authenticate { context ->
@@ -112,6 +115,9 @@ class FinnKontorModuleIntegrationTest {
                 }
             }
         }
-        configureFinnKontorModule({ _, _ -> tilordningResultat }, { kontorNavn })
+        configureFinnKontorModule(
+            { _, _ -> tilordningResultat },
+            { kontorNavn },
+            { Authenticated(NavAnsatt(NavIdent("lol"), UUID.randomUUID())) })
     }
 }
