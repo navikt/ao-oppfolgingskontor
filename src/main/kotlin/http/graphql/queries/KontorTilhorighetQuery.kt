@@ -40,14 +40,10 @@ class KontorQuery(
         val identer = hentAlleIdenter(ident).getOrThrow()
         val result = harLeseTilgang(principal, identer.foretrukketIdent, traceId)
 
-        logLesKontortilhorighet(result.toAuditEntry(traceId))
+        logLesKontortilhorighet(result.toAuditEntry())
 
-        if (result is HarIkkeTilgang) {
-            throw Exception("Bruker har ikke lov å lese kontortilhørighet på denne brukeren")
-        }
-        if (result is TilgangOppslagFeil) {
-            throw Exception("Klarte ikke sjekke om nav-ansatt har tilgang til å lese kontortilhørighet på bruker: ${result.message}")
-        }
+        if (result is HarIkkeTilgang) throw Exception("Bruker har ikke lov å lese kontortilhørighet på denne brukeren")
+        if (result is TilgangOppslagFeil) throw Exception("Klarte ikke sjekke om nav-ansatt har tilgang til å lese kontortilhørighet på bruker: ${result.message}")
 
         val kontorTilhorighet = kontorTilhorighetService.getKontorTilhorighet(identer)
 
@@ -61,16 +57,10 @@ class KontorQuery(
         val ident = Ident.validateOrThrow(ident, Ident.HistoriskStatus.UKJENT)
         val identer = hentAlleIdenter(ident).getOrThrow()
         val result = harLeseTilgang(principal, ident, traceId)
+        logLesKontortilhorighet(result.toAuditEntry())
 
-        logLesKontortilhorighet(result.toAuditEntry(traceId))
-
-        if (result is HarIkkeTilgang) {
-            logLesKontortilhorighet(result.toAuditEntry(traceId))
-            throw Exception("Bruker har ikke lov å lese kontortilhørigheter på denne brukeren")
-        }
-        if (result is TilgangOppslagFeil) {
-            throw Exception("Klarte ikke sjekke om nav-ansatt har tilgang til å lese kontortilhørigheter på bruker: ${result.message}")
-        }
+        if (result is HarIkkeTilgang) throw Exception("Bruker har ikke lov å lese kontortilhørigheter på denne brukeren")
+        if (result is TilgangOppslagFeil) throw Exception("Klarte ikke sjekke om nav-ansatt har tilgang til å lese kontortilhørigheter på bruker: ${result.message}")
 
         val (arbeidsoppfolging, arena, gt) = kontorTilhorighetService.getKontorTilhorigheter(identer)
 

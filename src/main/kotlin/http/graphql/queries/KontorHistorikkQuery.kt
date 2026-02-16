@@ -35,15 +35,12 @@ class KontorHistorikkQuery(
     suspend fun kontorHistorikk(ident: String, dataFetchingEnvironment: DataFetchingEnvironment): List<KontorHistorikkQueryDto> {
         val principal = dataFetchingEnvironment.graphQlContext.get<AOPrincipal>("principal")
         val traceId = dataFetchingEnvironment.graphQlContext.get<String>("traceId")
-            ?: throw IllegalStateException("Missing traceparent header")
 
         runCatching {
             val inputIdent = Ident.validateOrThrow(ident, Ident.HistoriskStatus.UKJENT)
             val harTilgang = harLeseTilgangTilBruker(principal, inputIdent, traceId)
-            AuditLogger.logLesKontorhistorikk(harTilgang.toAuditEntry(traceId))
-            if (harTilgang !is HarTilgang) {
-                throw Exception("Ikke tilgang til bruker")
-            }
+            AuditLogger.logLesKontorhistorikk(harTilgang.toAuditEntry())
+            if (harTilgang !is HarTilgang) throw Exception("Ikke tilgang til bruker")
 
             transaction {
                 val alleIdenter = runBlocking { hentAlleIdenter(inputIdent).getOrThrow() }

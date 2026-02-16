@@ -186,12 +186,6 @@ object AuditLogger {
     }
 }
 
-enum class AdminEventType(val eventClassId: String) {
-    REPUBLISH("audit:admin:republish"),
-    DRYRUN("audit:admin:dryrun"),
-    ARENA_SYNC("audit:admin:arena-sync")
-}
-
 class AuditEntry(
     val traceId: String,
     val principal: AOPrincipal,
@@ -199,18 +193,18 @@ class AuditEntry(
     val decision: Decision
 )
 
-fun TilgangResult.toAuditEntry(traceId: String): AuditEntry? {
+fun TilgangResult.toAuditEntry(): AuditEntry? {
     return when (this) {
-        is HarIkkeTilgang -> return AuditEntry(
+        is HarIkkeTilgang -> AuditEntry(
             traceId,
-            principal = this.subject,
-            this.target,
+            subject,
+            target,
             Decision.Deny,
         )
         is PersonHarTilgang -> AuditEntry(
-            traceId = traceId,
-            principal = this.subject,
-            duid = this.target,
+            traceId,
+            subject,
+            target,
             Decision.Permit,
         )
         is SystemHarTilgang -> null
