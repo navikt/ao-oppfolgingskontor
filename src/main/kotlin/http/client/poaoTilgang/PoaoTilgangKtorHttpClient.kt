@@ -163,7 +163,7 @@ class PoaoTilgangKtorHttpClient(
                                 navAnsattAzureId = navAnsatt.navAnsattAzureId.toString(),
                                 navEnhetId = kontorId.id
                             ),
-                            policyId = PolicyId.NAV_ANSATT_NAV_IDENT_TILGANG_TIL_NAV_ENHET_V1
+                            policyId = PolicyId.NAV_ANSATT_TILGANG_TIL_NAV_ENHET_V1
                         )
                     )
                 )
