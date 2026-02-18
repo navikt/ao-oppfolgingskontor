@@ -4,7 +4,6 @@ import arrow.core.Either
 import io.ktor.client.*
 import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.DefaultRequest
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logging
@@ -31,13 +30,35 @@ fun ApplicationEnvironment.getPoaoTilgangScope(): String {
 }
 
 sealed class TilgangTilKontorResult
-object HarTilgangTilKontor: TilgangTilKontorResult()
-class HarIkkeTilgangTilKontor(val message: String) : TilgangTilKontorResult()
+sealed class HarTilgangTilKontor(): TilgangTilKontorResult()
+object SystemHarTilgangTilKontor: HarTilgangTilKontor()
+class PersonHarTilgangTilKontor(
+    val subject: NavAnsatt,
+    val target: KontorId,
+    val traceId: String,
+): HarTilgangTilKontor()
+class HarIkkeTilgangTilKontor(
+    val message: String,
+    val subject: NavAnsatt,
+    val target: KontorId,
+    val traceId: String,
+) : TilgangTilKontorResult()
 class TilgangTilKontorOppslagFeil(val message: String) : TilgangTilKontorResult()
 
 sealed class TilgangTilBrukerResult
-object HarTilgangTilBruker: TilgangTilBrukerResult()
-class HarIkkeTilgangTilBruker(val message: String) : TilgangTilBrukerResult()
+sealed class HarTilgangTilBruker: TilgangTilBrukerResult()
+object SystemHarTilgangTilBruker: HarTilgangTilBruker()
+class PersonHarTilgangTilBruker(
+    val subject: NavAnsatt,
+    val target: Ident,
+    val traceId: String,
+): HarTilgangTilBruker()
+class HarIkkeTilgangTilBruker(
+    val message: String,
+    val subject: NavAnsatt,
+    val target: Ident,
+    val traceId: String,
+) : TilgangTilBrukerResult()
 class TilgangTilBrukerOppslagFeil(val message: String) : TilgangTilBrukerResult()
 
 class PoaoTilgangKtorHttpClient(
@@ -59,10 +80,6 @@ class PoaoTilgangKtorHttpClient(
             install(ContentNegotiation) {
                 json()
             }
-            install(DefaultRequest) {
-                accept(ContentType.Application.Json)
-                contentType(ContentType.Application.Json)
-            }
         }
     )
     private val log = LoggerFactory.getLogger(javaClass)
@@ -74,25 +91,25 @@ class PoaoTilgangKtorHttpClient(
     }
     val evaluatePoliciesUrl = "$baseUrl$evaluatePoliciesPath"
 
-    suspend fun harTilgangTilKontor(principal: AOPrincipal, kontorId: KontorId): TilgangTilKontorResult {
+    suspend fun harTilgangTilKontor(principal: AOPrincipal, kontorId: KontorId, traceId: String): TilgangTilKontorResult {
         return when (principal) {
-            is NavAnsatt ->  harTilgangTilKontor(principal, kontorId)
-            is SystemPrincipal -> HarTilgangTilKontor
+            is NavAnsatt ->  harTilgangTilKontor(principal, kontorId, traceId)
+            is SystemPrincipal -> SystemHarTilgangTilKontor
         }
     }
 
-    private suspend fun harTilgangTilKontor(navAnsatt: NavAnsatt, kontorId: KontorId): TilgangTilKontorResult {
-        return evaluateNavAnsattHarTilgangTilKontorPolicy(evaluatePoliciesUrl, navAnsatt, kontorId)
+    private suspend fun harTilgangTilKontor(navAnsatt: NavAnsatt, kontorId: KontorId, traceId: String): TilgangTilKontorResult {
+        return evaluateNavAnsattHarTilgangTilKontorPolicy(evaluatePoliciesUrl, navAnsatt, kontorId, traceId)
     }
 
-    private suspend fun harLeseTilgangTilBruker(navAnsatt: NavAnsatt, fnr: Ident): TilgangTilBrukerResult {
-        return evaluateNavAnsattHarTilgangTilBrukerPolicy(evaluatePoliciesUrl, fnr, navAnsatt)
+    private suspend fun harLeseTilgangTilBruker(navAnsatt: NavAnsatt, fnr: Ident, traceId: String): TilgangTilBrukerResult {
+        return evaluateNavAnsattHarTilgangTilBrukerPolicy(evaluatePoliciesUrl, fnr, navAnsatt, traceId)
     }
 
-    suspend fun harLeseTilgang(principal: AOPrincipal, fnr: Ident): TilgangTilBrukerResult {
+    suspend fun harLeseTilgang(principal: AOPrincipal, fnr: Ident, traceId: String): TilgangTilBrukerResult {
         return when (principal) {
-            is NavAnsatt ->  harLeseTilgangTilBruker(principal, fnr)
-            is SystemPrincipal -> HarTilgangTilBruker
+            is NavAnsatt ->  harLeseTilgangTilBruker(principal, fnr, traceId)
+            is SystemPrincipal -> SystemHarTilgangTilBruker
         }
     }
 
@@ -140,13 +157,23 @@ class PoaoTilgangKtorHttpClient(
     private suspend fun evaluateNavAnsattHarTilgangTilBrukerPolicy(
         fullUrl: String,
         fnr: Ident,
-        navAnsatt: NavAnsatt
+        navAnsatt: NavAnsatt,
+        traceId: String
     ): TilgangTilBrukerResult {
         val policyPayload = navAnsatt.tilgangTilBrukerPayload(fnr)
         return evaluatePolicyOverHttp(fullUrl, policyPayload)
             .map { result ->
-                if (result.decision.type == DecisionType.PERMIT) HarTilgangTilBruker
-                else HarIkkeTilgangTilBruker("Har ikke tilgang: ${result.decision.message} - ${result.decision.reason}")
+                if (result.decision.type == DecisionType.PERMIT) PersonHarTilgangTilBruker(
+                    navAnsatt,
+                    fnr,
+                    traceId
+                )
+                else HarIkkeTilgangTilBruker(
+                    "Har ikke tilgang: ${result.decision.message} - ${result.decision.reason}",
+                    navAnsatt,
+                    fnr,
+                    traceId
+                )
             }
             .mapLeft { errorMessage -> TilgangTilBrukerOppslagFeil(errorMessage) }
             .fold({ it }, { it })
@@ -155,13 +182,19 @@ class PoaoTilgangKtorHttpClient(
     private suspend fun evaluateNavAnsattHarTilgangTilKontorPolicy(
         fullUrl: String,
         navAnsatt: NavAnsatt,
-        kontorId: KontorId
+        kontorId: KontorId,
+        traceId: String
     ): TilgangTilKontorResult {
             val policyPayload = navAnsatt.tilgangTilKontorPayload(kontorId)
             return evaluatePolicyOverHttp(fullUrl, policyPayload)
                 .map { result ->
-                    if (result.decision.type == DecisionType.PERMIT) HarTilgangTilKontor
-                    else HarIkkeTilgangTilKontor("Har ikke tilgang: ${result.decision.message} - ${result.decision.reason}")
+                    if (result.decision.type == DecisionType.PERMIT) PersonHarTilgangTilKontor(navAnsatt, kontorId, traceId)
+                    else HarIkkeTilgangTilKontor(
+                        "Har ikke tilgang: ${result.decision.message} - ${result.decision.reason}",
+                        navAnsatt,
+                        kontorId,
+                        traceId
+                    )
                 }
                 .mapLeft { errorMessage -> TilgangTilKontorOppslagFeil(errorMessage) }
                 .fold({ it }, { it })

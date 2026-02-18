@@ -10,9 +10,11 @@ import io.ktor.server.request.*
 import io.ktor.server.response.respond
 import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
-import no.nav.AOPrincipal
 import no.nav.Authenticated
 import no.nav.NotAuthenticated
+import no.nav.audit.AuditLogger
+import no.nav.audit.toAuditEntry
+import no.nav.audit.traceId
 import no.nav.authenticateCall
 import no.nav.db.IdentSomKanLagres
 import no.nav.domain.events.KontorEndretEvent
@@ -46,9 +48,10 @@ fun Application.configureArbeidsoppfolgingskontorModule(
 
     val settKontorHandler = SettKontorHandler(
         kontorNavnService::getKontorNavn,
-        { principal: AOPrincipal, ident: IdentSomKanLagres -> kontorTilhorighetService.getArbeidsoppfolgingKontorTilhorighet(ident, principal) },
-        { principal, ident -> poaoTilgangClient.harLeseTilgang(principal, ident) },
-        { principal, kontorId -> poaoTilgangClient.harTilgangTilKontor(principal, kontorId) },
+        { ident: IdentSomKanLagres -> kontorTilhorighetService.getArbeidsoppfolgingKontorTilhorighet(ident) },
+        { principal, ident, traceId -> poaoTilgangClient.harLeseTilgang(principal, ident, traceId)
+            .also { AuditLogger.logSettKontor(it.toAuditEntry()) } },
+        { principal, kontorId, traceId -> poaoTilgangClient.harTilgangTilKontor(principal, kontorId, traceId) },
         oppfolgingsperiodeService::getCurrentOppfolgingsperiode,
         { event: KontorEndretEvent, brukAoRuting2: Boolean -> kontorTilordningService.tilordneKontor(event, brukAoRuting2) },
         publiserKontorEndring,
@@ -64,13 +67,16 @@ fun Application.configureArbeidsoppfolgingskontorModule(
                     val kontorTilordning = call.receive<ArbeidsoppfolgingsKontorTilordningDTO>()
                     val principal = when (val authresult = authenticateRequest(call.request)) {
                         is Authenticated -> authresult.principal
-                         is NotAuthenticated -> {
+                        is NotAuthenticated -> {
                             log.warn("Not authorized ${authresult.reason}")
                             call.respond(HttpStatusCode.Unauthorized)
                             return@post
                         }
                     }
-                    val result = settKontorHandler.settKontor(kontorTilordning, principal)
+
+                    val traceId = call.traceId()
+                    val result = settKontorHandler.settKontor(kontorTilordning, principal, traceId)
+
                     when (result) {
                         is SettKontorFailure -> call.respond(result.statusCode, result.message)
                         is SettKontorSuccess -> call.respond(HttpStatusCode.OK, result.response)

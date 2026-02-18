@@ -52,15 +52,15 @@ data class SettKontorFailure(val statusCode: HttpStatusCode, val message: String
 
 class SettKontorHandler(
     private val hentKontorNavn: suspend (KontorId) -> KontorNavn,
-    private val hentAoKontor: suspend (AOPrincipal, IdentSomKanLagres) -> ArbeidsoppfolgingsKontor?,
-    private val harLeseTilgangTilBruker: suspend (AOPrincipal, IdentSomKanLagres) -> TilgangTilBrukerResult,
-    private val harTilgangTilKontor: suspend (AOPrincipal, KontorId) -> TilgangTilKontorResult,
+    private val hentAoKontor: suspend (IdentSomKanLagres) -> ArbeidsoppfolgingsKontor?,
+    private val harLeseTilgangTilBruker: suspend (AOPrincipal, IdentSomKanLagres, String) -> TilgangTilBrukerResult,
+    private val harTilgangTilKontor: suspend (AOPrincipal, KontorId, String) -> TilgangTilKontorResult,
     private val hentOppfolgingsPeriode: (IdentFunnet) -> OppfolgingsperiodeOppslagResult,
     private val tilordneKontor: (KontorEndretEvent, Boolean) -> Unit,
     private val publiserKontorEndring: suspend (KontorSattAvVeileder) -> Result<Unit>,
     private val hentSkjerming: suspend (IdentSomKanLagres) -> SkjermingResult,
     private val hentAdresseBeskyttelse: suspend (IdentSomKanLagres) -> HarStrengtFortroligAdresseResult,
-    private val brukAoRuting: Boolean
+    private val brukAoRuting: Boolean,
 ) {
     private val log = LoggerFactory.getLogger(this::class.java)
 
@@ -77,9 +77,9 @@ class SettKontorHandler(
             }
     }
 
-    private suspend fun sjekkHarTilgang(principal: AOPrincipal, ident: IdentSomKanLagres, kontorId: KontorId): Either<SettKontorFailure, Unit> {
-        val harTilgangTilBruker = harLeseTilgangTilBruker(principal, ident)
-        val harTilgangTilKontor = harTilgangTilKontor(principal, kontorId)
+    private suspend fun sjekkHarTilgang(principal: AOPrincipal, ident: IdentSomKanLagres, kontorId: KontorId, traceId: String): Either<SettKontorFailure, Unit> {
+        val harTilgangTilBruker = harLeseTilgangTilBruker(principal, ident, traceId)
+        val harTilgangTilKontor = harTilgangTilKontor(principal, kontorId, traceId)
 
         if(harTilgangTilBruker is HarTilgangTilBruker || harTilgangTilKontor is HarTilgangTilKontor) {
             return Either.Right(Unit)
@@ -156,18 +156,18 @@ class SettKontorHandler(
         }
     }
 
-    suspend fun settKontor(tilordning: ArbeidsoppfolgingsKontorTilordningDTO, principal: AOPrincipal): SettKontorResult {
+    suspend fun settKontor(tilordning: ArbeidsoppfolgingsKontorTilordningDTO, principal: AOPrincipal, traceId: String): SettKontorResult {
         if(!brukAoRuting) {
             return SettKontorFailure(HttpStatusCode.NotImplemented, "Kan ikke sette kontor for vi er i prod")
         } else {
             return Either.catch {
                 validateIdent(tilordning.ident)
-                    .flatMap { ident -> sjekkHarTilgang(principal, ident, KontorId(tilordning.kontorId)).map { ident } }
+                    .flatMap { ident -> sjekkHarTilgang(principal, ident, KontorId(tilordning.kontorId), traceId).map { ident } }
                     .flatMap { ident -> sjekkBrukerHarIkkeAdressebeskyttelse(ident).map { ident } }
                     .flatMap { ident -> sjekkBrukerErIkkeSkjermet(ident).map { ident } }
                     .flatMap { ident -> hentOppfolgingsperiode(ident).map { it to ident } }
                     .map { (periodeId: OppfolgingsperiodeId, ident: IdentSomKanLagres) ->
-                        val gammeltKontor = hentAoKontor(principal, ident)
+                        val gammeltKontor = hentAoKontor(ident)
                         val kontorId = KontorId(tilordning.kontorId)
 
                         val kontorEndring = KontorSattAvVeileder(
