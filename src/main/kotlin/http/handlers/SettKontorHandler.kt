@@ -25,10 +25,10 @@ import no.nav.http.client.IdentFunnet
 import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.SkjermingIkkeFunnet
 import no.nav.http.client.SkjermingResult
-import no.nav.http.client.poaoTilgang.HarIkkeTilgang
-import no.nav.http.client.poaoTilgang.HarTilgang
-import no.nav.http.client.poaoTilgang.TilgangOppslagFeil
-import no.nav.http.client.poaoTilgang.TilgangResult
+import no.nav.http.client.poaoTilgang.HarIkkeTilgangTilBruker
+import no.nav.http.client.poaoTilgang.HarTilgangTilBruker
+import no.nav.http.client.poaoTilgang.TilgangTilBrukerOppslagFeil
+import no.nav.http.client.poaoTilgang.TilgangTilBrukerResult
 import no.nav.http.logger
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.NotUnderOppfolging
@@ -40,9 +40,11 @@ import arrow.core.Either
 import arrow.core.flatMap
 import arrow.core.flatten
 import arrow.core.getOrElse
-import no.nav.audit.AuditEntry
-import no.nav.audit.toAuditEntry
 import no.nav.domain.OppfolgingsperiodeId
+import no.nav.http.client.poaoTilgang.HarIkkeTilgangTilKontor
+import no.nav.http.client.poaoTilgang.HarTilgangTilKontor
+import no.nav.http.client.poaoTilgang.TilgangTilKontorOppslagFeil
+import no.nav.http.client.poaoTilgang.TilgangTilKontorResult
 
 sealed class SettKontorResult
 data class SettKontorSuccess(val response: KontorByttetOkResponseDto) : SettKontorResult()
@@ -50,8 +52,9 @@ data class SettKontorFailure(val statusCode: HttpStatusCode, val message: String
 
 class SettKontorHandler(
     private val hentKontorNavn: suspend (KontorId) -> KontorNavn,
-    private val hentAoKontor: suspend (AOPrincipal, IdentSomKanLagres) -> ArbeidsoppfolgingsKontor?,
-    private val harLeseTilgang: suspend (AOPrincipal, IdentSomKanLagres, String) -> TilgangResult,
+    private val hentAoKontor: suspend (IdentSomKanLagres) -> ArbeidsoppfolgingsKontor?,
+    private val harLeseTilgangTilBruker: suspend (AOPrincipal, IdentSomKanLagres, String) -> TilgangTilBrukerResult,
+    private val harTilgangTilKontor: suspend (AOPrincipal, KontorId, String) -> TilgangTilKontorResult,
     private val hentOppfolgingsPeriode: (IdentFunnet) -> OppfolgingsperiodeOppslagResult,
     private val tilordneKontor: (KontorEndretEvent, Boolean) -> Unit,
     private val publiserKontorEndring: suspend (KontorSattAvVeileder) -> Result<Unit>,
@@ -74,19 +77,33 @@ class SettKontorHandler(
             }
     }
 
-    private suspend fun sjekkHarTilgang(principal: AOPrincipal, ident: IdentSomKanLagres, traceId: String): Either<SettKontorFailure, Unit> {
-        val harTilgang = harLeseTilgang(principal, ident, traceId)
-        return when (harTilgang) {
-            is HarTilgang -> Either.Right(Unit)
-            is HarIkkeTilgang -> {
-                logger.warn("Bruker/system har ikke tilgang til å endre kontor for bruker")
-                Either.Left(SettKontorFailure(HttpStatusCode.Forbidden,"Du har ikke tilgang til å endre kontor for denne brukeren"))
-            }
-            is TilgangOppslagFeil -> {
-                logger.warn(harTilgang.message)
-                Either.Left(SettKontorFailure(HttpStatusCode.InternalServerError,"Noe gikk galt under oppslag av tilgang for bruker: ${harTilgang.message}"))
-            }
+    private suspend fun sjekkHarTilgang(principal: AOPrincipal, ident: IdentSomKanLagres, kontorId: KontorId, traceId: String): Either<SettKontorFailure, Unit> {
+        val harTilgangTilBruker = harLeseTilgangTilBruker(principal, ident, traceId)
+        val harTilgangTilKontor = harTilgangTilKontor(principal, kontorId, traceId)
+
+        if(harTilgangTilBruker is HarTilgangTilBruker || harTilgangTilKontor is HarTilgangTilKontor) {
+            return Either.Right(Unit)
         }
+
+        val tilgangTilBrukerFeil = when (harTilgangTilBruker) {
+            is HarIkkeTilgangTilBruker -> "Du har ikke tilgang til å endre kontor for bruker"
+            is TilgangTilBrukerOppslagFeil -> "Noe gikk galt under oppslag av tilgang for bruker: ${harTilgangTilBruker.message}"
+            else -> null
+        }
+        val tilgangTilKontorFeil = when (harTilgangTilKontor) {
+            is HarIkkeTilgangTilKontor -> "Du har ikke tilgang til å endre kontor for bruker til ønsket kontor"
+            is TilgangTilKontorOppslagFeil -> "Noe gikk galt under oppslag av tilgang til kontor: ${harTilgangTilKontor.message}"
+            else -> null
+        }
+
+        val statusCode = if (harTilgangTilBruker is TilgangTilBrukerOppslagFeil || harTilgangTilKontor is TilgangTilKontorOppslagFeil) {
+            HttpStatusCode.InternalServerError
+        } else {
+            HttpStatusCode.Forbidden
+        }
+        val errorMessage = listOfNotNull(tilgangTilBrukerFeil, tilgangTilKontorFeil).joinToString("; ")
+        logger.warn(errorMessage)
+        return Either.Left(SettKontorFailure(statusCode, errorMessage))
     }
 
     private fun hentOppfolgingsperiode(ident: IdentSomKanLagres): Either<SettKontorFailure, OppfolgingsperiodeId> {
@@ -145,12 +162,12 @@ class SettKontorHandler(
         } else {
             return Either.catch {
                 validateIdent(tilordning.ident)
-                    .flatMap { ident -> sjekkHarTilgang(principal, ident, traceId).map { ident } }
+                    .flatMap { ident -> sjekkHarTilgang(principal, ident, KontorId(tilordning.kontorId), traceId).map { ident } }
                     .flatMap { ident -> sjekkBrukerHarIkkeAdressebeskyttelse(ident).map { ident } }
                     .flatMap { ident -> sjekkBrukerErIkkeSkjermet(ident).map { ident } }
                     .flatMap { ident -> hentOppfolgingsperiode(ident).map { it to ident } }
                     .map { (periodeId: OppfolgingsperiodeId, ident: IdentSomKanLagres) ->
-                        val gammeltKontor = hentAoKontor(principal, ident)
+                        val gammeltKontor = hentAoKontor(ident)
                         val kontorId = KontorId(tilordning.kontorId)
 
                         val kontorEndring = KontorSattAvVeileder(

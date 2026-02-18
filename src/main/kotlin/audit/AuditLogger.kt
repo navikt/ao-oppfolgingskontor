@@ -9,11 +9,11 @@ import no.nav.NavAnsatt
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
 import no.nav.domain.OppfolgingsperiodeId
-import no.nav.http.client.poaoTilgang.HarIkkeTilgang
-import no.nav.http.client.poaoTilgang.PersonHarTilgang
-import no.nav.http.client.poaoTilgang.SystemHarTilgang
-import no.nav.http.client.poaoTilgang.TilgangOppslagFeil
-import no.nav.http.client.poaoTilgang.TilgangResult
+import no.nav.http.client.poaoTilgang.HarIkkeTilgangTilBruker
+import no.nav.http.client.poaoTilgang.PersonHarTilgangTilBruker
+import no.nav.http.client.poaoTilgang.SystemHarTilgangTilBruker
+import no.nav.http.client.poaoTilgang.TilgangTilBrukerOppslagFeil
+import no.nav.http.client.poaoTilgang.TilgangTilBrukerResult
 import org.slf4j.LoggerFactory
 import java.util.UUID
 import kotlin.text.split
@@ -193,22 +193,22 @@ class AuditEntry(
     val decision: Decision
 )
 
-fun TilgangResult.toAuditEntry(): AuditEntry? {
+fun TilgangTilBrukerResult.toAuditEntry(): AuditEntry? {
     return when (this) {
-        is HarIkkeTilgang -> AuditEntry(
+        is HarIkkeTilgangTilBruker -> AuditEntry(
             traceId,
             subject,
             target,
             Decision.Deny,
         )
-        is PersonHarTilgang -> AuditEntry(
+        is PersonHarTilgangTilBruker -> AuditEntry(
             traceId,
             subject,
             target,
             Decision.Permit,
         )
-        is SystemHarTilgang -> null
-        is TilgangOppslagFeil -> null
+        is SystemHarTilgangTilBruker -> null
+        is TilgangTilBrukerOppslagFeil -> null
     }
 }
 

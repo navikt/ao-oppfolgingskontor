@@ -11,6 +11,7 @@ import no.nav.NavAnsatt
 import no.nav.db.IdentSomKanLagres
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
+import no.nav.domain.KontorId
 import no.nav.domain.KontorNavn
 import no.nav.domain.NavIdent
 import no.nav.domain.OppfolgingsperiodeId
@@ -25,11 +26,16 @@ import no.nav.http.client.HarStrengtFortroligAdresseResult
 import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.SkjermingIkkeFunnet
 import no.nav.http.client.SkjermingResult
-import no.nav.http.client.poaoTilgang.HarIkkeTilgang
-import no.nav.http.client.poaoTilgang.HarTilgang
-import no.nav.http.client.poaoTilgang.PersonHarTilgang
-import no.nav.http.client.poaoTilgang.TilgangOppslagFeil
-import no.nav.http.client.poaoTilgang.TilgangResult
+import no.nav.http.client.poaoTilgang.HarIkkeTilgangTilBruker
+import no.nav.http.client.poaoTilgang.HarIkkeTilgangTilKontor
+import no.nav.http.client.poaoTilgang.HarTilgangTilKontor
+import no.nav.http.client.poaoTilgang.PersonHarTilgangTilBruker
+import no.nav.http.client.poaoTilgang.PersonHarTilgangTilKontor
+import no.nav.http.client.poaoTilgang.SystemHarTilgangTilKontor
+import no.nav.http.client.poaoTilgang.TilgangTilBrukerOppslagFeil
+import no.nav.http.client.poaoTilgang.TilgangTilBrukerResult
+import no.nav.http.client.poaoTilgang.TilgangTilKontorOppslagFeil
+import no.nav.http.client.poaoTilgang.TilgangTilKontorResult
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingperiodeOppslagFeil
@@ -44,8 +50,9 @@ class SettKontorHandlerTest {
     val navIdent = NavIdent("A112233")
     val navAnsatt = NavAnsatt(navIdent, UUID.randomUUID())
     val fnr = randomFnr()
+    val kontorId = KontorId("3144")
     val kontortilordning = ArbeidsoppfolgingsKontorTilordningDTO(
-        "3144",
+        kontorId.id,
         "fordi",
         fnr.value
     )
@@ -95,8 +102,37 @@ class SettKontorHandlerTest {
     }
 
     @Test
+    fun `Skal svare med 403 når veilder ikke har tilgang og forsøker å sette kontor til noe annet enn eget kontor`() = runTest {
+        val handler = defaultHandler(fnr, harTilgangTilBruker = HarIkkeTilgangTilBruker("Fordi", navAnsatt, fnr, "trace"), harTilgangTilKontor = HarIkkeTilgangTilKontor("Fordi", navAnsatt, kontorId, "trace"))
+
+        handler.settKontor(
+            kontortilordning, navAnsatt, "trace"
+        ) shouldBe SettKontorFailure(HttpStatusCode.Forbidden, "Du har ikke tilgang til å endre kontor for bruker; Du har ikke tilgang til å endre kontor for bruker til ønsket kontor")
+    }
+
+    @Test
+    fun `Skal svare med 200 når veilder ikke har tilgang, men forsøker å sette kontor til eget kontor`() = runTest {
+        val handler = defaultHandler(
+            fnr,
+            harTilgangTilBruker = HarIkkeTilgangTilBruker("Fordi", navAnsatt, fnr, "trace"),
+            harTilgangTilKontor = PersonHarTilgangTilKontor(navAnsatt, kontorId, "trace")
+        )
+
+        handler.settKontor(
+            kontortilordning, navAnsatt, "trace"
+        ) shouldBe SettKontorSuccess(
+            KontorByttetOkResponseDto(
+                fraKontor = null,
+                tilKontor = Kontor(
+                    "Kontor navn",
+                    "3144"
+                )
+            )
+        )
+    }
+
     fun `Skal svare med 403 når subject ikke har tilgang`() = runTest {
-        val handler = defaultHandler(fnr, harTilgang = HarIkkeTilgang(navAnsatt, fnr, "Fordi", "trace") )
+        val handler = defaultHandler(fnr, harTilgangTilBruker = HarIkkeTilgangTilBruker("Fordi", navAnsatt, fnr, "trace") )
 
         handler.settKontor(
             kontortilordning, navAnsatt, "trace"
@@ -105,11 +141,11 @@ class SettKontorHandlerTest {
 
     @Test
     fun `Skal svare med 500 når tilgangsjekk får en teknisk feil`() = runTest {
-        val handler = defaultHandler(fnr, harTilgang = TilgangOppslagFeil("Fordi"))
+        val handler = defaultHandler(fnr, harTilgangTilBruker = TilgangTilBrukerOppslagFeil("Fordi"), harTilgangTilKontor = TilgangTilKontorOppslagFeil("Fordi"))
 
         handler.settKontor(
             kontortilordning, navAnsatt, "trace"
-        ) shouldBe SettKontorFailure(HttpStatusCode.InternalServerError, "Noe gikk galt under oppslag av tilgang for bruker: Fordi")
+        ) shouldBe SettKontorFailure(HttpStatusCode.InternalServerError, "Noe gikk galt under oppslag av tilgang for bruker: Fordi; Noe gikk galt under oppslag av tilgang til kontor: Fordi")
     }
 
     @Test
@@ -162,25 +198,28 @@ class SettKontorHandlerTest {
         verify { publiserMockk wasNot Called }
     }
 
-    fun defaultHandler(
+     fun defaultHandler(
         ident: IdentSomKanLagres,
-        harTilgang: TilgangResult = PersonHarTilgang(
+        harTilgangTilBruker: TilgangTilBrukerResult = PersonHarTilgangTilBruker(
             navAnsatt,
             ident,
             "trace"
         ),
+        harTilgangTilKontor: TilgangTilKontorResult = SystemHarTilgangTilKontor,
         skjermingResult: SkjermingResult = SkjermingFunnet(HarSkjerming(false)),
         adresseResult: HarStrengtFortroligAdresseResult = HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)),
         oppfolgingsperiodeResult: OppfolgingsperiodeOppslagResult = AktivOppfolgingsperiode(ident, OppfolgingsperiodeId(UUID.randomUUID()), startDato = OffsetDateTime.now()),
         tilordneKontor: (event: KontorEndretEvent, brukAORuting: Boolean) -> Unit = { a, b -> Unit },
         publiserKontorEndring: (event: KontorEndretEvent) -> Result<Unit> = { a -> Result.success(Unit) },
     ): SettKontorHandler {
-        val hentAoKontor = suspend { a: AOPrincipal, i: IdentSomKanLagres -> null }
-        val harTilgang = suspend { a: AOPrincipal, b: IdentSomKanLagres, c: String -> harTilgang }
+        val hentAoKontor = suspend { i: IdentSomKanLagres -> null }
+        val harTilgang = suspend { a: AOPrincipal, b: IdentSomKanLagres, traceId: String -> harTilgangTilBruker }
+        val harTilgangTilKontor = suspend { a: AOPrincipal, b: KontorId, traceId: String -> harTilgangTilKontor }
         return SettKontorHandler(
             { KontorNavn("Kontor navn") },
             hentAoKontor,
             harTilgang,
+            harTilgangTilKontor,
             { oppfolgingsperiodeResult },
             tilordneKontor,
             publiserKontorEndring,

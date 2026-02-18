@@ -10,7 +10,6 @@ import io.ktor.server.request.*
 import io.ktor.server.response.respond
 import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
-import no.nav.AOPrincipal
 import no.nav.Authenticated
 import no.nav.NotAuthenticated
 import no.nav.audit.AuditLogger
@@ -49,11 +48,10 @@ fun Application.configureArbeidsoppfolgingskontorModule(
 
     val settKontorHandler = SettKontorHandler(
         kontorNavnService::getKontorNavn,
-        { principal: AOPrincipal, ident: IdentSomKanLagres -> kontorTilhorighetService.getArbeidsoppfolgingKontorTilhorighet(ident) },
-        { principal, ident, traceId ->
-            poaoTilgangClient.harLeseTilgang(principal, ident, traceId)
-                .also { AuditLogger.logSettKontor(it.toAuditEntry()) }
-        },
+        { ident: IdentSomKanLagres -> kontorTilhorighetService.getArbeidsoppfolgingKontorTilhorighet(ident) },
+        { principal, ident, traceId -> poaoTilgangClient.harLeseTilgang(principal, ident, traceId)
+            .also { AuditLogger.logSettKontor(it.toAuditEntry()) } },
+        { principal, kontorId, traceId -> poaoTilgangClient.harTilgangTilKontor(principal, kontorId, traceId) },
         oppfolgingsperiodeService::getCurrentOppfolgingsperiode,
         { event: KontorEndretEvent, brukAoRuting2: Boolean -> kontorTilordningService.tilordneKontor(event, brukAoRuting2) },
         publiserKontorEndring,

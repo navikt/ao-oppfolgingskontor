@@ -23,7 +23,7 @@ import no.nav.audit.traceId
 import no.nav.db.Ident
 import no.nav.http.client.IdenterResult
 import no.nav.http.client.Norg2Client
-import no.nav.http.client.poaoTilgang.TilgangResult
+import no.nav.http.client.poaoTilgang.TilgangTilBrukerResult
 import no.nav.http.graphql.queries.AlleKontorQuery
 import no.nav.http.graphql.queries.KontorHistorikkQuery
 import no.nav.http.graphql.queries.KontorQuery
@@ -59,7 +59,7 @@ fun Application.installGraphQl(
     kontorTilhorighetService: KontorTilhorighetService,
     authenticateRequest: AuthenticateRequest,
     hentAlleIdenter: suspend (Ident) -> IdenterResult,
-    harLeseTilgang: suspend (AOPrincipal, Ident, traceId: String) -> TilgangResult,
+    harLeseTilgang: suspend (AOPrincipal, Ident, traceId: String) -> TilgangTilBrukerResult,
 ) {
     install(GraphQL) {
         schema {
@@ -113,7 +113,7 @@ fun Application.configureGraphQlModule(
     kontorTilhorighetService: KontorTilhorighetService,
     authenticateCall: AuthenticateRequest,
     hentAlleIdenter: suspend (Ident) -> IdenterResult,
-    harLeseTilgang: suspend (AOPrincipal, Ident, traceId: String) -> TilgangResult) {
+    harLeseTilgang: suspend (AOPrincipal, Ident, traceId: String) -> TilgangTilBrukerResult) {
     installGraphQl(
         norg2Client,
         kontorTilhorighetService,

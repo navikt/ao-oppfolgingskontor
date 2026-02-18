@@ -12,9 +12,9 @@ import no.nav.db.entity.GeografiskTilknyttetKontorEntity
 import no.nav.domain.KontorNavn
 import no.nav.domain.KontorType
 import no.nav.http.client.IdenterResult
-import no.nav.http.client.poaoTilgang.HarIkkeTilgang
-import no.nav.http.client.poaoTilgang.TilgangOppslagFeil
-import no.nav.http.client.poaoTilgang.TilgangResult
+import no.nav.http.client.poaoTilgang.HarIkkeTilgangTilBruker
+import no.nav.http.client.poaoTilgang.TilgangTilBrukerOppslagFeil
+import no.nav.http.client.poaoTilgang.TilgangTilBrukerResult
 import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
 import no.nav.http.graphql.schemas.KontorTilhorigheterQueryDto
 import no.nav.http.graphql.schemas.RegistrantTypeDto
@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory
 
 class KontorQuery(
     val kontorTilhorighetService: KontorTilhorighetService,
-    val harLeseTilgang: suspend (principal: AOPrincipal, ident: Ident, traceId: String) -> TilgangResult,
+    val harLeseTilgang: suspend (principal: AOPrincipal, ident: Ident, traceId: String) -> TilgangTilBrukerResult,
     val hentAlleIdenter: suspend (Ident) -> IdenterResult,
 ) : Query {
     val log = LoggerFactory.getLogger(KontorQuery::class.java)
@@ -42,8 +42,8 @@ class KontorQuery(
 
         logLesKontortilhorighet(result.toAuditEntry())
 
-        if (result is HarIkkeTilgang) throw Exception("Bruker har ikke lov å lese kontortilhørighet på denne brukeren")
-        if (result is TilgangOppslagFeil) throw Exception("Klarte ikke sjekke om nav-ansatt har tilgang til å lese kontortilhørighet på bruker: ${result.message}")
+        if (result is HarIkkeTilgangTilBruker) throw Exception("Bruker har ikke lov å lese kontortilhørighet på denne brukeren")
+        if (result is TilgangTilBrukerOppslagFeil) throw Exception("Klarte ikke sjekke om nav-ansatt har tilgang til å lese kontortilhørighet på bruker: ${result.message}")
 
         val kontorTilhorighet = kontorTilhorighetService.getKontorTilhorighet(identer)
 
@@ -59,8 +59,8 @@ class KontorQuery(
         val result = harLeseTilgang(principal, ident, traceId)
         logLesKontortilhorighet(result.toAuditEntry())
 
-        if (result is HarIkkeTilgang) throw Exception("Bruker har ikke lov å lese kontortilhørigheter på denne brukeren")
-        if (result is TilgangOppslagFeil) throw Exception("Klarte ikke sjekke om nav-ansatt har tilgang til å lese kontortilhørigheter på bruker: ${result.message}")
+        if (result is HarIkkeTilgangTilBruker) throw Exception("Bruker har ikke lov å lese kontortilhørigheter på denne brukeren")
+        if (result is TilgangTilBrukerOppslagFeil) throw Exception("Klarte ikke sjekke om nav-ansatt har tilgang til å lese kontortilhørigheter på bruker: ${result.message}")
 
         val (arbeidsoppfolging, arena, gt) = kontorTilhorighetService.getKontorTilhorigheter(identer)
 

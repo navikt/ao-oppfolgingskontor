@@ -1,5 +1,6 @@
 package no.nav.http.client.poaoTilgang
 
+import arrow.core.Either
 import io.ktor.client.*
 import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
@@ -11,14 +12,14 @@ import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.ApplicationEnvironment
-import kotlinx.serialization.json.Json
 import no.nav.AOPrincipal
 import no.nav.NavAnsatt
 import no.nav.SystemPrincipal
-import no.nav.db.Fnr
 import no.nav.db.Ident
+import no.nav.domain.KontorId
 import no.nav.http.client.tokenexchange.SystemTokenPlugin
 import no.nav.http.client.tokenexchange.TexasTokenResponse
+import no.nav.poao_tilgang.api.dto.request.PolicyId
 import no.nav.poao_tilgang.api.dto.request.TilgangType
 import no.nav.poao_tilgang.api.dto.response.DecisionType
 import org.slf4j.LoggerFactory
@@ -28,23 +29,37 @@ fun ApplicationEnvironment.getPoaoTilgangScope(): String {
     return config.property("apis.poaoTilgang.scope").getString()
 }
 
-sealed class TilgangResult
-sealed class HarTilgang: TilgangResult()
-object SystemHarTilgang: HarTilgang()
-class PersonHarTilgang(
+sealed class TilgangTilKontorResult
+sealed class HarTilgangTilKontor(): TilgangTilKontorResult()
+object SystemHarTilgangTilKontor: HarTilgangTilKontor()
+class PersonHarTilgangTilKontor(
     val subject: NavAnsatt,
-    val target: Ident,
+    val target: KontorId,
     val traceId: String,
-): HarTilgang()
-
-
-class HarIkkeTilgang(
-    val subject: NavAnsatt,
-    val target: Ident,
+): HarTilgangTilKontor()
+class HarIkkeTilgangTilKontor(
     val message: String,
+    val subject: NavAnsatt,
+    val target: KontorId,
     val traceId: String,
-) : TilgangResult()
-class TilgangOppslagFeil(val message: String) : TilgangResult()
+) : TilgangTilKontorResult()
+class TilgangTilKontorOppslagFeil(val message: String) : TilgangTilKontorResult()
+
+sealed class TilgangTilBrukerResult
+sealed class HarTilgangTilBruker: TilgangTilBrukerResult()
+object SystemHarTilgangTilBruker: HarTilgangTilBruker()
+class PersonHarTilgangTilBruker(
+    val subject: NavAnsatt,
+    val target: Ident,
+    val traceId: String,
+): HarTilgangTilBruker()
+class HarIkkeTilgangTilBruker(
+    val message: String,
+    val subject: NavAnsatt,
+    val target: Ident,
+    val traceId: String,
+) : TilgangTilBrukerResult()
+class TilgangTilBrukerOppslagFeil(val message: String) : TilgangTilBrukerResult()
 
 class PoaoTilgangKtorHttpClient(
     private val baseUrl: String,
@@ -76,105 +91,112 @@ class PoaoTilgangKtorHttpClient(
     }
     val evaluatePoliciesUrl = "$baseUrl$evaluatePoliciesPath"
 
-    /* Lager en egen serializer fordi man ikke kan annotere en klasse fra et lib med @Serializable */
-    val json = Json {
-//        serializersModule = SerializersModule {
-//            contextual(TilgangsattributterResponse::class, PoaoTilgangSerializer)
-//            contextual(EvaluatePoliciesRequest::class, PoaoTilgangSerializer)
-//        }
-    }
-
-    private suspend fun harLeseTilgangTilBruker(navAnsatt: NavAnsatt, fnr: Ident, traceId: String): TilgangResult {
-        return evaluatePolicy(evaluatePoliciesUrl, fnr, navAnsatt, traceId)
-    }
-
-    suspend fun harLeseTilgang(principal: AOPrincipal, fnr: Ident, traceId: String): TilgangResult {
+    suspend fun harTilgangTilKontor(principal: AOPrincipal, kontorId: KontorId, traceId: String): TilgangTilKontorResult {
         return when (principal) {
-            is NavAnsatt ->  harLeseTilgangTilBruker(principal, fnr, traceId)
-            is SystemPrincipal -> SystemHarTilgang
+            is NavAnsatt ->  harTilgangTilKontor(principal, kontorId, traceId)
+            is SystemPrincipal -> SystemHarTilgangTilKontor
         }
     }
 
-    private suspend fun evaluatePolicy(
+    private suspend fun harTilgangTilKontor(navAnsatt: NavAnsatt, kontorId: KontorId, traceId: String): TilgangTilKontorResult {
+        return evaluateNavAnsattHarTilgangTilKontorPolicy(evaluatePoliciesUrl, navAnsatt, kontorId, traceId)
+    }
+
+    private suspend fun harLeseTilgangTilBruker(navAnsatt: NavAnsatt, fnr: Ident, traceId: String): TilgangTilBrukerResult {
+        return evaluateNavAnsattHarTilgangTilBrukerPolicy(evaluatePoliciesUrl, fnr, navAnsatt, traceId)
+    }
+
+    suspend fun harLeseTilgang(principal: AOPrincipal, fnr: Ident, traceId: String): TilgangTilBrukerResult {
+        return when (principal) {
+            is NavAnsatt ->  harLeseTilgangTilBruker(principal, fnr, traceId)
+            is SystemPrincipal -> SystemHarTilgangTilBruker
+        }
+    }
+
+    private fun NavAnsatt.tilgangTilBrukerPayload(ident: Ident) = NavAnsattTilgangPolicyRequestDto(
+        requestId = UUID.randomUUID().toString(),
+        policyInput = NavAnsattTilgangTilBrukerPolicyInput(
+            navAnsattAzureId = this.navAnsattAzureId.toString(),
+            norskIdent = ident.value,
+            tilgangType = TilgangType.LESE
+        ),
+        policyId = PolicyId.NAV_ANSATT_TILGANG_TIL_EKSTERN_BRUKER_V2
+    )
+    private fun NavAnsatt.tilgangTilKontorPayload(kontorId: KontorId) = NavAnsattTilgangPolicyRequestDto(
+        requestId = UUID.randomUUID().toString(),
+        policyInput = NavAnsattTilgangTilNavEnhetPolicyInput(
+            navAnsattAzureId = this.navAnsattAzureId.toString(),
+            navEnhetId = kontorId.id
+        ),
+        policyId = PolicyId.NAV_ANSATT_TILGANG_TIL_NAV_ENHET_V1
+    )
+
+    suspend fun evaluatePolicyOverHttp(fullUrl: String, policyPayload: NavAnsattTilgangPolicyRequestDto): Either<String, PolicyEvaluationResultDto> {
+        return Either.catch {
+            val response = client.post (fullUrl) {
+                accept(ContentType.Application.Json)
+                contentType(ContentType.Application.Json)
+                setBody(EvalPolicyReq(listOf(policyPayload)))
+            }
+            if (response.status != HttpStatusCode.OK) {
+                val message = "http request poao-tilgang evaluatePolicy ${policyPayload.policyId.name} failed with status ${response.status.value} - ${response.bodyAsText()}"
+                return Either.Left(message)
+            } else {
+                val results = response.body<EvalPolicyRes>()
+                    .results.firstOrNull() ?: return Either.Left("No results found for requestId ${policyPayload.requestId}")
+                return Either.Right(results)
+            }
+        }
+            .mapLeft {
+                val message = "Http request til poao-tilgang feilet med exception: ${it.message}"
+                log.error(message, it)
+                return Either.Left(message)
+            }
+    }
+
+    private suspend fun evaluateNavAnsattHarTilgangTilBrukerPolicy(
         fullUrl: String,
         fnr: Ident,
         navAnsatt: NavAnsatt,
         traceId: String
-    ): TilgangResult {
-        return try {
-            val requestId = UUID.randomUUID().toString()
-            val response = client.post (fullUrl) {
-                accept(ContentType.Application.Json)
-                contentType(ContentType.Application.Json)
-                setBody(EvalPolicyReq(
-                        requests = listOf(
-                            NavAnsattTilgangTilEksternBrukerPolicyRequestDto(
-                                requestId = requestId,
-                                policyInput = Input(
-                                    navAnsattAzureId = navAnsatt.navAnsattAzureId.toString(),
-                                    norskIdent = fnr.value,
-                                    tilgangType = TilgangType.LESE
-                                ),
-                            )
-                        )
-                    )
+    ): TilgangTilBrukerResult {
+        val policyPayload = navAnsatt.tilgangTilBrukerPayload(fnr)
+        return evaluatePolicyOverHttp(fullUrl, policyPayload)
+            .map { result ->
+                if (result.decision.type == DecisionType.PERMIT) PersonHarTilgangTilBruker(
+                    navAnsatt,
+                    fnr,
+                    traceId
+                )
+                else HarIkkeTilgangTilBruker(
+                    "Har ikke tilgang: ${result.decision.message} - ${result.decision.reason}",
+                    navAnsatt,
+                    fnr,
+                    traceId
                 )
             }
-
-            if (response.status != HttpStatusCode.OK) {
-                log.error("http request poao-tilgang evaluatePolicy failed with status ${response.status.value} - ${response.bodyAsText()}")
-                TilgangOppslagFeil("http request poao-tilgang evaluatePolicy failed with status ${response.status.value}")
-            } else {
-                val results = response.body<EvalPolicyRes>()
-                val result = results.results.firstOrNull()
-                    ?: return TilgangOppslagFeil("No results found for requestId $requestId")
-                if (result.decision.type == DecisionType.PERMIT) {
-                    PersonHarTilgang(
-                        navAnsatt,
-                        fnr,
-                        traceId
-                    )
-                } else {
-                    HarIkkeTilgang(
-                        navAnsatt,
-                        fnr,
-                        "Har ikke tilgang: ${result.decision.message} - ${result.decision.reason}",
-                        traceId
-                    )
-                }
-            }
-        } catch (e: Throwable) {
-            val message = "Http request til poao-tilgang feilet med exception: ${e.message}"
-            log.error(message, e)
-            TilgangOppslagFeil(message)
-        }
+            .mapLeft { errorMessage -> TilgangTilBrukerOppslagFeil(errorMessage) }
+            .fold({ it }, { it })
     }
 
-    /*
-    private val poaoTilgangKtorHttpClient = PoaoTilgangHttpClient(
-        baseUrl,
-        httpFetch = ::fetch,
-        bodyParser = object : PoaoTilgangClient.BodyParser {
-
-            override fun parseHentTilgangsAttributterBody(body: String): ApiResult<TilgangsattributterResponse> {
-                try {
-                    return json.decodeFromString<TilgangsattributterResponse>(body).let { ApiResult.success(it) }
-                } catch (e: Exception) {
-                    log.error("Kunne ikke parse tilgangsattributter. Message: ${e.message}")
-                    return ApiResult.failure(ResponseDataApiException("Kunne ikke parse tilgangsattributter. Message: ${e.message}"))
+    private suspend fun evaluateNavAnsattHarTilgangTilKontorPolicy(
+        fullUrl: String,
+        navAnsatt: NavAnsatt,
+        kontorId: KontorId,
+        traceId: String
+    ): TilgangTilKontorResult {
+            val policyPayload = navAnsatt.tilgangTilKontorPayload(kontorId)
+            return evaluatePolicyOverHttp(fullUrl, policyPayload)
+                .map { result ->
+                    if (result.decision.type == DecisionType.PERMIT) PersonHarTilgangTilKontor(navAnsatt, kontorId, traceId)
+                    else HarIkkeTilgangTilKontor(
+                        "Har ikke tilgang: ${result.decision.message} - ${result.decision.reason}",
+                        navAnsatt,
+                        kontorId,
+                        traceId
+                    )
                 }
-            }
-
-            override fun parsePolicyRequestsBody(body: String) = TODO("Not yet implemented")
-            override fun parseErSkjermetPersonBody(body: String) = TODO("Not yet implemented")
-            override fun parseHentAdGrupper(body: String) = TODO("Not yet implemented")
-        },
-        serializer = object : PoaoTilgangClient.Serializer {
-            override fun serializeEvaluatePolicies(body: EvaluatePoliciesRequest): String {
-                return json.encodeToString(EvaluatePoliciesRequestSerializer, body)
-            }
-            override fun serializeHentAdGrupper(body: HentAdGrupperForBrukerRequest) = TODO("Not yet implemented")
-            override fun serializeErSkjermet(body: ErSkjermetPersonBulkRequest) = TODO("Not yet implemented")
-        }
-    )*/
+                .mapLeft { errorMessage -> TilgangTilKontorOppslagFeil(errorMessage) }
+                .fold({ it }, { it })
+    }
 }

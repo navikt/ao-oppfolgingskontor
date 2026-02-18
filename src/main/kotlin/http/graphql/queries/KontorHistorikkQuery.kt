@@ -18,8 +18,8 @@ import no.nav.db.table.KontorhistorikkTable.kontorType
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorType
 import no.nav.http.client.IdenterResult
-import no.nav.http.client.poaoTilgang.HarTilgang
-import no.nav.http.client.poaoTilgang.TilgangResult
+import no.nav.http.client.poaoTilgang.HarTilgangTilBruker
+import no.nav.http.client.poaoTilgang.TilgangTilBrukerResult
 import no.nav.http.graphql.schemas.KontorHistorikkQueryDto
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.SortOrder
@@ -28,7 +28,7 @@ import org.slf4j.LoggerFactory
 
 class KontorHistorikkQuery(
     val hentAlleIdenter: suspend (Ident) -> IdenterResult,
-    val harLeseTilgangTilBruker: suspend (navAnsatt: AOPrincipal, ident: Ident, traceId: String) -> TilgangResult,
+    val harLeseTilgangTilBruker: suspend (navAnsatt: AOPrincipal, ident: Ident, traceId: String) -> TilgangTilBrukerResult,
 ) : Query {
     val logger = LoggerFactory.getLogger(KontorHistorikkQuery::class.java)
 
@@ -40,7 +40,7 @@ class KontorHistorikkQuery(
             val inputIdent = Ident.validateOrThrow(ident, Ident.HistoriskStatus.UKJENT)
             val harTilgang = harLeseTilgangTilBruker(principal, inputIdent, traceId)
             AuditLogger.logLesKontorhistorikk(harTilgang.toAuditEntry())
-            if (harTilgang !is HarTilgang) throw Exception("Ikke tilgang til bruker")
+            if (harTilgang !is HarTilgangTilBruker) throw Exception("Ikke tilgang til bruker")
 
             transaction {
                 val alleIdenter = runBlocking { hentAlleIdenter(inputIdent).getOrThrow() }

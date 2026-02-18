@@ -3,7 +3,7 @@ package no.nav.utils
 import eventsLogger.BigQueryClient
 import io.ktor.client.*
 import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.plugins.logging.Logging
+import io.ktor.client.plugins.logging.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.testing.*
 import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
@@ -17,7 +17,9 @@ fun ApplicationTestBuilder.getJsonHttpClient(): HttpClient {
     }
 }
 
-val kontorTilordningService = KontorTilordningService(BigQueryClient(
-    "ProjectId",
-    ExposedLockProvider(Database.connect(TestDb.postgres))
-))
+val kontorTilordningService = KontorTilordningService(
+    BigQueryClient(
+        "ProjectId",
+        ExposedLockProvider(Database.connect(TestDb.postgres))
+    )
+)
