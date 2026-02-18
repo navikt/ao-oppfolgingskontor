@@ -55,4 +55,7 @@ Når bruker mangler GT brukes endepunktet `/api/v1/arbeidsfordeling/enheter/best
 - [Kafka Streams](https://kafka.apache.org/documentation/streams/)
 - [Exposed](https://www.jetbrains.com/help/exposed/home.html)
 
-[Link til GraphiQl](https://ao-oppfolgingskontor.intern.dev.nav.no/graphiql)
+### Teste i GraphiQL playground i dev
+- Skaff et OBO token fra nais sin [azure-token-generator](https://azure-token-generator.intern.dev.nav.no/api/obo?aud=dev-gcp.dab.ao-oppfolgingskontor)
+- Bruk token som en "Authorization" header i Headers fanen nederst i [GraphiQl](https://ao-oppfolgingskontor.intern.dev.nav.no/graphiql)
+- Profit?
