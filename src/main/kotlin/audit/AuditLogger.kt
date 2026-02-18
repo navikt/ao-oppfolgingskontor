@@ -10,15 +10,10 @@ import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.http.client.poaoTilgang.HarIkkeTilgangTilBruker
-import no.nav.http.client.poaoTilgang.HarIkkeTilgangTilKontor
 import no.nav.http.client.poaoTilgang.PersonHarTilgangTilBruker
-import no.nav.http.client.poaoTilgang.PersonHarTilgangTilKontor
 import no.nav.http.client.poaoTilgang.SystemHarTilgangTilBruker
-import no.nav.http.client.poaoTilgang.SystemHarTilgangTilKontor
 import no.nav.http.client.poaoTilgang.TilgangTilBrukerOppslagFeil
 import no.nav.http.client.poaoTilgang.TilgangTilBrukerResult
-import no.nav.http.client.poaoTilgang.TilgangTilKontorOppslagFeil
-import no.nav.http.client.poaoTilgang.TilgangTilKontorResult
 import org.slf4j.LoggerFactory
 import java.util.UUID
 import kotlin.text.split
