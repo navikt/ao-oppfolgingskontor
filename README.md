@@ -57,5 +57,6 @@ Når bruker mangler GT brukes endepunktet `/api/v1/arbeidsfordeling/enheter/best
 
 ### Teste i GraphiQL playground i dev
 - Skaff et OBO token fra nais sin [azure-token-generator](https://azure-token-generator.intern.dev.nav.no/api/obo?aud=dev-gcp.dab.ao-oppfolgingskontor)
-- Bruk token som en "Authorization" header i Headers fanen nederst i [GraphiQl](https://ao-oppfolgingskontor.intern.dev.nav.no/graphiql)
+- Bruk token som en "Authorization" header i `Headers` fanen nederst i [GraphiQl](https://ao-oppfolgingskontor.intern.dev.nav.no/graphiql)
+  - `{ "Authorization": "Bearer <token>" }`
 - Profit?
