@@ -80,7 +80,15 @@ class OppfolgingsHendelseProcessor(
             IngenAktivePerioderÅAvslutte -> Skip()
             is AvsluttetAktivPeriode -> {
                 publiserTombstone(this.internIdent)
-                Commit()
+                    .fold(
+                        { return Commit() },
+                        {
+                            val message = "Feilet å publisere tombstone på kafka: ${it.message}"
+                            log.error(message, it)
+                            return Retry(message)
+                        }
+                    )
+
             }
         }
     }

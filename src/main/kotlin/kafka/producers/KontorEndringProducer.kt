@@ -68,10 +68,8 @@ class KontorEndringProducer(
     }
 
     fun republiserKontor(kontortilordningSomSkalRepubliseres: KontortilordningSomSkalRepubliseres): Result<Unit> {
-        return runCatching {
-            val value = kontortilordningSomSkalRepubliseres.toKontorTilordningMeldingDto()
-            publiserEndringPåKontor(kontortilordningSomSkalRepubliseres.internIdent, value)
-        }
+        val value = kontortilordningSomSkalRepubliseres.toKontorTilordningMeldingDto()
+        return publiserEndringPåKontor(kontortilordningSomSkalRepubliseres.internIdent, value)
     }
 
     private fun publiserEndringPåKontor(internIdent: InternIdent, event: KontorTilordningMeldingDto): Result<Unit> {
