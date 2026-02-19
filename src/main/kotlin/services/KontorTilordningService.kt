@@ -1,6 +1,7 @@
 package no.nav.services
 
 import arrow.core.Either
+import arrow.core.right
 import db.table.AlternativAoKontorTable
 import eventsLogger.BigQueryClient
 import eventsLogger.KontorTypeForBigQuery
@@ -116,15 +117,10 @@ class KontorTilordningService(private val bigQueryClient: BigQueryClient) {
         }
     }
 
-    fun slettArbeidsoppfølgingskontorTilordning(oppfolgingsperiodeIdSomSkalSlettes: OppfolgingsperiodeId): Either<Throwable, Unit> {
+    fun slettArbeidsoppfølgingskontorTilordning(oppfolgingsperiodeIdSomSkalSlettes: OppfolgingsperiodeId): Either<Throwable, Int> {
         return Either.catch {
             transaction {
-                val antallRaderSlettet = ArbeidsOppfolgingKontorTable.deleteWhere { oppfolgingsperiodeId eq oppfolgingsperiodeIdSomSkalSlettes.value }
-                when (antallRaderSlettet) {
-                    0 -> throw Exception("Fant ingen arbeidsoppfølgingskontortilordning å slette.")
-                    1 -> Unit
-                    else -> throw Exception("Fant flere arbeidsoppfølgingskontortilordninger å slette, slettet $antallRaderSlettet rader.")
-                }
+                ArbeidsOppfolgingKontorTable.deleteWhere { oppfolgingsperiodeId eq oppfolgingsperiodeIdSomSkalSlettes.value }
             }
         }
     }

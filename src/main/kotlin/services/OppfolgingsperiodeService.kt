@@ -41,81 +41,38 @@ class OppfolgingsperiodeService(
             }
             aktivOppfolgingsperiode.periodeId != oppfolgingsperiode.periodeId -> {
                 val periodenViHarMottattAvsluttetMeldingPaaErEldreEnnAktivPeriode = aktivOppfolgingsperiode.startDato.isAfter(oppfolgingsperiode.startDato.toOffsetDateTime())
-                val periodenViHarMottattAvsluttetMeldingPaaErNyereEnnAktivPeriode = !periodenViHarMottattAvsluttetMeldingPaaErEldreEnnAktivPeriode
 
                 if (periodenViHarMottattAvsluttetMeldingPaaErEldreEnnAktivPeriode) {
                     return PersonHarNyereAktivPeriode
-                }
-
-                if (periodenViHarMottattAvsluttetMeldingPaaErNyereEnnAktivPeriode) {
+                } else {
                     // Dette skal aldri skje – vi behandlet ikke avslutning på forrige perioden og mottok ikke startmelding på nåværende periode
                     // Vi må uansett rydde opp perioden som vi faktisk har lagret – i denne appen vet vi ingenting om den nyere annet enn at den nå er avsluttet
                     // Tombstone personen
-                }
+                    slettArbeidsoppfolgingskontorTilordning(aktivOppfolgingsperiode.periodeId).fold(
+                        ifLeft = { throw Exception("Uventet feil ved sletting av arbeidsoppfølgingskontor") },
+                        ifRight = { log.info("Slettet $it arbeidsoppfølgingskontor fordi oppfølgingsperiode ble avsluttet") }
+                    )
+                    slettArbeidsoppfolgingskontorTilordning(oppfolgingsperiode.periodeId).fold(
+                        ifLeft = { throw Exception("Uventet feil ved sletting av arbeidsoppfølgingskontor") },
+                        ifRight = { log.info("Slettet $it arbeidsoppfølgingskontor fordi oppfølgingsperiode ble avsluttet") }
+                    )
+                    val slettetAktivOppfølgingsperiode = OppfolgingsperiodeDao.deleteOppfolgingsperiode(aktivOppfolgingsperiode.periodeId) == 1
+                    val slettetInnkommenOppfølgingperiode = OppfolgingsperiodeDao.deleteOppfolgingsperiode(oppfolgingsperiode.periodeId) == 1
+                    log.warn("Fikk inn en avsluttetmelding på nyere periode enn den vi hadde lagret, dette skal ikke skje. Har ryddet opp. Slettet eldste periode: $slettetAktivOppfølgingsperiode, slettet nyeste periode: $slettetInnkommenOppfølgingperiode")
 
-
-
-
-
-                // Rydd opp 2 perioder
-                // Tombstone begge (1 tombstone melding)
-                //    start-1  - stopp-1  - start-2  // leser fra starten igjen //  - stopp-1 (finnes ikke stopp 2 enda)
-                // GammelPeriodeAvsluttet()
-                val erAktivPeriodeEldreEnnInnkommendePeriode = aktivOppfolgingsperiode
-                    .startDato.isBefore(oppfolgingsperiode.startDato.toOffsetDateTime())
-                // Hvis true
-                //  [ A ------- ]
-                //               [ ----- ]
-                // Hvis false
-                //              [ A ---- ]
-                // [ ----- ]
-
-                when (erAktivPeriodeEldreEnnInnkommendePeriode) {
-                    // Har ikke sett sluttmelding på nyeste periode enda, unngå å tombstone
-                    true -> PersonHarNyereAktivPeriode
-                    false -> AvsluttetAktivPeriode(aktivOppfolgingsperiode.internIdent)
+                    return AvsluttetAktivPeriode(aktivOppfolgingsperiode.internIdent)
                 }
             }
             aktivOppfolgingsperiode.periodeId == oppfolgingsperiode.periodeId -> {
                 // Mottok avslutning på aktiv periode (Happy case)
+                slettArbeidsoppfolgingskontorTilordning(aktivOppfolgingsperiode.periodeId).fold(
+                    ifLeft = { log.error("Uventet feil ved sletting av arbeidsoppfølgingskontor: ${it.message}") },
+                    ifRight = { log.info("Slettet arbeidsoppfølgingskontor fordi oppfølgingsperiode ble avsluttet") }
+                )
+                OppfolgingsperiodeDao.deleteOppfolgingsperiode(aktivOppfolgingsperiode.periodeId)
                 AvsluttetAktivPeriode(aktivOppfolgingsperiode.internIdent)
             }
             else -> throw Exception("Skal ikke skje")
-        }
-
-
-
-        val erNåværendePeriodeEldreEnnInnkommendePeriode = aktivOppfolgingsperiode
-            ?.startDato?.isBefore(oppfolgingsperiode.startDato.toOffsetDateTime()) ?: false
-
-        val nåværendePeriodeBleAvsluttet = when {
-            aktivOppfolgingsperiode != null -> {
-                if (erNåværendePeriodeEldreEnnInnkommendePeriode) {
-                    slettArbeidsoppfolgingskontorTilordning(aktivOppfolgingsperiode.periodeId).fold(
-                        ifLeft = { log.error("Uventet feil ved sletting av arbeidsoppfølgingskontor: ${it.message}") },
-                        ifRight = { log.info("Slettet arbeidsoppfølgingskontor fordi oppfølgingsperiode ble avsluttet") }
-                    )
-                    OppfolgingsperiodeDao.deleteOppfolgingsperiode(aktivOppfolgingsperiode.periodeId) > 0
-                } else {
-                    false
-                }
-            }
-            else -> false
-        }
-
-        slettArbeidsoppfolgingskontorTilordning(oppfolgingsperiode.periodeId).fold(
-            ifLeft = { log.error("Uventet feil ved sletting av arbeidsoppfølgingskontor: ${it.message}") },
-            ifRight = { log.info("Slettet arbeidsoppfølgingskontor fordi oppfølgingsperiode ble avsluttet") }
-        )
-
-        val innkommendePeriodeBleAvsluttet = OppfolgingsperiodeDao.deleteOppfolgingsperiode(oppfolgingsperiode.periodeId) > 0
-
-        return when {
-            nåværendePeriodeBleAvsluttet && innkommendePeriodeBleAvsluttet -> throw Exception("Dette skal aldri skje! Skal ikke være flere perioder på samme person samtidig ${oppfolgingsperiode.periodeId}, ${aktivOppfolgingsperiode?.periodeId}")
-            // Hvis det er en åpen periode, så ønsker vi ikke å tombstone ny/nåværende periode
-            nåværendePeriodeBleAvsluttet -> PersonHarIngenAktivPeriode
-            innkommendePeriodeBleAvsluttet -> InnkommendePeriodeAvsluttet(aktivOppfolgingsperiode?.internIdent)
-            else -> PersonHarNyereAktivPeriode
         }
     }
 
