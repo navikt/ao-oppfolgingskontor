@@ -1,12 +1,12 @@
 package kafka.consumers
 
+import domain.IdenterOppslagFeil
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kafka.producers.OppfolgingEndretTilordningMelding
 import no.nav.db.Ident
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.OppfolgingsperiodeId
-import no.nav.http.client.IdenterOppslagFeil
 import no.nav.kafka.processor.Retry
 import no.nav.utils.randomFnr
 import org.apache.kafka.streams.processor.api.Record

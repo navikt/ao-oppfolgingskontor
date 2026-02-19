@@ -22,6 +22,7 @@ import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.http.client.GeografiskTilknytningKommuneNr
 import domain.kontorForGt.KontorForGtFantDefaultKontor
+import no.nav.db.InternIdent
 import no.nav.db.table.KontorNavnTable
 import no.nav.domain.KontorNavn
 import no.nav.services.KontorTilordningService
@@ -66,14 +67,14 @@ fun gittBrukerUnderOppfolging(
     return oppfolgingsperiodeId
 }
 
-fun gittIdentIMapping(ident: Ident, internIdent: Long) = gittIdentIMapping(identer = listOf(ident), internId = internIdent)
+fun gittIdentIMapping(ident: Ident, internIdent: InternIdent) = gittIdentIMapping(identer = listOf(ident), internId = internIdent)
 
 fun gittIdentIMapping(ident: Ident, slettet: OffsetDateTime? = null) = gittIdentIMapping(listOf(ident), slettet)
 
-fun gittIdentIMapping(identer: List<Ident>, slettet: OffsetDateTime? = null, internId: Long? = null) {
+fun gittIdentIMapping(identer: List<Ident>, slettet: OffsetDateTime? = null, internId: InternIdent? = null) {
     transaction {
         IdentMappingTable.batchInsert(identer) { ident ->
-            this[internIdent] = internId ?: nextValueOf(InternIdentSequence)
+            this[internIdent] = internId?.value ?: nextValueOf(InternIdentSequence)
             this[identType] = ident.toIdentType()
             this[historisk] = ident.historisk == HISTORISK
             this[IdentMappingTable.id] = ident.value

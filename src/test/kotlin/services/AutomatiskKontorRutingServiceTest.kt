@@ -81,6 +81,7 @@ import no.nav.services.TilordningFeil
 import no.nav.services.TilordningRetry
 import no.nav.services.TilordningSuccessIngenEndring
 import no.nav.services.TilordningSuccessKontorEndret
+import no.nav.utils.randomInternIdent
 import utils.Outcome
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -654,7 +655,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                             brukerMedLandskodeUtenFallback.oppfolgingsperiodeId()
                         ),
                         HarSkjerming(true),
-                        brukerMedLandskodeUtenFallback.gtForBruker as GtLandForBrukerFunnet
+                        brukerMedLandskodeUtenFallback.gtForBruker
                     ),
                     aoKontorEndret = AOKontorEndretPgaSkjermingEndret(
                         KontorTilordning(
@@ -956,10 +957,11 @@ fun gitt(bruker: Bruker): AutomatiskKontorRutingService {
 
 fun defaultOppfolgingsperiodeOppslagResult(fnr: IdentResult): OppfolgingsperiodeOppslagResult {
     return when (fnr) {
-        is IdentFunnet -> return AktivOppfolgingsperiode(
+        is IdentFunnet -> AktivOppfolgingsperiode(
             fnr.ident,
+            randomInternIdent(),
             OppfolgingsperiodeId(UUID.randomUUID()),
-            OffsetDateTime.now()
+            OffsetDateTime.now(),
         )
 
         is IdentIkkeFunnet -> OppfolgingperiodeOppslagFeil(fnr.message)
@@ -1229,7 +1231,7 @@ val brukerMedTilordnetKontorForOppfolgingStartet = Bruker(
     GtNummerForBrukerFunnet(GeografiskTilknytningBydelNr("1111")),
     SkjermingFunnet(HarSkjerming(false)),
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)),
-    AktivOppfolgingsperiode(Fnr("94345678901", UKJENT), OppfolgingsperiodeId(UUID.randomUUID()), OffsetDateTime.now()),
+    AktivOppfolgingsperiode(Fnr("94345678901", UKJENT), randomInternIdent(),OppfolgingsperiodeId(UUID.randomUUID()), OffsetDateTime.now()),
     Outcome.Success(true)
 )
 val brukerMedManglendeKontorForGtOgSkjerming = Bruker(

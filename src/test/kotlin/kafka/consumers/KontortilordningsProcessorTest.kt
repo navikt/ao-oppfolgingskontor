@@ -26,6 +26,7 @@ import no.nav.domain.externalEvents.OppfolgingsperiodeEndret
 import no.nav.services.KontorTilordningService
 import no.nav.utils.bigQueryClient
 import no.nav.utils.kontorTilordningService
+import no.nav.utils.randomInternIdent
 import org.apache.kafka.streams.processor.api.Record
 import org.junit.jupiter.api.Test
 import utils.Outcome
@@ -117,6 +118,7 @@ class KontortilordningsProcessorTest {
             { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
             { AktivOppfolgingsperiode(
                 oppfolging.fnr,
+                randomInternIdent(),
                 oppfolging.periodeId,
                 oppfolging.startDato.toOffsetDateTime()
             ) },
@@ -134,6 +136,7 @@ class KontortilordningsProcessorTest {
             { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
             { AktivOppfolgingsperiode(
                 oppfolging.fnr,
+                randomInternIdent(),
                 oppfolging.periodeId,
                 oppfolging.startDato.toOffsetDateTime()
             ) },

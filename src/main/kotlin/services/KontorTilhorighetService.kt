@@ -1,7 +1,8 @@
 package no.nav.services
 
 import domain.ArenaKontorUtvidet
-import no.nav.AOPrincipal
+import domain.IdenterFunnet
+import domain.IdenterResult
 import no.nav.db.Ident
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.ArenaKontorEntity
@@ -14,15 +15,9 @@ import no.nav.domain.ArbeidsoppfolgingsKontor
 import no.nav.domain.ArenaKontor
 import no.nav.domain.GeografiskTilknyttetKontor
 import no.nav.domain.KontorId
-import no.nav.domain.KontorType
-import no.nav.domain.KontorNavn
 import no.nav.domain.OppfolgingsperiodeId
-import no.nav.http.client.IdenterFunnet
-import no.nav.http.client.IdenterResult
-import no.nav.http.client.poaoTilgang.PoaoTilgangKtorHttpClient
 import no.nav.http.graphql.queries.toKontorTilhorighetQueryDto
 import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
-import no.nav.http.graphql.schemas.RegistrantTypeDto
 import org.jetbrains.exposed.sql.SizedIterable
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory

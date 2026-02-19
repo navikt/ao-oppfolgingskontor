@@ -4,6 +4,7 @@ import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.test.runTest
 import no.nav.db.Ident
+import no.nav.db.InternIdent
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.OppfolgingsperiodeEntity
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
@@ -20,6 +21,7 @@ import no.nav.utils.gittKontorNavn
 import no.nav.utils.randomAktorId
 import no.nav.utils.randomDnr
 import no.nav.utils.randomFnr
+import no.nav.utils.randomInternIdent
 import org.jetbrains.exposed.sql.deleteAll
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -55,7 +57,8 @@ class KontorRepubliseringServiceTest {
         val kontorId = KontorId("2124")
         val kontorNavn = KontorNavn("Nav Etterstad")
         val periode = gittBrukerUnderOppfolging(fnr)
-        gittIdentIMapping(listOf(fnr, aktorId), null, 20313)
+        val internIdent = InternIdent(20313)
+        gittIdentIMapping(listOf(fnr, aktorId), null, internIdent)
         gittKontorNavn(kontorNavn, kontorId)
         gittIdentMedKontor(
             ident = fnr,
@@ -83,7 +86,8 @@ class KontorRepubliseringServiceTest {
             kontorNavn = kontorNavn,
             updatedAt = updatedAt,
             oppfolgingsperiodeId = periode,
-            kontorEndringsType = KontorEndringsType.AutomatiskNorgRuting
+            kontorEndringsType = KontorEndringsType.AutomatiskNorgRuting,
+            internIdent = internIdent
         )
     }
 
@@ -110,7 +114,8 @@ class KontorRepubliseringServiceTest {
         val gammeltKontor = KontorId("1127")
         val kontorNavn = KontorNavn("Nav Vålrenga")
         val periode = gittBrukerUnderOppfolging(dnr)
-        gittIdentIMapping(listOf(fnr, aktorId, dnr), null, 25312)
+        val internIdent = randomInternIdent()
+        gittIdentIMapping(listOf(fnr, aktorId, dnr), null, internIdent)
         gittKontorNavn(kontorNavn, kontorId)
         gittIdentMedKontor(
             ident = dnr,
@@ -143,7 +148,8 @@ class KontorRepubliseringServiceTest {
             kontorNavn = kontorNavn,
             updatedAt = updatedAt,
             oppfolgingsperiodeId = periode,
-            kontorEndringsType = KontorEndringsType.AutomatiskNorgRuting
+            kontorEndringsType = KontorEndringsType.AutomatiskNorgRuting,
+            internIdent = internIdent
         )
     }
 
@@ -169,7 +175,8 @@ class KontorRepubliseringServiceTest {
         val kontorId = KontorId("2123")
         val kontorNavn = KontorNavn("Nav Helsfyr")
         val periode = gittBrukerUnderOppfolging(dnr)
-        gittIdentIMapping(listOf(fnr, aktorId, dnr), null, 20312)
+        val internIdent = randomInternIdent()
+        gittIdentIMapping(listOf(fnr, aktorId, dnr), null, internIdent)
         gittKontorNavn(kontorNavn, kontorId)
         gittIdentMedKontor(
             ident = dnr,
@@ -197,7 +204,8 @@ class KontorRepubliseringServiceTest {
             kontorNavn = kontorNavn,
             updatedAt = updatedAt,
             oppfolgingsperiodeId = periode,
-            kontorEndringsType = KontorEndringsType.AutomatiskNorgRuting
+            kontorEndringsType = KontorEndringsType.AutomatiskNorgRuting,
+            internIdent = internIdent
         )
     }
 
@@ -223,7 +231,8 @@ class KontorRepubliseringServiceTest {
         val kontorId = KontorId("1133")
         val kontorNavn = KontorNavn("Nav Fyrstikk")
         val periode = gittBrukerUnderOppfolging(dnr)
-        gittIdentIMapping(listOf(fnr, aktorId, dnr), null, 701112)
+        val internIdent = randomInternIdent()
+        gittIdentIMapping(listOf(fnr, aktorId, dnr), null, internIdent)
         gittKontorNavn(kontorNavn, kontorId)
         gittIdentMedKontor(
             ident = fnr,
@@ -251,7 +260,8 @@ class KontorRepubliseringServiceTest {
             kontorNavn = kontorNavn,
             updatedAt = updatedAt,
             oppfolgingsperiodeId = periode,
-            kontorEndringsType = KontorEndringsType.AutomatiskNorgRuting
+            kontorEndringsType = KontorEndringsType.AutomatiskNorgRuting,
+            internIdent = internIdent
         )
     }
 }

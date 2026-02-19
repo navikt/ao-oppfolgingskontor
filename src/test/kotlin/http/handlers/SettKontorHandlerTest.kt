@@ -41,6 +41,7 @@ import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingperiodeOppslagFeil
 import no.nav.services.OppfolgingsperiodeOppslagResult
 import no.nav.utils.randomFnr
+import no.nav.utils.randomInternIdent
 import org.junit.jupiter.api.Test
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -208,7 +209,7 @@ class SettKontorHandlerTest {
         harTilgangTilKontor: TilgangTilKontorResult = SystemHarTilgangTilKontor,
         skjermingResult: SkjermingResult = SkjermingFunnet(HarSkjerming(false)),
         adresseResult: HarStrengtFortroligAdresseResult = HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)),
-        oppfolgingsperiodeResult: OppfolgingsperiodeOppslagResult = AktivOppfolgingsperiode(ident, OppfolgingsperiodeId(UUID.randomUUID()), startDato = OffsetDateTime.now()),
+        oppfolgingsperiodeResult: OppfolgingsperiodeOppslagResult = AktivOppfolgingsperiode(ident, randomInternIdent(),OppfolgingsperiodeId(UUID.randomUUID()), startDato = OffsetDateTime.now()),
         tilordneKontor: (event: KontorEndretEvent, brukAORuting: Boolean) -> Unit = { a, b -> Unit },
         publiserKontorEndring: (event: KontorEndretEvent) -> Result<Unit> = { a -> Result.success(Unit) },
     ): SettKontorHandler {

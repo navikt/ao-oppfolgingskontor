@@ -37,6 +37,7 @@ import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.gittBrukerUnderOppfolging
 import no.nav.utils.kontorTilordningService
 import no.nav.utils.randomFnr
+import no.nav.utils.randomInternIdent
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
 import utils.Outcome
@@ -167,7 +168,7 @@ class LeesahProcessorTest {
             hentProfilering = { throw Throwable("Denne skal ikke brukes") },
             hentSkjerming = { SkjermingFunnet(HarSkjerming(false)) },
             hentHarStrengtFortroligAdresse = strengtFortroligAdresseProvider,
-            hentGjeldendeOppfolgingsperiode = { AktivOppfolgingsperiode(Fnr("66666666666", Ident.HistoriskStatus.AKTIV), oppfølgingsperiodeId, OffsetDateTime.now()) },
+            hentGjeldendeOppfolgingsperiode = { AktivOppfolgingsperiode(Fnr("66666666666", Ident.HistoriskStatus.AKTIV), randomInternIdent(), oppfølgingsperiodeId, OffsetDateTime.now()) },
             harAlleredeTilordnetAoKontorForOppfolgingsperiode = { _, _ -> Outcome.Success(false)  }
         )
     }

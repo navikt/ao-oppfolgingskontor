@@ -1,6 +1,7 @@
 package kafka.consumers
 
 import db.table.KafkaOffsetTable
+import domain.IdenterFunnet
 import domain.kontorForGt.KontorForGtFantDefaultKontor
 import eventsLogger.BigQueryClient
 import io.kotest.assertions.withClue
@@ -41,6 +42,7 @@ import no.nav.utils.bigQueryClient
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.kontorTilordningService
 import no.nav.utils.randomFnr
+import no.nav.utils.randomInternIdent
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.deleteAll
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -77,7 +79,7 @@ class BigAppTest {
         application {
             val topics = this.environment.topics()
             val oppfolgingsperiodeProvider =
-                { _: Ident -> AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, OffsetDateTime.now()) }
+                { _: Ident -> AktivOppfolgingsperiode(fnr, randomInternIdent(), oppfolgingsperiodeId, OffsetDateTime.now()) }
             val automatiskKontorRutingService = AutomatiskKontorRutingService(
                 { _, a, b -> KontorForGtFantDefaultKontor(kontor, b, a, GeografiskTilknytningBydelNr("3131")) },
                 { AlderFunnet(40) },
@@ -107,7 +109,7 @@ class BigAppTest {
                 { Result.success(Unit) },
                 true
             )
-            val identService = IdentService { IdenterFunnet(emptyList(), fnr) }
+            val identService = IdentService { PdlIdenterFunnet(emptyList(), fnr) }
             val identendringsProcessor = IdentChangeProcessor(identService)
 
             val kontorEndringProducer = mockk<KontorEndringProducer>()

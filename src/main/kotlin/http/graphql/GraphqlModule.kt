@@ -7,6 +7,7 @@ import com.expediagroup.graphql.server.ktor.graphQLPostRoute
 import com.expediagroup.graphql.server.ktor.defaultGraphQLStatusPages
 import com.expediagroup.graphql.server.ktor.graphQLSDLRoute
 import com.expediagroup.graphql.server.ktor.graphiQLRoute
+import domain.IdenterResult
 import graphql.GraphQLContext
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationEnvironment
@@ -21,7 +22,6 @@ import no.nav.Authenticated
 import no.nav.NotAuthenticated
 import no.nav.audit.traceId
 import no.nav.db.Ident
-import no.nav.http.client.IdenterResult
 import no.nav.http.client.Norg2Client
 import no.nav.http.client.poaoTilgang.TilgangTilBrukerResult
 import no.nav.http.graphql.queries.AlleKontorQuery

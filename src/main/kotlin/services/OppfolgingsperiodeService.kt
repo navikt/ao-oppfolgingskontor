@@ -26,7 +26,7 @@ import utils.Outcome
 
 class OppfolgingsperiodeService(
     val hentAlleIdenter: suspend (Ident) -> IdenterResult,
-    val slettArbeidsoppfolgingskontorTilordning: (OppfolgingsperiodeId) -> Either<Throwable, Unit>
+    val slettArbeidsoppfolgingskontorTilordning: (OppfolgingsperiodeId) -> Either<Throwable, Int>
 ) {
     val log = LoggerFactory.getLogger(OppfolgingsperiodeService::class.java)
 
@@ -60,7 +60,7 @@ class OppfolgingsperiodeService(
                     val slettetInnkommenOppfølgingperiode = OppfolgingsperiodeDao.deleteOppfolgingsperiode(oppfolgingsperiode.periodeId) == 1
                     log.warn("Fikk inn en avsluttetmelding på nyere periode enn den vi hadde lagret, dette skal ikke skje. Har ryddet opp. Slettet eldste periode: $slettetAktivOppfølgingsperiode, slettet nyeste periode: $slettetInnkommenOppfølgingperiode")
 
-                    return AvsluttetAktivPeriode(aktivOppfolgingsperiode.internIdent)
+                    AvsluttetAktivPeriode(aktivOppfolgingsperiode.internIdent)
                 }
             }
             aktivOppfolgingsperiode.periodeId == oppfolgingsperiode.periodeId -> {

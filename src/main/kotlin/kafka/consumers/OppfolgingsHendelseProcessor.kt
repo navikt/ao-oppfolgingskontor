@@ -77,8 +77,9 @@ class OppfolgingsHendelseProcessor(
     fun HandterPeriodeAvsluttetResultat.toRecordResult(event: OppfolgingsperiodeAvsluttet): RecordProcessingResult<Ident, OppfolgingsperiodeEndret> {
         return when (this) {
             PersonHarNyereAktivPeriode -> Skip()
-            PersonHarIngenAktivPeriode, InnkommendePeriodeAvsluttet -> {
-                publiserTombstone(event.periodeId)
+            IngenAktivePerioderÅAvslutte -> Skip()
+            is AvsluttetAktivPeriode -> {
+                publiserTombstone(this.internIdent)
                 Commit()
             }
         }

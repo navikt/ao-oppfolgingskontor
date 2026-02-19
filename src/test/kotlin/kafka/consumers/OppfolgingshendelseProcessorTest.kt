@@ -2,6 +2,7 @@ package kafka.consumers
 
 import db.entity.TidligArenaKontorEntity
 import domain.ArenaKontorUtvidet
+import domain.IdenterFunnet
 import io.kotest.assertions.withClue
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -21,7 +22,6 @@ import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.IdentFunnet
-import no.nav.http.client.IdenterFunnet
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Forward
@@ -30,6 +30,7 @@ import no.nav.kafka.processor.Skip
 import no.nav.services.AktivOppfolgingsperiode
 import domain.kontorForGt.KontorForGtFantDefaultKontor
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
+import no.nav.http.client.PdlIdenterFunnet
 import no.nav.services.KontorTilordningService
 import no.nav.services.NotUnderOppfolging
 import no.nav.utils.bigQueryClient
@@ -38,6 +39,7 @@ import no.nav.utils.gittIdentIMapping
 import no.nav.utils.kontorTilordningService
 import no.nav.utils.randomAktorId
 import no.nav.utils.randomFnr
+import no.nav.utils.randomInternIdent
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -128,13 +130,14 @@ class OppfolgingshendelseProcessorTest {
         aktorId = randomAktorId().toString(),
         periodeStart = ZonedDateTime.now(ZoneId.of("Europe/Oslo")).minusDays(2),
         oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
+        internIdent = randomInternIdent()
     )
 
     /* Mock at oppslag for å hente alle mappede identer bare returnerer 1 ident (happu path)  */
-    fun Bruker.defaultOppfolgingsHendelseProcessor(publiserTombstone: (oppfolgingsperiodeId: OppfolgingsperiodeId) -> Result<Unit> = { _ -> Result.success(Unit) }): OppfolgingsHendelseProcessor {
+    fun Bruker.defaultOppfolgingsHendelseProcessor(publiserTombstone: (internId: InternIdent) -> Result<Unit> = { _ -> Result.success(Unit) }): OppfolgingsHendelseProcessor {
         return OppfolgingsHendelseProcessor(
             oppfolgingsPeriodeService = OppfolgingsperiodeService(
-                { IdenterFunnet(listOf(this.ident, AktorId(this.aktorId, AKTIV)), this.ident) },
+                { IdenterFunnet(listOf(this.ident, AktorId(this.aktorId, AKTIV)), this.ident, this.internIdent) },
                 kontorTilordningService::slettArbeidsoppfølgingskontorTilordning
             ),
             publiserTombstone = publiserTombstone
@@ -210,9 +213,9 @@ class OppfolgingshendelseProcessorTest {
         val bruker = testBruker()
         val periodeSlutt = ZonedDateTime.now().minusDays(1)
 
-        val publiserteTombstones = mutableSetOf<OppfolgingsperiodeId>()
-        val consumer = bruker.defaultOppfolgingsHendelseProcessor({ periode ->
-            publiserteTombstones.add(periode)
+        val publiserteTombstones = mutableSetOf<InternIdent>()
+        val consumer = bruker.defaultOppfolgingsHendelseProcessor({ internIdent ->
+            publiserteTombstones.add(internIdent)
             Result.success(Unit)
         })
         val startPeriodeRecord = oppfolgingStartetMelding(bruker)
@@ -226,7 +229,7 @@ class OppfolgingshendelseProcessorTest {
         result.shouldBeInstanceOf<Commit<*, *>>()
         bruker.skalIkkeVæreUnderOppfølging()
         withClue("Forventet å ha publisert tombstone på oppfolgingsperiode med id: ${bruker.oppfolgingsperiodeId.value}") {
-            publiserteTombstones shouldBe setOf(bruker.oppfolgingsperiodeId)
+            publiserteTombstones shouldBe setOf(bruker.internIdent)
         }
     }
 
@@ -479,9 +482,9 @@ class OppfolgingshendelseProcessorTest {
                 val inputIdent = Ident.validateOrThrow(input, UKJENT)
                 // I denne testen simulerer vi at vi får inn en melding med dnr først, derfor returneres ikke fnr når inputIdent er dnr
                 when (inputIdent) {
-                    is Dnr -> IdenterFunnet(listOf(aktorId, aktivtDnr), inputIdent)
-                    is Fnr -> IdenterFunnet(listOf(aktorId, historiskDnr, fnr), inputIdent)
-                    is AktorId -> IdenterFunnet(listOf(aktorId, historiskDnr, fnr), inputIdent)
+                    is Dnr -> PdlIdenterFunnet(listOf(aktorId, aktivtDnr), inputIdent)
+                    is Fnr -> PdlIdenterFunnet(listOf(aktorId, historiskDnr, fnr), inputIdent)
+                    is AktorId -> PdlIdenterFunnet(listOf(aktorId, historiskDnr, fnr), inputIdent)
                     is Npid -> fail("LOL")
                 }
             }

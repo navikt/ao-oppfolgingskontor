@@ -1,5 +1,6 @@
 package no.nav.no.nav
 
+import domain.IdenterFunnet
 import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
 import io.ktor.server.testing.testApplication
@@ -23,7 +24,6 @@ import no.nav.domain.OppfolgingsperiodeId
 import no.nav.http.client.AlderFunnet
 import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
-import no.nav.http.client.IdenterFunnet
 import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
@@ -47,6 +47,7 @@ import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.gittBrukerUnderOppfolging
 import no.nav.utils.kontorTilordningService
 import no.nav.utils.randomFnr
+import no.nav.utils.randomInternIdent
 import no.nav.utils.randomTopicName
 import org.apache.kafka.common.serialization.Serde
 import org.apache.kafka.common.serialization.Serdes
@@ -74,7 +75,7 @@ class KafkaApplicationTest {
     fun `skal lagre alle nye endringer på arena-kontor i historikk tabellen`() = testApplication {
         val topic = randomTopicName()
         val fnr = randomFnr()
-        val oppfolgingsperiodeService = OppfolgingsperiodeService({ IdenterFunnet(listOf(fnr), fnr) },
+        val oppfolgingsperiodeService = OppfolgingsperiodeService({ IdenterFunnet(listOf(fnr), fnr, randomInternIdent()) },
             kontorTilordningService::slettArbeidsoppfølgingskontorTilordning)
         val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
             oppfolgingsperiodeService::getCurrentOppfolgingsperiode,
@@ -113,11 +114,12 @@ class KafkaApplicationTest {
     fun `skal kun lagre nyere data i arena-kontor tabell og historikk tabellen`() = testApplication {
         val fnr = randomFnr()
         val topic = randomTopicName()
-        val oppfolgingsperiodeService = OppfolgingsperiodeService({ IdenterFunnet(listOf(fnr), fnr) },
+        val internIdent = randomInternIdent()
+        val oppfolgingsperiodeService = OppfolgingsperiodeService({ IdenterFunnet(listOf(fnr), fnr, internIdent) },
             kontorTilordningService::slettArbeidsoppfølgingskontorTilordning)
         val kontorTilhorighetService = KontorTilhorighetService(
             kontorNavnService = mockk(),
-        ) { IdenterFunnet(listOf(fnr), fnr) }
+        ) { IdenterFunnet(listOf(fnr), fnr, internIdent) }
         val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
             oppfolgingsperiodeService::getCurrentOppfolgingsperiode,
             { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },
@@ -178,7 +180,7 @@ class KafkaApplicationTest {
             { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
             { SkjermingFunnet(HarSkjerming(false)) },
             { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
-            { AktivOppfolgingsperiode(fnr, oppfølgingsperiodeId, OffsetDateTime.now()) },
+            { AktivOppfolgingsperiode(fnr, randomInternIdent(),  oppfølgingsperiodeId, OffsetDateTime.now()) },
             { _, _ -> Outcome.Success(false) }
         )
         val skjermingProcessor = SkjermingProcessor(automatiskKontorRutingService, kontorTilordningService, brukAoRuting)
