@@ -31,6 +31,7 @@ class OppfolgingsperiodeService(
     val log = LoggerFactory.getLogger(OppfolgingsperiodeService::class.java)
 
     fun handterPeriodeAvsluttet(oppfolgingsperiode: OppfolgingsperiodeAvsluttet): HandterPeriodeAvsluttetResultat {
+        // Bør variabelnavnet være lagretOppfolgingsperiode?
         val aktivOppfolgingsperiode: AktivOppfolgingsperiode? = getNåværendePeriode(oppfolgingsperiode.fnr)
 
         return when {
@@ -39,6 +40,23 @@ class OppfolgingsperiodeService(
                 IngenAktivePerioderÅAvslutte
             }
             aktivOppfolgingsperiode.periodeId != oppfolgingsperiode.periodeId -> {
+                val periodenViHarMottattAvsluttetMeldingPaaErEldreEnnAktivPeriode = aktivOppfolgingsperiode.startDato.isAfter(oppfolgingsperiode.startDato.toOffsetDateTime())
+                val periodenViHarMottattAvsluttetMeldingPaaErNyereEnnAktivPeriode = !periodenViHarMottattAvsluttetMeldingPaaErEldreEnnAktivPeriode
+
+                if (periodenViHarMottattAvsluttetMeldingPaaErEldreEnnAktivPeriode) {
+                    return PersonHarNyereAktivPeriode
+                }
+
+                if (periodenViHarMottattAvsluttetMeldingPaaErNyereEnnAktivPeriode) {
+                    // Dette skal aldri skje – vi behandlet ikke avslutning på forrige perioden og mottok ikke startmelding på nåværende periode
+                    // Vi må uansett rydde opp perioden som vi faktisk har lagret – i denne appen vet vi ingenting om den nyere annet enn at den nå er avsluttet
+                    // Tombstone personen
+                }
+
+
+
+
+
                 // Rydd opp 2 perioder
                 // Tombstone begge (1 tombstone melding)
                 //    start-1  - stopp-1  - start-2  // leser fra starten igjen //  - stopp-1 (finnes ikke stopp 2 enda)
