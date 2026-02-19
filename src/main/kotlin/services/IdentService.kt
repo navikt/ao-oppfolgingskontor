@@ -180,16 +180,18 @@ class IdentService(
     public suspend fun hentAlleIdenter(identInput: Ident): IdenterResult {
         try {
             val fullIdentInfo = hentIdentMappinger(identInput, true)
-            val internIdent = fullIdentInfo.map { it.internIdent }.toSet().single().let { InternIdent(it) }
             val alleIdenter = fullIdentInfo.map { it.ident }
             return when (alleIdenter.size) {
                 // Fallback til å hente synkront fra PDL
                 0 -> hentAlleIdenterOgOppdaterMapping(identInput)
-                else -> IdenterFunnet(
-                    identer = alleIdenter,
-                    inputIdent = identInput,
-                    internIdent = internIdent
-                )
+                else -> {
+                    val internIdent = fullIdentInfo.map { it.internIdent }.toSet().single().let { InternIdent(it) }
+                    IdenterFunnet(
+                        identer = alleIdenter,
+                        inputIdent = identInput,
+                        internIdent = internIdent
+                    )
+                }
             }
         } catch (e: Throwable) {
             log.error("Feil ved henting av alle identer for input-ident", e)
