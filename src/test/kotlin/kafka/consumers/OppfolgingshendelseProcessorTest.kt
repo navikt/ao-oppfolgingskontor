@@ -317,6 +317,41 @@ class OppfolgingshendelseProcessorTest {
     }
 
     @Test
+    fun `Skal hoppe over avslutt-melding for en periode eldre enn lagret aktiv periode`() = testApplication {
+        val bruker = testBruker()
+        val gammelStartDato = bruker.periodeStart.minusSeconds(1)
+        val oppfolgingsHendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
+        val startPeriodeRecord = oppfolgingStartetMelding(bruker)
+        val sluttGammelPeriodeRecord = oppfolgingAvsluttetMelding(
+            bruker.copy(
+                oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
+                periodeStart = gammelStartDato,
+            ), sluttDato = ZonedDateTime.now()
+        )
+        oppfolgingsHendelseProcessor.process(startPeriodeRecord)
+
+        val processingResult = oppfolgingsHendelseProcessor.process(sluttGammelPeriodeRecord)
+
+        processingResult.shouldBeInstanceOf<Skip<*, *>>()
+        bruker.skalVæreUnderOppfølging()
+    }
+
+    @Test
+    fun `Skal retry-e på tombstone-publisering-feil`() = testApplication {
+        val bruker = testBruker()
+        val feilmelding = "Kafka er nede"
+        val consumer = bruker.defaultOppfolgingsHendelseProcessor({ _ ->
+            Result.failure(RuntimeException(feilmelding))
+        })
+        consumer.process(oppfolgingStartetMelding(bruker))
+
+        val result = consumer.process(oppfolgingAvsluttetMelding(bruker, ZonedDateTime.now()))
+
+        result.shouldBeInstanceOf<Retry<*, *>>()
+        result.reason shouldBe "Feilet å publisere tombstone på kafka: $feilmelding"
+    }
+
+    @Test
     fun `Skal retry-e på deserialiseringsfeil`() {
         val bruker = testBruker()
         val oppfolgingsHendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
