@@ -4,6 +4,7 @@ import no.nav.db.AktorId
 import no.nav.db.Ident
 import no.nav.db.Ident.Companion.validateIdentSomKanLagres
 import no.nav.db.IdentSomKanLagres
+import no.nav.db.InternIdent
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorId
 import no.nav.domain.KontorNavn
@@ -93,7 +94,8 @@ class KontorRepubliseringService(
                 aktorId.ident as aktorId, -- aktørid
                 oppfolgingsperiode.oppfolgingsperiode_id,
                 historikk.kontorendringstype,
-                kontornavn.kontor_navn,               
+                kontornavn.kontor_navn,
+                alle_identer.intern_ident,
                 CASE
                     WHEN alle_identer.ident_type = 'FNR' and alle_identer.historisk = false THEN 1
                     WHEN alle_identer.ident_type = 'DNR' and alle_identer.historisk = false THEN 2
@@ -131,8 +133,10 @@ fun ResultSet.toKontorSomSkalRepubliseres(): KontortilordningSomSkalRepubliseres
     val oppfolgingsperiodeId = OppfolgingsperiodeId(this.getObject("oppfolgingsperiode_id", UUID::class.java))
     val kontorEndringsType = KontorEndringsType.valueOf(this.getString("kontorendringstype"))
     val kontorNavn = KontorNavn(this.getString("kontor_navn"))
+    val internIdent = InternIdent(this.getLong("intern_ident"))
     return KontortilordningSomSkalRepubliseres(
         ident = ident,
+        internIdent = internIdent,
         aktorId = aktorId,
         kontorId = kontorId,
         kontorNavn = kontorNavn,
@@ -144,6 +148,7 @@ fun ResultSet.toKontorSomSkalRepubliseres(): KontortilordningSomSkalRepubliseres
 
 data class KontortilordningSomSkalRepubliseres(
     val ident: IdentSomKanLagres,
+    val internIdent: InternIdent,
     val aktorId: AktorId,
     val kontorId: KontorId,
     val kontorNavn: KontorNavn,

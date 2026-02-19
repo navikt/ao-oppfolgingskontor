@@ -1,5 +1,9 @@
 package kafka.producers
 
+import domain.IdenterFunnet
+import domain.IdenterIkkeFunnet
+import domain.IdenterOppslagFeil
+import domain.IdenterResult
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import no.nav.db.AktorId
@@ -10,13 +14,8 @@ import no.nav.db.finnForetrukketIdent
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorId
 import no.nav.domain.KontorNavn
-import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.events.AOKontorEndret
 import no.nav.domain.events.KontorSattAvVeileder
-import no.nav.http.client.IdenterFunnet
-import no.nav.http.client.IdenterIkkeFunnet
-import no.nav.http.client.IdenterOppslagFeil
-import no.nav.http.client.IdenterResult
 import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.clients.producer.ProducerRecord
 import services.KontortilordningSomSkalRepubliseres
@@ -35,13 +34,13 @@ class KontorEndringProducer(
     suspend fun publiserEndringPåKontor(event: KontorSattAvVeileder): Result<Unit> {
         if (brukAoRuting) {
             return runCatching {
-                val (ident, aktorId) = finnPubliseringsIdenter(event.tilordning.fnr)
+                val (ident, aktorId, internIdent) = finnPubliseringsIdenter(event.tilordning.fnr)
                 val value = event.toKontorTilordningMeldingDto(
                     aktorId,
                     ident,
                     kontorNavnProvider(event.tilordning.kontorId)
                 )
-                publiserEndringPåKontor(value)
+                publiserEndringPåKontor(internIdent, value)
             }
         } else {
             return Result.success(Unit)
@@ -68,10 +67,10 @@ class KontorEndringProducer(
         }
     }
 
-    fun republiserKontor(internIdent: InternIdent, kontortilordningSomSkalRepubliseres: KontortilordningSomSkalRepubliseres): Result<Unit> {
+    fun republiserKontor(kontortilordningSomSkalRepubliseres: KontortilordningSomSkalRepubliseres): Result<Unit> {
         return runCatching {
             val value = kontortilordningSomSkalRepubliseres.toKontorTilordningMeldingDto()
-            publiserEndringPåKontor(internIdent, value)
+            publiserEndringPåKontor(kontortilordningSomSkalRepubliseres.internIdent, value)
         }
     }
 
@@ -99,15 +98,15 @@ class KontorEndringProducer(
 
     suspend fun finnPubliseringsIdenter(ident: IdentSomKanLagres): Triple<IdentSomKanLagres, AktorId, InternIdent> {
         val alleIdenter = hentAlleIdenter(ident)
-        val identer = when (alleIdenter) {
-            is IdenterFunnet -> alleIdenter.identer
+        val (identer, internIdent) = when (alleIdenter) {
+            is IdenterFunnet -> alleIdenter.identer to alleIdenter.internIdent
             is IdenterIkkeFunnet -> throw RuntimeException("Finner ikke identer for ident")
             is IdenterOppslagFeil -> throw RuntimeException("Feil ved oppslag av identer")
         }
         val aktorId = identer.first { it is AktorId && it.historisk == Ident.HistoriskStatus.AKTIV } as? AktorId
             ?: throw RuntimeException("Fant ikke aktorId for ident ved publisering av kontor endring")
         val fnr = identer.finnForetrukketIdent() ?: throw RuntimeException("Fant ikke foretrukken ident for $ident")
-        return fnr to aktorId
+        return  Triple(fnr, aktorId, internIdent)
     }
 }
 

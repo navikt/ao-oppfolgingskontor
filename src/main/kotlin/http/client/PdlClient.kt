@@ -49,21 +49,21 @@ data class IdentFunnet(val ident: IdentSomKanLagres) : IdentResult()
 data class IdentIkkeFunnet(val message: String) : IdentResult()
 data class IdentOppslagFeil(val message: String) : IdentResult()
 
-sealed class IdenterResult {
-    fun getOrThrow(): IdenterFunnet {
+sealed class PdlIdenterResult {
+    fun getOrThrow(): PdlIdenterFunnet {
         return when (this) {
-            is IdenterFunnet -> this
-            is IdenterIkkeFunnet -> throw Exception("Fikk ikke hentet identer for ident: ${this.message}")
-            is IdenterOppslagFeil -> throw Exception("Fikk ikke hentet identer for ident: ${this.message}")
+            is PdlIdenterFunnet -> this
+            is PdlIdenterIkkeFunnet -> throw Exception("Fikk ikke hentet identer for ident: ${this.message}")
+            is PdlIdenterOppslagFeil -> throw Exception("Fikk ikke hentet identer for ident: ${this.message}")
         }
     }
 }
-data class IdenterFunnet(val identer: List<Ident>, val inputIdent: Ident, val internIdent: InternIdent) : IdenterResult() {
+data class PdlIdenterFunnet(val identer: List<Ident>, val inputIdent: Ident) : PdlIdenterResult() {
     val foretrukketIdent: Ident
         get() = identer.finnForetrukketIdent()  ?: throw IllegalStateException("Fant ikke foretrukket ident, alle identer historiske?")
 }
-data class IdenterIkkeFunnet(val message: String) : IdenterResult()
-data class IdenterOppslagFeil(val message: String) : IdenterResult()
+data class PdlIdenterIkkeFunnet(val message: String) : PdlIdenterResult()
+data class PdlIdenterOppslagFeil(val message: String) : PdlIdenterResult()
 
 sealed class HarStrengtFortroligAdresseResult
 class HarStrengtFortroligAdresseFunnet(val harStrengtFortroligAdresse: HarStrengtFortroligAdresse) :
@@ -142,21 +142,21 @@ class PdlClient(
         }
     }
 
-    suspend fun hentIdenterFor(aktorId: String): IdenterResult {
+    suspend fun hentIdenterFor(aktorId: String): PdlIdenterResult {
         try {
             val query = HentFnrQuery(HentFnrQuery.Variables(ident = aktorId, historikk = true))
             val result = client.execute(query)
             if (result.errors != null && result.errors!!.isNotEmpty()) {
-                return IdenterOppslagFeil(result.errors!!.joinToString { "${it.message}: ${it.extensions?.get("code")}" })
+                return PdlIdenterOppslagFeil(result.errors!!.joinToString { "${it.message}: ${it.extensions?.get("code")}" })
             }
             return result.data?.hentIdenter?.identer?.let { pdlIdenter ->
                 val identer = pdlIdenter.map { (ident, historisk) -> Ident.validateOrThrow(ident, historisk.toKnownHistoriskStatus()) }
                 val inputIdent = identer.first { it.value == aktorId }
-                IdenterFunnet(identer, inputIdent)
-            } ?: IdenterIkkeFunnet("Ingen identer funnet for aktorId")
+                PdlIdenterFunnet(identer, inputIdent)
+            } ?: PdlIdenterIkkeFunnet("Ingen identer funnet for aktorId")
 
         } catch (e: Throwable) {
-            return IdenterOppslagFeil("Henting av fnr fra aktorId feilet: ${e.message}")
+            return PdlIdenterOppslagFeil("Henting av fnr fra aktorId feilet: ${e.message}")
                 .also { log.error(it.message, e) }
         }
     }

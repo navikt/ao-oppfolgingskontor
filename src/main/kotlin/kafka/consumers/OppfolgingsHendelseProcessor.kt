@@ -7,6 +7,7 @@ import kafka.consumers.oppfolgingsHendelser.OppfolgingsHendelseDto
 import kafka.consumers.oppfolgingsHendelser.oppfolgingsHendelseJson
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
+import no.nav.db.InternIdent
 import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.KontorOverstyring
@@ -22,7 +23,7 @@ import java.util.*
 
 class OppfolgingsHendelseProcessor(
     val oppfolgingsPeriodeService: OppfolgingsperiodeService,
-    val publiserTombstone: (oppfolgingsperiodeId: OppfolgingsperiodeId) -> Result<Unit>,
+    val publiserTombstone: (internIdent: InternIdent) -> Result<Unit>,
 ) {
     val log = LoggerFactory.getLogger(javaClass)
 
@@ -75,8 +76,8 @@ class OppfolgingsHendelseProcessor(
 
     fun HandterPeriodeAvsluttetResultat.toRecordResult(event: OppfolgingsperiodeAvsluttet): RecordProcessingResult<Ident, OppfolgingsperiodeEndret> {
         return when (this) {
-            IngenPeriodeAvsluttet -> Skip()
-            GammelPeriodeAvsluttet, InnkommendePeriodeAvsluttet -> {
+            PersonHarNyereAktivPeriode -> Skip()
+            PersonHarIngenAktivPeriode, InnkommendePeriodeAvsluttet -> {
                 publiserTombstone(event.periodeId)
                 Commit()
             }
