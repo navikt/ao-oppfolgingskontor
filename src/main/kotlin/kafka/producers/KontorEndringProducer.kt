@@ -5,6 +5,7 @@ import kotlinx.serialization.json.Json
 import no.nav.db.AktorId
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
+import no.nav.db.InternIdent
 import no.nav.db.finnForetrukketIdent
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorId
@@ -21,7 +22,7 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import services.KontortilordningSomSkalRepubliseres
 
 class KontorEndringProducer(
-    val producer: Producer<String, String?>,
+    val producer: Producer<Long, String?>,
     val kontorTopicNavn: String,
     val kontorNavnProvider: suspend (kontorId: KontorId) -> KontorNavn,
     val hentAlleIdenter: suspend (identInput: IdentSomKanLagres) -> IdenterResult,
@@ -51,9 +52,10 @@ class KontorEndringProducer(
         return runCatching {
             val ident = Ident.validateOrThrow(event.ident, Ident.HistoriskStatus.UKJENT) as? IdentSomKanLagres
                 ?: throw IllegalArgumentException("Kan ikke publisere kontor-endring på aktørid, trenger annen ident")
-            val (fnr, aktorId) = finnPubliseringsIdenter(ident)
+            val (fnr, aktorId, internIdent) = finnPubliseringsIdenter(ident)
 
             publiserEndringPåKontor(
+                internIdent,
                 KontorTilordningMeldingDto(
                     kontorId = event.kontorId,
                     kontorNavn = kontorNavnProvider(KontorId(event.kontorId)).navn,
@@ -66,36 +68,36 @@ class KontorEndringProducer(
         }
     }
 
-    fun republiserKontor(kontortilordningSomSkalRepubliseres: KontortilordningSomSkalRepubliseres): Result<Unit> {
+    fun republiserKontor(internIdent: InternIdent, kontortilordningSomSkalRepubliseres: KontortilordningSomSkalRepubliseres): Result<Unit> {
         return runCatching {
             val value = kontortilordningSomSkalRepubliseres.toKontorTilordningMeldingDto()
-            publiserEndringPåKontor(value)
+            publiserEndringPåKontor(internIdent, value)
         }
     }
 
-    private fun publiserEndringPåKontor(event: KontorTilordningMeldingDto): Result<Unit> {
+    private fun publiserEndringPåKontor(internIdent: InternIdent, event: KontorTilordningMeldingDto): Result<Unit> {
         return runCatching {
             val record = ProducerRecord(
                 kontorTopicNavn,
-                event.oppfolgingsperiodeId,
+                internIdent.value,
                 Json.encodeToString(event)
             )
             producer.send(record)
         }
     }
 
-    fun publiserTombstone(oppfolgingPeriodeId: OppfolgingsperiodeId): Result<Unit> {
+    fun publiserTombstone(internIdent: InternIdent): Result<Unit> {
         return runCatching {
-            val record: ProducerRecord<String, String?> = ProducerRecord(
+            val record: ProducerRecord<Long, String?> = ProducerRecord(
                 kontorTopicNavn,
-                oppfolgingPeriodeId.value.toString(),
+                internIdent.value,
                 null
             )
             producer.send(record)
         }
     }
 
-    suspend fun finnPubliseringsIdenter(ident: IdentSomKanLagres): Pair<IdentSomKanLagres, AktorId> {
+    suspend fun finnPubliseringsIdenter(ident: IdentSomKanLagres): Triple<IdentSomKanLagres, AktorId, InternIdent> {
         val alleIdenter = hentAlleIdenter(ident)
         val identer = when (alleIdenter) {
             is IdenterFunnet -> alleIdenter.identer

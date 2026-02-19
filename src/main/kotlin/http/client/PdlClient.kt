@@ -16,6 +16,7 @@ import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
+import no.nav.db.InternIdent
 import no.nav.db.finnForetrukketIdent
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.http.client.tokenexchange.SystemTokenPlugin
@@ -57,7 +58,7 @@ sealed class IdenterResult {
         }
     }
 }
-data class IdenterFunnet(val identer: List<Ident>, val inputIdent: Ident) : IdenterResult() {
+data class IdenterFunnet(val identer: List<Ident>, val inputIdent: Ident, val internIdent: InternIdent) : IdenterResult() {
     val foretrukketIdent: Ident
         get() = identer.finnForetrukketIdent()  ?: throw IllegalStateException("Fant ikke foretrukket ident, alle identer historiske?")
 }
