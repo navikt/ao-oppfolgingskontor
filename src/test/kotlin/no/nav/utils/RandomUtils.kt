@@ -36,4 +36,4 @@ fun randomTopicName(): String {
         .joinToString("")
 }
 
-fun randomInternIdent(): InternIdent = InternIdent(Random.nextLong(1000000))
+fun randomInternIdent(): InternIdent = InternIdent(Random.nextLong(0, 1000000))
