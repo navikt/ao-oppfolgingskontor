@@ -20,10 +20,15 @@ import no.nav.http.client.IdentFunnet
 import no.nav.http.client.IdentIkkeFunnet
 import no.nav.http.client.IdentOppslagFeil
 import no.nav.http.client.IdentResult
-import no.nav.http.client.IdenterFunnet
-import no.nav.http.client.IdenterIkkeFunnet
-import no.nav.http.client.IdenterOppslagFeil
-import no.nav.http.client.IdenterResult
+import no.nav.http.client.PdlIdenterFunnet
+import no.nav.http.client.PdlIdenterIkkeFunnet
+import no.nav.http.client.PdlIdenterOppslagFeil
+import no.nav.http.client.PdlIdenterResult
+import no.nav.db.InternIdent
+import domain.IdenterFunnet as DomainIdenterFunnet
+import domain.IdenterIkkeFunnet as DomainIdenterIkkeFunnet
+import domain.IdenterOppslagFeil as DomainIdenterOppslagFeil
+import domain.IdenterResult as DomainIdenterResult
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.alias
@@ -36,7 +41,7 @@ import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 
 class IdentService(
-    val hentAlleIdenterSynkrontFraPdl: suspend (aktorId: String) -> IdenterResult,
+    val hentAlleIdenterSynkrontFraPdl: suspend (aktorId: String) -> PdlIdenterResult,
 ) {
     private val log = LoggerFactory.getLogger(IdentService::class.java)
 
@@ -57,7 +62,7 @@ class IdentService(
     }
 
     /* Tenkt kalt ved endring på aktor-v2 topic (endring i identer) */
-    suspend fun håndterEndringPåIdenter(ident: Ident): IdenterResult = hentAlleIdenterOgOppdaterMapping(ident)
+    suspend fun håndterEndringPåIdenter(ident: Ident): DomainIdenterResult = hentAlleIdenterOgOppdaterMapping(ident)
 
     fun håndterEndringPåIdenter(aktorId: AktorId, oppdaterteIdenterFraPdl: List<OppdatertIdent>): Int {
         val lagredeIdenter = hentIdentMappinger(
@@ -106,14 +111,20 @@ class IdentService(
         }
     }
 
-    suspend fun hentAlleIdenterOgOppdaterMapping(ident: Ident): IdenterResult {
+    suspend fun hentAlleIdenterOgOppdaterMapping(ident: Ident): DomainIdenterResult {
         return when (val identer = hentAlleIdenterSynkrontFraPdl(ident.value)) {
-            is IdenterFunnet -> {
-                oppdaterAlleIdentMappinger(identer.identer)
-                identer
+            is PdlIdenterFunnet -> {
+                val internId = oppdaterAlleIdentMappinger(identer.identer)
+                if (internId != null) {
+                    DomainIdenterFunnet(identer.identer, identer.inputIdent, InternIdent(internId))
+                } else {
+                    val internIdFallback = hentEksisterendeIdenter(identer.identer).firstOrNull()?.internIdent
+                        ?: return DomainIdenterOppslagFeil("Kunne ikke hente eksisterende intern ident")
+                    DomainIdenterFunnet(identer.identer, identer.inputIdent, InternIdent(internIdFallback))
+                }
             }
-
-            else -> identer
+            is PdlIdenterIkkeFunnet -> DomainIdenterIkkeFunnet(identer.message)
+            is PdlIdenterOppslagFeil -> DomainIdenterOppslagFeil(identer.message)
         }
     }
 
@@ -140,12 +151,12 @@ class IdentService(
             }
     }
 
-    private fun oppdaterAlleIdentMappinger(identer: List<Ident>) {
+    private fun oppdaterAlleIdentMappinger(identer: List<Ident>): Long? {
         try {
             val eksitrerendeInternIder = hentEksisterendeIdenter(identer)
                 .map { it.internIdent }
 
-            transaction {
+            return transaction {
                 val internId = getOrCreateInternId(eksitrerendeInternIder)
                 IdentMappingTable.batchUpsert(identer) {
                     this[IdentMappingTable.id] = it.value
@@ -158,31 +169,37 @@ class IdentService(
                     }
                     this[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
                 }
+                internId
             }
         } catch (e: Throwable) {
             // TODO: Ikke sluk denne feilen(?)
             log.error("Kunne ikke lagre ident-mapping ${e.message}", e)
+            return null
         }
     }
 
     /**
      * Henter alle tilhørende identer på en bruker, inkl historiske
      */
-    public suspend fun hentAlleIdenter(identInput: Ident): IdenterResult {
+    public suspend fun hentAlleIdenter(identInput: Ident): DomainIdenterResult {
         try {
-            val alleIdenter = hentIdentMappinger(identInput, true)
-                .map { it.ident }
-            return when (alleIdenter.size) {
+            val alleMappings = hentIdentMappinger(identInput, true)
+            return when (alleMappings.size) {
                 // Fallback til å hente synkront fra PDL
                 0 -> hentAlleIdenterOgOppdaterMapping(identInput)
-                else -> IdenterFunnet(
-                    identer = alleIdenter,
-                    inputIdent = identInput,
-                )
+                else -> {
+                    val alleIdenter = alleMappings.map { it.ident }
+                    val internId = alleMappings.first().internIdent
+                    DomainIdenterFunnet(
+                        identer = alleIdenter,
+                        inputIdent = identInput,
+                        internIdent = InternIdent(internId)
+                    )
+                }
             }
         } catch (e: Throwable) {
             log.error("Feil ved henting av alle identer for input-ident", e)
-            return IdenterOppslagFeil("Feil ved henting av alle identer for input-ident: ${e.message}")
+            return DomainIdenterOppslagFeil("Feil ved henting av alle identer for input-ident: ${e.message}")
         }
     }
 
@@ -328,12 +345,22 @@ class BleHistorisk(ident: Ident, internIdent: Long) : IdentEndring(ident, true, 
 class BleSlettet(ident: Ident, historisk: Boolean, internIdent: Long) : IdentEndring(ident, historisk, internIdent)
 class IngenEndring(ident: Ident, historisk: Boolean, internIdent: Long) : IdentEndring(ident, historisk, internIdent)
 
-fun IdenterResult.finnForetrukketIdent(): IdentResult {
+fun DomainIdenterResult.finnForetrukketIdent(): IdentResult {
     return when (this) {
-        is IdenterFunnet -> this.identer.finnForetrukketIdent()?.let { IdentFunnet(it) }
+        is DomainIdenterFunnet -> this.identer.finnForetrukketIdent()?.let { IdentFunnet(it) }
             ?: IdentIkkeFunnet("Fant ingen foretrukket ident")
 
-        is IdenterIkkeFunnet -> IdentIkkeFunnet(this.message)
-        is IdenterOppslagFeil -> IdentOppslagFeil(this.message)
+        is DomainIdenterIkkeFunnet -> IdentIkkeFunnet(this.message)
+        is DomainIdenterOppslagFeil -> IdentOppslagFeil(this.message)
+    }
+}
+
+fun PdlIdenterResult.finnForetrukketIdent(): IdentResult {
+    return when (this) {
+        is PdlIdenterFunnet -> this.identer.finnForetrukketIdent()?.let { IdentFunnet(it) }
+            ?: IdentIkkeFunnet("Fant ingen foretrukket ident")
+
+        is PdlIdenterIkkeFunnet -> IdentIkkeFunnet(this.message)
+        is PdlIdenterOppslagFeil -> IdentOppslagFeil(this.message)
     }
 }

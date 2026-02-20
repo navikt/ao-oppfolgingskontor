@@ -10,7 +10,8 @@ import no.nav.db.table.KontorhistorikkTable
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorType
 import no.nav.domain.System
-import no.nav.http.client.IdenterFunnet
+import domain.IdenterFunnet
+import no.nav.db.InternIdent
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.randomFnr
 import org.jetbrains.exposed.dao.id.EntityID
@@ -33,7 +34,7 @@ class KontorTilhorighetServiceTest {
 
         KontorTilhorighetService(
             mockk(),
-            { IdenterFunnet( listOf(ident), ident) }
+            { IdenterFunnet(listOf(ident), ident, InternIdent(1L)) }
         ).getArenaKontorMedOppfolgingsperiode(ident)
     }
 
@@ -52,7 +53,7 @@ class KontorTilhorighetServiceTest {
 
         KontorTilhorighetService(
             mockk(),
-            { IdenterFunnet( listOf(ident), ident) }
+            { IdenterFunnet(listOf(ident), ident, InternIdent(1L)) }
         ).getArenaKontorMedOppfolgingsperiode(ident)
     }
 

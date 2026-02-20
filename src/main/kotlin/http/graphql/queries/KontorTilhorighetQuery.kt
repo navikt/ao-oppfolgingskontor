@@ -11,7 +11,7 @@ import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.GeografiskTilknyttetKontorEntity
 import no.nav.domain.KontorNavn
 import no.nav.domain.KontorType
-import no.nav.http.client.IdenterResult
+import domain.IdenterResult
 import no.nav.http.client.poaoTilgang.HarIkkeTilgangTilBruker
 import no.nav.http.client.poaoTilgang.TilgangTilBrukerOppslagFeil
 import no.nav.http.client.poaoTilgang.TilgangTilBrukerResult

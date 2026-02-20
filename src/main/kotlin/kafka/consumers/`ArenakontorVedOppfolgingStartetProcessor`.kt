@@ -6,6 +6,7 @@ import http.client.ArenakontorResult
 import http.client.ArenakontorFunnet
 import http.client.ArenakontorIkkeFunnet
 import kafka.producers.OppfolgingEndretTilordningMelding
+import kafka.producers.PubliserAutomatiskKontorEndring
 import kotlinx.coroutines.runBlocking
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres

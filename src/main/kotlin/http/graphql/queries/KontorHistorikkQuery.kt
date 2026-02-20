@@ -17,7 +17,7 @@ import no.nav.db.table.KontorhistorikkTable.kontorId
 import no.nav.db.table.KontorhistorikkTable.kontorType
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorType
-import no.nav.http.client.IdenterResult
+import domain.IdenterResult
 import no.nav.http.client.poaoTilgang.HarTilgangTilBruker
 import no.nav.http.client.poaoTilgang.TilgangTilBrukerResult
 import no.nav.http.graphql.schemas.KontorHistorikkQueryDto

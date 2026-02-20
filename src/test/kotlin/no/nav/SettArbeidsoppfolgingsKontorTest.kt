@@ -23,9 +23,11 @@ import no.nav.domain.NavIdent
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseResult
-import no.nav.http.client.IdenterFunnet
 import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.SkjermingResult
+import domain.IdenterFunnet
+import no.nav.db.InternIdent
+import no.nav.http.client.PdlIdenterFunnet
 import no.nav.http.client.mockNorg2Host
 import no.nav.http.client.mockPoaoTilgangHost
 import no.nav.http.client.settKontor
@@ -50,6 +52,7 @@ import no.nav.utils.randomFnr
 import org.apache.kafka.clients.producer.MockProducer
 import org.apache.kafka.clients.producer.Partitioner
 import org.apache.kafka.common.Cluster
+import org.apache.kafka.common.serialization.LongSerializer
 import org.apache.kafka.common.serialization.StringSerializer
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
@@ -80,21 +83,21 @@ class SettArbeidsoppfolgingsKontorTest {
         adressebeskyttelse: HarStrengtFortroligAdresseResult = HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)),
         brukAoRuting: Boolean = false,
         extraDatabaseSetup: Application.() -> Unit = {},
-        ): MockProducer<String, String?> {
+        ): MockProducer<Long, String?> {
         environment {
             config = server.getMockOauth2ServerConfig()
         }
         val norg2Client = mockNorg2Host()
         val poaoTilgangClient = mockPoaoTilgangHost(null)
         val kontorNavnService = KontorNavnService(norg2Client)
-        val identerFunnet = IdenterFunnet(listOf(ident, aktorId), ident)
-        val identService = IdentService { identerFunnet }
+        val identerFunnet = IdenterFunnet(listOf(ident, aktorId), ident, InternIdent(1L))
+        val identService = IdentService { PdlIdenterFunnet(listOf(ident, aktorId), ident) }
         val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, identService::hentAlleIdenter)
         val oppfolgingsperiodeService = OppfolgingsperiodeService(
             identService::hentAlleIdenter,
             kontorTilordningService::slettArbeidsoppfølgingskontorTilordning
         )
-        val producer = MockProducer(true, partitioner, StringSerializer(), StringSerializer())
+        val producer = MockProducer(true, partitioner, LongSerializer(), StringSerializer())
         val kontorEndringProducer = KontorEndringProducer(
             producer,
             "arbeidsoppfolgingskontortilordninger",

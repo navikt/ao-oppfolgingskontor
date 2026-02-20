@@ -4,6 +4,7 @@ import arrow.core.Either
 import kotlinx.coroutines.runBlocking
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
+import no.nav.db.InternIdent
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
@@ -11,10 +12,10 @@ import no.nav.http.client.IdentFunnet
 import no.nav.http.client.IdentIkkeFunnet
 import no.nav.http.client.IdentOppslagFeil
 import no.nav.http.client.IdentResult
-import no.nav.http.client.IdenterFunnet
-import no.nav.http.client.IdenterIkkeFunnet
-import no.nav.http.client.IdenterOppslagFeil
-import no.nav.http.client.IdenterResult
+import domain.IdenterFunnet
+import domain.IdenterIkkeFunnet
+import domain.IdenterOppslagFeil
+import domain.IdenterResult
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.OppfolgingperiodeOppslagFeil
 import no.nav.services.OppfolgingsperiodeDao
@@ -53,8 +54,13 @@ class OppfolgingsperiodeService(
 
         return when {
             nåværendePeriodeBleAvsluttet && innkommendePeriodeBleAvsluttet -> throw Exception("Dette skal aldri skje! Skal ikke være flere perioder på samme person samtidig ${oppfolgingsperiode.periodeId}, ${nåværendeOppfolgingsperiode?.periodeId}")
-            nåværendePeriodeBleAvsluttet -> GammelPeriodeAvsluttet
-            innkommendePeriodeBleAvsluttet -> InnkommendePeriodeAvsluttet
+            nåværendePeriodeBleAvsluttet -> GammelPeriodeAvsluttet(nåværendeOppfolgingsperiode!!.internIdent)
+            innkommendePeriodeBleAvsluttet -> InnkommendePeriodeAvsluttet(
+                nåværendeOppfolgingsperiode?.internIdent
+                    ?: requireNotNull(getCurrentOppfolgingsperiode(oppfolgingsperiode.fnr).let {
+                        (it as? AktivOppfolgingsperiode)?.internIdent
+                    }) { "Fant ingen internIdent for avsluttet periode med periodeId: ${oppfolgingsperiode.periodeId}" }
+            )
             else -> IngenPeriodeAvsluttet
         }
     }
@@ -104,7 +110,7 @@ class OppfolgingsperiodeService(
             transaction {
                 // hentAlleIdenter har fallback til PDL og oppdaterer ident-mapping hvis det er kommet nye identer, derfor er dette i en transaksjon
                 when (val result = runBlocking { hentAlleIdenter(ident) }) {
-                    is IdenterFunnet -> OppfolgingsperiodeDao.getCurrentOppfolgingsperiode(result.identer)
+                    is IdenterFunnet -> OppfolgingsperiodeDao.getCurrentOppfolgingsperiode(result)
                     is IdenterIkkeFunnet -> OppfolgingperiodeOppslagFeil("Kunne ikke hente nåværende oppfolgingsperiode, klarte ikke hente alle mappede identer: ${result.message}")
                     is IdenterOppslagFeil -> OppfolgingperiodeOppslagFeil("Kunne ikke hente nåværende oppfolgingsperiode, klarte ikke hente alle mappede identer: ${result.message}")
                 }
@@ -139,5 +145,5 @@ object OppfølgingsperiodeLagret: HandterPeriodeStartetResultat()
 
 sealed class HandterPeriodeAvsluttetResultat
 object IngenPeriodeAvsluttet: HandterPeriodeAvsluttetResultat()
-object GammelPeriodeAvsluttet: HandterPeriodeAvsluttetResultat()
-object InnkommendePeriodeAvsluttet: HandterPeriodeAvsluttetResultat()
+data class GammelPeriodeAvsluttet(val internIdent: InternIdent): HandterPeriodeAvsluttetResultat()
+data class InnkommendePeriodeAvsluttet(val internIdent: InternIdent): HandterPeriodeAvsluttetResultat()

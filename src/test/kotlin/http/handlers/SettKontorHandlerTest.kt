@@ -37,6 +37,7 @@ import no.nav.http.client.poaoTilgang.TilgangTilBrukerResult
 import no.nav.http.client.poaoTilgang.TilgangTilKontorOppslagFeil
 import no.nav.http.client.poaoTilgang.TilgangTilKontorResult
 import no.nav.services.AktivOppfolgingsperiode
+import no.nav.db.InternIdent
 import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingperiodeOppslagFeil
 import no.nav.services.OppfolgingsperiodeOppslagResult
@@ -208,7 +209,7 @@ class SettKontorHandlerTest {
         harTilgangTilKontor: TilgangTilKontorResult = SystemHarTilgangTilKontor,
         skjermingResult: SkjermingResult = SkjermingFunnet(HarSkjerming(false)),
         adresseResult: HarStrengtFortroligAdresseResult = HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)),
-        oppfolgingsperiodeResult: OppfolgingsperiodeOppslagResult = AktivOppfolgingsperiode(ident, OppfolgingsperiodeId(UUID.randomUUID()), startDato = OffsetDateTime.now()),
+        oppfolgingsperiodeResult: OppfolgingsperiodeOppslagResult = AktivOppfolgingsperiode(ident, InternIdent(1L), OppfolgingsperiodeId(UUID.randomUUID()), startDato = OffsetDateTime.now()),
         tilordneKontor: (event: KontorEndretEvent, brukAORuting: Boolean) -> Unit = { a, b -> Unit },
         publiserKontorEndring: (event: KontorEndretEvent) -> Result<Unit> = { a -> Result.success(Unit) },
     ): SettKontorHandler {

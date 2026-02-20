@@ -21,7 +21,7 @@ import no.nav.Authenticated
 import no.nav.NotAuthenticated
 import no.nav.audit.traceId
 import no.nav.db.Ident
-import no.nav.http.client.IdenterResult
+import domain.IdenterResult
 import no.nav.http.client.Norg2Client
 import no.nav.http.client.poaoTilgang.TilgangTilBrukerResult
 import no.nav.http.graphql.queries.AlleKontorQuery
