@@ -20,6 +20,7 @@ import no.nav.kafka.consumers.KontortilordningsProcessor
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
 import no.nav.services.AktivOppfolgingsperiode
+import no.nav.db.InternIdent
 import no.nav.services.AutomatiskKontorRutingService
 import domain.kontorForGt.KontorForGtFantDefaultKontor
 import no.nav.domain.externalEvents.OppfolgingsperiodeEndret
@@ -117,6 +118,7 @@ class KontortilordningsProcessorTest {
             { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
             { AktivOppfolgingsperiode(
                 oppfolging.fnr,
+                InternIdent(1L),
                 oppfolging.periodeId,
                 oppfolging.startDato.toOffsetDateTime()
             ) },
@@ -134,6 +136,7 @@ class KontortilordningsProcessorTest {
             { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
             { AktivOppfolgingsperiode(
                 oppfolging.fnr,
+                InternIdent(1L),
                 oppfolging.periodeId,
                 oppfolging.startDato.toOffsetDateTime()
             ) },

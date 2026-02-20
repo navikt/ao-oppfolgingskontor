@@ -6,7 +6,7 @@ import kafka.producers.OppfolgingEndretTilordningMelding
 import no.nav.db.Ident
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.OppfolgingsperiodeId
-import no.nav.http.client.IdenterOppslagFeil
+import domain.IdenterOppslagFeil
 import no.nav.kafka.processor.Retry
 import no.nav.utils.randomFnr
 import org.apache.kafka.streams.processor.api.Record

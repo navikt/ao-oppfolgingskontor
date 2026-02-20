@@ -271,7 +271,7 @@ class PdlClientTest {
 
         val fnrResult = pdlClient.hentIdenterFor(aktorId)
 
-        fnrResult.shouldBeInstanceOf<IdenterFunnet>()
+        fnrResult.shouldBeInstanceOf<PdlIdenterFunnet>()
         fnrResult.identer shouldHaveSize 3
     }
 
@@ -306,7 +306,7 @@ class PdlClientTest {
 
         val fnrResult = pdlClient.hentIdenterFor(aktorId)
 
-        fnrResult.shouldBeInstanceOf<IdenterFunnet>()
+        fnrResult.shouldBeInstanceOf<PdlIdenterFunnet>()
         val ident = fnrResult.finnForetrukketIdent()
         ident.shouldBeInstanceOf<IdentFunnet>()
         ident.ident.shouldBeInstanceOf<Npid>()
@@ -339,7 +339,7 @@ class PdlClientTest {
 
         val fnrResult = pdlClient.hentIdenterFor(aktorId)
 
-        fnrResult.shouldBeInstanceOf<IdenterOppslagFeil>()
+        fnrResult.shouldBeInstanceOf<PdlIdenterOppslagFeil>()
         fnrResult.message shouldBe "Fant ikke person: not_found"
     }
 
@@ -363,7 +363,7 @@ class PdlClientTest {
         val fnr = randomFnr()
         val dnr = Dnr("55125555555", Ident.HistoriskStatus.AKTIV)
 
-        val foretrukketIdent = IdenterFunnet(
+        val foretrukketIdent = PdlIdenterFunnet(
             listOf(
                 fnr,
                 dnr,

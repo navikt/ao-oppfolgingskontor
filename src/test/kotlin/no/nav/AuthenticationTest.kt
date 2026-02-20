@@ -31,8 +31,9 @@ import no.nav.utils.kontorTilhorighetQuery
 import io.ktor.server.routing.routing
 import no.nav.authenticateCall
 import no.nav.db.Ident
-import no.nav.http.client.IdenterFunnet
-import no.nav.http.client.IdenterIkkeFunnet
+import domain.IdenterFunnet
+import domain.IdenterIkkeFunnet
+import no.nav.db.InternIdent
 import no.nav.utils.gittIdentIMapping
 import no.nav.utils.randomFnr
 import org.junit.jupiter.api.Test
@@ -46,7 +47,7 @@ class AuthenticationTest {
         }
         val identService = IdentService({
             if (ident == null) IdenterIkkeFunnet("lol")
-            else IdenterFunnet(listOf(ident), ident)
+            else IdenterFunnet(listOf(ident), ident, InternIdent(1L))
         })
         val poaoTilgangKtorHttpClient = mockPoaoTilgangHost(null)
         val norg2Client = mockNorg2Host()

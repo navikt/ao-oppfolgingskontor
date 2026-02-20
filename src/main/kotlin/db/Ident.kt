@@ -86,6 +86,12 @@ sealed class Ident {
 @Serializable(with = IdentSomKanLagresSerializer::class)
 sealed class IdentSomKanLagres(): Ident()
 
+@JvmInline
+@Serializable
+value class InternIdent(
+    val value: Long
+)
+
 /*
 * Kan innholde fnr, dnr eller npid
 * */

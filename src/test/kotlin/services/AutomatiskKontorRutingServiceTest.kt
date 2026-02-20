@@ -59,6 +59,7 @@ import no.nav.kafka.consumers.HåndterPersondataEndretSuccess
 import no.nav.kafka.consumers.KontorEndringer
 import no.nav.person.pdl.leesah.adressebeskyttelse.Gradering
 import no.nav.services.AktivOppfolgingsperiode
+import no.nav.db.InternIdent
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.AutomatiskKontorRutingService.Companion.VIKAFOSSEN
 import domain.kontorForGt.KontorForGtFantIkkeKontor
@@ -958,6 +959,7 @@ fun defaultOppfolgingsperiodeOppslagResult(fnr: IdentResult): Oppfolgingsperiode
     return when (fnr) {
         is IdentFunnet -> return AktivOppfolgingsperiode(
             fnr.ident,
+            InternIdent(1L),
             OppfolgingsperiodeId(UUID.randomUUID()),
             OffsetDateTime.now()
         )
@@ -1229,7 +1231,7 @@ val brukerMedTilordnetKontorForOppfolgingStartet = Bruker(
     GtNummerForBrukerFunnet(GeografiskTilknytningBydelNr("1111")),
     SkjermingFunnet(HarSkjerming(false)),
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)),
-    AktivOppfolgingsperiode(Fnr("94345678901", UKJENT), OppfolgingsperiodeId(UUID.randomUUID()), OffsetDateTime.now()),
+    AktivOppfolgingsperiode(Fnr("94345678901", UKJENT), InternIdent(1L), OppfolgingsperiodeId(UUID.randomUUID()), OffsetDateTime.now()),
     Outcome.Success(true)
 )
 val brukerMedManglendeKontorForGtOgSkjerming = Bruker(

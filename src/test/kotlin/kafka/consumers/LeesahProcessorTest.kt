@@ -27,6 +27,7 @@ import no.nav.kafka.consumers.LeesahProcessor
 import no.nav.kafka.processor.Retry
 import no.nav.person.pdl.leesah.adressebeskyttelse.Gradering
 import no.nav.services.AktivOppfolgingsperiode
+import no.nav.db.InternIdent
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.AutomatiskKontorRutingService.Companion.VIKAFOSSEN
 import domain.kontorForGt.KontorForGtFantDefaultKontor
@@ -167,7 +168,7 @@ class LeesahProcessorTest {
             hentProfilering = { throw Throwable("Denne skal ikke brukes") },
             hentSkjerming = { SkjermingFunnet(HarSkjerming(false)) },
             hentHarStrengtFortroligAdresse = strengtFortroligAdresseProvider,
-            hentGjeldendeOppfolgingsperiode = { AktivOppfolgingsperiode(Fnr("66666666666", Ident.HistoriskStatus.AKTIV), oppfølgingsperiodeId, OffsetDateTime.now()) },
+            hentGjeldendeOppfolgingsperiode = { AktivOppfolgingsperiode(Fnr("66666666666", Ident.HistoriskStatus.AKTIV), InternIdent(1L), oppfølgingsperiodeId, OffsetDateTime.now()) },
             harAlleredeTilordnetAoKontorForOppfolgingsperiode = { _, _ -> Outcome.Success(false)  }
         )
     }

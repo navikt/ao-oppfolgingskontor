@@ -4,6 +4,7 @@ import no.nav.db.AktorId
 import no.nav.db.Dnr
 import no.nav.db.Fnr
 import no.nav.db.Ident
+import no.nav.db.InternIdent
 import kotlin.random.Random
 
 fun randomFnr(identStatus: Ident.HistoriskStatus = Ident.HistoriskStatus.AKTIV): Fnr {
@@ -34,3 +35,5 @@ fun randomTopicName(): String {
         .map { chars[Random.nextInt(chars.length)] }
         .joinToString("")
 }
+
+fun randomInternIdent(): InternIdent = InternIdent(Random.nextLong(0, 1000000))

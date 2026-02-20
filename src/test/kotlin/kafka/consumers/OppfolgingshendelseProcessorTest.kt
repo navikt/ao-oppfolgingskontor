@@ -10,6 +10,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.server.testing.*
 import no.nav.db.*
 import no.nav.db.Ident.HistoriskStatus.*
+import no.nav.db.InternIdent
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.OppfolgingsperiodeEntity
 import no.nav.db.table.OppfolgingsperiodeTable
@@ -21,7 +22,7 @@ import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.IdentFunnet
-import no.nav.http.client.IdenterFunnet
+import domain.IdenterFunnet
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Forward
@@ -131,10 +132,10 @@ class OppfolgingshendelseProcessorTest {
     )
 
     /* Mock at oppslag for å hente alle mappede identer bare returnerer 1 ident (happu path)  */
-    fun Bruker.defaultOppfolgingsHendelseProcessor(publiserTombstone: (oppfolgingsperiodeId: OppfolgingsperiodeId) -> Result<Unit> = { _ -> Result.success(Unit) }): OppfolgingsHendelseProcessor {
+    fun Bruker.defaultOppfolgingsHendelseProcessor(publiserTombstone: (internIdent: InternIdent) -> Result<Unit> = { _ -> Result.success(Unit) }): OppfolgingsHendelseProcessor {
         return OppfolgingsHendelseProcessor(
             oppfolgingsPeriodeService = OppfolgingsperiodeService(
-                { IdenterFunnet(listOf(this.ident, AktorId(this.aktorId, AKTIV)), this.ident) },
+                { IdenterFunnet(listOf(this.ident, AktorId(this.aktorId, AKTIV)), this.ident, InternIdent(1L)) },
                 kontorTilordningService::slettArbeidsoppfølgingskontorTilordning
             ),
             publiserTombstone = publiserTombstone
@@ -210,9 +211,9 @@ class OppfolgingshendelseProcessorTest {
         val bruker = testBruker()
         val periodeSlutt = ZonedDateTime.now().minusDays(1)
 
-        val publiserteTombstones = mutableSetOf<OppfolgingsperiodeId>()
-        val consumer = bruker.defaultOppfolgingsHendelseProcessor({ periode ->
-            publiserteTombstones.add(periode)
+        val publiserteTombstones = mutableListOf<InternIdent>()
+        val consumer = bruker.defaultOppfolgingsHendelseProcessor({ internIdent ->
+            publiserteTombstones.add(internIdent)
             Result.success(Unit)
         })
         val startPeriodeRecord = oppfolgingStartetMelding(bruker)
@@ -225,8 +226,8 @@ class OppfolgingshendelseProcessorTest {
 
         result.shouldBeInstanceOf<Commit<*, *>>()
         bruker.skalIkkeVæreUnderOppfølging()
-        withClue("Forventet å ha publisert tombstone på oppfolgingsperiode med id: ${bruker.oppfolgingsperiodeId.value}") {
-            publiserteTombstones shouldBe setOf(bruker.oppfolgingsperiodeId)
+        withClue("Forventet å ha publisert tombstone") {
+            publiserteTombstones.size shouldBe 1
         }
     }
 
@@ -479,9 +480,9 @@ class OppfolgingshendelseProcessorTest {
                 val inputIdent = Ident.validateOrThrow(input, UKJENT)
                 // I denne testen simulerer vi at vi får inn en melding med dnr først, derfor returneres ikke fnr når inputIdent er dnr
                 when (inputIdent) {
-                    is Dnr -> IdenterFunnet(listOf(aktorId, aktivtDnr), inputIdent)
-                    is Fnr -> IdenterFunnet(listOf(aktorId, historiskDnr, fnr), inputIdent)
-                    is AktorId -> IdenterFunnet(listOf(aktorId, historiskDnr, fnr), inputIdent)
+                    is Dnr -> IdenterFunnet(listOf(aktorId, aktivtDnr), inputIdent, InternIdent(1L))
+                    is Fnr -> IdenterFunnet(listOf(aktorId, historiskDnr, fnr), inputIdent, InternIdent(1L))
+                    is AktorId -> IdenterFunnet(listOf(aktorId, historiskDnr, fnr), inputIdent, InternIdent(1L))
                     is Npid -> fail("LOL")
                 }
             }
@@ -528,4 +529,39 @@ class OppfolgingshendelseProcessorTest {
 
     fun oppfolgingAvsluttetMelding(bruker: Bruker, sluttDato: ZonedDateTime): Record<String, String> =
         TopicUtils.oppfolgingAvsluttetMelding(bruker, sluttDato)
+
+    @Test
+    fun `Skal hoppe over avslutt-melding for en periode eldre enn lagret aktiv periode`() = testApplication {
+        val bruker = testBruker()
+        val gammelStartDato = bruker.periodeStart.minusSeconds(1)
+        val oppfolgingsHendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
+        val startPeriodeRecord = oppfolgingStartetMelding(bruker)
+        val sluttGammelPeriodeRecord = oppfolgingAvsluttetMelding(
+            bruker.copy(
+                oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
+                periodeStart = gammelStartDato,
+            ), sluttDato = ZonedDateTime.now()
+        )
+        oppfolgingsHendelseProcessor.process(startPeriodeRecord)
+
+        val processingResult = oppfolgingsHendelseProcessor.process(sluttGammelPeriodeRecord)
+
+        processingResult.shouldBeInstanceOf<Skip<*, *>>()
+        bruker.skalVæreUnderOppfølging()
+    }
+
+    @Test
+    fun `Skal retry-e på tombstone-publisering-feil`() = testApplication {
+        val bruker = testBruker()
+        val feilmelding = "Kafka er nede"
+        val consumer = bruker.defaultOppfolgingsHendelseProcessor({ _ ->
+            Result.failure(RuntimeException(feilmelding))
+        })
+        consumer.process(oppfolgingStartetMelding(bruker))
+
+        val result = consumer.process(oppfolgingAvsluttetMelding(bruker, ZonedDateTime.now()))
+
+        result.shouldBeInstanceOf<Retry<*, *>>()
+        result.reason shouldBe "Feilet å publisere tombstone på kafka: $feilmelding"
+    }
 }

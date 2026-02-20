@@ -26,7 +26,7 @@ import no.nav.http.configureFinnKontorModule
 import no.nav.http.configureArbeidsoppfolgingskontorModule
 import no.nav.http.graphql.*
 import no.nav.kafka.KafkaStreamsPlugin
-import no.nav.kafka.config.createKafkaProducer
+import no.nav.kafka.config.createKafkaProducerWithLongKey
 import no.nav.kafka.config.toKafkaEnv
 import no.nav.services.*
 import org.jetbrains.exposed.sql.Database
@@ -121,7 +121,7 @@ fun Application.module() {
         }
 
     val kontorEndringProducer = KontorEndringProducer(
-        producer = createKafkaProducer(this.environment.config.toKafkaEnv()),
+        producer = createKafkaProducerWithLongKey(this.environment.config.toKafkaEnv()),
         kontorTopicNavn = this.environment.topics().ut.arbeidsoppfolgingskontortilordninger.name,
         kontorNavnProvider = { kontorId -> kontorNavnService.getKontorNavn(kontorId) },
         hentAlleIdenter = { identSomKanLagres -> identService.hentAlleIdenter(identSomKanLagres) },

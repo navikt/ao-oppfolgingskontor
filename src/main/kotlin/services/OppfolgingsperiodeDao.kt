@@ -1,8 +1,10 @@
 package no.nav.services
 
+import domain.IdenterFunnet
 import java.time.ZonedDateTime
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
+import no.nav.db.InternIdent
 import no.nav.db.entity.OppfolgingsperiodeEntity
 import no.nav.db.finnForetrukketIdent
 import no.nav.db.table.KontorhistorikkTable
@@ -22,7 +24,7 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 
 sealed class OppfolgingsperiodeOppslagResult()
-data class AktivOppfolgingsperiode(val fnr: IdentSomKanLagres, val periodeId: OppfolgingsperiodeId, val startDato: OffsetDateTime) : OppfolgingsperiodeOppslagResult()
+data class AktivOppfolgingsperiode(val fnr: IdentSomKanLagres, val internIdent: InternIdent, val periodeId: OppfolgingsperiodeId, val startDato: OffsetDateTime) : OppfolgingsperiodeOppslagResult()
 object NotUnderOppfolging : OppfolgingsperiodeOppslagResult()
 data class OppfolgingperiodeOppslagFeil(val message: String) : OppfolgingsperiodeOppslagResult()
 
@@ -107,7 +109,8 @@ object OppfolgingsperiodeDao {
         }
     }
 
-    fun getCurrentOppfolgingsperiode(identer: List<Ident>): OppfolgingsperiodeOppslagResult {
+    fun getCurrentOppfolgingsperiode(identerResult: IdenterFunnet): OppfolgingsperiodeOppslagResult {
+        val identer = identerResult.identer
         val oppfolgingsperioder = transaction {
             OppfolgingsperiodeEntity.find { OppfolgingsperiodeTable.id inList identer.map { it.value } }.toList()
         }
@@ -116,6 +119,7 @@ object OppfolgingsperiodeDao {
             1 -> AktivOppfolgingsperiode(
                 identer.finnForetrukketIdent()
                     ?: throw IllegalStateException("Kan ikke ha oppfølgingsperiode når det ikke finnes noen foretrukken ident"),
+                identerResult.internIdent,
                 OppfolgingsperiodeId(oppfolgingsperioder.first().oppfolgingsperiodeId),
                 oppfolgingsperioder.first().startDato
             )
