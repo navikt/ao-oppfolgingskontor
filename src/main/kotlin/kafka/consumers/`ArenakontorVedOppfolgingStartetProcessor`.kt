@@ -96,8 +96,15 @@ class ArenakontorVedOppfolgingStartetProcessor(
                             } else {
                                 logger.info("Lagrer funnet arenakontor")
                                 lagreKontortilordning(kontorTilordning)
-                                publiserArenaKontor(kontorTilordning.tilordning.kontorId, oppfølgingsperiodeStartet.periodeId, fnr)
-                                Commit()
+                                val publiserResult = publiserArenaKontor(kontorTilordning.tilordning.kontorId, oppfølgingsperiodeStartet.periodeId, fnr)
+                                if (publiserResult.isFailure) {
+                                    val exception = publiserResult.exceptionOrNull()
+                                    val message = "Kunne ikke publisere hentet arenakontor ved start oppfølging"
+                                    logger.error("Lagrer ikke funnet arenakontor", exception)
+                                    Retry(message)
+                                } else {
+                                    Commit()
+                                }
                             }
                         }
 
@@ -111,9 +118,9 @@ class ArenakontorVedOppfolgingStartetProcessor(
         }
     }
 
-    private suspend fun publiserArenaKontor(kontorId: KontorId, oppfolgingsperiodeId: OppfolgingsperiodeId, ident: IdentSomKanLagres) {
+    private suspend fun publiserArenaKontor(kontorId: KontorId, oppfolgingsperiodeId: OppfolgingsperiodeId, ident: IdentSomKanLagres): Result<Unit> {
         if (publiserArenaKontor) {
-            publiserKontorTilordning(
+            return publiserKontorTilordning(
                 OppfolgingEndretTilordningMelding(
                     kontorId = kontorId.id,
                     oppfolgingsperiodeId = oppfolgingsperiodeId.value.toString(),
@@ -122,5 +129,6 @@ class ArenakontorVedOppfolgingStartetProcessor(
                 )
             )
         }
+        return Result.success(Unit)
     }
 }
