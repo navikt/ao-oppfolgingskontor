@@ -26,7 +26,6 @@ import no.nav.http.configureFinnKontorModule
 import no.nav.http.configureArbeidsoppfolgingskontorModule
 import no.nav.http.graphql.*
 import no.nav.kafka.KafkaStreamsPlugin
-import no.nav.kafka.config.createKafkaProducer
 import no.nav.kafka.config.createKafkaProducerWithLongKey
 import no.nav.kafka.config.toKafkaEnv
 import no.nav.services.*

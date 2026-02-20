@@ -2,6 +2,7 @@ package no.nav.kafka.consumers
 
 import domain.ArenaKontorUtvidet
 import kafka.producers.OppfolgingEndretTilordningMelding
+import kafka.producers.PubliserAutomatiskKontorEndring
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -31,7 +32,7 @@ class EndringPaOppfolgingsBrukerProcessor(
     val oppfolgingsperiodeProvider: suspend (IdentSomKanLagres) -> OppfolgingsperiodeOppslagResult,
     val arenaKontorProvider: suspend (IdentSomKanLagres) -> ArenaKontorUtvidet?,
     val lagreKontorTilordninger: (KontorEndretEvent) -> Unit,
-    val publiserKontorTilordning: suspend (kontorEndring: OppfolgingEndretTilordningMelding) -> Result<Unit>,
+    val publiserKontorTilordning: PubliserAutomatiskKontorEndring,
     val publiserArenaKontor: Boolean
 ) {
     val log = LoggerFactory.getLogger(EndringPaOppfolgingsBrukerProcessor::class.java)
@@ -90,7 +91,7 @@ class EndringPaOppfolgingsBrukerProcessor(
                         KontorEndringsType.EndretIArena
                     }
                     runBlocking {
-                        publiserKontorTilordning(
+                        val result = publiserKontorTilordning(
                             OppfolgingEndretTilordningMelding(
                                 kontorId = kontorTilordning.kontorId.id,
                                 oppfolgingsperiodeId = kontorTilordning.oppfolgingsperiodeId.value.toString(),
@@ -98,9 +99,18 @@ class EndringPaOppfolgingsBrukerProcessor(
                                 kontorEndringsType = kontorEndringstype
                             )
                         )
+                        if (result.isFailure) {
+                            val exception = result.exceptionOrNull()!!
+                            val message = "Klarte ikke behandle melding om endring på oppfølgingsbruker: ${exception.message}"
+                            log.error(message, exception)
+                            Retry(message)
+                        } else {
+                            Commit()
+                        }
                     }
+                } else {
+                    Commit()
                 }
-                Commit()
             }
         }
     }
