@@ -20,6 +20,9 @@ import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.clients.producer.ProducerRecord
 import services.KontortilordningSomSkalRepubliseres
 
+typealias PubliserManuellKontorEndring = suspend (KontorSattAvVeileder) -> Result<Unit>
+typealias PubliserAutomatiskKontorEndring = suspend (OppfolgingEndretTilordningMelding) -> Result<Unit>
+
 class KontorEndringProducer(
     val producer: Producer<Long, String?>,
     val kontorTopicNavn: String,

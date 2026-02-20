@@ -40,6 +40,7 @@ import arrow.core.Either
 import arrow.core.flatMap
 import arrow.core.flatten
 import arrow.core.getOrElse
+import kafka.producers.PubliserManuellKontorEndring
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.http.client.poaoTilgang.HarIkkeTilgangTilKontor
 import no.nav.http.client.poaoTilgang.HarTilgangTilKontor
@@ -57,7 +58,7 @@ class SettKontorHandler(
     private val harTilgangTilKontor: suspend (AOPrincipal, KontorId, String) -> TilgangTilKontorResult,
     private val hentOppfolgingsPeriode: (IdentFunnet) -> OppfolgingsperiodeOppslagResult,
     private val tilordneKontor: (KontorEndretEvent, Boolean) -> Unit,
-    private val publiserKontorEndring: suspend (KontorSattAvVeileder) -> Result<Unit>,
+    private val publiserManuellKontorEndring: PubliserManuellKontorEndring,
     private val hentSkjerming: suspend (IdentSomKanLagres) -> SkjermingResult,
     private val hentAdresseBeskyttelse: suspend (IdentSomKanLagres) -> HarStrengtFortroligAdresseResult,
     private val brukAoRuting: Boolean,
@@ -175,7 +176,7 @@ class SettKontorHandler(
                             registrant = principal.toRegistrant()
                         )
                         tilordneKontor(kontorEndring, brukAoRuting)
-                        val result = publiserKontorEndring(kontorEndring)
+                        val result = publiserManuellKontorEndring(kontorEndring)
                         if (result.isFailure) throw result.exceptionOrNull()!!
                         kontorId to gammeltKontor
                     }
