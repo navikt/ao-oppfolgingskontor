@@ -97,7 +97,7 @@ data class AutomatiskKontorRutingService(
     ): TilordningResultat {
         try {
             val underOppfolgingResult = hentGjeldendeOppfolgingsperiode(oppfolgingsperiodeStartet.fnr)
-            val (ident, oppfolgingsperiodeId) = when (underOppfolgingResult) {
+            val (ident, _, oppfolgingsperiodeId) = when (underOppfolgingResult) {
                 is AktivOppfolgingsperiode -> underOppfolgingResult
                 NotUnderOppfolging -> return TilordningSuccessIngenEndring
                 is OppfolgingperiodeOppslagFeil -> return TilordningFeil("Feil ved oppslag på oppfolgingsperiode: ${underOppfolgingResult.message}")

@@ -9,8 +9,8 @@ info:
     url: 'https://nav-it.slack.com/archives/C04HS60F283'
 defaultContentType: application/json
 channels:
-  arbeidsoppfolgingskontortilordninger-v1:
-    address: arbeidsoppfolgingskontortilordninger-v1
+  arbeidsoppfolgingskontortilordninger-v2:
+    address: arbeidsoppfolgingskontortilordninger-v2
     description: >
       ## Endringer på brukers arbeidsoppfølgingskontor
 
@@ -37,14 +37,14 @@ channels:
               description: oppfolgingsperiodeId
     bindings:
       kafka:
-        topic: arbeidsoppfolgingskontortilordninger-v1
+        topic: arbeidsoppfolgingskontortilordninger-v2
 operations:
-  arbeidsoppfolgingskontortilordninger-v1:
+  arbeidsoppfolgingskontortilordninger-v2:
     description: >-
       Kontorendringer innad EN oppfølgingperiode compacted på oppfolgingsperiodeId
     action: send
     channel:
-      $ref: '#/channels/arbeidsoppfolgingskontortilordninger-v1'
+      $ref: '#/channels/arbeidsoppfolgingskontortilordninger-v2'
 components:
   schemas:
     KontorTilordning:
@@ -78,7 +78,7 @@ components:
       summary: >-
         Trenger mer info??
       tags:
-        - name: arbeidsoppfolgingskontortilordninger-v1
-          description: Arbeidsoppfolgingskontortilordninger v1
+        - name: arbeidsoppfolgingskontortilordninger-v2
+          description: Arbeidsoppfolgingskontortilordninger v2
       payload:
         $ref: '#/components/schemas/KontorTilordning'

@@ -4,12 +4,14 @@ import io.mockk.every
 import io.mockk.mockk
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
+import no.nav.db.InternIdent
 import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.kafka.consumers.FormidlingsGruppe
 import no.nav.kafka.consumers.Kvalifiseringsgruppe
 import no.nav.person.pdl.aktor.v2.Aktor
 import no.nav.person.pdl.aktor.v2.Identifikator
+import no.nav.utils.randomInternIdent
 import org.apache.kafka.streams.processor.api.Record
 import java.time.OffsetDateTime
 import java.time.ZonedDateTime
@@ -82,5 +84,6 @@ data class Bruker(
     val ident: IdentSomKanLagres,
     val aktorId: String,
     val oppfolgingsperiodeId: OppfolgingsperiodeId,
-    val periodeStart: ZonedDateTime
+    val periodeStart: ZonedDateTime,
+    val internIdent: InternIdent = randomInternIdent(),
 )

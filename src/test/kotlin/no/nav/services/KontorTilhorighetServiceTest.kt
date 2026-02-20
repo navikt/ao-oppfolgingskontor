@@ -1,18 +1,18 @@
 package no.nav.services
 
+import domain.IdenterFunnet
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import no.nav.db.Fnr
 import no.nav.db.IdentSomKanLagres
-import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.table.ArenaKontorTable
 import no.nav.db.table.KontorhistorikkTable
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorType
 import no.nav.domain.System
-import no.nav.http.client.IdenterFunnet
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.randomFnr
+import no.nav.utils.randomInternIdent
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.statements.InsertStatement
@@ -33,7 +33,7 @@ class KontorTilhorighetServiceTest {
 
         KontorTilhorighetService(
             mockk(),
-            { IdenterFunnet( listOf(ident), ident) }
+            { IdenterFunnet(listOf(ident), ident, randomInternIdent()) }
         ).getArenaKontorMedOppfolgingsperiode(ident)
     }
 
@@ -52,7 +52,7 @@ class KontorTilhorighetServiceTest {
 
         KontorTilhorighetService(
             mockk(),
-            { IdenterFunnet( listOf(ident), ident) }
+            { IdenterFunnet( listOf(ident), ident, randomInternIdent()) }
         ).getArenaKontorMedOppfolgingsperiode(ident)
     }
 

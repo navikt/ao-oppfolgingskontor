@@ -1,10 +1,11 @@
 package kafka.consumers
 
+import domain.IdenterResult
 import kafka.producers.OppfolgingEndretTilordningMelding
+import kafka.producers.PubliserAutomatiskKontorEndring
 import kotlinx.coroutines.runBlocking
 import no.nav.db.Ident
 import no.nav.domain.OppfolgingsperiodeId
-import no.nav.http.client.IdenterResult
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
@@ -17,7 +18,7 @@ import java.util.*
 
 class PubliserKontorTilordningProcessor(
     val hentAlleIdenter: suspend (Ident) -> IdenterResult,
-    val publiserKontorTilordning: suspend (kontorEndring: OppfolgingEndretTilordningMelding) -> Result<Unit>,
+    val publiserKontorTilordning: PubliserAutomatiskKontorEndring,
     val brukAoRuting: Boolean
 ) {
     val log = LoggerFactory.getLogger(this.javaClass)

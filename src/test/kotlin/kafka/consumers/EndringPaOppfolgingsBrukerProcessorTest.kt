@@ -17,6 +17,7 @@ import no.nav.services.KontorTilordningService
 import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingperiodeOppslagFeil
 import no.nav.utils.randomFnr
+import no.nav.utils.randomInternIdent
 import org.apache.kafka.streams.processor.api.Record
 import org.junit.jupiter.api.Test
 import java.time.OffsetDateTime
@@ -53,7 +54,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
         val oppfolgingsperiode = OppfolgingsperiodeId(UUID.randomUUID())
         val brukAoRuting = false
         val processor = EndringPaOppfolgingsBrukerProcessor(
-            { AktivOppfolgingsperiode(fnr, oppfolgingsperiode, OffsetDateTime.now().minusDays(2)) },
+            { AktivOppfolgingsperiode(fnr, randomInternIdent(), oppfolgingsperiode, OffsetDateTime.now().minusDays(2)) },
             { arenaKontor() },
             { KontorTilordningServiceMock.tilordneKontor(it, brukAoRuting) },
             { Result.success(Unit) },
@@ -74,7 +75,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
         val oppfolgingsperiode = OppfolgingsperiodeId(UUID.randomUUID())
         val brukAoRuting = false
         val processor = EndringPaOppfolgingsBrukerProcessor(
-            { AktivOppfolgingsperiode(fnr, oppfolgingsperiode, OffsetDateTime.now().minusDays(2)) },
+            { AktivOppfolgingsperiode(fnr, randomInternIdent(),oppfolgingsperiode, OffsetDateTime.now().minusDays(2)) },
             { arenaKontor(endret = etterCutoffMenAnnenTidssone.minusSeconds(1)) },
             { KontorTilordningServiceMock.tilordneKontor(it, brukAoRuting) },
             { Result.success(Unit) },
@@ -119,7 +120,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
         val kontorId = KontorId("3131")
         val fnr = randomFnr()
         val processor = EndringPaOppfolgingsBrukerProcessor(
-            { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, oppfolgingsStartet) },
+            { AktivOppfolgingsperiode(fnr, randomInternIdent(),oppfolgingsperiodeId, oppfolgingsStartet) },
             {
                 arenaKontor(
                     endret = sisteLagreMeldingTidspunkt,
@@ -154,7 +155,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
         val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
         val fnr = randomFnr()
         val processor = EndringPaOppfolgingsBrukerProcessor(
-            { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, oppfolgingsStartet) },
+            { AktivOppfolgingsperiode(fnr, randomInternIdent(),oppfolgingsperiodeId, oppfolgingsStartet) },
             { arenaKontor(sisteLagreMeldingTidspunkt) },
             {},
             { Result.success(Unit) },
@@ -175,7 +176,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
         val fnr = randomFnr()
         val kontorId = KontorId("3333")
         val processor = EndringPaOppfolgingsBrukerProcessor(
-            { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, oppfolgingStartet) },
+            { AktivOppfolgingsperiode(fnr, randomInternIdent(),oppfolgingsperiodeId, oppfolgingStartet) },
             { arenaKontor(kontor = kontorId, endret = oppfolgingStartet, oppfolgingsperiodeId = oppfolgingsperiodeId) },
             {},
             { Result.success(Unit) },
@@ -195,7 +196,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
         val kontorId = KontorId("3333")
         val arenaKontorMedAnnenOppfolgingsperiode = arenaKontor(kontor = kontorId, endret = oppfolgingStartet)
         val processor = EndringPaOppfolgingsBrukerProcessor(
-            { AktivOppfolgingsperiode(fnr, oppfolgingsperiodeId, oppfolgingStartet) },
+            { AktivOppfolgingsperiode(fnr, randomInternIdent(),oppfolgingsperiodeId, oppfolgingStartet) },
             { arenaKontorMedAnnenOppfolgingsperiode },
             {},
             { Result.success(Unit) },
@@ -269,7 +270,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
         val oppfolgingsperiode = OppfolgingsperiodeId(UUID.randomUUID())
         var harPublisertMelding = false
         val processor = EndringPaOppfolgingsBrukerProcessor(
-            { AktivOppfolgingsperiode(fnr, oppfolgingsperiode, OffsetDateTime.now().minusDays(2)) },
+            { AktivOppfolgingsperiode(fnr, randomInternIdent(), oppfolgingsperiode, OffsetDateTime.now().minusDays(2)) },
             { arenaKontor(endret = etterCutoffMenAnnenTidssone.minusSeconds(1)) },
             {},
             {
@@ -290,7 +291,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
         val oppfolgingsperiode = OppfolgingsperiodeId(UUID.randomUUID())
         var harPublisertMelding = false
         val processor = EndringPaOppfolgingsBrukerProcessor(
-            { AktivOppfolgingsperiode(fnr, oppfolgingsperiode, OffsetDateTime.now().minusDays(2)) },
+            { AktivOppfolgingsperiode(fnr, randomInternIdent(), oppfolgingsperiode, OffsetDateTime.now().minusDays(2)) },
             { arenaKontor(endret = etterCutoffMenAnnenTidssone.minusSeconds(1)) },
             {},
             {

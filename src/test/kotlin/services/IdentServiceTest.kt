@@ -8,6 +8,8 @@ import db.table.IdentMappingTable.slettetHosOss
 import db.table.IdentMappingTable.updatedAt
 import db.table.InternIdentSequence
 import db.table.nextValueOf
+import domain.IdenterFunnet
+import domain.IdenterIkkeFunnet
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -24,21 +26,18 @@ import no.nav.db.Ident
 import no.nav.db.Ident.HistoriskStatus.AKTIV
 import no.nav.db.Ident.HistoriskStatus.HISTORISK
 import no.nav.db.Ident.HistoriskStatus.UKJENT
-import no.nav.db.IdentSomKanLagres
+import no.nav.db.InternIdent
 import no.nav.db.Npid
 import no.nav.http.client.IdentFunnet
-import no.nav.http.client.IdenterFunnet
-import no.nav.http.client.IdenterIkkeFunnet
-import no.nav.http.client.IdenterOppslagFeil
-import no.nav.http.client.IdenterResult
-import no.nav.kafka.processor.Retry
-import no.nav.kafka.processor.Skip
+import no.nav.http.client.PdlIdenterFunnet
+import no.nav.http.client.PdlIdenterIkkeFunnet
 import no.nav.person.pdl.aktor.v2.Aktor
 import no.nav.person.pdl.aktor.v2.Identifikator
 import no.nav.person.pdl.aktor.v2.Type
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.randomAktorId
 import no.nav.utils.randomFnr
+import no.nav.utils.randomInternIdent
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.batchUpsert
@@ -58,7 +57,7 @@ class IdentServiceTest {
         var invocations = 0
         val identProvider = { oppslagId: String ->
             invocations++
-            IdenterFunnet(listOf(fnr, aktorId), Ident.validateOrThrow(oppslagId, UKJENT))
+            PdlIdenterFunnet(listOf(fnr, aktorId), Ident.validateOrThrow(oppslagId, UKJENT))
         }
         val identService = IdentService(identProvider)
 
@@ -74,7 +73,7 @@ class IdentServiceTest {
         val npid = Npid("01020304050", AKTIV)
         val aktorId = AktorId("4141112122441", AKTIV)
         val alleIdenterProvider = { ident: String ->
-            IdenterFunnet(listOf(npid, aktorId), inputIdent = Ident.validateOrThrow(ident, UKJENT))
+            PdlIdenterFunnet(listOf(npid, aktorId), inputIdent = Ident.validateOrThrow(ident, UKJENT))
         }
         val identService = IdentService(alleIdenterProvider)
 
@@ -93,7 +92,7 @@ class IdentServiceTest {
         val dnr = Dnr("41020304052", AKTIV)
 
         val fnrProvider = { ident: String ->
-            IdenterFunnet(
+            PdlIdenterFunnet(
                 listOf(npid, dnr, aktorId),
                 inputIdent = Ident.validateOrThrow(ident, UKJENT)
             )
@@ -116,7 +115,7 @@ class IdentServiceTest {
         val aktorId = AktorId("2938764298763", AKTIV)
 
         val fnrProvider = { ident: String ->
-            IdenterFunnet(
+            PdlIdenterFunnet(
                 listOf(npid, aktorId, fnr),
                 inputIdent = Ident.validateOrThrow(ident, UKJENT)
             )
@@ -139,7 +138,7 @@ class IdentServiceTest {
         val nyAktorId = AktorId("3938764298763", AKTIV)
 
         val identService = IdentService { _ ->
-            IdenterFunnet(listOf(
+            PdlIdenterFunnet(listOf(
                 npid,
                 gammelAktorId,
                 fnr), npid)
@@ -147,25 +146,27 @@ class IdentServiceTest {
         identService.veksleAktorIdIForetrukketIdent(gammelAktorId)
 
         val oppdatertIdentService = IdentService { _ ->
-            IdenterFunnet(listOf(
+            PdlIdenterFunnet(listOf(
                 npid,
                 gammelAktorId,
                 nyAktorId,
                 fnr), npid)
         }
-        val identer = oppdatertIdentService.håndterEndringPåIdenter(npid)
+        val identerResult = oppdatertIdentService.håndterEndringPåIdenter(npid)
 
-        identer shouldBe IdenterFunnet(listOf(
+        identerResult.shouldBeInstanceOf<IdenterFunnet>()
+        identerResult.inputIdent shouldBe  npid
+        identerResult.identer shouldBe listOf(
             npid,
             gammelAktorId,
             nyAktorId,
             fnr
-        ), npid)
+        )
     }
 
     @Test
     fun `håndterEndringPåIdenter - skal kaste exception ved uhåndtert feil i pdl-kall`() = runTest   {
-        val identProvider: suspend (String) -> IdenterFunnet = { throw IllegalStateException("Noe gikk galt") }
+        val identProvider: suspend (String) -> PdlIdenterFunnet = { throw IllegalStateException("Noe gikk galt") }
         val identService = IdentService(identProvider)
         val aktorId = AktorId("2938764298763", AKTIV)
 
@@ -196,10 +197,10 @@ class IdentServiceTest {
     fun `aktor-v2 endring - skal oppdatere identer når det kommer endring`() = runTest {
         flywayMigrationInTest()
 
-        val identProvider: suspend (String) -> IdenterFunnet = { aktorId ->
-            IdenterFunnet(
+        val identProvider: suspend (String) -> PdlIdenterFunnet = { aktorId ->
+            PdlIdenterFunnet(
                 emptyList(),
-            Ident.validateOrThrow(aktorId, UKJENT)
+            Ident.validateOrThrow(aktorId, UKJENT),
             )
         }
         val identService = IdentService(identProvider)
@@ -240,7 +241,7 @@ class IdentServiceTest {
         val aktorId = AktorId("2938764298763", AKTIV)
         val fnr = Fnr("18111298763", AKTIV)
 
-        val identProvider: suspend (String) -> IdenterFunnet = { innkommendeAktorId -> IdenterFunnet(listOf(
+        val identProvider: suspend (String) -> PdlIdenterFunnet = { innkommendeAktorId -> PdlIdenterFunnet(listOf(
             aktorId,
             fnr,
         ), Ident.validateOrThrow(innkommendeAktorId, UKJENT)) }
@@ -260,7 +261,7 @@ class IdentServiceTest {
     fun `aktor-v2 endring - skal kun sette aktørId i key som slettet når det kommer en tombstone`() = runTest {
         flywayMigrationInTest()
 
-        val identProvider: suspend (String) -> IdenterFunnet = { aktorId -> IdenterFunnet(emptyList(), Ident.validateOrThrow(aktorId, AKTIV)) }
+        val identProvider: suspend (String) -> PdlIdenterFunnet = { aktorId -> PdlIdenterFunnet(emptyList(), Ident.validateOrThrow(aktorId, AKTIV)) }
         val identService = IdentService(identProvider)
         val proccessor = IdentChangeProcessor(identService)
         val aktorId = AktorId("2938764298763", AKTIV)
@@ -287,7 +288,7 @@ class IdentServiceTest {
     fun `aktor-v2 endring - skal slette identer som ikke er med i endringssettet`() = runTest {
         flywayMigrationInTest()
 
-        val identProvider: suspend (String) -> IdenterFunnet = { aktorId -> IdenterFunnet(emptyList(), Ident.validateOrThrow(aktorId, AKTIV)) }
+        val identProvider: suspend (String) -> PdlIdenterFunnet = { aktorId -> PdlIdenterFunnet(emptyList(), Ident.validateOrThrow(aktorId, AKTIV)) }
         val identService = IdentService(identProvider)
         val aktorId = AktorId("2938764298793", AKTIV)
         val dnr = Dnr("48764298868", AKTIV)
@@ -337,8 +338,8 @@ class IdentServiceTest {
             }
         }
 
-        val identProvider: suspend (String) -> IdenterFunnet = { nyMenIkkeLagretEndaAktorId ->
-            IdenterFunnet(listOf(
+        val identProvider: suspend (String) -> PdlIdenterFunnet = { nyMenIkkeLagretEndaAktorId ->
+            PdlIdenterFunnet(listOf(
                 fnr, nyAktorId
             ), Ident.validateOrThrow(nyMenIkkeLagretEndaAktorId, AKTIV))
         }
@@ -365,7 +366,7 @@ class IdentServiceTest {
         flywayMigrationInTest()
         val aktorId = AktorId("2221219811121", AKTIV)
         val fnr = Fnr("12112198111", AKTIV)
-        val identProvider: suspend (String) -> IdenterFunnet = { input -> IdenterFunnet(
+        val identProvider: suspend (String) -> PdlIdenterFunnet = { input -> PdlIdenterFunnet(
             listOf(fnr, aktorId),
             Ident.validateOrThrow(input, UKJENT))
         }
@@ -393,7 +394,7 @@ class IdentServiceTest {
         val internIdent2 = internIdent1 + 1
         val aktorId2 = randomAktorId()
         val fnr2 = randomFnr()
-        val irrelevantIdentProvider: suspend (String) -> IdenterIkkeFunnet = { input -> IdenterIkkeFunnet("Ikke brukt") }
+        val irrelevantIdentProvider: suspend (String) -> PdlIdenterIkkeFunnet = { input -> PdlIdenterIkkeFunnet("Ikke brukt") }
         val identService = IdentService(irrelevantIdentProvider)
         lagreIdenter(identer = listOf(aktorId1, fnr1), nyInternIdent = internIdent1)
         lagreIdenter(identer = listOf(aktorId2, fnr2), nyInternIdent = internIdent2)

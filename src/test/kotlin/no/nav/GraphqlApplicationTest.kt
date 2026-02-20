@@ -1,6 +1,7 @@
 package no.nav.no.nav
 
 import com.expediagroup.graphql.server.ktor.graphQLPostRoute
+import domain.IdenterFunnet
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.date.shouldBeCloseTo
 import io.kotest.matchers.shouldBe
@@ -21,7 +22,6 @@ import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.GeografiskTilknytningKommuneNr
 import domain.gtForBruker.GtNummerForBrukerFunnet
-import no.nav.http.client.IdenterFunnet
 import no.nav.http.client.mockNorg2Host
 import no.nav.http.client.mockPoaoTilgangHost
 import no.nav.http.graphql.installGraphQl
@@ -56,7 +56,7 @@ fun ApplicationTestBuilder.graphqlServerInTest(
 ) {
     val norg2Client = mockNorg2Host()
     val poaoTilgangClient = mockPoaoTilgangHost(null, harTilgang)
-    val identer = IdenterFunnet(listOf(ident).map { Ident.validateOrThrow(it.value, AKTIV) }, ident)
+    val identer = IdenterFunnet(listOf(ident).map { Ident.validateOrThrow(it.value, AKTIV) }, ident, randomInternIdent())
     application {
         flywayMigrationInTest()
         installGraphQl(

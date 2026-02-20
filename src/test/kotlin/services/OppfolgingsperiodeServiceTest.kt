@@ -1,15 +1,12 @@
 package services
 
+import domain.IdenterIkkeFunnet
+import domain.IdenterOppslagFeil
 import io.kotest.matchers.types.shouldBeInstanceOf
 import no.nav.http.client.IdentFunnet
 import no.nav.http.client.IdentIkkeFunnet
 import no.nav.http.client.IdentOppslagFeil
-import no.nav.http.client.IdenterFunnet
-import no.nav.http.client.IdenterIkkeFunnet
-import no.nav.http.client.IdenterOppslagFeil
-import no.nav.services.KontorTilordningService
 import no.nav.services.OppfolgingperiodeOppslagFeil
-import no.nav.utils.bigQueryClient
 import no.nav.utils.kontorTilordningService
 import no.nav.utils.randomFnr
 import org.junit.jupiter.api.Test
@@ -19,7 +16,7 @@ class OppfolgingsperiodeServiceTest {
     @Test
     fun `getCurrentOppfolgingsperiode - feilhåndtering - input er IdentIkkeFunnet`() {
         val oppfolgingsperiodeService = OppfolgingsperiodeService(
-            {IdenterOppslagFeil("Noe gikk galt")},
+            { IdenterOppslagFeil("Noe gikk galt") },
             kontorTilordningService::slettArbeidsoppfølgingskontorTilordning
         )
         val fnrFunnet = IdentIkkeFunnet("Fant ikke ident")

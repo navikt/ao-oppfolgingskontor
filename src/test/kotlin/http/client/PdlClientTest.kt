@@ -1,6 +1,8 @@
 package http.client
 
 import com.expediagroup.graphql.client.types.GraphQLClientResponse
+import domain.IdenterFunnet
+import domain.IdenterOppslagFeil
 import domain.gtForBruker.GtForBrukerIkkeFunnet
 import domain.gtForBruker.GtForBrukerOppslagFeil
 import domain.gtForBruker.GtLandForBrukerFunnet
@@ -20,6 +22,7 @@ import no.nav.http.graphql.generated.client.enums.GtType
 import no.nav.http.graphql.generated.client.enums.IdentGruppe
 import no.nav.http.graphql.generated.client.hentgtquery.GeografiskTilknytning
 import no.nav.utils.randomFnr
+import no.nav.utils.randomInternIdent
 import org.junit.jupiter.api.Test
 import services.finnForetrukketIdent
 import java.time.LocalDate
@@ -271,7 +274,7 @@ class PdlClientTest {
 
         val fnrResult = pdlClient.hentIdenterFor(aktorId)
 
-        fnrResult.shouldBeInstanceOf<IdenterFunnet>()
+        fnrResult.shouldBeInstanceOf<PdlIdenterFunnet>()
         fnrResult.identer shouldHaveSize 3
     }
 
@@ -306,11 +309,11 @@ class PdlClientTest {
 
         val fnrResult = pdlClient.hentIdenterFor(aktorId)
 
-        fnrResult.shouldBeInstanceOf<IdenterFunnet>()
-        val ident = fnrResult.finnForetrukketIdent()
-        ident.shouldBeInstanceOf<IdentFunnet>()
-        ident.ident.shouldBeInstanceOf<Npid>()
-        ident.ident shouldBe npid
+        fnrResult.shouldBeInstanceOf<PdlIdenterFunnet>()
+        val result = fnrResult.finnForetrukketIdent()
+        result.shouldBeInstanceOf<IdentFunnet>()
+        result.ident.shouldBeInstanceOf<Npid>()
+        result.ident shouldBe npid
     }
 
     @Test
@@ -339,7 +342,7 @@ class PdlClientTest {
 
         val fnrResult = pdlClient.hentIdenterFor(aktorId)
 
-        fnrResult.shouldBeInstanceOf<IdenterOppslagFeil>()
+        fnrResult.shouldBeInstanceOf<PdlIdenterOppslagFeil>()
         fnrResult.message shouldBe "Fant ikke person: not_found"
     }
 
@@ -367,7 +370,8 @@ class PdlClientTest {
             listOf(
                 fnr,
                 dnr,
-            ), fnr
+            ), fnr,
+            randomInternIdent()
         ).finnForetrukketIdent()
 
         foretrukketIdent.shouldBeInstanceOf<IdentFunnet>()

@@ -1,9 +1,14 @@
 package services
 
 import arrow.core.Either
+import domain.IdenterFunnet
+import domain.IdenterIkkeFunnet
+import domain.IdenterOppslagFeil
+import domain.IdenterResult
 import kotlinx.coroutines.runBlocking
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
+import no.nav.db.InternIdent
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
@@ -11,10 +16,6 @@ import no.nav.http.client.IdentFunnet
 import no.nav.http.client.IdentIkkeFunnet
 import no.nav.http.client.IdentOppslagFeil
 import no.nav.http.client.IdentResult
-import no.nav.http.client.IdenterFunnet
-import no.nav.http.client.IdenterIkkeFunnet
-import no.nav.http.client.IdenterOppslagFeil
-import no.nav.http.client.IdenterResult
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.OppfolgingperiodeOppslagFeil
 import no.nav.services.OppfolgingsperiodeDao
@@ -25,37 +26,53 @@ import utils.Outcome
 
 class OppfolgingsperiodeService(
     val hentAlleIdenter: suspend (Ident) -> IdenterResult,
-    val slettArbeidsoppfolgingskontorTilordning: (OppfolgingsperiodeId) -> Either<Throwable, Unit>
+    val slettArbeidsoppfolgingskontorTilordning: (OppfolgingsperiodeId) -> Either<Throwable, Int>
 ) {
     val log = LoggerFactory.getLogger(OppfolgingsperiodeService::class.java)
 
     fun handterPeriodeAvsluttet(oppfolgingsperiode: OppfolgingsperiodeAvsluttet): HandterPeriodeAvsluttetResultat {
-        val nåværendeOppfolgingsperiode = getNåværendePeriode(oppfolgingsperiode.fnr)
-        val nåværendePeriodeBleAvsluttet = when {
-            nåværendeOppfolgingsperiode != null -> {
-                if (nåværendeOppfolgingsperiode.startDato.isBefore(oppfolgingsperiode.startDato.toOffsetDateTime())) {
-                    slettArbeidsoppfolgingskontorTilordning(oppfolgingsperiode.periodeId).fold(
-                        ifLeft = { log.error("Uventet feil ved sletting av arbeidsoppfølgingskontor: ${it.message}") },
-                        ifRight = { log.info("Slettet arbeidsoppfølgingskontor fordi oppfølgingsperiode ble avsluttet") }
-                    )
-                    OppfolgingsperiodeDao.deleteOppfolgingsperiode(nåværendeOppfolgingsperiode.periodeId) > 0
-                } else {
-                    false
-                }
-            }
-            else -> false
-        }
-        slettArbeidsoppfolgingskontorTilordning(oppfolgingsperiode.periodeId).fold(
-            ifLeft = { log.error("Uventet feil ved sletting av arbeidsoppfølgingskontor: ${it.message}") },
-            ifRight = { log.info("Slettet arbeidsoppfølgingskontor fordi oppfølgingsperiode ble avsluttet") }
-        )
-        val innkommendePeriodeBleAvsluttet = OppfolgingsperiodeDao.deleteOppfolgingsperiode(oppfolgingsperiode.periodeId) > 0
+        // Bør variabelnavnet være lagretOppfolgingsperiode?
+        val aktivOppfolgingsperiode: AktivOppfolgingsperiode? = getNåværendePeriode(oppfolgingsperiode.fnr)
 
         return when {
-            nåværendePeriodeBleAvsluttet && innkommendePeriodeBleAvsluttet -> throw Exception("Dette skal aldri skje! Skal ikke være flere perioder på samme person samtidig ${oppfolgingsperiode.periodeId}, ${nåværendeOppfolgingsperiode?.periodeId}")
-            nåværendePeriodeBleAvsluttet -> GammelPeriodeAvsluttet
-            innkommendePeriodeBleAvsluttet -> InnkommendePeriodeAvsluttet
-            else -> IngenPeriodeAvsluttet
+            aktivOppfolgingsperiode == null -> {
+                // Ikke gjør noe? Skal egentlig ikke være noe å rydde opp
+                IngenAktivePerioderÅAvslutte
+            }
+            aktivOppfolgingsperiode.periodeId != oppfolgingsperiode.periodeId -> {
+                val periodenViHarMottattAvsluttetMeldingPaaErEldreEnnAktivPeriode = aktivOppfolgingsperiode.startDato.isAfter(oppfolgingsperiode.startDato.toOffsetDateTime())
+
+                if (periodenViHarMottattAvsluttetMeldingPaaErEldreEnnAktivPeriode) {
+                    return PersonHarNyereAktivPeriode
+                } else {
+                    // Dette skal aldri skje – vi behandlet ikke avslutning på forrige perioden og mottok ikke startmelding på nåværende periode
+                    // Vi må uansett rydde opp perioden som vi faktisk har lagret – i denne appen vet vi ingenting om den nyere annet enn at den nå er avsluttet
+                    // Tombstone personen
+                    slettArbeidsoppfolgingskontorTilordning(aktivOppfolgingsperiode.periodeId).fold(
+                        ifLeft = { throw Exception("Uventet feil ved sletting av arbeidsoppfølgingskontor") },
+                        ifRight = { log.info("Slettet $it arbeidsoppfølgingskontor fordi oppfølgingsperiode ble avsluttet") }
+                    )
+                    slettArbeidsoppfolgingskontorTilordning(oppfolgingsperiode.periodeId).fold(
+                        ifLeft = { throw Exception("Uventet feil ved sletting av arbeidsoppfølgingskontor") },
+                        ifRight = { log.info("Slettet $it arbeidsoppfølgingskontor fordi oppfølgingsperiode ble avsluttet") }
+                    )
+                    val slettetAktivOppfølgingsperiode = OppfolgingsperiodeDao.deleteOppfolgingsperiode(aktivOppfolgingsperiode.periodeId) == 1
+                    val slettetInnkommenOppfølgingperiode = OppfolgingsperiodeDao.deleteOppfolgingsperiode(oppfolgingsperiode.periodeId) == 1
+                    log.warn("Fikk inn en avsluttetmelding på nyere periode enn den vi hadde lagret, dette skal ikke skje. Har ryddet opp. Slettet eldste periode: $slettetAktivOppfølgingsperiode, slettet nyeste periode: $slettetInnkommenOppfølgingperiode")
+
+                    AvsluttetAktivPeriode(aktivOppfolgingsperiode.internIdent)
+                }
+            }
+            aktivOppfolgingsperiode.periodeId == oppfolgingsperiode.periodeId -> {
+                // Mottok avslutning på aktiv periode (Happy case)
+                slettArbeidsoppfolgingskontorTilordning(aktivOppfolgingsperiode.periodeId).fold(
+                    ifLeft = { log.error("Uventet feil ved sletting av arbeidsoppfølgingskontor: ${it.message}") },
+                    ifRight = { log.info("Slettet arbeidsoppfølgingskontor fordi oppfølgingsperiode ble avsluttet") }
+                )
+                OppfolgingsperiodeDao.deleteOppfolgingsperiode(aktivOppfolgingsperiode.periodeId)
+                AvsluttetAktivPeriode(aktivOppfolgingsperiode.internIdent)
+            }
+            else -> throw Exception("Skal ikke skje")
         }
     }
 
@@ -104,7 +121,7 @@ class OppfolgingsperiodeService(
             transaction {
                 // hentAlleIdenter har fallback til PDL og oppdaterer ident-mapping hvis det er kommet nye identer, derfor er dette i en transaksjon
                 when (val result = runBlocking { hentAlleIdenter(ident) }) {
-                    is IdenterFunnet -> OppfolgingsperiodeDao.getCurrentOppfolgingsperiode(result.identer)
+                    is IdenterFunnet -> OppfolgingsperiodeDao.getCurrentOppfolgingsperiode(result)
                     is IdenterIkkeFunnet -> OppfolgingperiodeOppslagFeil("Kunne ikke hente nåværende oppfolgingsperiode, klarte ikke hente alle mappede identer: ${result.message}")
                     is IdenterOppslagFeil -> OppfolgingperiodeOppslagFeil("Kunne ikke hente nåværende oppfolgingsperiode, klarte ikke hente alle mappede identer: ${result.message}")
                 }
@@ -138,6 +155,7 @@ object HarSlettetPeriode: HandterPeriodeStartetResultat()
 object OppfølgingsperiodeLagret: HandterPeriodeStartetResultat()
 
 sealed class HandterPeriodeAvsluttetResultat
-object IngenPeriodeAvsluttet: HandterPeriodeAvsluttetResultat()
-object GammelPeriodeAvsluttet: HandterPeriodeAvsluttetResultat()
-object InnkommendePeriodeAvsluttet: HandterPeriodeAvsluttetResultat()
+object IngenAktivePerioderÅAvslutte: HandterPeriodeAvsluttetResultat()
+object PersonHarNyereAktivPeriode: HandterPeriodeAvsluttetResultat()
+class AvsluttetAktivPeriode(val internIdent: InternIdent): HandterPeriodeAvsluttetResultat()
+//class InnkommendePeriodeAvsluttet(internIdent: InternIdent): HandterPeriodeAvsluttetResultat()
