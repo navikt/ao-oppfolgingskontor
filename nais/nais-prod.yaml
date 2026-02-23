@@ -74,6 +74,8 @@ spec:
            roles:
              - "bulk-hent-kontor"
         - application: inngar
+        - application: poao-tilgang
+          namespace: poao
     outbound:
       rules:
         - application: norg2
