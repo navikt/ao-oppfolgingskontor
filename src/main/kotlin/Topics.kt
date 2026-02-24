@@ -25,7 +25,7 @@ class Topics(
         val endringPaOppfolgingsbruker: Topic<String, String>,
         val oppfolgingsHendelser: Topic<String, String>,
         val pdlLeesah: Topic<String, Personhendelse>,
-        val skjerming: Topic<String, String>,
+        val skjerming: Topic<String, String?>,
         val aktorV2: Topic<String, Aktor>,
     )
     class Ut(
