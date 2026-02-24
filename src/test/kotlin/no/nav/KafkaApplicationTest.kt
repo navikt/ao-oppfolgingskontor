@@ -188,7 +188,7 @@ class KafkaApplicationTest {
         application {
             flywayMigrationInTest()
             gittBrukerUnderOppfolging(fnr, oppfølgingsperiodeId)
-            val topology = configureStringStringInputTopology(skjermingProcessor::process, topic)
+            val topology = configureStringOptionalStringInputTopology(skjermingProcessor::process, topic)
             val kafkaMockTopic = setupKafkaMock(topology, topic)
 
             kafkaMockTopic.pipeInput(fnr.value, "true")
@@ -242,6 +242,23 @@ class KafkaApplicationTest {
 
     private fun configureStringStringInputTopology(
         processRecord: ProcessRecord<String, String, String, String>,
+        topic: String
+    ): Topology {
+        val builder = StreamsBuilder()
+        val testSupplier = wrapInRetryProcessor(
+            topic = topic,
+            keyInSerde = Serdes.String(),
+            valueInSerde = Serdes.String(),
+            processRecord = processRecord,
+        )
+
+        builder.stream(topic, Consumed.with(Serdes.String(), Serdes.String()))
+            .process(testSupplier, Named.`as`(processorName(topic)))
+        return builder.build()
+    }
+
+    private fun configureStringOptionalStringInputTopology(
+        processRecord: ProcessRecord<String, String?, String, String?>,
         topic: String
     ): Topology {
         val builder = StreamsBuilder()

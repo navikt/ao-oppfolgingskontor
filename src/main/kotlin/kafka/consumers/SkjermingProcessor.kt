@@ -21,12 +21,16 @@ class SkjermingProcessor(
 ) {
     val log = LoggerFactory.getLogger(SkjermingProcessor::class.java)
 
-    fun process(record: Record<String, String>): RecordProcessingResult<String, String> {
+    fun process(record: Record<String, String?>): RecordProcessingResult<String, String?> {
         println("Processing Skjerming record: ${record.value()}")
-        return handterEndringISKjermetStatus(record.key(), record.value().toBoolean())
+        return handterEndringISKjermetStatus(record.key(), record.value()?.toBoolean())
     }
 
-    fun handterEndringISKjermetStatus(fnr: String, skjermingStatus: Boolean): RecordProcessingResult<String, String> {
+    fun handterEndringISKjermetStatus(fnr: String, skjermingStatus: Boolean?): RecordProcessingResult<String, String?> {
+        if (skjermingStatus == null) {
+            log.warn("Skjermingsmelding hadde null i payload, hopper over melding")
+            return Skip()
+        }
         return runBlocking {
             runCatching { Ident.validateOrThrow(fnr, Ident.HistoriskStatus.UKJENT) }
                 .fold( { validFnr ->
