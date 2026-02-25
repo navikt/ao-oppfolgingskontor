@@ -56,7 +56,21 @@ class KontorForBrukerMedMangelfullGtService(
                 nåværendeArbeidsforhold.maxByOrNull { it.ansettelsesperiode.startdato }
                     ?: tidligereArbeidsforhold.maxByOrNull { it.ansettelsesperiode.startdato }
             }
-            ?.arbeidssted?.identer?.first { it.type == "ORGANISASJONSNUMMER" }
+            ?.arbeidssted?.identer
+            ?.let { identer ->
+                val antallIdenter = identer.size
+                val orgnumre = identer.filter { it.type == "ORGANISASJONSNUMMER" }
+                when (orgnumre.size) {
+                    1 ->  orgnumre.first()
+                    0 -> {
+                        if (antallIdenter != 0) {
+                            log.info("Fant ingen arbeidssted-identer av typen ORGANISASJONSNUMMER, bare av typen ${identer.map { it.type }.toSet()}")
+                        }
+                        null
+                    }
+                    else -> orgnumre.first()
+                }
+            }
             ?.ident
             ?.let { OrgNummer(it) }
             ?: return KontorForGtFantIkkeKontor(
