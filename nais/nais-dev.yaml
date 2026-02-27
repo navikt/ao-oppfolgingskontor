@@ -82,6 +82,9 @@ spec:
         - application: inngar
         - application: poao-tilgang
           namespace: poao
+        - application: poao-tilgang
+          namespace: poao
+          cluster: dev-fss
     outbound:
       rules:
         - application: norg2
