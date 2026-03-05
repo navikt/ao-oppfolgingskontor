@@ -50,6 +50,7 @@ tasks.test {
 
 dependencies {
     implementation(libs.ktor.server.core)
+    implementation(libs.ktor.server.rate.limit )
     implementation(libs.ktor.serialization.kotlinx.json)
     implementation(libs.ktor.server.content.negotiation)
     implementation(libs.exposed.core)

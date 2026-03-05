@@ -47,6 +47,7 @@ fun Application.module() {
     val meterRegistry = configureMonitoring()
     val setCriticalError: CriticalErrorNotificationFunction = configureHealthAndCompression()
     configureSecurity()
+    configureRateLimit()
 
 
     val norg2Client = Norg2Client(environment.getNorg2Url())
