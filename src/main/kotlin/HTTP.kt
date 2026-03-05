@@ -4,6 +4,7 @@ import dab.poao.nav.no.health.CriticalErrorNotificationFunction
 import dab.poao.nav.no.health.healthEndpoints
 import io.ktor.server.application.*
 import io.ktor.server.plugins.compression.*
+import io.ktor.server.plugins.origin
 import io.ktor.server.plugins.ratelimit.RateLimit
 import io.ktor.server.routing.routing
 import kotlin.time.Duration.Companion.seconds
@@ -29,7 +30,11 @@ fun Application.configureHealthAndCompression(): CriticalErrorNotificationFuncti
 fun Application.configureRateLimit() {
     install(RateLimit) {
         global {
-            rateLimiter(limit = 100, refillPeriod = 60.seconds)
+            // Maks 200 requests per sekund per IP-adresse
+            rateLimiter(limit = 200, refillPeriod = 1.seconds)
+            requestKey { call ->
+                call.request.origin.remoteHost
+            }
         }
     }
 }
