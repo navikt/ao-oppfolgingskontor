@@ -6,6 +6,7 @@ import io.ktor.server.application.*
 import io.ktor.server.plugins.compression.*
 import io.ktor.server.plugins.origin
 import io.ktor.server.plugins.ratelimit.RateLimit
+import io.ktor.server.request.header
 import io.ktor.server.routing.routing
 import kotlin.time.Duration.Companion.seconds
 
@@ -33,7 +34,7 @@ fun Application.configureRateLimit() {
             // Maks 200 requests per sekund per IP-adresse
             rateLimiter(limit = 200, refillPeriod = 1.seconds)
             requestKey { call ->
-                call.request.origin.remoteHost
+                call.request.headers["Authorization"]?.hashCode()?.toString() ?: call.request.origin.remoteHost
             }
         }
     }
