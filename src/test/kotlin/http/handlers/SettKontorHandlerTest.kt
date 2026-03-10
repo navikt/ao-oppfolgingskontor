@@ -103,23 +103,6 @@ class SettKontorHandlerTest {
     }
 
     @Test
-    fun `Skal svare med 409 når bruker allerede er tildelt kontoret `() = runTest {
-        val kontorIdBrukersKontor = KontorId("1234")
-        val brukersKontor = ArbeidsoppfolgingsKontor(
-            kontorNavn = KontorNavn("Kontornavn"),
-            kontorId = kontorIdBrukersKontor,
-        )
-        val handler = defaultHandler(fnr, hentAoKontor = { brukersKontor })
-        val kontortilordningBrukerKontor = kontortilordning.copy(
-            kontorId = kontorIdBrukersKontor.id,
-        )
-
-        handler.settKontor(
-            kontortilordningBrukerKontor, navAnsatt, "trace"
-        ) shouldBe SettKontorFailure(HttpStatusCode.Conflict, "Bruker er allerede tildelt kontoret")
-    }
-
-    @Test
     fun `Skal svare med 403 når veilder ikke har tilgang og forsøker å sette kontor til noe annet enn eget kontor`() = runTest {
         val handler = defaultHandler(fnr, harTilgangTilBruker = HarIkkeTilgangTilBruker("Fordi", navAnsatt, fnr, "trace"), harTilgangTilKontor = HarIkkeTilgangTilKontor("Fordi", navAnsatt, kontorId, "trace"))
 
@@ -147,6 +130,42 @@ class SettKontorHandlerTest {
                 )
             )
         )
+    }
+
+    @Test
+    fun `Skal svare med 200 når bruker allerede er tildelt kontoret `() = runTest {
+        val kontorIdBrukersKontor = KontorId("1234")
+        val brukersKontor = ArbeidsoppfolgingsKontor(
+            kontorNavn = KontorNavn("Kontornavn"),
+            kontorId = kontorIdBrukersKontor,
+        )
+        var harTilordnetKontor = false
+        var harPublisertKontorEndring = false
+        val handler = defaultHandler(
+            fnr,
+            hentAoKontor = { brukersKontor },
+            tilordneKontor = { _, _ -> harTilordnetKontor = true },
+            publiserKontorEndring = { _ ->
+                harPublisertKontorEndring = true
+                Result.success(Unit)
+            },
+        )
+        val kontortilordningBrukerKontor = kontortilordning.copy(
+            kontorId = kontorIdBrukersKontor.id,
+        )
+        val forventetKontor = Kontor(
+            kontorNavn = brukersKontor.kontorNavn.navn,
+            kontorId = brukersKontor.kontorId.id,
+        )
+
+        handler.settKontor(
+            kontortilordningBrukerKontor, navAnsatt, "trace"
+        ) shouldBe SettKontorSuccess(KontorByttetOkResponseDto(
+            fraKontor = forventetKontor,
+            tilKontor = forventetKontor,
+        ))
+        harTilordnetKontor shouldBe false
+        harPublisertKontorEndring shouldBe false
     }
 
     @Test

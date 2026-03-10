@@ -177,7 +177,8 @@ class SettKontorHandler(
                         )
                         if (gammeltKontor?.kontorId == kontorId) {
                             logger.warn("Bruker tilhører allerede kontoret")
-                            return SettKontorFailure(HttpStatusCode.Conflict, "Bruker er allerede tildelt kontoret")
+                            val response = buildResponse(gammeltKontor.kontorNavn, kontorId, gammeltKontor)
+                            return SettKontorSuccess(response)
                         }
                         tilordneKontor(kontorEndring, brukAoRuting)
                         val result = publiserManuellKontorEndring(kontorEndring)
