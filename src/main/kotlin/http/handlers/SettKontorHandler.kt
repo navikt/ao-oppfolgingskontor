@@ -175,6 +175,11 @@ class SettKontorHandler(
                             tilhorighet = KontorTilordning(ident, kontorId, periodeId),
                             registrant = principal.toRegistrant()
                         )
+                        if (gammeltKontor?.kontorId == kontorId) {
+                            logger.warn("Bruker tilhører allerede kontoret")
+                            val response = buildResponse(gammeltKontor.kontorNavn, kontorId, gammeltKontor)
+                            return SettKontorSuccess(response)
+                        }
                         tilordneKontor(kontorEndring, brukAoRuting)
                         val result = publiserManuellKontorEndring(kontorEndring)
                         if (result.isFailure) throw result.exceptionOrNull()!!

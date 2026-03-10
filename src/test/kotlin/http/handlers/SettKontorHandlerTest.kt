@@ -5,10 +5,13 @@ import io.ktor.http.HttpStatusCode
 import io.mockk.Called
 import io.mockk.mockk
 import io.mockk.verify
+import java.time.OffsetDateTime
+import java.util.UUID
 import kotlinx.coroutines.test.runTest
 import no.nav.AOPrincipal
 import no.nav.NavAnsatt
 import no.nav.db.IdentSomKanLagres
+import no.nav.domain.ArbeidsoppfolgingsKontor
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
@@ -28,7 +31,6 @@ import no.nav.http.client.SkjermingIkkeFunnet
 import no.nav.http.client.SkjermingResult
 import no.nav.http.client.poaoTilgang.HarIkkeTilgangTilBruker
 import no.nav.http.client.poaoTilgang.HarIkkeTilgangTilKontor
-import no.nav.http.client.poaoTilgang.HarTilgangTilKontor
 import no.nav.http.client.poaoTilgang.PersonHarTilgangTilBruker
 import no.nav.http.client.poaoTilgang.PersonHarTilgangTilKontor
 import no.nav.http.client.poaoTilgang.SystemHarTilgangTilKontor
@@ -43,8 +45,6 @@ import no.nav.services.OppfolgingsperiodeOppslagResult
 import no.nav.utils.randomFnr
 import no.nav.utils.randomInternIdent
 import org.junit.jupiter.api.Test
-import java.time.OffsetDateTime
-import java.util.UUID
 
 class SettKontorHandlerTest {
 
@@ -132,12 +132,40 @@ class SettKontorHandlerTest {
         )
     }
 
-    fun `Skal svare med 403 når subject ikke har tilgang`() = runTest {
-        val handler = defaultHandler(fnr, harTilgangTilBruker = HarIkkeTilgangTilBruker("Fordi", navAnsatt, fnr, "trace") )
+    @Test
+    fun `Skal svare med 200 når bruker allerede er tildelt kontoret `() = runTest {
+        val kontorIdBrukersKontor = KontorId("1234")
+        val brukersKontor = ArbeidsoppfolgingsKontor(
+            kontorNavn = KontorNavn("Kontornavn"),
+            kontorId = kontorIdBrukersKontor,
+        )
+        var harTilordnetKontor = false
+        var harPublisertKontorEndring = false
+        val handler = defaultHandler(
+            fnr,
+            hentAoKontor = { brukersKontor },
+            tilordneKontor = { _, _ -> harTilordnetKontor = true },
+            publiserKontorEndring = { _ ->
+                harPublisertKontorEndring = true
+                Result.success(Unit)
+            },
+        )
+        val kontortilordningBrukerKontor = kontortilordning.copy(
+            kontorId = kontorIdBrukersKontor.id,
+        )
+        val forventetKontor = Kontor(
+            kontorNavn = brukersKontor.kontorNavn.navn,
+            kontorId = brukersKontor.kontorId.id,
+        )
 
         handler.settKontor(
-            kontortilordning, navAnsatt, "trace"
-        ) shouldBe SettKontorFailure(HttpStatusCode.Forbidden, "Du har ikke tilgang til å endre kontor for denne brukeren")
+            kontortilordningBrukerKontor, navAnsatt, "trace"
+        ) shouldBe SettKontorSuccess(KontorByttetOkResponseDto(
+            fraKontor = forventetKontor,
+            tilKontor = forventetKontor,
+        ))
+        harTilordnetKontor shouldBe false
+        harPublisertKontorEndring shouldBe false
     }
 
     @Test
@@ -200,20 +228,20 @@ class SettKontorHandlerTest {
     }
 
      fun defaultHandler(
-        ident: IdentSomKanLagres,
-        harTilgangTilBruker: TilgangTilBrukerResult = PersonHarTilgangTilBruker(
+         ident: IdentSomKanLagres,
+         harTilgangTilBruker: TilgangTilBrukerResult = PersonHarTilgangTilBruker(
             navAnsatt,
             ident,
             "trace"
         ),
-        harTilgangTilKontor: TilgangTilKontorResult = SystemHarTilgangTilKontor,
-        skjermingResult: SkjermingResult = SkjermingFunnet(HarSkjerming(false)),
-        adresseResult: HarStrengtFortroligAdresseResult = HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)),
-        oppfolgingsperiodeResult: OppfolgingsperiodeOppslagResult = AktivOppfolgingsperiode(ident, randomInternIdent(),OppfolgingsperiodeId(UUID.randomUUID()), startDato = OffsetDateTime.now()),
-        tilordneKontor: (event: KontorEndretEvent, brukAORuting: Boolean) -> Unit = { a, b -> Unit },
-        publiserKontorEndring: (event: KontorEndretEvent) -> Result<Unit> = { a -> Result.success(Unit) },
+         harTilgangTilKontor: TilgangTilKontorResult = SystemHarTilgangTilKontor,
+         skjermingResult: SkjermingResult = SkjermingFunnet(HarSkjerming(false)),
+         adresseResult: HarStrengtFortroligAdresseResult = HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)),
+         oppfolgingsperiodeResult: OppfolgingsperiodeOppslagResult = AktivOppfolgingsperiode(ident, randomInternIdent(),OppfolgingsperiodeId(UUID.randomUUID()), startDato = OffsetDateTime.now()),
+         tilordneKontor: (event: KontorEndretEvent, brukAORuting: Boolean) -> Unit = { a, b -> Unit },
+         publiserKontorEndring: (event: KontorEndretEvent) -> Result<Unit> = { a -> Result.success(Unit) },
+         hentAoKontor: suspend (ident: IdentSomKanLagres) -> ArbeidsoppfolgingsKontor? = { null },
     ): SettKontorHandler {
-        val hentAoKontor = suspend { i: IdentSomKanLagres -> null }
         val harTilgang = suspend { a: AOPrincipal, b: IdentSomKanLagres, traceId: String -> harTilgangTilBruker }
         val harTilgangTilKontor = suspend { a: AOPrincipal, b: KontorId, traceId: String -> harTilgangTilKontor }
         return SettKontorHandler(
