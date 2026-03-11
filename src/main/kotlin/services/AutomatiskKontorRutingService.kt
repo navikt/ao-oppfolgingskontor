@@ -452,7 +452,7 @@ data class AutomatiskKontorRutingService(
                     NotUnderOppfolging -> return Result.success(EndringISkjermingResult(KontorEndringer()))
                     is OppfolgingperiodeOppslagFeil ->
                         return Result.failure(
-                            Exception("Kunne håndtere endring i skjerming pga feil ved henting av oppfolgingsstatus: ${result.message}")
+                            Exception("Kunne ikke håndtere endring i skjerming pga feil ved henting av oppfolgingsstatus: ${result.message}")
                         )
                 }
 
@@ -489,17 +489,14 @@ data class AutomatiskKontorRutingService(
                         oppfolgingsperiodeId,
                         gtKontorResultat.gt()
                     )
-                    if (endringISkjermingStatus.erSkjermet.value) {
-                        val aoKontorEndring = AOKontorEndretPgaSkjermingEndret(
-                            KontorTilordning(endringISkjermingStatus.fnr, gtKontor, oppfolgingsperiodeId)
-                        )
-                        val kontorEndringer =
-                            KontorEndringer(aoKontorEndret = aoKontorEndring, gtKontorEndret = gtKontorEndring)
-                        Result.success(EndringISkjermingResult(kontorEndringer))
-                    } else {
-                        val kontorEndringer = KontorEndringer(gtKontorEndret = gtKontorEndring)
-                        Result.success(EndringISkjermingResult(kontorEndringer))
-                    }
+                    val aoKontorEndring = AOKontorEndretPgaSkjermingEndret(
+                        KontorTilordning(endringISkjermingStatus.fnr, gtKontor, oppfolgingsperiodeId)
+                    )
+                    val kontorEndringer = KontorEndringer(
+                        aoKontorEndret = aoKontorEndring,
+                        gtKontorEndret = gtKontorEndring,
+                    )
+                    Result.success(EndringISkjermingResult(kontorEndringer))
                 }
 
                 is KontorForGtFeil -> {
