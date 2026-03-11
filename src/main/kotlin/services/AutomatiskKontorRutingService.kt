@@ -490,7 +490,12 @@ data class AutomatiskKontorRutingService(
                         gtKontorResultat.gt()
                     )
                     val aoKontorEndring = AOKontorEndretPgaSkjermingEndret(
-                        KontorTilordning(endringISkjermingStatus.fnr, gtKontor, oppfolgingsperiodeId)
+                        kontorTilordning = KontorTilordning(
+                            fnr = endringISkjermingStatus.fnr,
+                            kontorId = gtKontor,
+                            oppfolgingsperiodeId = oppfolgingsperiodeId,
+                        ),
+                        skjerming = endringISkjermingStatus.erSkjermet,
                     )
                     val kontorEndringer = KontorEndringer(
                         aoKontorEndret = aoKontorEndring,
