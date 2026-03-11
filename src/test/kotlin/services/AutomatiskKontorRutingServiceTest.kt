@@ -571,7 +571,8 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                                 ungBrukerMedGodeMuligheter.fnr(),
                                 ungBrukerMedGodeMuligheter.gtKontor(),
                                 ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()
-                            )
+                            ),
+                            skjerming = HarSkjerming(true),
                         ),
                     )
                 )
@@ -601,7 +602,8 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                                 brukerMedLandskodeOgFallback.fnr(),
                                 brukerMedLandskodeOgFallback.gtKontor(),
                                 brukerMedLandskodeOgFallback.oppfolgingsperiodeId()
-                            )
+                            ),
+                            skjerming = HarSkjerming(true),
                         ),
                     )
                 )
@@ -642,7 +644,8 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                             brukerMedLandskodeUtenFallback.fnr(),
                             INGEN_GT_KONTOR_FALLBACK,
                             brukerMedLandskodeUtenFallback.oppfolgingsperiodeId()
-                        )
+                        ),
+                        skjerming = HarSkjerming(true),
                     ),
                 ))
             ) shouldBe Result.success(EndringISkjermingResult(
@@ -661,7 +664,8 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                             brukerMedLandskodeUtenFallback.fnr(),
                             INGEN_GT_KONTOR_FALLBACK,
                             brukerMedLandskodeUtenFallback.oppfolgingsperiodeId()
-                        )
+                        ),
+                        skjerming = HarSkjerming(true),
                     ),
                 )
             )
@@ -691,7 +695,8 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                                 ungBrukerMedGodeMuligheter.fnr(),
                                 ungBrukerMedGodeMuligheter.gtKontor(),
                                 ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()
-                            )
+                            ),
+                            skjerming = HarSkjerming(false),
                         ),
                     )
                 )
@@ -724,7 +729,8 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                                 brukerSomManglerGt.fnr(),
                                 INGEN_GT_KONTOR_FALLBACK,
                                 brukerSomManglerGt.oppfolgingsperiodeId()
-                            )
+                            ),
+                            skjerming = HarSkjerming(true),
                         ),
                     )
                 )
