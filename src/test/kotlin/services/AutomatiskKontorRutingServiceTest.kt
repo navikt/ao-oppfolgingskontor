@@ -69,7 +69,6 @@ import domain.kontorForGt.KontorForGtFeil
 import domain.kontorForGt.KontorForGtNrFantFallbackKontorForManglendeGt
 import domain.kontorForGt.KontorForGtResultat
 import domain.kontorForGt.KontorForGtSuccess
-import io.kotest.matchers.equals.shouldBeEqual
 import kafka.consumers.oppfolgingsHendelser.StartetAvType
 import no.nav.domain.events.OppfolgingsperiodeStartetManuellTilordning
 import no.nav.domain.externalEvents.KontorOverstyring
@@ -669,7 +668,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
             )
         }
 
-        it("skal bare sette GT kontor når bruker blir av-skjermet") {
+        it("skal sette GT-kontor og AO-kontor når bruker blir av-skjermet") {
             gitt(ungBrukerMedGodeMuligheter).handterEndringISkjermingStatus(
                 SkjermetStatusEndret(
                     ungBrukerMedGodeMuligheter.fnr(),
@@ -686,7 +685,14 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                             ),
                             HarSkjerming(false),
                             ungBrukerMedGodeMuligheter.gtForBruker as GtForBrukerFunnet
-                        )
+                        ),
+                        aoKontorEndret = AOKontorEndretPgaSkjermingEndret(
+                            KontorTilordning(
+                                ungBrukerMedGodeMuligheter.fnr(),
+                                ungBrukerMedGodeMuligheter.gtKontor(),
+                                ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()
+                            )
+                        ),
                     )
                 )
             )
