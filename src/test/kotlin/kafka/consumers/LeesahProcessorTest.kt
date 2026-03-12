@@ -1,8 +1,16 @@
 package kafka.consumers
 
+import domain.Systemnavn
+import domain.gtForBruker.GtNummerForBrukerFunnet
+import domain.kontorForGt.KontorForGtFantDefaultKontor
+import domain.kontorForGt.KontorForGtFeil
+import domain.kontorForGt.KontorForGtResultat
+import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeTypeOf
 import io.ktor.server.testing.testApplication
+import java.time.OffsetDateTime
+import java.util.UUID
 import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
@@ -13,15 +21,15 @@ import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
+import no.nav.domain.System
 import no.nav.domain.events.GTKontorEndret
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.domain.externalEvents.AdressebeskyttelseEndret
 import no.nav.domain.externalEvents.BostedsadresseEndret
-import no.nav.http.client.IdentFunnet
 import no.nav.http.client.GeografiskTilknytningBydelNr
-import domain.gtForBruker.GtNummerForBrukerFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseResult
+import no.nav.http.client.IdentFunnet
 import no.nav.http.client.SkjermingFunnet
 import no.nav.kafka.consumers.LeesahProcessor
 import no.nav.kafka.processor.Retry
@@ -29,10 +37,6 @@ import no.nav.person.pdl.leesah.adressebeskyttelse.Gradering
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.AutomatiskKontorRutingService.Companion.VIKAFOSSEN
-import domain.kontorForGt.KontorForGtFantDefaultKontor
-import domain.kontorForGt.KontorForGtFeil
-import domain.kontorForGt.KontorForGtResultat
-import io.kotest.assertions.withClue
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.gittBrukerUnderOppfolging
 import no.nav.utils.kontorTilordningService
@@ -41,8 +45,6 @@ import no.nav.utils.randomInternIdent
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
 import utils.Outcome
-import java.time.OffsetDateTime
-import java.util.UUID
 
 class LeesahProcessorTest {
 
@@ -185,7 +187,8 @@ class LeesahProcessorTest {
             GTKontorEndret(
                 kontorTilordning = KontorTilordning(fnr, kontorId, oppfolgingsperiodeId),
                 kontorEndringsType = KontorEndringsType.EndretBostedsadresse,
-                gt = GtNummerForBrukerFunnet(GeografiskTilknytningBydelNr("3131"))
+                gt = GtNummerForBrukerFunnet(GeografiskTilknytningBydelNr("3131")),
+                registrant = System(Systemnavn.PDL),
             ),
             true
         )

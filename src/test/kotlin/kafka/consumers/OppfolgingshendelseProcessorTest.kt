@@ -3,6 +3,7 @@ package kafka.consumers
 import db.entity.TidligArenaKontorEntity
 import domain.ArenaKontorUtvidet
 import domain.IdenterFunnet
+import domain.Systemnavn
 import io.kotest.assertions.withClue
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -56,6 +57,7 @@ import java.time.ZonedDateTime
 import java.time.temporal.ChronoUnit
 import java.util.*
 import kotlin.test.fail
+import no.nav.domain.System
 
 class OppfolgingshendelseProcessorTest {
 
@@ -109,7 +111,8 @@ class OppfolgingshendelseProcessorTest {
         kontorTilordningService.tilordneKontor(
             ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep(
                 KontorTilordning(this.ident, kontorId, this.oppfolgingsperiodeId),
-                OffsetDateTime.now()
+                OffsetDateTime.now(),
+                System(Systemnavn.VEILARBOPPFOLGING),
             ),
             true
         )

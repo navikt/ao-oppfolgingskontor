@@ -1,8 +1,27 @@
 package services
 
+import domain.Systemnavn
+import domain.gtForBruker.GtForBrukerFunnet
+import domain.gtForBruker.GtForBrukerIkkeFunnet
+import domain.gtForBruker.GtForBrukerOppslagFeil
+import domain.gtForBruker.GtForBrukerResult
+import domain.gtForBruker.GtForBrukerSuccess
+import domain.gtForBruker.GtLandForBrukerFunnet
+import domain.gtForBruker.GtNummerForBrukerFunnet
+import domain.kontorForGt.KontorForGtFantDefaultKontor
+import domain.kontorForGt.KontorForGtFantIkkeKontor
+import domain.kontorForGt.KontorForGtFantKontor
+import domain.kontorForGt.KontorForGtFantKontorForArbeidsgiverAdresse
+import domain.kontorForGt.KontorForGtFeil
+import domain.kontorForGt.KontorForGtNrFantFallbackKontorForManglendeGt
+import domain.kontorForGt.KontorForGtResultat
+import domain.kontorForGt.KontorForGtSuccess
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import java.time.OffsetDateTime
+import java.util.UUID
+import kafka.consumers.oppfolgingsHendelser.StartetAvType
 import no.nav.db.Fnr
 import no.nav.db.Ident.HistoriskStatus.AKTIV
 import no.nav.db.Ident.HistoriskStatus.UKJENT
@@ -15,37 +34,34 @@ import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.Sensitivitet
+import no.nav.domain.System
 import no.nav.domain.events.AOKontorEndretPgaAdressebeskyttelseEndret
 import no.nav.domain.events.AOKontorEndretPgaSkjermingEndret
 import no.nav.domain.events.GTKontorEndret
 import no.nav.domain.events.OppfolgingsPeriodeStartetFallbackKontorTilordning
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.domain.events.OppfolgingsPeriodeStartetSensitivKontorTilordning
+import no.nav.domain.events.OppfolgingsperiodeStartetManuellTilordning
 import no.nav.domain.events.OppfolgingsperiodeStartetNoeTilordning
 import no.nav.domain.externalEvents.AdressebeskyttelseEndret
 import no.nav.domain.externalEvents.BostedsadresseEndret
+import no.nav.domain.externalEvents.KontorOverstyring
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.domain.externalEvents.SkjermetStatusEndret
 import no.nav.domain.externalEvents.TidligArenaKontor
 import no.nav.http.client.AlderFunnet
 import no.nav.http.client.AlderIkkeFunnet
 import no.nav.http.client.AlderResult
+import no.nav.http.client.GeografiskTilknytningBydelNr
+import no.nav.http.client.GeografiskTilknytningKommuneNr
+import no.nav.http.client.GeografiskTilknytningLand
+import no.nav.http.client.HarStrengtFortroligAdresseFunnet
+import no.nav.http.client.HarStrengtFortroligAdresseIkkeFunnet
+import no.nav.http.client.HarStrengtFortroligAdresseResult
 import no.nav.http.client.IdentFunnet
 import no.nav.http.client.IdentIkkeFunnet
 import no.nav.http.client.IdentOppslagFeil
 import no.nav.http.client.IdentResult
-import no.nav.http.client.GeografiskTilknytningBydelNr
-import no.nav.http.client.GeografiskTilknytningLand
-import domain.gtForBruker.GtForBrukerFunnet
-import domain.gtForBruker.GtForBrukerIkkeFunnet
-import domain.gtForBruker.GtForBrukerOppslagFeil
-import domain.gtForBruker.GtForBrukerResult
-import domain.gtForBruker.GtForBrukerSuccess
-import domain.gtForBruker.GtLandForBrukerFunnet
-import domain.gtForBruker.GtNummerForBrukerFunnet
-import no.nav.http.client.HarStrengtFortroligAdresseFunnet
-import no.nav.http.client.HarStrengtFortroligAdresseIkkeFunnet
-import no.nav.http.client.HarStrengtFortroligAdresseResult
 import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.SkjermingIkkeFunnet
 import no.nav.http.client.SkjermingResult
@@ -61,18 +77,6 @@ import no.nav.person.pdl.leesah.adressebeskyttelse.Gradering
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.AutomatiskKontorRutingService.Companion.VIKAFOSSEN
-import domain.kontorForGt.KontorForGtFantIkkeKontor
-import domain.kontorForGt.KontorForGtFantDefaultKontor
-import domain.kontorForGt.KontorForGtFantKontor
-import domain.kontorForGt.KontorForGtFantKontorForArbeidsgiverAdresse
-import domain.kontorForGt.KontorForGtFeil
-import domain.kontorForGt.KontorForGtNrFantFallbackKontorForManglendeGt
-import domain.kontorForGt.KontorForGtResultat
-import domain.kontorForGt.KontorForGtSuccess
-import kafka.consumers.oppfolgingsHendelser.StartetAvType
-import no.nav.domain.events.OppfolgingsperiodeStartetManuellTilordning
-import no.nav.domain.externalEvents.KontorOverstyring
-import no.nav.http.client.GeografiskTilknytningKommuneNr
 import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingperiodeOppslagFeil
 import no.nav.services.OppfolgingsperiodeOppslagResult
@@ -82,8 +86,6 @@ import no.nav.services.TilordningSuccessIngenEndring
 import no.nav.services.TilordningSuccessKontorEndret
 import no.nav.utils.randomInternIdent
 import utils.Outcome
-import java.time.OffsetDateTime
-import java.util.UUID
 
 class AutomatiskKontorRutingServiceTest : DescribeSpec({
 
@@ -213,8 +215,9 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                                 VIKAFOSSEN,
                                 adressebeskyttetBruker.oppfolgingsperiodeId()
                             ),
-                            KontorEndringsType.GTKontorVedOppfolgingStart,
-                            adressebeskyttetBruker.gtForBruker as GtForBrukerFunnet,
+                            kontorEndringsType = KontorEndringsType.GTKontorVedOppfolgingStart,
+                            gt = adressebeskyttetBruker.gtForBruker as GtForBrukerFunnet,
+                            registrant = System(Systemnavn.VEILARBOPPFOLGING),
                         ),
                         aoKontorEndret = OppfolgingsPeriodeStartetSensitivKontorTilordning(
                             KontorTilordning(
@@ -366,8 +369,9 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                                 VIKAFOSSEN,
                                 brukerMedAdressebeskyttelseOgLandskode.oppfolgingsperiodeId()
                             ),
-                            KontorEndringsType.GTKontorVedOppfolgingStart,
-                            brukerMedAdressebeskyttelseOgLandskode.gtForBruker as GtForBrukerFunnet,
+                            kontorEndringsType = KontorEndringsType.GTKontorVedOppfolgingStart,
+                            gt = brukerMedAdressebeskyttelseOgLandskode.gtForBruker as GtForBrukerFunnet,
+                            registrant = System(Systemnavn.VEILARBOPPFOLGING),
                         ),
                         aoKontorEndret = OppfolgingsPeriodeStartetSensitivKontorTilordning(
                             KontorTilordning(
@@ -476,11 +480,12 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                         adressebeskyttetBruker.gtForBruker as GtForBrukerFunnet
                     ),
                     aoKontorEndret = AOKontorEndretPgaAdressebeskyttelseEndret(
-                        KontorTilordning(
+                        tilordning = KontorTilordning(
                             adressebeskyttetBruker.fnr(),
                             VIKAFOSSEN,
                             adressebeskyttetBruker.oppfolgingsperiodeId()
-                        )
+                        ),
+                        registrant = System(Systemnavn.PDL),
                     )
                 )
             )
@@ -502,11 +507,12 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                         brukerMedAdressebeskyttelseOgLandskode.gtForBruker as GtForBrukerFunnet
                     ),
                     aoKontorEndret = AOKontorEndretPgaAdressebeskyttelseEndret(
-                        KontorTilordning(
+                        tilordning = KontorTilordning(
                             brukerMedAdressebeskyttelseOgLandskode.fnr(),
                             VIKAFOSSEN,
                             brukerMedAdressebeskyttelseOgLandskode.oppfolgingsperiodeId()
-                        )
+                        ),
+                        registrant = System(Systemnavn.PDL),
                     )
                 )
             )
@@ -535,11 +541,12 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                         brukerMedAdressebeskyttelseSomManglerGt.gtForBruker as GtForBrukerIkkeFunnet
                     ),
                     aoKontorEndret = AOKontorEndretPgaAdressebeskyttelseEndret(
-                        KontorTilordning(
+                        tilordning = KontorTilordning(
                             brukerMedAdressebeskyttelseSomManglerGt.fnr(),
                             VIKAFOSSEN,
                             brukerMedAdressebeskyttelseSomManglerGt.oppfolgingsperiodeId()
-                        )
+                        ),
+                        registrant = System(Systemnavn.PDL),
                     )
                 )
             )
@@ -573,6 +580,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                                 ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()
                             ),
                             skjerming = HarSkjerming(true),
+                            registrant = System(Systemnavn.SKJERMING),
                         ),
                     )
                 )
@@ -604,6 +612,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                                 brukerMedLandskodeOgFallback.oppfolgingsperiodeId()
                             ),
                             skjerming = HarSkjerming(true),
+                            registrant = System(Systemnavn.SKJERMING),
                         ),
                     )
                 )
@@ -646,6 +655,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                             brukerMedLandskodeUtenFallback.oppfolgingsperiodeId()
                         ),
                         skjerming = HarSkjerming(true),
+                        registrant = System(Systemnavn.SKJERMING),
                     ),
                 ))
             ) shouldBe Result.success(EndringISkjermingResult(
@@ -666,6 +676,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                             brukerMedLandskodeUtenFallback.oppfolgingsperiodeId()
                         ),
                         skjerming = HarSkjerming(true),
+                        registrant = System(Systemnavn.SKJERMING),
                     ),
                 )
             )
@@ -697,6 +708,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                                 ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()
                             ),
                             skjerming = HarSkjerming(false),
+                            registrant = System(Systemnavn.SKJERMING),
                         ),
                     )
                 )
@@ -709,7 +721,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
             ) shouldBe Result.success(EndringISkjermingResult(KontorEndringer()))
         }
 
-        it("skal sette hardkodet-fallback kontor (navit) på ao-kontor og gt-kontor hvis gt ikke finnes og fallback til arbeidsforedeling heller ikke finner kontor og skjerming er true") {
+        it("skal sette hardkodet-fallback kontor (navit) på ao-kontor og gt-kontor hvis gt ikke finnes og fallback til arbeidsfordeling heller ikke finner kontor og skjerming er true") {
             gitt(brukerSomManglerGt).handterEndringISkjermingStatus(
                 SkjermetStatusEndret(brukerSomManglerGt.fnr(), HarSkjerming(true))
             ) shouldBe Result.success(
@@ -731,6 +743,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                                 brukerSomManglerGt.oppfolgingsperiodeId()
                             ),
                             skjerming = HarSkjerming(true),
+                            registrant = System(Systemnavn.SKJERMING),
                         ),
                     )
                 )

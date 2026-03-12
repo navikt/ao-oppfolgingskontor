@@ -1,6 +1,7 @@
 package no.nav.kafka.consumers
 
 import domain.ArenaKontorUtvidet
+import domain.Systemnavn
 import kafka.producers.OppfolgingEndretTilordningMelding
 import kafka.producers.PubliserAutomatiskKontorEndring
 import kotlinx.coroutines.runBlocking
@@ -27,6 +28,7 @@ import org.apache.kafka.streams.processor.api.Record
 import org.slf4j.LoggerFactory
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
+import no.nav.domain.System
 
 class EndringPaOppfolgingsBrukerProcessor(
     val oppfolgingsperiodeProvider: suspend (IdentSomKanLagres) -> OppfolgingsperiodeOppslagResult,
@@ -76,6 +78,7 @@ class EndringPaOppfolgingsBrukerProcessor(
                         ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep(
                             kontorTilordning = kontorTilordning,
                             sistEndretIArena = result.endretTidspunkt,
+                            endretAvRegistrant = System(Systemnavn.VEILARBOPPFOLGING),
                         )
                     } else {
                         EndringPaaOppfolgingsBrukerFraArena(

@@ -1,6 +1,7 @@
 package services
 
 import db.table.AlternativAoKontorTable
+import domain.Systemnavn
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -30,6 +31,7 @@ import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import java.time.OffsetDateTime
 import java.util.*
+import no.nav.domain.System
 
 
 class KontorTilordningServiceTest {
@@ -70,6 +72,7 @@ class KontorTilordningServiceTest {
                 oppfolginsperiodeUuid
             ),
             sistEndretIArena = OffsetDateTime.now(),
+            endretAvRegistrant = System(Systemnavn.VEILARBOPPFOLGING),
         )
 
         kontorTilordningService.tilordneKontor(KontorEndringer(
@@ -93,6 +96,7 @@ class KontorTilordningServiceTest {
                 oppfolginsperiodeUuid
             ),
             sistEndretIArena = OffsetDateTime.now(),
+            endretAvRegistrant = System(Systemnavn.VEILARBOPPFOLGING),
         )
 
         kontorTilordningService.tilordneKontor(KontorEndringer(
@@ -116,6 +120,7 @@ class KontorTilordningServiceTest {
                 oppfolginsperiodeUuid
             ),
             sistEndretIArena = OffsetDateTime.now(),
+            endretAvRegistrant = System(Systemnavn.VEILARBOPPFOLGING),
         )
 
         kontorTilordningService.tilordneKontor(KontorEndringer(

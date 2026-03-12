@@ -1,11 +1,11 @@
 package no.nav.domain.events
 
+import java.time.OffsetDateTime
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorHistorikkInnslag
 import no.nav.domain.KontorTilordning
 import no.nav.domain.KontorType
-import no.nav.domain.System
-import java.time.OffsetDateTime
+import no.nav.domain.Registrant
 
 data class TidligArenaKontorVedOppfolgingStart(
     private val kontortilordning: KontorTilordning,
@@ -20,9 +20,11 @@ data class TidligArenaKontorVedOppfolgingStart(
 data class ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep(
     private val kontorTilordning: KontorTilordning,
     private val sistEndretIArena: OffsetDateTime,
+    private val endretAvRegistrant: Registrant,
 ): ArenaKontorEndret(
     tilordning = kontorTilordning,
     sistEndretDatoArena = sistEndretIArena
+
 ) {
     override fun toHistorikkInnslag() = lagKontorHistorikkInnslag(KontorEndringsType.ArenaKontorVedOppfolgingStartMedEtterslep)
 }
@@ -61,7 +63,7 @@ private fun ArenaKontorEndret.lagKontorHistorikkInnslag(kontorEndringsType: Kont
     KontorHistorikkInnslag(
         kontorId = tilordning.kontorId,
         ident = tilordning.fnr,
-        registrant = System(),
+        registrant = endretAv,
         kontorendringstype = kontorEndringsType,
         kontorType = KontorType.ARENA,
         oppfolgingId = tilordning.oppfolgingsperiodeId

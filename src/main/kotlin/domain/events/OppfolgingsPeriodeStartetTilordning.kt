@@ -1,31 +1,32 @@
 package no.nav.domain.events
 
+import no.nav.domain.System
+import domain.Systemnavn
 import domain.gtForBruker.GtForBrukerIkkeFunnet
+import domain.gtForBruker.GtLandForBrukerFunnet
+import domain.gtForBruker.GtNummerForBrukerFunnet
+import domain.kontorForGt.KontorForGtFantDefaultKontor
+import domain.kontorForGt.KontorForGtFantIkkeKontor
+import domain.kontorForGt.KontorForGtFantKontor
+import domain.kontorForGt.KontorForGtFantKontorForArbeidsgiverAdresse
+import domain.kontorForGt.KontorForGtNrFantFallbackKontorForManglendeGt
+import domain.kontorForGt.KontorForGtSuccess
+import kafka.consumers.oppfolgingsHendelser.StartetAvType
+import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
+import no.nav.domain.Bruker
 import no.nav.domain.INGEN_GT_KONTOR_FALLBACK
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorHistorikkInnslag
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.KontorType
+import no.nav.domain.NavIdent
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.Sensitivitet
-import no.nav.domain.System
-import domain.gtForBruker.GtLandForBrukerFunnet
-import domain.gtForBruker.GtNummerForBrukerFunnet
-import no.nav.http.logger
-import domain.kontorForGt.KontorForGtFantIkkeKontor
-import domain.kontorForGt.KontorForGtFantDefaultKontor
-import domain.kontorForGt.KontorForGtNrFantFallbackKontorForManglendeGt
-import domain.kontorForGt.KontorForGtFantKontor
-import domain.kontorForGt.KontorForGtFantKontorForArbeidsgiverAdresse
-import domain.kontorForGt.KontorForGtSuccess
-import kafka.consumers.oppfolgingsHendelser.StartetAvType
-import no.nav.db.Ident
-import no.nav.domain.Bruker
-import no.nav.domain.NavIdent
 import no.nav.domain.Veileder
 import no.nav.domain.externalEvents.KontorOverstyring
+import no.nav.http.logger
 
 enum class RutingResultat {
     RutetTilNOE,
@@ -54,7 +55,7 @@ enum class RutingResultat {
 data class OppfolgingsperiodeStartetNoeTilordning(
     val fnr: IdentSomKanLagres,
     val oppfolgingsperiodeId: OppfolgingsperiodeId,
-) : AOKontorEndret(KontorTilordning(fnr, KontorId("4154"), oppfolgingsperiodeId), System()) {
+) : AOKontorEndret(KontorTilordning(fnr, KontorId("4154"), oppfolgingsperiodeId), System(Systemnavn.VEILARBOPPFOLGING)) {
     private val rutingResultat: RutingResultat = RutingResultat.RutetTilNOE
     override fun kontorEndringsType(): KontorEndringsType = rutingResultat.toKontorEndringsType()
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
@@ -76,7 +77,7 @@ data class OppfolgingsperiodeStartetNoeTilordning(
 data class OppfolgingsPeriodeStartetLokalKontorTilordning(
     val kontorTilordning: KontorTilordning,
     val kontorForGt: KontorForGtFantKontor,
-) : AOKontorEndret(kontorTilordning, System()) {
+) : AOKontorEndret(kontorTilordning, System(Systemnavn.VEILARBOPPFOLGING)) {
     val rutingResultat: RutingResultat = when (kontorForGt) {
         is KontorForGtFantDefaultKontor -> RutingResultat.RutetViaNorg
         is KontorForGtNrFantFallbackKontorForManglendeGt -> RutingResultat.RutetViaNorgFallback
@@ -112,7 +113,7 @@ data class OppfolgingsPeriodeStartetFallbackKontorTilordning(
         ident,
         INGEN_GT_KONTOR_FALLBACK,
         oppfolgingsperiodeId
-    ), System()
+    ), System(Systemnavn.VEILARBOPPFOLGING)
 ) {
     val rutingResultat: RutingResultat = when (gt.gtForBruker) {
         is GtForBrukerIkkeFunnet -> RutingResultat.FallbackIngenGTFunnet
@@ -145,7 +146,7 @@ data class OppfolgingsPeriodeStartetSensitivKontorTilordning(
     val kontorTilordning: KontorTilordning,
     val sensitivitet: Sensitivitet,
     val gtKontorResultat: KontorForGtSuccess
-) : AOKontorEndret(kontorTilordning, System()) {
+) : AOKontorEndret(kontorTilordning, System(Systemnavn.VEILARBOPPFOLGING)) {
 
     val rutingResultat: RutingResultat = RutingResultat.RutetViaNorg
     override fun kontorEndringsType(): KontorEndringsType = rutingResultat.toKontorEndringsType()
@@ -182,7 +183,10 @@ data class OppfolgingsperiodeStartetManuellTilordning(
     val fnr: IdentSomKanLagres,
     val oppfolgingsperiodeId: OppfolgingsperiodeId,
     val kontorOverstyring: KontorOverstyring,
-) : AOKontorEndret(KontorTilordning(fnr, kontorOverstyring.foretrukketArbeidsoppfolgingskontor, oppfolgingsperiodeId), System()) {
+) : AOKontorEndret(
+    KontorTilordning(fnr, kontorOverstyring.foretrukketArbeidsoppfolgingskontor, oppfolgingsperiodeId),
+    System(Systemnavn.VEILARBOPPFOLGING),
+) {
     private val rutingResultat: RutingResultat = RutingResultat.RutetManuelt
     override fun kontorEndringsType(): KontorEndringsType = rutingResultat.toKontorEndringsType()
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
@@ -190,7 +194,7 @@ data class OppfolgingsperiodeStartetManuellTilordning(
             kontorId = tilordning.kontorId,
             ident = tilordning.fnr,
             registrant = when (kontorOverstyring.registrantType) {
-                StartetAvType.SYSTEM -> System()
+                StartetAvType.SYSTEM -> System(Systemnavn.VEILARBOPPFOLGING)
                 StartetAvType.BRUKER -> Bruker(Ident.validateIdentSomKanLagres(kontorOverstyring.registrantIdent, Ident.HistoriskStatus.UKJENT))
                 StartetAvType.VEILEDER -> Veileder(NavIdent(kontorOverstyring.registrantIdent))
             },
