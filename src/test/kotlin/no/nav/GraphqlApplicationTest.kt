@@ -2,6 +2,7 @@ package no.nav.no.nav
 
 import com.expediagroup.graphql.server.ktor.graphQLPostRoute
 import domain.IdenterFunnet
+import domain.Systemnavn
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.date.shouldBeCloseTo
 import io.kotest.matchers.shouldBe
@@ -145,7 +146,7 @@ class GraphqlApplicationTest {
         kontorhistorikk.kontorId shouldBe kontorId
         kontorhistorikk.kontorType shouldBe KontorType.ARENA
         kontorhistorikk.endringsType shouldBe KontorEndringsType.EndretIArena
-        kontorhistorikk.endretAv shouldBe System().getIdent()
+        kontorhistorikk.endretAv shouldBe System(Systemnavn.ARENA).getIdent()
         kontorhistorikk.kontorNavn shouldBe null
         Instant.parse(kontorhistorikk.endretTidspunkt).shouldBeCloseTo(Instant.now(), 500.milliseconds)
     }
@@ -281,7 +282,8 @@ class GraphqlApplicationTest {
             GTKontorEndret(
                 kontorTilordning = KontorTilordning(fnr, KontorId(kontorId), OppfolgingsperiodeId(UUID.randomUUID())),
                 kontorEndringsType = KontorEndringsType.FlyttetAvVeileder,
-                gt = GtNummerForBrukerFunnet(GeografiskTilknytningBydelNr("3131"))
+                gt = GtNummerForBrukerFunnet(GeografiskTilknytningBydelNr("3131")),
+                System(Systemnavn.PDL),
             ),
             true
         )

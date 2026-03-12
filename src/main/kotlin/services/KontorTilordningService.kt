@@ -1,17 +1,15 @@
 package no.nav.services
 
 import arrow.core.Either
-import arrow.core.right
 import db.table.AlternativAoKontorTable
 import eventsLogger.BigQueryClient
 import eventsLogger.KontorTypeForBigQuery
-import no.nav.db.IdentSomKanLagres
+import java.time.ZonedDateTime
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.db.table.ArenaKontorTable
 import no.nav.db.table.GeografiskTilknytningKontorTable
 import no.nav.db.table.KontorhistorikkTable
 import no.nav.domain.OppfolgingsperiodeId
-import no.nav.domain.System
 import no.nav.domain.events.AOKontorEndret
 import no.nav.domain.events.ArenaKontorEndret
 import no.nav.domain.events.GTKontorEndret
@@ -23,7 +21,6 @@ import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.upsert
-import java.time.ZonedDateTime
 
 class KontorTilordningService(private val bigQueryClient: BigQueryClient) {
 
@@ -59,8 +56,8 @@ class KontorTilordningService(private val bigQueryClient: BigQueryClient) {
                         AlternativAoKontorTable.insert {
                             it[fnr] = kontorTilhorighet.fnr.value
                             it[kontorId] = kontorTilhorighet.kontorId.id
-                            it[endretAv] = System().getIdent()
-                            it[endretAvType] = System().getType()
+                            it[endretAv] = kontorEndring.registrant.getIdent()
+                            it[endretAvType] = kontorEndring.registrant.getType()
                             it[kontorendringstype] = kontorEndring.kontorEndringsType().name
                             it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
                         }
@@ -77,8 +74,8 @@ class KontorTilordningService(private val bigQueryClient: BigQueryClient) {
                         ArbeidsOppfolgingKontorTable.upsert {
                             it[kontorId] = kontorTilhorighet.kontorId.id
                             it[id] = kontorTilhorighet.fnr.value
-                            it[endretAv] = System().getIdent()
-                            it[endretAvType] = System().getType()
+                            it[endretAv] = kontorEndring.endretAv.getIdent()
+                            it[endretAvType] = kontorEndring.endretAv.getType()
                             it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
                             it[historikkEntry] = entryId.value
                             it[oppfolgingsperiodeId] = kontorEndring.tilordning.oppfolgingsperiodeId.value

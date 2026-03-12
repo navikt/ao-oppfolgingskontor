@@ -1,5 +1,6 @@
 package no.nav.services
 
+import domain.Systemnavn
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import no.nav.db.Ident
@@ -63,6 +64,7 @@ import org.slf4j.LoggerFactory
 import utils.Outcome
 import java.time.Duration
 import java.time.ZonedDateTime
+import no.nav.domain.System
 
 sealed class TilordningResultat
 sealed class TilordningSuccess : TilordningResultat()
@@ -419,7 +421,8 @@ data class AutomatiskKontorRutingService(
 
                     if (harStrengtFortroligAdresse.value) {
                         val kontorEndringer = AOKontorEndretPgaAdressebeskyttelseEndret(
-                            KontorTilordning(hendelse.ident, gtKontor, oppfolgingsperiodeId)
+                            tilordning = KontorTilordning(hendelse.ident, gtKontor, oppfolgingsperiodeId),
+                            registrant = System(Systemnavn.PDL),
                         ).let { KontorEndringer(aoKontorEndret = it, gtKontorEndret = gtKontorEndring) }
                         HåndterPersondataEndretSuccess(kontorEndringer)
                     } else {
@@ -496,6 +499,7 @@ data class AutomatiskKontorRutingService(
                             oppfolgingsperiodeId = oppfolgingsperiodeId,
                         ),
                         skjerming = endringISkjermingStatus.erSkjermet,
+                        registrant = System(Systemnavn.SKJERMING),
                     )
                     val kontorEndringer = KontorEndringer(
                         aoKontorEndret = aoKontorEndring,

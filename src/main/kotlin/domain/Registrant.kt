@@ -1,5 +1,6 @@
 package no.nav.domain
 
+import domain.Systemnavn
 import no.nav.db.IdentSomKanLagres
 
 sealed class Registrant() {
@@ -7,8 +8,8 @@ sealed class Registrant() {
     abstract fun getType(): String
 }
 
-class System() : Registrant() {
-    override fun getIdent() = "SYSTEM"
+data class System(val systemnavn: Systemnavn) : Registrant() {
+    override fun getIdent() = systemnavn.name
     override fun getType() = "SYSTEM"
 }
 

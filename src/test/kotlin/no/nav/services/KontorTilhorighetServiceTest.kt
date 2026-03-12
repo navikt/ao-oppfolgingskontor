@@ -1,6 +1,7 @@
 package no.nav.services
 
 import domain.IdenterFunnet
+import domain.Systemnavn
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import no.nav.db.Fnr
@@ -58,7 +59,7 @@ class KontorTilhorighetServiceTest {
 
     fun gittArenaHistorikkEntry(ident: Fnr): InsertStatement<Number> {
         return transaction {
-            val registrant = System()
+            val registrant = System(Systemnavn.ARENA)
             KontorhistorikkTable.insert {
                 it[KontorhistorikkTable.ident] = ident.value
                 it[kontorId] = "2121"

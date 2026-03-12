@@ -1,5 +1,6 @@
 package no.nav.domain.events
 
+import domain.Systemnavn
 import domain.gtForBruker.GtForBrukerIkkeFunnet
 import domain.gtForBruker.GtForBrukerSuccess
 import domain.gtForBruker.GtLandForBrukerFunnet
@@ -17,7 +18,8 @@ import org.slf4j.LoggerFactory
 import java.time.OffsetDateTime
 
 sealed class KontorEndretEvent(
-    val tilordning: KontorTilordning
+    val tilordning: KontorTilordning,
+    val endretAv: Registrant,
 ) {
     abstract fun toHistorikkInnslag(): KontorHistorikkInnslag
     abstract fun logg(): Unit
@@ -27,7 +29,12 @@ sealed class KontorEndretEvent(
     }
 }
 
-data class GTKontorEndret(val kontorTilordning: KontorTilordning, val kontorEndringsType: KontorEndringsType, val gt: GtForBrukerSuccess) : KontorEndretEvent(kontorTilordning) {
+data class GTKontorEndret(
+    val kontorTilordning: KontorTilordning,
+    val kontorEndringsType: KontorEndringsType,
+    val gt: GtForBrukerSuccess,
+    val registrant: Registrant,
+) : KontorEndretEvent(kontorTilordning, registrant) {
     val log = LoggerFactory.getLogger(this::class.java)
 
     fun gt(): String? = when (gt) {
@@ -46,7 +53,7 @@ data class GTKontorEndret(val kontorTilordning: KontorTilordning, val kontorEndr
         return KontorHistorikkInnslag(
             kontorId = tilordning.kontorId,
             ident = tilordning.fnr,
-            registrant = System(),
+            registrant = registrant,
             kontorendringstype = kontorEndringsType,
             kontorType = KontorType.GEOGRAFISK_TILKNYTNING,
             oppfolgingId = tilordning.oppfolgingsperiodeId
@@ -61,39 +68,55 @@ data class GTKontorEndret(val kontorTilordning: KontorTilordning, val kontorEndr
         fun endretPgaAdressebeskyttelseEndret(
             tilordning: KontorTilordning,
             erStrengtFortrolig: HarStrengtFortroligAdresse,
-            gt: GtForBrukerSuccess
+            gt: GtForBrukerSuccess,
         ) = GTKontorEndret(
-                tilordning,
-                if (erStrengtFortrolig.value) KontorEndringsType.FikkAddressebeskyttelse else KontorEndringsType.AddressebeskyttelseMistet,
-                gt)
+            kontorTilordning = tilordning,
+            kontorEndringsType = if (erStrengtFortrolig.value) KontorEndringsType.FikkAddressebeskyttelse else KontorEndringsType.AddressebeskyttelseMistet,
+            gt = gt,
+            registrant = System(Systemnavn.PDL),
+        )
 
         fun endretPgaSkjermingEndret(
             tilordning: KontorTilordning,
             erSkjermet: HarSkjerming,
-            gt: GtForBrukerSuccess) =
-            GTKontorEndret(
-                tilordning,
-                if (erSkjermet.value) KontorEndringsType.FikkSkjerming else KontorEndringsType.MistetSkjerming,
-                gt)
+            gt: GtForBrukerSuccess,
+        ) = GTKontorEndret(
+            kontorTilordning = tilordning,
+            kontorEndringsType = if (erSkjermet.value) KontorEndringsType.FikkSkjerming else KontorEndringsType.MistetSkjerming,
+            gt = gt,
+            registrant = System(Systemnavn.SKJERMING),
+        )
 
-        fun endretPgaBostedsadresseEndret(tilordning: KontorTilordning, gt: GtForBrukerSuccess) = GTKontorEndret(
-            tilordning,
-                KontorEndringsType.EndretBostedsadresse,
-                gt)
+        fun endretPgaBostedsadresseEndret(
+            tilordning: KontorTilordning,
+            gt: GtForBrukerSuccess
+        ) = GTKontorEndret(
+            kontorTilordning = tilordning,
+            kontorEndringsType = KontorEndringsType.EndretBostedsadresse,
+            gt = gt,
+            registrant = System(Systemnavn.PDL),
+        )
 
         fun syncVedStartOppfolging(tilordning: KontorTilordning, gt: GtForBrukerSuccess) = GTKontorEndret(
-            tilordning,
-            KontorEndringsType.GTKontorVedOppfolgingStart,
-            gt)
+            kontorTilordning = tilordning,
+            kontorEndringsType = KontorEndringsType.GTKontorVedOppfolgingStart,
+            gt = gt,
+            registrant = System(Systemnavn.VEILARBOPPFOLGING),
+        )
     }
 }
+
 sealed class AOKontorEndret(
     tilordning: KontorTilordning,
     val registrant: Registrant,
-) : KontorEndretEvent(tilordning) {
+) : KontorEndretEvent(tilordning, registrant) {
     abstract fun kontorEndringsType(): KontorEndringsType
 }
-sealed class ArenaKontorEndret(tilordning: KontorTilordning, val sistEndretDatoArena: OffsetDateTime) : KontorEndretEvent(tilordning) {
+
+sealed class ArenaKontorEndret(
+    tilordning: KontorTilordning,
+    val sistEndretDatoArena: OffsetDateTime,
+) : KontorEndretEvent(tilordning, System(Systemnavn.ARENA)) {
     override fun logg() {
         logger.info("${this::class.simpleName}: kontorId=${tilordning.kontorId}, oppfolginsperiode=${tilordning.oppfolgingsperiodeId}")
     }

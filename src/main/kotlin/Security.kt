@@ -1,19 +1,15 @@
 package no.nav
 
 import com.nimbusds.jose.util.DefaultResourceRetriever
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.cio.Request
-import io.ktor.server.application.*
-import io.ktor.server.auth.*
-import io.ktor.server.routing.RoutingCall
+import io.ktor.server.application.Application
+import io.ktor.server.application.ApplicationCall
+import io.ktor.server.application.install
+import io.ktor.server.auth.Authentication
+import io.ktor.server.auth.principal
+import java.util.UUID
 import no.nav.domain.NavIdent
-import no.nav.domain.Registrant
-import no.nav.domain.System
-import no.nav.domain.Veileder
-import no.nav.security.token.support.v3.RequiredClaims
 import no.nav.security.token.support.v3.TokenValidationContextPrincipal
 import no.nav.security.token.support.v3.tokenValidationSupport
-import java.util.UUID
 
 fun Application.configureSecurity() {
     val config = environment.config
@@ -56,12 +52,5 @@ fun TokenValidationContextPrincipal.resolveAuthContext(issuer: String): AuthResu
                 ?: return NotAuthenticated("oid not found in token without idtyp == app")
             Authenticated(NavAnsatt(NavIdent(navIdent), navAnsattAzureId))
         }
-    }
-}
-
-fun AOPrincipal.toRegistrant(): Registrant {
-    return when (this) {
-        is NavAnsatt -> Veileder(NavIdent(this.navIdent.id))
-        is SystemPrincipal -> System()
     }
 }
