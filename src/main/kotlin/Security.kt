@@ -1,7 +1,6 @@
 package no.nav
 
 import com.nimbusds.jose.util.DefaultResourceRetriever
-import domain.Systemnavn
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.install
@@ -9,9 +8,6 @@ import io.ktor.server.auth.Authentication
 import io.ktor.server.auth.principal
 import java.util.UUID
 import no.nav.domain.NavIdent
-import no.nav.domain.Registrant
-import no.nav.domain.System
-import no.nav.domain.Veileder
 import no.nav.security.token.support.v3.TokenValidationContextPrincipal
 import no.nav.security.token.support.v3.tokenValidationSupport
 
@@ -56,12 +52,5 @@ fun TokenValidationContextPrincipal.resolveAuthContext(issuer: String): AuthResu
                 ?: return NotAuthenticated("oid not found in token without idtyp == app")
             Authenticated(NavAnsatt(NavIdent(navIdent), navAnsattAzureId))
         }
-    }
-}
-
-fun AOPrincipal.toRegistrant(): Registrant {
-    return when (this) {
-        is NavAnsatt -> Veileder(NavIdent(this.navIdent.id))
-        is SystemPrincipal -> System(Systemnavn.SYSTEM)
     }
 }

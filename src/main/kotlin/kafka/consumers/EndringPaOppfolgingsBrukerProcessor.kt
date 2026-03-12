@@ -78,7 +78,7 @@ class EndringPaOppfolgingsBrukerProcessor(
                         ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep(
                             kontorTilordning = kontorTilordning,
                             sistEndretIArena = result.endretTidspunkt,
-                            endretAvRegistrant = System(Systemnavn.VEILARBOPPFOLGING),
+                            endretAvRegistrant = System(Systemnavn.ARENA),
                         )
                     } else {
                         EndringPaaOppfolgingsBrukerFraArena(

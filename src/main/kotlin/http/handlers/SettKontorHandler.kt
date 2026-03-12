@@ -1,7 +1,13 @@
 package http.handlers
 
+import arrow.core.Either
+import arrow.core.flatMap
+import arrow.core.flatten
+import arrow.core.getOrElse
 import io.ktor.http.HttpStatusCode
+import kafka.producers.PubliserManuellKontorEndring
 import no.nav.AOPrincipal
+import no.nav.NavAnsatt
 import no.nav.db.AktorId
 import no.nav.db.Dnr
 import no.nav.db.Fnr
@@ -12,6 +18,8 @@ import no.nav.domain.ArbeidsoppfolgingsKontor
 import no.nav.domain.KontorId
 import no.nav.domain.KontorNavn
 import no.nav.domain.KontorTilordning
+import no.nav.domain.OppfolgingsperiodeId
+import no.nav.domain.Veileder
 import no.nav.domain.events.KontorEndretEvent
 import no.nav.domain.events.KontorSattAvVeileder
 import no.nav.http.ArbeidsoppfolgingsKontorTilordningDTO
@@ -26,26 +34,19 @@ import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.SkjermingIkkeFunnet
 import no.nav.http.client.SkjermingResult
 import no.nav.http.client.poaoTilgang.HarIkkeTilgangTilBruker
+import no.nav.http.client.poaoTilgang.HarIkkeTilgangTilKontor
 import no.nav.http.client.poaoTilgang.HarTilgangTilBruker
+import no.nav.http.client.poaoTilgang.HarTilgangTilKontor
 import no.nav.http.client.poaoTilgang.TilgangTilBrukerOppslagFeil
 import no.nav.http.client.poaoTilgang.TilgangTilBrukerResult
+import no.nav.http.client.poaoTilgang.TilgangTilKontorOppslagFeil
+import no.nav.http.client.poaoTilgang.TilgangTilKontorResult
 import no.nav.http.logger
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingperiodeOppslagFeil
 import no.nav.services.OppfolgingsperiodeOppslagResult
-import no.nav.toRegistrant
 import org.slf4j.LoggerFactory
-import arrow.core.Either
-import arrow.core.flatMap
-import arrow.core.flatten
-import arrow.core.getOrElse
-import kafka.producers.PubliserManuellKontorEndring
-import no.nav.domain.OppfolgingsperiodeId
-import no.nav.http.client.poaoTilgang.HarIkkeTilgangTilKontor
-import no.nav.http.client.poaoTilgang.HarTilgangTilKontor
-import no.nav.http.client.poaoTilgang.TilgangTilKontorOppslagFeil
-import no.nav.http.client.poaoTilgang.TilgangTilKontorResult
 
 sealed class SettKontorResult
 data class SettKontorSuccess(val response: KontorByttetOkResponseDto) : SettKontorResult()
@@ -157,6 +158,16 @@ class SettKontorHandler(
         }
     }
 
+    private fun sjekkErVeileder(principal: AOPrincipal): Either<SettKontorFailure, NavAnsatt> {
+        return if (principal is NavAnsatt) {
+            Either.Right(principal)
+        } else {
+            val errorMessage = "Kun veiledere har tilgang til å sette kontor via api"
+            log.error(errorMessage)
+            Either.Left(SettKontorFailure(HttpStatusCode.Forbidden, errorMessage))
+        }
+    }
+
     suspend fun settKontor(tilordning: ArbeidsoppfolgingsKontorTilordningDTO, principal: AOPrincipal, traceId: String): SettKontorResult {
         if(!brukAoRuting) {
             return SettKontorFailure(HttpStatusCode.NotImplemented, "Kan ikke sette kontor for vi er i prod")
@@ -166,14 +177,15 @@ class SettKontorHandler(
                     .flatMap { ident -> sjekkHarTilgang(principal, ident, KontorId(tilordning.kontorId), traceId).map { ident } }
                     .flatMap { ident -> sjekkBrukerHarIkkeAdressebeskyttelse(ident).map { ident } }
                     .flatMap { ident -> sjekkBrukerErIkkeSkjermet(ident).map { ident } }
-                    .flatMap { ident -> hentOppfolgingsperiode(ident).map { it to ident } }
-                    .map { (periodeId: OppfolgingsperiodeId, ident: IdentSomKanLagres) ->
+                    .flatMap { ident -> sjekkErVeileder(principal).map { it to ident } }
+                    .flatMap { (navAnsatt, ident) -> hentOppfolgingsperiode(ident).map { Triple(it, ident, navAnsatt) } }
+                    .map { (periodeId: OppfolgingsperiodeId, ident: IdentSomKanLagres, navAnsatt: NavAnsatt) ->
                         val gammeltKontor = hentAoKontor(ident)
                         val kontorId = KontorId(tilordning.kontorId)
 
                         val kontorEndring = KontorSattAvVeileder(
                             tilhorighet = KontorTilordning(ident, kontorId, periodeId),
-                            registrant = principal.toRegistrant()
+                            registrant = Veileder(navAnsatt.navIdent)
                         )
                         if (gammeltKontor?.kontorId == kontorId) {
                             logger.warn("Bruker tilhører allerede kontoret")
