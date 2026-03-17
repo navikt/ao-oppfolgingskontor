@@ -14,7 +14,7 @@ class AOKontorEndretPgaNorskGT(
     val log = LoggerFactory.getLogger(this::class.java)
 
     override fun kontorEndringsType(): KontorEndringsType =
-        KontorEndringsType.EndretBostedsadresse
+        KontorEndringsType.FikkNorskGt
 
     override fun toHistorikkInnslag(): KontorHistorikkInnslag {
         return KontorHistorikkInnslag(
