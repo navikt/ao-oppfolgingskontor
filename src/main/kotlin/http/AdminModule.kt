@@ -77,7 +77,7 @@ fun Application.configureAdminModule(
                         }
                     } ?: throw IllegalStateException("Må være navansatt")
                     val input = call.receive<KontorSammenslåingBody>()
-                        .let { `KontorSammenSlåing`(it.fraKontorer.map { KontorId(it) }, KontorId(it.tilKontor)) }
+                        .let { `KontorSammenSlåing`(it.fraKontorer.map { fraKontor -> KontorId(fraKontor) }, KontorId(it.tilKontor)) }
                     kontorSammenslåingService.slåSammenKontorer(principal,input)
                     call.respond(HttpStatusCode.OK)
                 }.onFailure { e ->
@@ -99,7 +99,8 @@ fun Application.configureAdminModule(
                             return@post
                         }
                     } ?: throw IllegalStateException("Må være navansatt")
-                    val input = call.receive<List<String>>().map { KontorId(it) }
+                    val input = call.receive<KontorSammenslåingBody>()
+                        .let { it.fraKontorer.map { fraKontor -> KontorId(fraKontor) } }
                     val result = kontorSammenslåingService.antallKontorerSomSkalEndres(input)
                     call.respond(HttpStatusCode.OK, result)
                 }.onFailure { e ->
