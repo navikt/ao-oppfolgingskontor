@@ -181,7 +181,8 @@ class KafkaApplicationTest {
             { SkjermingFunnet(HarSkjerming(false)) },
             { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
             { AktivOppfolgingsperiode(fnr, randomInternIdent(),  oppfølgingsperiodeId, OffsetDateTime.now()) },
-            { _, _ -> Outcome.Success(false) }
+            { _, _ -> Outcome.Success(false) },
+            { null },
         )
         val skjermingProcessor = SkjermingProcessor(automatiskKontorRutingService, kontorTilordningService, brukAoRuting)
 

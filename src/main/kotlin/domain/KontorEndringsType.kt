@@ -17,10 +17,10 @@ enum class KontorEndringsType {
     FikkSkjerming,
     FikkAddressebeskyttelse,
     MistetSkjerming,
+    EndretBostedsadresse,
 
     /* GT kontor */
     GTKontorVedOppfolgingStart,
-    EndretBostedsadresse,
     AddressebeskyttelseMistet,
 
     /* ArenaKontor */

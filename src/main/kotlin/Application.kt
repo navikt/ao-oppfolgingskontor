@@ -101,13 +101,14 @@ fun Application.module() {
     val kontorTilhorighetService = KontorTilhorighetService(kontorNavnService, identService::hentAlleIdenter)
     val oppfolgingsperiodeService = OppfolgingsperiodeService(identService::hentAlleIdenter, kontorTilordningService::slettArbeidsoppfølgingskontorTilordning)
     val automatiskKontorRutingService = AutomatiskKontorRutingService(
-        { fnr, strengtFortroligAdresse, skjermet -> gtNorgService.hentGtKontorForBruker(fnr, strengtFortroligAdresse, skjermet) },
-        { pdlClient.hentAlder(it) },
-        { arbeidssokerregisterClient.hentProfilering(it) },
-        { skjermingsClient.hentSkjerming(it) },
-        { pdlClient.harStrengtFortroligAdresse(it) },
-        { oppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) },
-        { _, oppfolgingsperiodeId -> OppfolgingsperiodeDao.finnesAoKontorPåPeriode(oppfolgingsperiodeId) },
+        hentKontorForGt = { fnr, strengtFortroligAdresse, skjermet -> gtNorgService.hentGtKontorForBruker(fnr, strengtFortroligAdresse, skjermet) },
+        hentAlder = { pdlClient.hentAlder(it) },
+        hentProfilering = { arbeidssokerregisterClient.hentProfilering(it) },
+        hentSkjerming = { skjermingsClient.hentSkjerming(it) },
+        hentHarStrengtFortroligAdresse = { pdlClient.harStrengtFortroligAdresse(it) },
+        hentGjeldendeOppfolgingsperiode = { oppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) },
+        harAlleredeTilordnetAoKontorForOppfolgingsperiode = { _, oppfolgingsperiodeId -> OppfolgingsperiodeDao.finnesAoKontorPåPeriode(oppfolgingsperiodeId) },
+        hentAoKontor = { ident: IdentSomKanLagres -> kontorTilhorighetService.getArbeidsoppfolgingKontorTilhorighet(ident) },
     )
     val dryRunKontorRutingService = automatiskKontorRutingService.copy(harAlleredeTilordnetAoKontorForOppfolgingsperiode = { Ident, b: OppfolgingsperiodeId -> Outcome.Success(false) })
     val simulerKontorTilordning: suspend (IdentSomKanLagres, Boolean) -> TilordningResultat =
