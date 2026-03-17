@@ -27,6 +27,6 @@ class `KontorEndretPgaAdminKontorSammenslåing`(
     )
 
     override fun logg() {
-        log.info("")
+        log.info("Kontor ble satt via kontorsammenslåingsfunksjonalitet i (poao)admin")
     }
 }
