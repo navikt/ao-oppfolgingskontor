@@ -64,7 +64,9 @@ import org.slf4j.LoggerFactory
 import utils.Outcome
 import java.time.Duration
 import java.time.ZonedDateTime
+import no.nav.domain.ArbeidsoppfolgingsKontor
 import no.nav.domain.System
+import no.nav.domain.events.AOKontorEndretPgaNorskGT
 
 sealed class TilordningResultat
 sealed class TilordningSuccess : TilordningResultat()
@@ -87,6 +89,7 @@ data class AutomatiskKontorRutingService(
     suspend (fnr: Ident) -> HarStrengtFortroligAdresseResult,
     private val hentGjeldendeOppfolgingsperiode: suspend (fnr: IdentSomKanLagres) -> OppfolgingsperiodeOppslagResult,
     private val harAlleredeTilordnetAoKontorForOppfolgingsperiode: suspend (fnr: Ident, oppfolgingsperiodeId: OppfolgingsperiodeId) -> Outcome<Boolean>,
+    private val hentAoKontor: suspend (IdentSomKanLagres) -> ArbeidsoppfolgingsKontor?,
 ) {
     companion object {
         val VIKAFOSSEN = KontorId("2103")
@@ -124,7 +127,7 @@ data class AutomatiskKontorRutingService(
         }
     }
 
-    public suspend fun tilordneKontorAutomatisk(
+    suspend fun tilordneKontorAutomatisk(
         ident: IdentSomKanLagres,
         oppfolgingsperiodeId: OppfolgingsperiodeId,
         erArbeidssøkerRegistrering: Boolean,
@@ -352,8 +355,17 @@ data class AutomatiskKontorRutingService(
                     val gtKontorEndring = GTKontorEndret.endretPgaBostedsadresseEndret(
                         KontorTilordning(hendelse.ident, kontorId, oppfolgingsperiodeId),
                         gtKontorResultat.gt()
-                    ).let { KontorEndringer(gtKontorEndret = it) }
-                    HåndterPersondataEndretSuccess(gtKontorEndring)
+                    )
+                    val skalEndreOppfolgingskontor = skalEndreOppfolgingskontorVedEndretGtKontor(gtKontorResultat, hendelse.ident)
+                    val kontorendringer = if (skalEndreOppfolgingskontor) {
+                        AOKontorEndretPgaNorskGT(
+                            kontorTilordning = gtKontorEndring.kontorTilordning,
+                            registrant = System(Systemnavn.PDL),
+                        ).let { KontorEndringer(aoKontorEndret = it, gtKontorEndret = gtKontorEndring) }
+                    } else {
+                        KontorEndringer(gtKontorEndret = gtKontorEndring)
+                    }
+                    HåndterPersondataEndretSuccess(kontorendringer)
                 }
 
                 is KontorForGtFeil -> HåndterPersondataEndretFail("Kunne ikke håndtere endring i bostedsadresse pga feil ved henting av gt-kontor: ${gtKontorResultat.melding}")
@@ -364,6 +376,20 @@ data class AutomatiskKontorRutingService(
                 error
             )
         }
+    }
+
+    private suspend fun skalEndreOppfolgingskontorVedEndretGtKontor(kontorForGtResultat: KontorForGtSuccess, ident: IdentSomKanLagres): Boolean {
+        val erSensitiv = kontorForGtResultat.sensitivitet().erSensitiv()
+        val erUtland = kontorForGtResultat.gt() is GtLandForBrukerFunnet
+        if (erSensitiv || erUtland) {
+            return false
+        }
+        val oppfolgingskontor = hentAoKontor(ident)
+        if (oppfolgingskontor?.kontorId == INGEN_GT_KONTOR_FALLBACK) {
+            log.info("Bruker er tildelt fallback-kontor og har fått norsk GT, oppdaterer oppfølgingskontor")
+            return true
+        }
+        return false
     }
 
     suspend fun handterEndringForAdressebeskyttelse(

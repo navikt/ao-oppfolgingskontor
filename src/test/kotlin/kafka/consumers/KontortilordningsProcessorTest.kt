@@ -122,7 +122,8 @@ class KontortilordningsProcessorTest {
                 oppfolging.periodeId,
                 oppfolging.startDato.toOffsetDateTime()
             ) },
-            { _, _ -> Outcome.Success(false)  }
+            { _, _ -> Outcome.Success(false)  },
+            { null },
         )
     }
 
@@ -140,7 +141,8 @@ class KontortilordningsProcessorTest {
                 oppfolging.periodeId,
                 oppfolging.startDato.toOffsetDateTime()
             ) },
-            { _, _ -> Outcome.Success(false)  }
+            { _, _ -> Outcome.Success(false)  },
+            { null },
         )
     }
 
@@ -152,7 +154,8 @@ class KontortilordningsProcessorTest {
             { throw NotImplementedError("Feilet") },
             { throw NotImplementedError("Feilet") },
             {  throw NotImplementedError("Feilet") },
-            { _, _ -> Outcome.Success(false)  }
+            { _, _ -> Outcome.Success(false)  },
+            { null },
         )
     }
 

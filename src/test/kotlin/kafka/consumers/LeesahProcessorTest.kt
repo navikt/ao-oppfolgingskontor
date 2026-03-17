@@ -13,12 +13,16 @@ import java.time.OffsetDateTime
 import java.util.UUID
 import no.nav.db.Fnr
 import no.nav.db.Ident
+import no.nav.db.IdentSomKanLagres
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.GeografiskTilknyttetKontorEntity
+import no.nav.domain.ArbeidsoppfolgingsKontor
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
+import no.nav.domain.INGEN_GT_KONTOR_FALLBACK
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorId
+import no.nav.domain.KontorNavn
 import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.System
@@ -65,6 +69,65 @@ class LeesahProcessorTest {
             transaction {
                 val kontorEtterEndirng = GeografiskTilknyttetKontorEntity[fnr.value]
                 kontorEtterEndirng.kontorId shouldBe nyKontorId
+            }
+        }
+    }
+
+    @Test
+    fun `skal sette både gt-kontor og ao-kontor hvis bruker tilhørte Nav IT og får norsk GT`() = testApplication {
+        val fnr = randomFnr()
+        val nyKontorId = "5678"
+        val brukAoRuting = true
+        application {
+            flywayMigrationInTest()
+            val oppfølgingsperiodeId = gittBrukerUnderOppfolging(fnr)
+            gittNåværendeGtKontor(fnr, INGEN_GT_KONTOR_FALLBACK)
+            gittNåværendeAOKontor(fnr, INGEN_GT_KONTOR_FALLBACK, oppfølgingsperiodeId)
+            val automatiskKontorRutingService = defaultAutomatiskKontorRutingService(
+                gtProvider = { a, b, c -> KontorForGtFantDefaultKontor(KontorId(nyKontorId), c, b, GeografiskTilknytningBydelNr("3131")) },
+                oppfølgingsperiodeId = oppfølgingsperiodeId,
+                hentAoKontor = { ArbeidsoppfolgingsKontor(KontorNavn("Nav IT"), INGEN_GT_KONTOR_FALLBACK) },
+            )
+            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, { IdentFunnet(fnr) }, false, brukAoRuting)
+
+            leesahProcessor.handterLeesahHendelse(BostedsadresseEndret(fnr))
+
+            transaction {
+                val gtKontorEtterEndring = GeografiskTilknyttetKontorEntity[fnr.value]
+                gtKontorEtterEndring.kontorId shouldBe nyKontorId
+
+                val aoKontorEtterEndring = ArbeidsOppfolgingKontorEntity[fnr.value]
+                aoKontorEtterEndring.kontorId shouldBe nyKontorId
+            }
+        }
+    }
+
+    @Test
+    fun `skal sette kun gt-kontor ved endret bosted`() = testApplication {
+        val fnr = randomFnr()
+        val gammeltKontorId = "1234"
+        val nyKontorId = "5678"
+        val brukAoRuting = true
+        application {
+            flywayMigrationInTest()
+            val oppfølgingsperiodeId = gittBrukerUnderOppfolging(fnr)
+            gittNåværendeGtKontor(fnr, KontorId(gammeltKontorId))
+            gittNåværendeAOKontor(fnr, KontorId(gammeltKontorId), oppfølgingsperiodeId)
+            val automatiskKontorRutingService = defaultAutomatiskKontorRutingService(
+                gtProvider = { a, b, c -> KontorForGtFantDefaultKontor(KontorId(nyKontorId), c, b, GeografiskTilknytningBydelNr("3131")) },
+                oppfølgingsperiodeId = oppfølgingsperiodeId,
+                hentAoKontor = { ArbeidsoppfolgingsKontor(KontorNavn("Nav Testheim"), KontorId(gammeltKontorId)) },
+            )
+            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, { IdentFunnet(fnr) }, false, brukAoRuting)
+
+            leesahProcessor.handterLeesahHendelse(BostedsadresseEndret(fnr))
+
+            transaction {
+                val gtKontorEtterEndring = GeografiskTilknyttetKontorEntity[fnr.value]
+                gtKontorEtterEndring.kontorId shouldBe nyKontorId
+
+                val aoKontorEtterEndring = ArbeidsOppfolgingKontorEntity[fnr.value]
+                aoKontorEtterEndring.kontorId shouldBe gammeltKontorId
             }
         }
     }
@@ -161,6 +224,7 @@ class LeesahProcessorTest {
         gtProvider: suspend (ident: Ident, strengtFortroligAdresse: HarStrengtFortroligAdresse, skjermet: HarSkjerming) -> KontorForGtResultat,
         strengtFortroligAdresseProvider: suspend (ident: Ident) -> HarStrengtFortroligAdresseResult = { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
         oppfølgingsperiodeId: OppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
+        hentAoKontor: suspend (IdentSomKanLagres) -> ArbeidsoppfolgingsKontor? = { null },
     ): AutomatiskKontorRutingService {
         return AutomatiskKontorRutingService(
             // TODO: Sjekk om test krever denne
@@ -171,7 +235,8 @@ class LeesahProcessorTest {
             hentSkjerming = { SkjermingFunnet(HarSkjerming(false)) },
             hentHarStrengtFortroligAdresse = strengtFortroligAdresseProvider,
             hentGjeldendeOppfolgingsperiode = { AktivOppfolgingsperiode(Fnr("66666666666", Ident.HistoriskStatus.AKTIV), randomInternIdent(), oppfølgingsperiodeId, OffsetDateTime.now()) },
-            harAlleredeTilordnetAoKontorForOppfolgingsperiode = { _, _ -> Outcome.Success(false)  }
+            harAlleredeTilordnetAoKontorForOppfolgingsperiode = { _, _ -> Outcome.Success(false) },
+            hentAoKontor = hentAoKontor,
         )
     }
 
