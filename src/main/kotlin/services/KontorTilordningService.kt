@@ -22,9 +22,11 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.upsert
 
+typealias TilordneKontor = (kontorEndringer: KontorEndretEvent, brukAoRuting: Boolean) -> Unit
+
 class KontorTilordningService(private val bigQueryClient: BigQueryClient) {
 
-    fun tilordneKontor(kontorEndringer: KontorEndringer, brukAoRuting: Boolean) {
+    fun tilordneKontor (kontorEndringer: KontorEndringer, brukAoRuting: Boolean) {
         kontorEndringer.aoKontorEndret?.let { tilordneKontor(it, brukAoRuting) }
         kontorEndringer.arenaKontorEndret?.let { tilordneKontor(it, brukAoRuting) }
         kontorEndringer.gtKontorEndret?.let { tilordneKontor(it, brukAoRuting) }

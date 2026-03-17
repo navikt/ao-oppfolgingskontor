@@ -12,6 +12,7 @@ enum class KontorEndringsType {
     AutomatiskRutetTilNavItIngenKontorFunnetForGt,
     StartKontorSattManueltAvVeileder,
     FlyttetAvVeileder,
+    KontorMergeViaAdmin, // Ønsker å kalle det "kontor-sammenslåing" men graphql blir sint når man bruker å
 
     /* Både Arbeidsoppfølgingskontor og GT kontor  */
     FikkSkjerming,

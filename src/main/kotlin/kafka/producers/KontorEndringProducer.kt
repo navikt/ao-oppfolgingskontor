@@ -189,6 +189,7 @@ enum class Tilordningstype {
                 KontorEndringsType.FlyttetAvVeileder,
                 KontorEndringsType.ArenaKontorManuellSynk,
                 KontorEndringsType.EndretIArena,
+                KontorEndringsType.KontorMergeViaAdmin,
                 KontorEndringsType.FikkNorskGt -> ENDRET_KONTOR
 
                 /* Endringer som midlertidig publiseres siden egen ruting ikke er lansert */

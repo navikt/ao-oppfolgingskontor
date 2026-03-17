@@ -4,6 +4,7 @@ import audit.Decision
 import com.nimbusds.jose.util.DefaultResourceRetriever
 import io.ktor.http.*
 import io.ktor.server.application.*
+import io.ktor.server.application.log
 import io.ktor.server.auth.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
@@ -19,6 +20,7 @@ import no.nav.audit.traceId
 import no.nav.authenticateCall
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
+import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.getIssuer
 import no.nav.security.token.support.v3.RequiredClaims
@@ -31,6 +33,8 @@ import no.nav.services.TilordningSuccessKontorEndret
 import org.slf4j.LoggerFactory
 import services.ArenaSyncService
 import services.KontorRepubliseringService
+import services.KontorSammenSlåing
+import services.KontorSammenslåingService
 import java.util.UUID
 
 val log = LoggerFactory.getLogger("AdminModule")
@@ -40,6 +44,7 @@ fun Application.configureAdminModule(
     simulerKontorTilordning: suspend (ident: IdentSomKanLagres, erArbeidssøker: Boolean) -> TilordningResultat,
     kontorRepubliseringService: KontorRepubliseringService,
     arenaSyncService: ArenaSyncService,
+    kontorSammenslåingService: `KontorSammenslåingService`
 ) {
     routing {
         val config = environment.config
@@ -61,6 +66,51 @@ fun Application.configureAdminModule(
             ?: install(Authentication) { setUpAdminAuth() }
 
         authenticate("poaoAdmin") {
+            post("/admin/merge-kontorer") {
+                runCatching {
+                    val principal = when (val authResult = call.authenticateCall(environment.getIssuer())) {
+                        is Authenticated -> authResult.principal as? NavAnsatt
+                        is NotAuthenticated -> {
+                            log.warn("Not authorized ${authResult.reason}")
+                            call.respond(HttpStatusCode.Unauthorized)
+                            return@post
+                        }
+                    } ?: throw IllegalStateException("Må være navansatt")
+                    val input = call.receive<KontorSammenslåingBody>()
+                        .let { `KontorSammenSlåing`(it.fraKontorer.map { KontorId(it) }, KontorId(it.tilKontor)) }
+                    kontorSammenslåingService.slåSammenKontorer(principal,input)
+                    call.respond(HttpStatusCode.OK)
+                }.onFailure { e ->
+                    log.error("Feil sammenslåing av kontorer", e)
+                    call.respond(
+                        HttpStatusCode.InternalServerError,
+                        "Klarte ikke slå sammen kontorer: ${e.message} \n" + e.stackTraceToString()
+                    )
+                }
+            }
+
+            post("/admin/kontortelling") {
+                runCatching {
+                    when (val authResult = call.authenticateCall(environment.getIssuer())) {
+                        is Authenticated -> authResult.principal as? NavAnsatt
+                        is NotAuthenticated -> {
+                            log.warn("Not authorized ${authResult.reason}")
+                            call.respond(HttpStatusCode.Unauthorized)
+                            return@post
+                        }
+                    } ?: throw IllegalStateException("Må være navansatt")
+                    val input = call.receive<List<String>>().map { KontorId(it) }
+                    val result = kontorSammenslåingService.antallKontorerSomSkalEndres(input)
+                    call.respond(HttpStatusCode.OK, result)
+                }.onFailure { e ->
+                    log.error("Feil sammenslåing av kontorer", e)
+                    call.respond(
+                        HttpStatusCode.InternalServerError,
+                        "Klarte ikke slå sammen kontorer: ${e.message} \n" + e.stackTraceToString()
+                    )
+                }
+            }
+
             post("/admin/republiser-arbeidsoppfolgingskontorendret") {
                 runCatching {
                     log.info("Setter i gang async republisering av kontorer")
@@ -186,4 +236,10 @@ private data class IdenterInputBody(val identer: String)
 @Serializable
 private data class OppfolgingsperiodeInputBody(
     val oppfolgingsperioder: String // Kommeseparert liste over oppfolgingsperioder-id-er
+)
+
+@Serializable
+private data class KontorSammenslåingBody(
+    val fraKontorer: List<String>,
+    val tilKontor: String
 )

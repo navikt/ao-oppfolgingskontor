@@ -121,6 +121,9 @@ fun Application.module() {
                 null
             )
         }
+    val kontorSammenslåingService = KontorSammenslåingService(
+        tilordneKontor = kontorTilordningService::tilordneKontor
+    )
 
     val kontorEndringProducer = KontorEndringProducer(
         producer = createKafkaProducerWithLongKey(this.environment.config.toKafkaEnv()),
@@ -171,7 +174,7 @@ fun Application.module() {
         brukAoRuting = environment.getBrukAoRuting(),
     )
     configureFinnKontorModule(simulerKontorTilordning, kontorNavnService::getKontorNavn, { call -> call.authenticateCall(issuer) })
-    configureAdminModule(simulerKontorTilordning, republiseringService, arenaSyncService)
+    configureAdminModule(simulerKontorTilordning, republiseringService, arenaSyncService, kontorSammenslåingService)
     configureHentArbeidsoppfolgingskontorBulkModule(KontorTilhorighetBulkService)
 }
 
