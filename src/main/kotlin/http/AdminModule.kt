@@ -81,7 +81,7 @@ fun Application.configureAdminModule(
                     kontorSammenslåingService.slåSammenKontorer(principal,input)
                     call.respond(HttpStatusCode.OK)
                 }.onFailure { e ->
-                    log.error("Feil sammenslåing av kontorer", e)
+                    log.error("Feilet å sammenslå kontorer", e)
                     call.respond(
                         HttpStatusCode.InternalServerError,
                         "Klarte ikke slå sammen kontorer: ${e.message} \n" + e.stackTraceToString()
@@ -104,10 +104,10 @@ fun Application.configureAdminModule(
                     val result = kontorSammenslåingService.antallKontorerSomSkalEndres(input)
                     call.respond(HttpStatusCode.OK, result)
                 }.onFailure { e ->
-                    log.error("Feil sammenslåing av kontorer", e)
+                    log.error("Feil å telle antall kontorer som blir berørt av kontorsammenslåing", e)
                     call.respond(
                         HttpStatusCode.InternalServerError,
-                        "Klarte ikke slå sammen kontorer: ${e.message} \n" + e.stackTraceToString()
+                        "Klarte telle antall brukere som blir berørt av kontorsammenslåing: ${e.message} \n" + e.stackTraceToString()
                     )
                 }
             }
