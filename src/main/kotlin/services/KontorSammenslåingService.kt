@@ -36,7 +36,7 @@ class `KontorSammenslåingService`(
     }
 
     fun antallKontorerSomSkalEndres(fraKontorer: List<KontorId>): Long = transaction {
-        return ArbeidsOppfolgingKontorTable
+        ArbeidsOppfolgingKontorTable
             .selectAll()
             .where { ArbeidsOppfolgingKontorTable.kontorId inList fraKontorer.map { it.id } }
             .count()
