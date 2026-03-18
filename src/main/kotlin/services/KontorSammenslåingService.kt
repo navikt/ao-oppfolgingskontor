@@ -35,7 +35,7 @@ class `KontorSammenslåingService`(
         prosesserAlleBrukereIBatch(navAnsatt, kontorer)
     }
 
-    fun antallKontorerSomSkalEndres(fraKontorer: List<KontorId>): Long {
+    fun antallKontorerSomSkalEndres(fraKontorer: List<KontorId>): Long = transaction {
         return ArbeidsOppfolgingKontorTable
             .selectAll()
             .where { ArbeidsOppfolgingKontorTable.kontorId inList fraKontorer.map { it.id } }
