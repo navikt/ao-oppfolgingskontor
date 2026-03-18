@@ -2,8 +2,8 @@ package no.nav.services
 
 import arrow.core.Either
 import db.table.AlternativAoKontorTable
-import eventsLogger.BigQueryClient
 import eventsLogger.KontorTypeForBigQuery
+import eventsLogger.LoggSattKontorEvent
 import java.time.ZonedDateTime
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.db.table.ArenaKontorTable
@@ -24,7 +24,9 @@ import org.jetbrains.exposed.sql.upsert
 
 typealias TilordneKontor = (kontorEndringer: KontorEndretEvent, brukAoRuting: Boolean) -> Unit
 
-class KontorTilordningService(private val bigQueryClient: BigQueryClient) {
+class KontorTilordningService(
+    private val loggSattKontorEvent: LoggSattKontorEvent
+) {
 
     fun tilordneKontor (kontorEndringer: KontorEndringer, brukAoRuting: Boolean) {
         kontorEndringer.aoKontorEndret?.let { tilordneKontor(it, brukAoRuting) }
@@ -48,7 +50,7 @@ class KontorTilordningService(private val bigQueryClient: BigQueryClient) {
                             it[historikkEntry] = entryId.value
                             it[oppfolgingsperiodeId] = kontorEndring.tilordning.oppfolgingsperiodeId.value
                         }
-                        bigQueryClient.loggSattKontorEvent(
+                        loggSattKontorEvent(
                             kontorTilhorighet.kontorId.id,
                             kontorEndring.kontorEndringsType(),
                             KontorTypeForBigQuery.ARBEIDSOPPFOLGINGSKONTOR
@@ -63,7 +65,7 @@ class KontorTilordningService(private val bigQueryClient: BigQueryClient) {
                             it[kontorendringstype] = kontorEndring.kontorEndringsType().name
                             it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
                         }
-                        bigQueryClient.loggSattKontorEvent(
+                        loggSattKontorEvent(
                             kontorTilhorighet.kontorId.id,
                             kontorEndring.kontorEndringsType(),
                             KontorTypeForBigQuery.ALTERNATIV_AOKONTOR
@@ -82,7 +84,7 @@ class KontorTilordningService(private val bigQueryClient: BigQueryClient) {
                             it[historikkEntry] = entryId.value
                             it[oppfolgingsperiodeId] = kontorEndring.tilordning.oppfolgingsperiodeId.value
                         }
-                        bigQueryClient.loggSattKontorEvent(
+                        loggSattKontorEvent(
                             kontorTilhorighet.kontorId.id,
                             kontorEndring.toHistorikkInnslag().kontorendringstype,
                             KontorTypeForBigQuery.ARBEIDSOPPFOLGINGSKONTOR
@@ -95,7 +97,7 @@ class KontorTilordningService(private val bigQueryClient: BigQueryClient) {
                         it[sistEndretDatoArena] = kontorEndring.sistEndretDatoArena
                         it[historikkEntry] = entryId
                     }
-                    bigQueryClient.loggSattKontorEvent(
+                    loggSattKontorEvent(
                         kontorTilhorighet.kontorId.id,
                         kontorEndring.toHistorikkInnslag().kontorendringstype,
                         KontorTypeForBigQuery.ARENAKONTOR

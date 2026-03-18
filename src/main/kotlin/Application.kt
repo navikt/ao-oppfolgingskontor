@@ -82,7 +82,7 @@ fun Application.module() {
     )
 
     installBigQueryDailyScheduler(database, bigQueryClient = bigQueryClient)
-    val kontorTilordningService = KontorTilordningService(bigQueryClient)
+    val kontorTilordningService = KontorTilordningService(bigQueryClient::loggSattKontorEvent)
 
     val kontorForBrukerMedMangelfullGtService = KontorForBrukerMedMangelfullGtService(
         {aaregClient.hentArbeidsforhold(it)},

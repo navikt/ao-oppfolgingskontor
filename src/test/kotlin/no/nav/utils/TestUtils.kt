@@ -21,5 +21,5 @@ val kontorTilordningService = KontorTilordningService(
     BigQueryClient(
         "ProjectId",
         ExposedLockProvider(Database.connect(TestDb.postgres))
-    )
+    )::loggSattKontorEvent
 )
