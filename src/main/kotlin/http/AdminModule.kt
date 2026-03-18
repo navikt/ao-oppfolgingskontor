@@ -1,5 +1,11 @@
 package no.nav.http
 
+import arrow.core.Either
+import arrow.core.flatMap
+import arrow.core.flatten
+import arrow.core.left
+import arrow.core.raise.context.bind
+import arrow.core.right
 import audit.Decision
 import com.nimbusds.jose.util.DefaultResourceRetriever
 import io.ktor.http.*
@@ -12,6 +18,7 @@ import io.ktor.server.routing.*
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import no.nav.AuthResult
 import no.nav.Authenticated
 import no.nav.NavAnsatt
 import no.nav.NotAuthenticated
@@ -39,6 +46,21 @@ import java.util.UUID
 
 val log = LoggerFactory.getLogger("AdminModule")
 
+class HttpReject(
+    val status: HttpStatusCode,
+    val message: String,
+)
+
+fun navAnsattOrUnauthorized(authResult: AuthResult): Either<HttpReject, NavAnsatt> {
+    val navAnsatt = when (authResult) {
+        is Authenticated -> authResult.principal as? NavAnsatt
+        is NotAuthenticated -> {
+            log.warn("Not authorized ${authResult.reason}")
+            return HttpReject(HttpStatusCode.Unauthorized, "Not authorized").left()
+        }
+    } ?: return HttpReject(HttpStatusCode.Forbidden, "Må være navansatt").left()
+    return navAnsatt.right()
+}
 
 fun Application.configureAdminModule(
     simulerKontorTilordning: suspend (ident: IdentSomKanLagres, erArbeidssøker: Boolean) -> TilordningResultat,
@@ -67,49 +89,35 @@ fun Application.configureAdminModule(
 
         authenticate("poaoAdmin") {
             post("/admin/merge-kontorer") {
-                runCatching {
-                    val principal = when (val authResult = call.authenticateCall(environment.getIssuer())) {
-                        is Authenticated -> authResult.principal as? NavAnsatt
-                        is NotAuthenticated -> {
-                            log.warn("Not authorized ${authResult.reason}")
-                            call.respond(HttpStatusCode.Unauthorized)
-                            return@post
-                        }
-                    } ?: throw IllegalStateException("Må være navansatt")
-                    val input = call.receive<KontorSammenslåingBody>()
-                        .let { `KontorSammenSlåing`(it.fraKontorer.map { fraKontor -> KontorId(fraKontor) }, KontorId(it.tilKontor)) }
-                    kontorSammenslåingService.slåSammenKontorer(principal,input)
-                    call.respond(HttpStatusCode.OK)
-                }.onFailure { e ->
-                    log.error("Feilet å sammenslå kontorer", e)
-                    call.respond(
-                        HttpStatusCode.InternalServerError,
-                        "Klarte ikke slå sammen kontorer: ${e.message} \n" + e.stackTraceToString()
-                    )
+                Either.catch {
+                    navAnsattOrUnauthorized(call.authenticateCall(environment.getIssuer()))
+                        .map { navAnsatt -> call.receive<KontorSammenslåingBody>().toKontorSammenslåing() to navAnsatt }
+                        .map { (input, navAnsatt) -> kontorSammenslåingService.slåSammenKontorer(navAnsatt,input) }
                 }
+                    .mapLeft { error ->
+                        log.error("Feilet å sammenslå kontorer", error)
+                        HttpReject(HttpStatusCode.InternalServerError, "Feilet å sammenslå kontorer: ${error.message}")
+                    }
+                    .flatten()
+                    .fold(
+                        ifLeft = { e -> call.respond(e.status,e.message) },
+                        ifRight = { res -> call.respond(HttpStatusCode.OK) }
+                    )
             }
 
             post("/admin/kontortelling") {
-                runCatching {
-                    when (val authResult = call.authenticateCall(environment.getIssuer())) {
-                        is Authenticated -> authResult.principal as? NavAnsatt
-                        is NotAuthenticated -> {
-                            log.warn("Not authorized ${authResult.reason}")
-                            call.respond(HttpStatusCode.Unauthorized)
-                            return@post
-                        }
-                    } ?: throw IllegalStateException("Må være navansatt")
-                    val input = call.receive<KontorSammenslåingBody>()
-                        .let { it.fraKontorer.map { fraKontor -> KontorId(fraKontor) } }
-                    val result = kontorSammenslåingService.antallKontorerSomSkalEndres(input)
-                    call.respond(HttpStatusCode.OK, result)
-                }.onFailure { e ->
-                    log.error("Feil å telle antall kontorer som blir berørt av kontorsammenslåing", e)
-                    call.respond(
-                        HttpStatusCode.InternalServerError,
-                        "Klarte telle antall brukere som blir berørt av kontorsammenslåing: ${e.message} \n" + e.stackTraceToString()
-                    )
+                Either.catch {
+                    val input = call.receive<KontorSammenslåingBody>().toKontorSammenslåing()
+                    kontorSammenslåingService.antallKontorerSomSkalEndres(input.fraKontorer)
                 }
+                    .mapLeft { error ->
+                        log.error("Klarte ikke telle antall brukere som blir berørt av kontorsammenslåing", error)
+                        HttpReject(HttpStatusCode.InternalServerError, "Klarte ikke telle antall brukere som blir berørt av kontorsammenslåing: ${error.message}")
+                    }
+                    .fold(
+                        ifLeft = { e -> call.respond(e.status,e.message) },
+                        ifRight = { result -> call.respond(HttpStatusCode.OK, result) }
+                    )
             }
 
             post("/admin/republiser-arbeidsoppfolgingskontorendret") {
@@ -243,4 +251,11 @@ private data class OppfolgingsperiodeInputBody(
 private data class KontorSammenslåingBody(
     val fraKontorer: List<String>,
     val tilKontor: String
-)
+) {
+    fun toKontorSammenslåing(): KontorSammenSlåing {
+        return `KontorSammenSlåing`(
+            this.fraKontorer.map { fraKontor -> KontorId(fraKontor) },
+            KontorId(this.tilKontor)
+        )
+    }
+}
