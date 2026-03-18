@@ -1,9 +1,16 @@
 package no.nav.http
 
+import arrow.core.Either
+import arrow.core.flatMap
+import arrow.core.flatten
+import arrow.core.left
+import arrow.core.raise.context.bind
+import arrow.core.right
 import audit.Decision
 import com.nimbusds.jose.util.DefaultResourceRetriever
 import io.ktor.http.*
 import io.ktor.server.application.*
+import io.ktor.server.application.log
 import io.ktor.server.auth.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
@@ -11,6 +18,7 @@ import io.ktor.server.routing.*
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import no.nav.AuthResult
 import no.nav.Authenticated
 import no.nav.NavAnsatt
 import no.nav.NotAuthenticated
@@ -19,6 +27,7 @@ import no.nav.audit.traceId
 import no.nav.authenticateCall
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
+import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.getIssuer
 import no.nav.security.token.support.v3.RequiredClaims
@@ -31,15 +40,33 @@ import no.nav.services.TilordningSuccessKontorEndret
 import org.slf4j.LoggerFactory
 import services.ArenaSyncService
 import services.KontorRepubliseringService
+import services.KontorSammenSlåing
+import services.KontorSammenslåingService
 import java.util.UUID
 
 val log = LoggerFactory.getLogger("AdminModule")
 
+class HttpReject(
+    val status: HttpStatusCode,
+    val message: String,
+)
+
+fun navAnsattOrUnauthorized(authResult: AuthResult): Either<HttpReject, NavAnsatt> {
+    val navAnsatt = when (authResult) {
+        is Authenticated -> authResult.principal as? NavAnsatt
+        is NotAuthenticated -> {
+            log.warn("Not authorized ${authResult.reason}")
+            return HttpReject(HttpStatusCode.Unauthorized, "Not authorized").left()
+        }
+    } ?: return HttpReject(HttpStatusCode.Forbidden, "Må være navansatt").left()
+    return navAnsatt.right()
+}
 
 fun Application.configureAdminModule(
     simulerKontorTilordning: suspend (ident: IdentSomKanLagres, erArbeidssøker: Boolean) -> TilordningResultat,
     kontorRepubliseringService: KontorRepubliseringService,
     arenaSyncService: ArenaSyncService,
+    kontorSammenslåingService: `KontorSammenslåingService`
 ) {
     routing {
         val config = environment.config
@@ -61,6 +88,38 @@ fun Application.configureAdminModule(
             ?: install(Authentication) { setUpAdminAuth() }
 
         authenticate("poaoAdmin") {
+            post("/admin/merge-kontorer") {
+                Either.catch {
+                    navAnsattOrUnauthorized(call.authenticateCall(environment.getIssuer()))
+                        .map { navAnsatt -> call.receive<KontorSammenslåingBody>().toKontorSammenslåing() to navAnsatt }
+                        .map { (input, navAnsatt) -> kontorSammenslåingService.slåSammenKontorer(navAnsatt,input) }
+                }
+                    .mapLeft { error ->
+                        log.error("Feilet å sammenslå kontorer", error)
+                        HttpReject(HttpStatusCode.InternalServerError, "Feilet å sammenslå kontorer: ${error.message}")
+                    }
+                    .flatten()
+                    .fold(
+                        ifLeft = { e -> call.respond(e.status,e.message) },
+                        ifRight = { res -> call.respond(HttpStatusCode.OK) }
+                    )
+            }
+
+            post("/admin/kontortelling") {
+                Either.catch {
+                    val input = call.receive<KontorSammenslåingBody>().toKontorSammenslåing()
+                    kontorSammenslåingService.antallKontorerSomSkalEndres(input.fraKontorer)
+                }
+                    .mapLeft { error ->
+                        log.error("Klarte ikke telle antall brukere som blir berørt av kontorsammenslåing", error)
+                        HttpReject(HttpStatusCode.InternalServerError, "Klarte ikke telle antall brukere som blir berørt av kontorsammenslåing: ${error.message}")
+                    }
+                    .fold(
+                        ifLeft = { e -> call.respond(e.status,e.message) },
+                        ifRight = { result -> call.respond(HttpStatusCode.OK, result) }
+                    )
+            }
+
             post("/admin/republiser-arbeidsoppfolgingskontorendret") {
                 runCatching {
                     log.info("Setter i gang async republisering av kontorer")
@@ -187,3 +246,16 @@ private data class IdenterInputBody(val identer: String)
 private data class OppfolgingsperiodeInputBody(
     val oppfolgingsperioder: String // Kommeseparert liste over oppfolgingsperioder-id-er
 )
+
+@Serializable
+private data class KontorSammenslåingBody(
+    val fraKontorer: List<String>,
+    val tilKontor: String
+) {
+    fun toKontorSammenslåing(): KontorSammenSlåing {
+        return `KontorSammenSlåing`(
+            this.fraKontorer.map { fraKontor -> KontorId(fraKontor) },
+            KontorId(this.tilKontor)
+        )
+    }
+}

@@ -82,7 +82,7 @@ class LeesahProcessor(
                             Commit() // In production we do not forward kontorendringer, but we still commit the record
                         }
                         else {
-                            Forward(aoKontorEndring.toRecord(), arbeidsoppfolgingkontorSinkName)
+                            Forward(aoKontorEndring.toRecord())
                         }
                     }
                     else -> Commit()

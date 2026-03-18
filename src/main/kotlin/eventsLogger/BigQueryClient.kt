@@ -18,6 +18,8 @@ enum class KontorTypeForBigQuery {
     ARENAKONTOR
 }
 
+typealias LoggSattKontorEvent = (kontorId: String, kontorEndringsType: KontorEndringsType?, kontorType: KontorTypeForBigQuery) -> Unit
+
 class BigQueryClient(
     projectId: String,
     private val lockProvider: ExposedLockProvider
