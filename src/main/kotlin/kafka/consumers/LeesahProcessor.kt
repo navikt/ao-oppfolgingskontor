@@ -1,11 +1,12 @@
 package no.nav.kafka.consumers
 
-import kafka.out.toRecord
+import kafka.out.toOppfolgingEndretTilordningMeldingRecord
+import kafka.producers.OppfolgingEndretTilordningMelding
 import kotlinx.coroutines.runBlocking
-import no.nav.db.AktorId
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
 import no.nav.db.finnForetrukketIdent
+import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.events.AOKontorEndret
 import no.nav.domain.events.ArenaKontorEndret
 import no.nav.domain.events.GTKontorEndret
@@ -17,7 +18,6 @@ import no.nav.http.client.IdentFunnet
 import no.nav.http.client.IdentIkkeFunnet
 import no.nav.http.client.IdentOppslagFeil
 import no.nav.http.client.IdentResult
-import no.nav.kafka.arbeidsoppfolgingkontorSinkName
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.RecordProcessingResult
@@ -31,7 +31,6 @@ import org.slf4j.LoggerFactory
 class LeesahProcessor(
     private val automatiskKontorRutingService: AutomatiskKontorRutingService,
     private val kontorTilordningService: KontorTilordningService,
-    private val fnrProvider: suspend (ident: AktorId) -> IdentResult,
     private val isProduction: Boolean,
     private val brukAoRuting: Boolean
 ) {
@@ -39,7 +38,7 @@ class LeesahProcessor(
 
     fun process(
             record: Record<String, Personhendelse>
-    ): RecordProcessingResult<String, String> {
+    ): RecordProcessingResult<OppfolgingsperiodeId, OppfolgingEndretTilordningMelding> {
         log.info("Consumer Personhendelse record ${record.value().opplysningstype} ${record.value().endringstype}")
         return record.value()
                 .let { hendelse ->
@@ -56,7 +55,7 @@ class LeesahProcessor(
                 .let { handterLeesahHendelse(it) }
     }
 
-    fun handterLeesahHendelse(hendelse: PersondataEndret): RecordProcessingResult<String, String> {
+    fun handterLeesahHendelse(hendelse: PersondataEndret): RecordProcessingResult<OppfolgingsperiodeId, OppfolgingEndretTilordningMelding> {
         val result = runBlocking {
             when (hendelse) {
                 is BostedsadresseEndret -> automatiskKontorRutingService.handterEndringForBostedsadresse(hendelse)
@@ -82,7 +81,7 @@ class LeesahProcessor(
                             Commit() // In production we do not forward kontorendringer, but we still commit the record
                         }
                         else {
-                            Forward(aoKontorEndring.toRecord())
+                            Forward(aoKontorEndring.toOppfolgingEndretTilordningMeldingRecord())
                         }
                     }
                     else -> Commit()
@@ -95,7 +94,7 @@ class LeesahProcessor(
         }
     }
 
-    suspend fun finnIdent(hendelse: Personhendelse): IdentResult {
+    fun finnIdent(hendelse: Personhendelse): IdentResult {
         if (hendelse.personidenter.isEmpty()) {
             throw IllegalStateException("Personhendelse must have at least one personident")
         }

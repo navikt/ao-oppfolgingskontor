@@ -34,7 +34,6 @@ import no.nav.domain.OppfolgingsperiodeId
 import no.nav.http.client.AlderFunnet
 import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
-import no.nav.http.client.IdentFunnet
 import no.nav.http.client.PdlIdenterFunnet
 import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringFunnet
@@ -99,7 +98,6 @@ class BigAppTest {
             val leesahProcessor = LeesahProcessor(
                 automatiskKontorRutingService,
                 kontorTilordningService,
-                { IdentFunnet(fnr) },
                 false,
                 brukAoRuting,
             )
@@ -227,7 +225,6 @@ class BigAppTest {
             val leesahProcessor = LeesahProcessor(
                 automatiskKontorRutingService,
                 kontorTilordningService,
-                { IdentFunnet(fnr) },
                 false,
                 brukAoRuting,
             )

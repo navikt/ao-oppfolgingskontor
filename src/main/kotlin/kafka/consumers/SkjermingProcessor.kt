@@ -1,13 +1,12 @@
 package no.nav.kafka.consumers
 
-import java.time.ZonedDateTime
+import kafka.out.toOppfolgingEndretTilordningMeldingRecord
 import kafka.producers.OppfolgingEndretTilordningMelding
 import kotlinx.coroutines.runBlocking
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
 import no.nav.domain.HarSkjerming
 import no.nav.domain.OppfolgingsperiodeId
-import no.nav.domain.events.AOKontorEndret
 import no.nav.domain.externalEvents.SkjermetStatusEndret
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Forward
@@ -74,19 +73,6 @@ class SkjermingProcessor(
                 })
         }
     }
-}
-
-fun AOKontorEndret.toOppfolgingEndretTilordningMeldingRecord(): Record<OppfolgingsperiodeId, OppfolgingEndretTilordningMelding> {
-    return Record(
-        this.tilordning.oppfolgingsperiodeId,
-        OppfolgingEndretTilordningMelding(
-            kontorId = this.tilordning.kontorId.id,
-            oppfolgingsperiodeId = this.tilordning.oppfolgingsperiodeId.value.toString(),
-            ident = this.tilordning.fnr.value,
-            kontorEndringsType = this.kontorEndringsType(),
-        ),
-        ZonedDateTime.now().toEpochSecond(),
-    )
 }
 
 data class EndringISkjermingResult(

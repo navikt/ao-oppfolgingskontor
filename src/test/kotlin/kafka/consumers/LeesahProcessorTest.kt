@@ -33,7 +33,6 @@ import no.nav.domain.externalEvents.BostedsadresseEndret
 import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseResult
-import no.nav.http.client.IdentFunnet
 import no.nav.http.client.SkjermingFunnet
 import no.nav.kafka.consumers.LeesahProcessor
 import no.nav.kafka.processor.Retry
@@ -62,7 +61,7 @@ class LeesahProcessorTest {
             flywayMigrationInTest()
             gittNåværendeGtKontor(fnr, KontorId(gammeltKontorId))
             val automatiskKontorRutingService = gittRutingServiceMedGtKontor(KontorId(nyKontorId))
-            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, { IdentFunnet(fnr) }, false, brukAoRuting)
+            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, false, brukAoRuting)
 
             leesahProcessor.handterLeesahHendelse(BostedsadresseEndret(fnr))
 
@@ -88,7 +87,7 @@ class LeesahProcessorTest {
                 oppfølgingsperiodeId = oppfølgingsperiodeId,
                 hentAoKontor = { ArbeidsoppfolgingsKontor(KontorNavn("Nav IT"), INGEN_GT_KONTOR_FALLBACK) },
             )
-            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, { IdentFunnet(fnr) }, false, brukAoRuting)
+            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, false, brukAoRuting)
 
             leesahProcessor.handterLeesahHendelse(BostedsadresseEndret(fnr))
 
@@ -118,7 +117,7 @@ class LeesahProcessorTest {
                 oppfølgingsperiodeId = oppfølgingsperiodeId,
                 hentAoKontor = { ArbeidsoppfolgingsKontor(KontorNavn("Nav Testheim"), KontorId(gammeltKontorId)) },
             )
-            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, { IdentFunnet(fnr) }, false, brukAoRuting)
+            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, false, brukAoRuting)
 
             leesahProcessor.handterLeesahHendelse(BostedsadresseEndret(fnr))
 
@@ -146,7 +145,7 @@ class LeesahProcessorTest {
                 { a, b, c -> KontorForGtFantDefaultKontor(KontorId(nyKontorId), c, b, GeografiskTilknytningBydelNr("3131")) },
                 { ident -> HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(true)) }, oppfølgingsperiodeId
             )
-            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, { IdentFunnet(fnr) }, false, brukAoRuting)
+            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, false, brukAoRuting)
 
             leesahProcessor.handterLeesahHendelse(AdressebeskyttelseEndret(fnr, Gradering.STRENGT_FORTROLIG))
 
@@ -172,7 +171,7 @@ class LeesahProcessorTest {
             gittNåværendeAOKontor(fnr, KontorId(gammelKontorId), oppfølgingsperiodeId)
             gittNåværendeGtKontor(fnr, KontorId(gammelKontorId))
             val automatiskKontorRutingService = gittRutingServiceMedGtKontor(KontorId(nyKontorId))
-            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService,  { IdentFunnet(fnr) }, false, brukAoRuting)
+            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService,  false, brukAoRuting)
 
             leesahProcessor.handterLeesahHendelse(AdressebeskyttelseEndret(fnr, Gradering.UGRADERT))
 
@@ -197,7 +196,7 @@ class LeesahProcessorTest {
         val automatiskKontorRutingService = defaultAutomatiskKontorRutingService(
             { a, b, c -> KontorForGtFeil("Noe gikk galt") }
         )
-        val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, { IdentFunnet(fnr) }, false, brukAoRuting)
+        val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, false, brukAoRuting)
 
         val resultat = leesahProcessor.handterLeesahHendelse(BostedsadresseEndret(fnr))
 
@@ -212,7 +211,7 @@ class LeesahProcessorTest {
         val automatiskKontorRutingService = defaultAutomatiskKontorRutingService(
             { a, b, c -> throw Throwable("Noe gikk galt") }
         )
-        val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, { IdentFunnet(fnr) }, false, brukAoRuting)
+        val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, false, brukAoRuting)
 
         val resultat = leesahProcessor.handterLeesahHendelse(BostedsadresseEndret(fnr))
 

@@ -176,6 +176,7 @@ fun configureTopology(
     )
     builder.stream(topics.inn.pdlLeesah.name, topics.inn.pdlLeesah.consumedWith())
         .process(leesahProcessorSupplier, Named.`as`(processorName(topics.inn.pdlLeesah.name)))
+        .process(publiserKontorTilordningProcessorSupplier)
 
     /*
      * AKTOR V2
