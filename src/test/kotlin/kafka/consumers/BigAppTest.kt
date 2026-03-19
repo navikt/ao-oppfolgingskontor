@@ -47,6 +47,8 @@ import no.nav.kafka.consumers.SkjermingProcessor
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.utils.flywayMigrationInTest
+import no.nav.utils.gittBrukerUnderOppfolging
+import no.nav.utils.gittIdentMedKontor
 import no.nav.utils.kontorTilordningService
 import no.nav.utils.randomFnr
 import no.nav.utils.randomInternIdent
@@ -104,7 +106,7 @@ class BigAppTest {
             val skjermingProcessor = SkjermingProcessor(
                 automatiskKontorRutingService,
                 kontorTilordningService,
-                brukAoRuting
+                brukAoRuting,
             )
             val endringPaaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
                 oppfolgingsperiodeProvider,
@@ -140,7 +142,7 @@ class BigAppTest {
                     OppfolgingsperiodeService(identService::hentAlleIdenter, kontorTilordningService::slettArbeidsoppfølgingskontorTilordning),
                     kontorEndringProducer::publiserTombstone,
                 ),
-                mockk<`ArenakontorVedOppfolgingStartetProcessor`>()
+                mockk<ArenakontorVedOppfolgingStartetProcessor>()
             )
             val (driver, inputTopics, _) = setupKafkaMock(
                 topology,
@@ -182,6 +184,120 @@ class BigAppTest {
                         oppfolgingsperiodeId.value.toString(),
                         fnr.value,
                         KontorEndringsType.AutomatiskRutetTilNOE
+                    )
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `skal forwarde oppdatert ao-kontor til kafkaproducer ved endring av skjerming`() = testApplication {
+        val fnr = randomFnr()
+        val brukAoRuting = true
+        val kontor = KontorId("2232")
+        val skjermetKontor = KontorId("0383")
+        val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
+        environment {
+            config = ApplicationConfig("application.prod.yaml")
+        }
+        application {
+            gittBrukerUnderOppfolging(
+                fnr = fnr,
+                oppfolgingsperiodeId = oppfolgingsperiodeId,
+            )
+            gittIdentMedKontor(
+                ident = fnr,
+                kontorId = kontor,
+                oppfolgingsperiodeId = oppfolgingsperiodeId,
+            )
+            val topics = this.environment.topics()
+            val oppfolgingsperiodeProvider =
+                { _: Ident -> AktivOppfolgingsperiode(fnr, randomInternIdent(), oppfolgingsperiodeId, OffsetDateTime.now()) }
+            val automatiskKontorRutingService = AutomatiskKontorRutingService(
+                { _, a, _ -> KontorForGtFantDefaultKontor(skjermetKontor, HarSkjerming(true), a, GeografiskTilknytningBydelNr("2232")) },
+                { AlderFunnet(40) },
+                { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
+                { SkjermingFunnet(HarSkjerming(true)) },
+                { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
+                oppfolgingsperiodeProvider,
+                { _, _ -> Outcome.Success(false) },
+                { null },
+            )
+            val tilordningProcessor = KontortilordningsProcessor(automatiskKontorRutingService, kontorTilordningService, false, brukAoRuting)
+            val leesahProcessor = LeesahProcessor(
+                automatiskKontorRutingService,
+                kontorTilordningService,
+                { IdentFunnet(fnr) },
+                false,
+                brukAoRuting,
+            )
+            val skjermingProcessor = SkjermingProcessor(
+                automatiskKontorRutingService,
+                kontorTilordningService,
+                brukAoRuting,
+            )
+            val endringPaaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
+                oppfolgingsperiodeProvider,
+                { null },
+                {},
+                { Result.success(Unit) },
+                true
+            )
+            val identService = IdentService { PdlIdenterFunnet(emptyList(), fnr) }
+            val identendringsProcessor = IdentChangeProcessor(identService)
+
+            val kontorEndringProducer = mockk<KontorEndringProducer>()
+            coEvery { kontorEndringProducer.publiserEndringPåKontor(any<OppfolgingEndretTilordningMelding>()) } returns Result.success(
+                Unit
+            )
+
+            val publiserKontorTilordningProcessor = PubliserKontorTilordningProcessor(
+                hentAlleIdenter = identService::hentAlleIdenter,
+                publiserKontorTilordning = kontorEndringProducer::publiserEndringPåKontor,
+                brukAoRuting = true
+            )
+            val topology = configureTopology(
+                this.environment,
+                TestLockProvider,
+                CoroutineScope(Dispatchers.IO),
+                tilordningProcessor,
+                publiserKontorTilordningProcessor,
+                leesahProcessor,
+                skjermingProcessor,
+                endringPaaOppfolgingsBrukerProcessor,
+                identendringsProcessor,
+                OppfolgingsHendelseProcessor(
+                    OppfolgingsperiodeService(identService::hentAlleIdenter, kontorTilordningService::slettArbeidsoppfølgingskontorTilordning),
+                    kontorEndringProducer::publiserTombstone,
+                ),
+                mockk<ArenakontorVedOppfolgingStartetProcessor>()
+            )
+            val (_, inputTopics, _) = setupKafkaMock(
+                topology,
+                listOf(topics.inn.skjerming.name), null
+            )
+            inputTopics.first().pipeInput(
+                fnr.value, true.toString()
+            )
+
+            withClue("Skal oppdatere AO-kontor på bruker") {
+                transaction {
+                    ArbeidsOppfolgingKontorEntity.findById(fnr.value)
+                }?.kontorId shouldBe "0383"
+            }
+            val antallHistorikkRader = transaction {
+                KontorHistorikkEntity.find { KontorhistorikkTable.ident eq fnr.value }.count()
+            }
+            withClue("Skal finnes 3 historikkinnslag på bruker men var $antallHistorikkRader") {
+                antallHistorikkRader shouldBe 3
+            }
+            coVerify {
+                kontorEndringProducer.publiserEndringPåKontor(
+                    OppfolgingEndretTilordningMelding(
+                        "0383",
+                        oppfolgingsperiodeId.value.toString(),
+                        fnr.value,
+                        KontorEndringsType.FikkSkjerming
                     )
                 )
             }

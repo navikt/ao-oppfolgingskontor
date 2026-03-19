@@ -75,7 +75,7 @@ fun configureTopology(
     endringPaOppfolgingsBrukerProcessor: EndringPaOppfolgingsBrukerProcessor,
     identEndringsProcessor: IdentChangeProcessor,
     oppfolgingsHendelseProcessor: OppfolgingsHendelseProcessor,
-    arenakontorProcessor: `ArenakontorVedOppfolgingStartetProcessor`
+    arenakontorProcessor: ArenakontorVedOppfolgingStartetProcessor
 ): Topology {
     val topics = environment.topics()
     val builder = StreamsBuilder()
@@ -164,6 +164,7 @@ fun configureTopology(
     )
     builder.stream(topics.inn.skjerming.name, topics.inn.skjerming.consumedWith())
         .process(skjermingProcessorSupplier, Named.`as`(processorName(topics.inn.skjerming.name)))
+        .process(publiserKontorTilordningProcessorSupplier)
 
     /*
     * LEESAH hendelser fra PDL
