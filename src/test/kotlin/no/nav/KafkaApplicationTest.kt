@@ -68,6 +68,7 @@ import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 import java.util.Properties
 import java.util.UUID
+import kafka.producers.OppfolgingEndretTilordningMelding
 
 class KafkaApplicationTest {
 
@@ -184,7 +185,11 @@ class KafkaApplicationTest {
             { _, _ -> Outcome.Success(false) },
             { null },
         )
-        val skjermingProcessor = SkjermingProcessor(automatiskKontorRutingService, kontorTilordningService, brukAoRuting)
+        val skjermingProcessor = SkjermingProcessor(
+            automatiskKontorRutingService,
+            kontorTilordningService,
+            brukAoRuting,
+        )
 
         application {
             flywayMigrationInTest()
@@ -259,7 +264,7 @@ class KafkaApplicationTest {
     }
 
     private fun configureStringOptionalStringInputTopology(
-        processRecord: ProcessRecord<String, String?, String, String?>,
+        processRecord: ProcessRecord<String, String?, OppfolgingsperiodeId, OppfolgingEndretTilordningMelding>,
         topic: String
     ): Topology {
         val builder = StreamsBuilder()

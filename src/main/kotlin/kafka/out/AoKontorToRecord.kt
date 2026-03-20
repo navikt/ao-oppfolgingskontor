@@ -1,33 +1,20 @@
 package kafka.out
 
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-import no.nav.domain.events.AOKontorEndret
-import no.nav.utils.ZonedDateTimeSerializer
-import org.apache.kafka.streams.processor.api.Record
 import java.time.ZonedDateTime
-import kotlin.String
+import kafka.producers.OppfolgingEndretTilordningMelding
+import no.nav.domain.OppfolgingsperiodeId
+import no.nav.domain.events.AOKontorEndret
+import org.apache.kafka.streams.processor.api.Record
 
-@Serializable
-data class AOKontorEndretRecord(
-    val fnr: String,
-    val kontorId: String,
-    val endretAv: String,
-    val endretAvType: String,
-    @Serializable(with = ZonedDateTimeSerializer::class)
-    val endretTidspunkt: ZonedDateTime,
-)
-
-fun AOKontorEndret.toRecord(): Record<String, String> {
-    val now = ZonedDateTime.now()
-    return Record(this.tilordning.fnr.value,
-        Json.encodeToString(AOKontorEndretRecord(
-            fnr = this.tilordning.fnr.value,
+fun AOKontorEndret.toOppfolgingEndretTilordningMeldingRecord(): Record<OppfolgingsperiodeId, OppfolgingEndretTilordningMelding> {
+    return Record(
+        this.tilordning.oppfolgingsperiodeId,
+        OppfolgingEndretTilordningMelding(
             kontorId = this.tilordning.kontorId.id,
-            endretAv = this.registrant.getIdent(),
-            endretAvType = this.registrant.getType(),
-            endretTidspunkt = now,
-        )),
-        now.toEpochSecond()
+            oppfolgingsperiodeId = this.tilordning.oppfolgingsperiodeId.value.toString(),
+            ident = this.tilordning.fnr.value,
+            kontorEndringsType = this.kontorEndringsType(),
+        ),
+        ZonedDateTime.now().toEpochSecond(),
     )
 }
