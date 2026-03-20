@@ -5,6 +5,7 @@ import domain.kontorForGt.KontorForGtFantDefaultKontor
 import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import io.ktor.server.application.Application
 import io.ktor.server.config.ApplicationConfig
 import io.ktor.server.testing.testApplication
 import io.mockk.coEvery
@@ -22,6 +23,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import no.nav.db.AktorId
 import no.nav.db.Ident
+import no.nav.db.IdentSomKanLagres
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.KontorHistorikkEntity
 import no.nav.db.entity.OppfolgingsperiodeEntity
@@ -51,6 +53,7 @@ import no.nav.utils.gittIdentMedKontor
 import no.nav.utils.kontorTilordningService
 import no.nav.utils.randomFnr
 import no.nav.utils.randomInternIdent
+import org.apache.kafka.streams.Topology
 import org.jetbrains.exposed.sql.deleteAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.BeforeEach
@@ -73,7 +76,6 @@ class BigAppTest {
     @Test
     fun `app should forward messages to KontorTilordning in prod`() = testApplication {
         val fnr = randomFnr()
-        val brukAoRuting = true
         val aktorId = AktorId("4444447890246", Ident.HistoriskStatus.AKTIV)
         val kontor = KontorId("2232")
         val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
@@ -82,67 +84,19 @@ class BigAppTest {
         }
         application {
             val topics = this.environment.topics()
-            val oppfolgingsperiodeProvider =
-                { _: Ident -> AktivOppfolgingsperiode(fnr, randomInternIdent(), oppfolgingsperiodeId, OffsetDateTime.now()) }
-            val automatiskKontorRutingService = AutomatiskKontorRutingService(
-                { _, a, b -> KontorForGtFantDefaultKontor(kontor, b, a, GeografiskTilknytningBydelNr("3131")) },
-                { AlderFunnet(40) },
-                { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
-                { SkjermingFunnet(HarSkjerming(false)) },
-                { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
-                oppfolgingsperiodeProvider,
-                { _, _ -> Outcome.Success(false) },
-                { null },
-            )
-            val tilordningProcessor = KontortilordningsProcessor(automatiskKontorRutingService, kontorTilordningService, false, brukAoRuting)
-            val leesahProcessor = LeesahProcessor(
-                automatiskKontorRutingService,
-                kontorTilordningService,
-                false,
-                brukAoRuting,
-            )
-            val skjermingProcessor = SkjermingProcessor(
-                automatiskKontorRutingService,
-                kontorTilordningService,
-                brukAoRuting,
-            )
-            val endringPaaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
-                oppfolgingsperiodeProvider,
-                { null }, // TODO: Mer realitisk test-oppsett
-                {},
-                { Result.success(Unit) },
-                true
-            )
-            val identService = IdentService { PdlIdenterFunnet(emptyList(), fnr) }
-            val identendringsProcessor = IdentChangeProcessor(identService)
-
             val kontorEndringProducer = mockk<KontorEndringProducer>()
             coEvery { kontorEndringProducer.publiserEndringPåKontor(any<OppfolgingEndretTilordningMelding>()) } returns Result.success(
                 Unit
             )
+            val topology = setupTestEnvironment(
+                fnr,
+                oppfolgingsperiodeId,
+                kontorEndringProducer,
+                kontor,
+                HarSkjerming(false),
+            )
 
-            val publiserKontorTilordningProcessor = PubliserKontorTilordningProcessor(
-                hentAlleIdenter = identService::hentAlleIdenter,
-                publiserKontorTilordning = kontorEndringProducer::publiserEndringPåKontor,
-                brukAoRuting = true
-            )
-            val topology = configureTopology(
-                this.environment,
-                TestLockProvider,
-                CoroutineScope(Dispatchers.IO),
-                tilordningProcessor,
-                publiserKontorTilordningProcessor,
-                leesahProcessor,
-                skjermingProcessor,
-                endringPaaOppfolgingsBrukerProcessor,
-                identendringsProcessor,
-                OppfolgingsHendelseProcessor(
-                    OppfolgingsperiodeService(identService::hentAlleIdenter, kontorTilordningService::slettArbeidsoppfølgingskontorTilordning),
-                    kontorEndringProducer::publiserTombstone,
-                ),
-                mockk<ArenakontorVedOppfolgingStartetProcessor>()
-            )
-            val (driver, inputTopics, _) = setupKafkaMock(
+            val (_, inputTopics, _) = setupKafkaMock(
                 topology,
                 listOf(topics.inn.oppfolgingsHendelser.name), null
             )
@@ -191,9 +145,8 @@ class BigAppTest {
     @Test
     fun `skal forwarde oppdatert ao-kontor til kafkaproducer ved endring av skjerming`() = testApplication {
         val fnr = randomFnr()
-        val brukAoRuting = true
         val kontor = KontorId("2232")
-        val skjermetKontor = KontorId("0383")
+        val skjermetKontor = KontorId("0283")
         val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
         environment {
             config = ApplicationConfig("application.prod.yaml")
@@ -209,65 +162,16 @@ class BigAppTest {
                 oppfolgingsperiodeId = oppfolgingsperiodeId,
             )
             val topics = this.environment.topics()
-            val oppfolgingsperiodeProvider =
-                { _: Ident -> AktivOppfolgingsperiode(fnr, randomInternIdent(), oppfolgingsperiodeId, OffsetDateTime.now()) }
-            val automatiskKontorRutingService = AutomatiskKontorRutingService(
-                { _, a, _ -> KontorForGtFantDefaultKontor(skjermetKontor, HarSkjerming(true), a, GeografiskTilknytningBydelNr("2232")) },
-                { AlderFunnet(40) },
-                { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
-                { SkjermingFunnet(HarSkjerming(true)) },
-                { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
-                oppfolgingsperiodeProvider,
-                { _, _ -> Outcome.Success(false) },
-                { null },
-            )
-            val tilordningProcessor = KontortilordningsProcessor(automatiskKontorRutingService, kontorTilordningService, false, brukAoRuting)
-            val leesahProcessor = LeesahProcessor(
-                automatiskKontorRutingService,
-                kontorTilordningService,
-                false,
-                brukAoRuting,
-            )
-            val skjermingProcessor = SkjermingProcessor(
-                automatiskKontorRutingService,
-                kontorTilordningService,
-                brukAoRuting,
-            )
-            val endringPaaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
-                oppfolgingsperiodeProvider,
-                { null },
-                {},
-                { Result.success(Unit) },
-                true
-            )
-            val identService = IdentService { PdlIdenterFunnet(emptyList(), fnr) }
-            val identendringsProcessor = IdentChangeProcessor(identService)
-
             val kontorEndringProducer = mockk<KontorEndringProducer>()
             coEvery { kontorEndringProducer.publiserEndringPåKontor(any<OppfolgingEndretTilordningMelding>()) } returns Result.success(
                 Unit
             )
-
-            val publiserKontorTilordningProcessor = PubliserKontorTilordningProcessor(
-                hentAlleIdenter = identService::hentAlleIdenter,
-                publiserKontorTilordning = kontorEndringProducer::publiserEndringPåKontor,
-                brukAoRuting = true
-            )
-            val topology = configureTopology(
-                this.environment,
-                TestLockProvider,
-                CoroutineScope(Dispatchers.IO),
-                tilordningProcessor,
-                publiserKontorTilordningProcessor,
-                leesahProcessor,
-                skjermingProcessor,
-                endringPaaOppfolgingsBrukerProcessor,
-                identendringsProcessor,
-                OppfolgingsHendelseProcessor(
-                    OppfolgingsperiodeService(identService::hentAlleIdenter, kontorTilordningService::slettArbeidsoppfølgingskontorTilordning),
-                    kontorEndringProducer::publiserTombstone,
-                ),
-                mockk<ArenakontorVedOppfolgingStartetProcessor>()
+            val topology = setupTestEnvironment(
+                fnr,
+                oppfolgingsperiodeId,
+                kontorEndringProducer,
+                skjermetKontor,
+                HarSkjerming(true),
             )
             val (_, inputTopics, _) = setupKafkaMock(
                 topology,
@@ -280,7 +184,7 @@ class BigAppTest {
             withClue("Skal oppdatere AO-kontor på bruker") {
                 transaction {
                     ArbeidsOppfolgingKontorEntity.findById(fnr.value)
-                }?.kontorId shouldBe "0383"
+                }?.kontorId shouldBe skjermetKontor.id
             }
             val antallHistorikkRader = transaction {
                 KontorHistorikkEntity.find { KontorhistorikkTable.ident eq fnr.value }.count()
@@ -291,7 +195,7 @@ class BigAppTest {
             coVerify {
                 kontorEndringProducer.publiserEndringPåKontor(
                     OppfolgingEndretTilordningMelding(
-                        "0383",
+                        skjermetKontor.id,
                         oppfolgingsperiodeId.value.toString(),
                         fnr.value,
                         KontorEndringsType.FikkSkjerming
@@ -299,5 +203,70 @@ class BigAppTest {
                 )
             }
         }
+    }
+
+    private fun Application.setupTestEnvironment(
+        fnr: IdentSomKanLagres,
+        oppfolgingsperiodeId: OppfolgingsperiodeId,
+        kontorEndringProducer: KontorEndringProducer,
+        kontor: KontorId,
+        harSkjerming: HarSkjerming,
+    ): Topology {
+        val brukAoRuting = true
+        val oppfolgingsperiodeProvider =
+            { _: Ident -> AktivOppfolgingsperiode(fnr, randomInternIdent(), oppfolgingsperiodeId, OffsetDateTime.now()) }
+        val automatiskKontorRutingService = AutomatiskKontorRutingService(
+            { _, a, b -> KontorForGtFantDefaultKontor(kontor, harSkjerming, a, GeografiskTilknytningBydelNr("3131")) },
+            { AlderFunnet(40) },
+            { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
+            { SkjermingFunnet(harSkjerming) },
+            { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
+            oppfolgingsperiodeProvider,
+            { _, _ -> Outcome.Success(false) },
+            { null },
+        )
+        val tilordningProcessor = KontortilordningsProcessor(automatiskKontorRutingService, kontorTilordningService, false, brukAoRuting)
+        val leesahProcessor = LeesahProcessor(
+            automatiskKontorRutingService,
+            kontorTilordningService,
+            false,
+            brukAoRuting,
+        )
+        val skjermingProcessor = SkjermingProcessor(
+            automatiskKontorRutingService,
+            kontorTilordningService,
+            brukAoRuting,
+        )
+        val endringPaaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
+            oppfolgingsperiodeProvider,
+            { null }, // TODO: Mer realitisk test-oppsett
+            {},
+            { Result.success(Unit) },
+            true
+        )
+        val identService = IdentService { PdlIdenterFunnet(emptyList(), fnr) }
+        val identendringsProcessor = IdentChangeProcessor(identService)
+
+        val publiserKontorTilordningProcessor = PubliserKontorTilordningProcessor(
+            hentAlleIdenter = identService::hentAlleIdenter,
+            publiserKontorTilordning = kontorEndringProducer::publiserEndringPåKontor,
+            brukAoRuting = true
+        )
+        return configureTopology(
+            this.environment,
+            TestLockProvider,
+            CoroutineScope(Dispatchers.IO),
+            tilordningProcessor,
+            publiserKontorTilordningProcessor,
+            leesahProcessor,
+            skjermingProcessor,
+            endringPaaOppfolgingsBrukerProcessor,
+            identendringsProcessor,
+            OppfolgingsHendelseProcessor(
+                OppfolgingsperiodeService(identService::hentAlleIdenter, kontorTilordningService::slettArbeidsoppfølgingskontorTilordning),
+                kontorEndringProducer::publiserTombstone,
+            ),
+            mockk<ArenakontorVedOppfolgingStartetProcessor>()
+        )
     }
 }
