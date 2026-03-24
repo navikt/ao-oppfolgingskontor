@@ -127,7 +127,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         skipPersonIkkeFunnet = !isProduction,
         brukAoRuting
     )
-    val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, isProduction, brukAoRuting)
+    val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, brukAoRuting)
     val skjermingProcessor = SkjermingProcessor(automatiskKontorRutingService, kontorTilordningService, brukAoRuting)
     val identEndringProcessor = IdentChangeProcessor(identService)
     val oppfolgingsHendelseProcessor = OppfolgingsHendelseProcessor(

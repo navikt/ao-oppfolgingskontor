@@ -229,7 +229,6 @@ class BigAppTest {
         val leesahProcessor = LeesahProcessor(
             automatiskKontorRutingService,
             kontorTilordningService,
-            false,
             brukAoRuting,
         )
         val skjermingProcessor = SkjermingProcessor(
