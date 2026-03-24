@@ -241,7 +241,6 @@ class BigAppTest {
             oppfolgingsperiodeProvider,
             { null }, // TODO: Mer realitisk test-oppsett
             {},
-            { Result.success(Unit) },
             true
         )
         val identService = IdentService { PdlIdenterFunnet(emptyList(), fnr) }

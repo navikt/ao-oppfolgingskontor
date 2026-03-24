@@ -13,7 +13,7 @@ import io.ktor.server.application.log
 import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.binder.kafka.KafkaStreamsMetrics
-import kafka.consumers.`ArenakontorVedOppfolgingStartetProcessor`
+import kafka.consumers.ArenakontorVedOppfolgingStartetProcessor
 import kafka.consumers.IdentChangeProcessor
 import kafka.consumers.OppfolgingsHendelseProcessor
 import kafka.consumers.PubliserKontorTilordningProcessor
@@ -117,7 +117,6 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         { oppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) },
         { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },
         { kontorTilordningService.tilordneKontor(it, brukAoRuting) },
-        { kontorProducer.publiserEndringPåKontor(it) },
         environment.getPubliserArenaKontor()
     )
 
