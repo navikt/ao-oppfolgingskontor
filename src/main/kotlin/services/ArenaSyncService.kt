@@ -34,7 +34,7 @@ class ArenaSyncService(
             is OppfolgingperiodeOppslagFeil -> throw Exception("Noe gikk galt ved henting av oppfølgingsperioden til bruker: ${result.message}")
         }
 
-        val currentLocalArenaKontor = kontorTilhorighetService.getArenaKontorTilhorighet(ident)
+        val currentLocalArenaKontor = kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(ident)
         val currentRemoteArenaKontor = when (val result = veilarbArenaClient.hentArenaKontor(ident)) {
             is ArenakontorFunnet -> result
             is ArenakontorIkkeFunnet -> null
@@ -44,7 +44,10 @@ class ArenaSyncService(
 //        if (currentLocalArenaKontor == null) throw Exception("Støtter ikke å refreshe arena kontor på brukere som ikke har arenakontor")
         if (currentRemoteArenaKontor == null) throw Exception("Fant ingen arenakontor på bruker i veilarbarena")
 
-        if (currentLocalArenaKontor == null || currentRemoteArenaKontor.kontorId != currentLocalArenaKontor.kontorId) {
+        val harForskjelligKontor = currentRemoteArenaKontor.kontorId != currentLocalArenaKontor?.kontorId
+        val harSammeKontorMenForskjelligPeriode = !harForskjelligKontor && currentLocalArenaKontor.oppfolgingsperiodeId != currentOpenOppfolgingsperiode.periodeId
+
+        if (currentLocalArenaKontor == null || harForskjelligKontor || harSammeKontorMenForskjelligPeriode) {
             kontorTilordningService.tilordneKontor(
                 ManuellSynkVeilarbArena(
                     kontorTilordning = KontorTilordning(
