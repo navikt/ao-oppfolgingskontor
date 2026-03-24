@@ -13,23 +13,23 @@ import io.ktor.server.application.log
 import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.binder.kafka.KafkaStreamsMetrics
+import java.time.Duration
+import java.util.concurrent.atomic.AtomicInteger
 import kafka.consumers.ArenakontorVedOppfolgingStartetProcessor
 import kafka.consumers.IdentChangeProcessor
 import kafka.consumers.OppfolgingsHendelseProcessor
 import kafka.consumers.PubliserKontorTilordningProcessor
 import kafka.producers.KontorEndringProducer
-import java.time.Duration
 import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
 import no.nav.db.AktorId
-import no.nav.getBrukAoRuting
 import no.nav.getPubliserArenaKontor
 import no.nav.http.client.IdentResult
 import no.nav.isProduction
-import no.nav.kafka.config.kafkaStreamsProps
 import no.nav.kafka.config.configureTopology
+import no.nav.kafka.config.kafkaStreamsProps
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
-import no.nav.kafka.consumers.LeesahProcessor
 import no.nav.kafka.consumers.KontortilordningsProcessor
+import no.nav.kafka.consumers.LeesahProcessor
 import no.nav.kafka.consumers.SkjermingProcessor
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.KontorTilhorighetService
@@ -41,7 +41,6 @@ import org.jetbrains.exposed.sql.Database
 import org.slf4j.LoggerFactory
 import services.IdentService
 import services.OppfolgingsperiodeService
-import java.util.concurrent.atomic.AtomicInteger
 
 val KafkaStreamsStarting: EventDefinition<Application> = EventDefinition()
 val KafkaStreamsStarted: EventDefinition<Application> = EventDefinition()
@@ -137,7 +136,6 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val publiserKontorTilordningProcessor = PubliserKontorTilordningProcessor(
         identService::hentAlleIdenter,
         { kontorProducer.publiserEndringPåKontor(it) },
-        environment.getBrukAoRuting(),
     )
     val arenakontorProcessor = ArenakontorVedOppfolgingStartetProcessor(
         veilarbArenaClient::hentArenaKontor,
