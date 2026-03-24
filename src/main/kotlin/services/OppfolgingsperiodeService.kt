@@ -66,7 +66,10 @@ class OppfolgingsperiodeService(
             aktivOppfolgingsperiode.periodeId == oppfolgingsperiode.periodeId -> {
                 // Mottok avslutning på aktiv periode (Happy case)
                 slettArbeidsoppfolgingskontorTilordning(aktivOppfolgingsperiode.periodeId).fold(
-                    ifLeft = { log.error("Uventet feil ved sletting av arbeidsoppfølgingskontor: ${it.message}") },
+                    ifLeft = {
+                        log.error("Uventet feil ved sletting av arbeidsoppfølgingskontor: ${it.message}")
+                        throw Exception("Klarte ikke behandle avslutning på oppfølgingsperiode, klarte ikke slette arbeidsoppfølgingkontor: ${it.message}", it)
+                    },
                     ifRight = { log.info("Slettet arbeidsoppfølgingskontor fordi oppfølgingsperiode ble avsluttet") }
                 )
                 OppfolgingsperiodeDao.deleteOppfolgingsperiode(aktivOppfolgingsperiode.periodeId)
