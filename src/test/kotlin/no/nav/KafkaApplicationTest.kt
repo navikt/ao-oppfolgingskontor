@@ -1,11 +1,17 @@
 package no.nav.no.nav
 
 import domain.IdenterFunnet
+import domain.kontorForGt.KontorForGtFantDefaultKontor
 import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
 import io.ktor.server.testing.testApplication
 import io.mockk.mockk
+import java.time.OffsetDateTime
+import java.time.ZonedDateTime
+import java.util.Properties
+import java.util.UUID
 import kafka.consumers.TopicUtils
+import kafka.producers.OppfolgingEndretTilordningMelding
 import kafka.retry.TestLockProvider
 import kafka.retry.library.StreamType
 import kotlinx.coroutines.CoroutineScope
@@ -28,21 +34,18 @@ import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
 import no.nav.kafka.config.processorName
-import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
 import no.nav.kafka.config.streamsErrorHandlerConfig
+import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
 import no.nav.kafka.consumers.FormidlingsGruppe
 import no.nav.kafka.consumers.Kvalifiseringsgruppe
 import no.nav.kafka.consumers.SkjermingProcessor
 import no.nav.kafka.processor.ProcessRecord
 import no.nav.kafka.retry.library.RetryConfig
-import no.nav.kafka.retry.library.internal.RetryableRepository
 import no.nav.kafka.retry.library.internal.RetryableProcessor
+import no.nav.kafka.retry.library.internal.RetryableRepository
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
-import domain.kontorForGt.KontorForGtFantDefaultKontor
 import no.nav.services.KontorTilhorighetService
-import no.nav.services.KontorTilordningService
-import no.nav.utils.bigQueryClient
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.gittBrukerUnderOppfolging
 import no.nav.utils.kontorTilordningService
@@ -64,11 +67,6 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Test
 import services.OppfolgingsperiodeService
 import utils.Outcome
-import java.time.OffsetDateTime
-import java.time.ZonedDateTime
-import java.util.Properties
-import java.util.UUID
-import kafka.producers.OppfolgingEndretTilordningMelding
 
 class KafkaApplicationTest {
 
@@ -82,7 +80,6 @@ class KafkaApplicationTest {
             oppfolgingsperiodeService::getCurrentOppfolgingsperiode,
             { null },
             { kontorTilordningService.tilordneKontor(it, true)},
-            { Result.success(Unit) },
             true
         )
 
@@ -125,7 +122,6 @@ class KafkaApplicationTest {
             oppfolgingsperiodeService::getCurrentOppfolgingsperiode,
             { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },
             { kontorTilordningService.tilordneKontor(it, true)},
-            { Result.success(Unit) },
             true
         )
 
@@ -247,7 +243,7 @@ class KafkaApplicationTest {
     }
 
     private fun configureStringStringInputTopology(
-        processRecord: ProcessRecord<String, String, String, String>,
+        processRecord: ProcessRecord<String, String, OppfolgingsperiodeId, OppfolgingEndretTilordningMelding>,
         topic: String
     ): Topology {
         val builder = StreamsBuilder()

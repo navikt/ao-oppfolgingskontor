@@ -19,7 +19,6 @@ import java.util.*
 class PubliserKontorTilordningProcessor(
     val hentAlleIdenter: suspend (Ident) -> IdenterResult,
     val publiserKontorTilordning: PubliserAutomatiskKontorEndring,
-    val brukAoRuting: Boolean
 ) {
     val log = LoggerFactory.getLogger(this.javaClass)
 
@@ -28,6 +27,7 @@ class PubliserKontorTilordningProcessor(
         val oppfolgingsperiodeIdSerde: Serde<OppfolgingsperiodeId> = object : Serde<OppfolgingsperiodeId> {
             override fun serializer(): Serializer<OppfolgingsperiodeId> =
                 Serializer<OppfolgingsperiodeId> { topic, data -> data.toString().toByteArray() }
+
             override fun deserializer(): Deserializer<OppfolgingsperiodeId> =
                 Deserializer<OppfolgingsperiodeId> { topic, data -> OppfolgingsperiodeId(UUID.fromString(data.decodeToString())) }
         }
@@ -37,19 +37,16 @@ class PubliserKontorTilordningProcessor(
     fun process(
         record: Record<OppfolgingsperiodeId, OppfolgingEndretTilordningMelding>
     ): RecordProcessingResult<String, String> {
-        if (brukAoRuting) {
-            val result = runBlocking { publiserKontorTilordning(record.value()) }
+        val result = runBlocking { publiserKontorTilordning(record.value()) }
 
-            return when (result.isSuccess) {
-                true -> Commit()
-                false -> {
-                    val message = "Kunne ikke publisere endring på ao-kontor til kafka topic: ${result.exceptionOrNull()?.message}"
-                    log.error(message, result.exceptionOrNull())
-                    Retry(message)
-                }
+        return when (result.isSuccess) {
+            true -> Commit()
+            false -> {
+                val message =
+                    "Kunne ikke publisere endring på ao-kontor til kafka topic: ${result.exceptionOrNull()?.message}"
+                log.error(message, result.exceptionOrNull())
+                Retry(message)
             }
-        } else {
-            return Commit()
         }
     }
 }

@@ -31,7 +31,6 @@ import org.slf4j.LoggerFactory
 class LeesahProcessor(
     private val automatiskKontorRutingService: AutomatiskKontorRutingService,
     private val kontorTilordningService: KontorTilordningService,
-    private val isProduction: Boolean,
     private val brukAoRuting: Boolean
 ) {
     val log = LoggerFactory.getLogger(this::class.java)
@@ -76,12 +75,12 @@ class LeesahProcessor(
                 return when {
                     aoKontorEndring != null -> {
                         kontorTilordningService.tilordneKontor(aoKontorEndring, brukAoRuting)
-                        if(isProduction) {
-                            log.info("Hopper over forwarding av kontorendring for PROD")
-                            Commit() // In production we do not forward kontorendringer, but we still commit the record
+                        if (brukAoRuting) {
+                            Forward(aoKontorEndring.toOppfolgingEndretTilordningMeldingRecord())
                         }
                         else {
-                            Forward(aoKontorEndring.toOppfolgingEndretTilordningMeldingRecord())
+                            log.info("Hopper over forwarding av kontorendring for PROD")
+                            Commit() // In production we do not forward kontorendringer, but we still commit the record
                         }
                     }
                     else -> Commit()

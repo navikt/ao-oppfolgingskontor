@@ -1,6 +1,9 @@
 package kafka.consumers
 
+import db.table.AlternativAoKontorTable
 import db.table.KafkaOffsetTable
+import domain.ArenaKontorUtvidet
+import domain.Systemnavn
 import domain.kontorForGt.KontorForGtFantDefaultKontor
 import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
@@ -8,12 +11,14 @@ import io.kotest.matchers.shouldNotBe
 import io.ktor.server.application.Application
 import io.ktor.server.config.ApplicationConfig
 import io.ktor.server.testing.testApplication
+import io.mockk.clearMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 import java.util.UUID
+import kafka.consumers.TopicUtils.endringPaaOppfolgingsBrukerMessage
 import kafka.consumers.TopicUtils.oppfolgingStartetMelding
 import kafka.producers.KontorEndringProducer
 import kafka.producers.OppfolgingEndretTilordningMelding
@@ -25,6 +30,7 @@ import no.nav.db.AktorId
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
+import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.KontorHistorikkEntity
 import no.nav.db.entity.OppfolgingsperiodeEntity
 import no.nav.db.table.KontorhistorikkTable
@@ -32,7 +38,10 @@ import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorId
+import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
+import no.nav.domain.System
+import no.nav.domain.events.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep
 import no.nav.http.client.AlderFunnet
 import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
@@ -42,7 +51,10 @@ import no.nav.http.client.arbeidssogerregisteret.ProfileringFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
 import no.nav.kafka.config.configureTopology
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
+import no.nav.kafka.consumers.FormidlingsGruppe
+import no.nav.kafka.consumers.KontorEndringer
 import no.nav.kafka.consumers.KontortilordningsProcessor
+import no.nav.kafka.consumers.Kvalifiseringsgruppe
 import no.nav.kafka.consumers.LeesahProcessor
 import no.nav.kafka.consumers.SkjermingProcessor
 import no.nav.services.AktivOppfolgingsperiode
@@ -55,6 +67,7 @@ import no.nav.utils.randomFnr
 import no.nav.utils.randomInternIdent
 import org.apache.kafka.streams.Topology
 import org.jetbrains.exposed.sql.deleteAll
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -64,6 +77,7 @@ import topics
 import utils.Outcome
 
 class BigAppTest {
+    private val kontorEndringProducer = mockk<KontorEndringProducer>()
 
     @BeforeEach
     fun reset() {
@@ -71,10 +85,14 @@ class BigAppTest {
         transaction {
             KafkaOffsetTable.deleteAll()
         }
+        clearMocks(kontorEndringProducer)
+        coEvery { kontorEndringProducer.publiserEndringPåKontor(any<OppfolgingEndretTilordningMelding>()) } returns Result.success(
+            Unit
+        )
     }
 
     @Test
-    fun `app should forward messages to KontorTilordning in prod`() = testApplication {
+    fun `app should forward messages to KontorTilordning when brukAoRuting is true`() = testApplication {
         val fnr = randomFnr()
         val aktorId = AktorId("4444447890246", Ident.HistoriskStatus.AKTIV)
         val kontor = KontorId("2232")
@@ -84,16 +102,13 @@ class BigAppTest {
         }
         application {
             val topics = this.environment.topics()
-            val kontorEndringProducer = mockk<KontorEndringProducer>()
-            coEvery { kontorEndringProducer.publiserEndringPåKontor(any<OppfolgingEndretTilordningMelding>()) } returns Result.success(
-                Unit
-            )
             val topology = setupTestEnvironment(
                 fnr,
                 oppfolgingsperiodeId,
                 kontorEndringProducer,
                 kontor,
                 HarSkjerming(false),
+                brukAoRuting = true
             )
 
             val (_, inputTopics, _) = setupKafkaMock(
@@ -162,16 +177,13 @@ class BigAppTest {
                 oppfolgingsperiodeId = oppfolgingsperiodeId,
             )
             val topics = this.environment.topics()
-            val kontorEndringProducer = mockk<KontorEndringProducer>()
-            coEvery { kontorEndringProducer.publiserEndringPåKontor(any<OppfolgingEndretTilordningMelding>()) } returns Result.success(
-                Unit
-            )
             val topology = setupTestEnvironment(
                 fnr,
                 oppfolgingsperiodeId,
                 kontorEndringProducer,
                 skjermetKontor,
                 HarSkjerming(true),
+                brukAoRuting = true,
             )
             val (_, inputTopics, _) = setupKafkaMock(
                 topology,
@@ -205,14 +217,193 @@ class BigAppTest {
         }
     }
 
+    @Test
+    fun `skal ikke forwarde oppdatert ao-kontor til kafkaproducer ved endring av skjerming hvis brukAoRuting er false`() = testApplication {
+        val fnr = randomFnr()
+        val kontor = KontorId("2232")
+        val skjermetKontor = KontorId("0283")
+        val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
+        environment {
+            config = ApplicationConfig("application.prod.yaml")
+        }
+        application {
+            gittBrukerUnderOppfolging(
+                fnr = fnr,
+                oppfolgingsperiodeId = oppfolgingsperiodeId,
+            )
+            gittIdentMedKontor(
+                ident = fnr,
+                kontorId = kontor,
+                oppfolgingsperiodeId = oppfolgingsperiodeId,
+            )
+            val topics = this.environment.topics()
+            val topology = setupTestEnvironment(
+                fnr,
+                oppfolgingsperiodeId,
+                kontorEndringProducer,
+                skjermetKontor,
+                HarSkjerming(true),
+                brukAoRuting = false,
+            )
+            val (_, inputTopics, _) = setupKafkaMock(
+                topology,
+                listOf(topics.inn.skjerming.name), null
+            )
+            inputTopics.first().pipeInput(
+                fnr.value, true.toString()
+            )
+
+            withClue("Skal ikke oppdatere AO-kontor på bruker") {
+                transaction {
+                    ArbeidsOppfolgingKontorEntity.findById(fnr.value)
+                }?.kontorId shouldBe kontor.id
+            }
+            withClue("Skal oppdatere alternativ_aokontor på bruker") {
+                transaction {
+                    AlternativAoKontorTable
+                        .selectAll()
+                        .where { AlternativAoKontorTable.fnr eq fnr.value }
+                        .firstOrNull()
+                        ?.get(AlternativAoKontorTable.kontorId)
+                } shouldBe skjermetKontor.id
+            }
+            coVerify(exactly = 0) {
+                kontorEndringProducer.publiserEndringPåKontor(any<OppfolgingEndretTilordningMelding>())
+            }
+        }
+    }
+
+    @Test
+    fun `skal ikke forwarde oppdatert arenakontor til kafkaproducer ved endret oppfølgingsbruker hvis brukAoRuting er true`() = testApplication {
+        val fnr = randomFnr()
+        val kontor = KontorId("2232")
+        val nyttKontor = KontorId("0101")
+        val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
+        environment {
+            config = ApplicationConfig("application.prod.yaml")
+        }
+        application {
+            gittBrukerUnderOppfolging(
+                fnr = fnr,
+                oppfolgingsperiodeId = oppfolgingsperiodeId,
+            )
+            gittIdentMedKontor(
+                ident = fnr,
+                kontorId = kontor,
+                oppfolgingsperiodeId = oppfolgingsperiodeId,
+            )
+            val topics = this.environment.topics()
+            val topology = setupTestEnvironment(
+                fnr,
+                oppfolgingsperiodeId,
+                kontorEndringProducer,
+                nyttKontor,
+                HarSkjerming(false),
+                brukAoRuting = true,
+            )
+            val (_, inputTopics, _) = setupKafkaMock(
+                topology,
+                listOf(topics.inn.endringPaOppfolgingsbruker.name), null
+            )
+            inputTopics.first().pipeInput(
+                fnr.value, endringPaaOppfolgingsBrukerMessage(
+                    ident = fnr,
+                    kontorId = nyttKontor.id,
+                    sistEndretDato = OffsetDateTime.now(),
+                    formidlingsGruppe = FormidlingsGruppe.ISERV,
+                    kvalifiseringsgruppe = Kvalifiseringsgruppe.BATT,
+                ).value()
+            )
+
+            withClue("Skal oppdatere arenakontor på bruker") {
+                transaction {
+                    ArenaKontorEntity.findById(fnr.value)
+                }?.kontorId shouldBe nyttKontor.id
+            }
+            withClue("Skal ikke oppdatere AO-kontor på bruker") {
+                transaction {
+                    ArbeidsOppfolgingKontorEntity.findById(fnr.value)
+                }?.kontorId shouldBe kontor.id
+            }
+            coVerify(exactly = 0) {
+                kontorEndringProducer.publiserEndringPåKontor(any<OppfolgingEndretTilordningMelding>())
+            }
+        }
+    }
+
+    @Test
+    fun `skal forwarde oppdatert arenakontor til kafkaproducer ved endret oppfølgingsbruker hvis brukAoRuting er false`() = testApplication {
+        val fnr = randomFnr()
+        val kontor = KontorId("2232")
+        val nyttKontor = KontorId("0101")
+        val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
+        environment {
+            config = ApplicationConfig("application.prod.yaml")
+        }
+        application {
+            gittBrukerUnderOppfolging(
+                fnr = fnr,
+                oppfolgingsperiodeId = oppfolgingsperiodeId,
+            )
+            gittIdentMedKontor(
+                ident = fnr,
+                kontorId = kontor,
+                oppfolgingsperiodeId = oppfolgingsperiodeId,
+            )
+            val topics = this.environment.topics()
+            val topology = setupTestEnvironment(
+                fnr,
+                oppfolgingsperiodeId,
+                kontorEndringProducer,
+                nyttKontor,
+                HarSkjerming(false),
+                brukAoRuting = false,
+            )
+            val (_, inputTopics, _) = setupKafkaMock(
+                topology,
+                listOf(topics.inn.endringPaOppfolgingsbruker.name), null
+            )
+            inputTopics.first().pipeInput(
+                fnr.value, endringPaaOppfolgingsBrukerMessage(
+                    ident = fnr,
+                    kontorId = nyttKontor.id,
+                    sistEndretDato = OffsetDateTime.now(),
+                    formidlingsGruppe = FormidlingsGruppe.ISERV,
+                    kvalifiseringsgruppe = Kvalifiseringsgruppe.BATT,
+                ).value()
+            )
+
+            withClue("Skal oppdatere arenakontor på bruker") {
+                transaction {
+                    ArenaKontorEntity.findById(fnr.value)
+                }?.kontorId shouldBe nyttKontor.id
+            }
+            withClue("Skal oppdatere AO-kontor på bruker") {
+                transaction {
+                    ArbeidsOppfolgingKontorEntity.findById(fnr.value)
+                }?.kontorId shouldBe nyttKontor.id
+            }
+            coVerify {
+                kontorEndringProducer.publiserEndringPåKontor(
+                    OppfolgingEndretTilordningMelding(
+                        nyttKontor.id,
+                        oppfolgingsperiodeId.value.toString(),
+                        fnr.value,
+                        KontorEndringsType.EndretIArena,
+                    )
+                )
+            }
+        }
+    }
+
     private fun Application.setupTestEnvironment(
         fnr: IdentSomKanLagres,
         oppfolgingsperiodeId: OppfolgingsperiodeId,
         kontorEndringProducer: KontorEndringProducer,
         kontor: KontorId,
         harSkjerming: HarSkjerming,
+        brukAoRuting: Boolean,
     ): Topology {
-        val brukAoRuting = true
         val oppfolgingsperiodeProvider =
             { _: Ident -> AktivOppfolgingsperiode(fnr, randomInternIdent(), oppfolgingsperiodeId, OffsetDateTime.now()) }
         val automatiskKontorRutingService = AutomatiskKontorRutingService(
@@ -229,7 +420,6 @@ class BigAppTest {
         val leesahProcessor = LeesahProcessor(
             automatiskKontorRutingService,
             kontorTilordningService,
-            false,
             brukAoRuting,
         )
         val skjermingProcessor = SkjermingProcessor(
@@ -239,10 +429,28 @@ class BigAppTest {
         )
         val endringPaaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
             oppfolgingsperiodeProvider,
-            { null }, // TODO: Mer realitisk test-oppsett
-            {},
-            { Result.success(Unit) },
-            true
+            { ArenaKontorUtvidet(
+                kontorId = KontorId("4321"),
+                oppfolgingsperiodeId = oppfolgingsperiodeId,
+                sistEndretDatoArena = OffsetDateTime.now().minusDays(10),
+            ) },
+            {
+                kontorTilordningService.tilordneKontor(
+                    kontorEndringer = KontorEndringer(
+                        arenaKontorEndret = ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep(
+                            kontorTilordning = KontorTilordning(
+                                fnr = fnr,
+                                kontorId = kontor,
+                                oppfolgingsperiodeId = oppfolgingsperiodeId
+                            ),
+                            sistEndretIArena = OffsetDateTime.now(),
+                            endretAvRegistrant = System(Systemnavn.ARENA),
+                        )
+                    ),
+                    brukAoRuting = brukAoRuting,
+                )
+            },
+            !brukAoRuting,
         )
         val identService = IdentService { PdlIdenterFunnet(emptyList(), fnr) }
         val identendringsProcessor = IdentChangeProcessor(identService)
@@ -250,7 +458,6 @@ class BigAppTest {
         val publiserKontorTilordningProcessor = PubliserKontorTilordningProcessor(
             hentAlleIdenter = identService::hentAlleIdenter,
             publiserKontorTilordning = kontorEndringProducer::publiserEndringPåKontor,
-            brukAoRuting = true
         )
         return configureTopology(
             this.environment,

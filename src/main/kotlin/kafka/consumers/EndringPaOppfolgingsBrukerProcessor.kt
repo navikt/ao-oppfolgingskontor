@@ -2,8 +2,10 @@ package no.nav.kafka.consumers
 
 import domain.ArenaKontorUtvidet
 import domain.Systemnavn
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
 import kafka.producers.OppfolgingEndretTilordningMelding
-import kafka.producers.PubliserAutomatiskKontorEndring
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -13,10 +15,12 @@ import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
+import no.nav.domain.System
 import no.nav.domain.events.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep
 import no.nav.domain.events.EndringPaaOppfolgingsBrukerFraArena
 import no.nav.domain.events.KontorEndretEvent
 import no.nav.kafka.processor.Commit
+import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.RecordProcessingResult
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
@@ -26,30 +30,27 @@ import no.nav.services.OppfolgingperiodeOppslagFeil
 import no.nav.services.OppfolgingsperiodeOppslagResult
 import org.apache.kafka.streams.processor.api.Record
 import org.slf4j.LoggerFactory
-import java.time.OffsetDateTime
-import java.time.ZoneOffset
-import no.nav.domain.System
 
 class EndringPaOppfolgingsBrukerProcessor(
     val oppfolgingsperiodeProvider: suspend (IdentSomKanLagres) -> OppfolgingsperiodeOppslagResult,
     val arenaKontorProvider: suspend (IdentSomKanLagres) -> ArenaKontorUtvidet?,
     val lagreKontorTilordninger: (KontorEndretEvent) -> Unit,
-    val publiserKontorTilordning: PubliserAutomatiskKontorEndring,
     val publiserArenaKontor: Boolean
 ) {
     val log = LoggerFactory.getLogger(EndringPaOppfolgingsBrukerProcessor::class.java)
 
     val json = Json { ignoreUnknownKeys = true }
 
-    fun handleResult(result: EndringPaaOppfolgingsBrukerResult): RecordProcessingResult<String, String> {
+    fun handleResult(result: EndringPaaOppfolgingsBrukerResult): RecordProcessingResult<OppfolgingsperiodeId, OppfolgingEndretTilordningMelding> {
         return when (result) {
             is BeforeCutoff -> {
                 log.info("Endring på oppfolgingsbruker var fra før cutoff, hopper over")
                 Skip()
             }
             is Feil -> {
-                log.error("Klarte ikke behandle melding om endring på oppfølgingsbruker: ${result.retry.reason}")
-                result.retry
+                val melding = "Klarte ikke behandle melding om endring på oppfølgingsbruker: ${result.retry.reason}"
+                log.error(melding)
+                Retry(melding)
             }
             is HaddeNyereEndring -> {
                 log.warn("Sist endret kontor er eldre enn endring på oppfølgingsbruker")
@@ -93,24 +94,7 @@ class EndringPaOppfolgingsBrukerProcessor(
                     } else {
                         KontorEndringsType.EndretIArena
                     }
-                    runBlocking {
-                        val result = publiserKontorTilordning(
-                            OppfolgingEndretTilordningMelding(
-                                kontorId = kontorTilordning.kontorId.id,
-                                oppfolgingsperiodeId = kontorTilordning.oppfolgingsperiodeId.value.toString(),
-                                ident =  kontorTilordning.fnr.value,
-                                kontorEndringsType = kontorEndringstype
-                            )
-                        )
-                        if (result.isFailure) {
-                            val exception = result.exceptionOrNull()!!
-                            val message = "Klarte ikke behandle melding om endring på oppfølgingsbruker: ${exception.message}"
-                            log.error(message, exception)
-                            Retry(message)
-                        } else {
-                            Commit()
-                        }
-                    }
+                    Forward(toRecord(kontorTilordning, kontorEndringstype))
                 } else {
                     Commit()
                 }
@@ -118,7 +102,7 @@ class EndringPaOppfolgingsBrukerProcessor(
         }
     }
 
-    fun process(record: Record<String, String>): RecordProcessingResult<String, String> {
+    fun process(record: Record<String, String>): RecordProcessingResult<OppfolgingsperiodeId, OppfolgingEndretTilordningMelding> {
         try {
             val result: EndringPaaOppfolgingsBrukerResult = internalProcess(record)
             return handleResult(result)
@@ -170,6 +154,22 @@ class EndringPaOppfolgingsBrukerProcessor(
                 }
             }
         }
+    }
+
+    private fun toRecord(
+        kontorTilordning: KontorTilordning,
+        kontorEndringstype: KontorEndringsType,
+    ): Record<OppfolgingsperiodeId, OppfolgingEndretTilordningMelding> {
+        return Record(
+            kontorTilordning.oppfolgingsperiodeId,
+            OppfolgingEndretTilordningMelding(
+                kontorId = kontorTilordning.kontorId.id,
+                oppfolgingsperiodeId = kontorTilordning.oppfolgingsperiodeId.value.toString(),
+                ident = kontorTilordning.fnr.value,
+                kontorEndringsType = kontorEndringstype
+            ),
+            ZonedDateTime.now().toEpochSecond(),
+        )
     }
 }
 

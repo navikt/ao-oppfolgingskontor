@@ -4,37 +4,50 @@ import db.entity.TidligArenaKontorEntity
 import domain.ArenaKontorUtvidet
 import domain.IdenterFunnet
 import domain.Systemnavn
+import domain.kontorForGt.KontorForGtFantDefaultKontor
 import io.kotest.assertions.withClue
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.ktor.server.testing.*
-import no.nav.db.*
-import no.nav.db.Ident.HistoriskStatus.*
+import io.ktor.server.testing.testApplication
+import java.time.Instant
+import java.time.OffsetDateTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.time.temporal.ChronoUnit
+import java.util.UUID
+import kotlin.test.fail
+import no.nav.db.AktorId
+import no.nav.db.Dnr
+import no.nav.db.Fnr
+import no.nav.db.Ident
+import no.nav.db.Ident.HistoriskStatus.AKTIV
+import no.nav.db.Ident.HistoriskStatus.HISTORISK
+import no.nav.db.Ident.HistoriskStatus.UKJENT
+import no.nav.db.InternIdent
+import no.nav.db.Npid
+import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.OppfolgingsperiodeEntity
 import no.nav.db.table.OppfolgingsperiodeTable
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
+import no.nav.domain.System
 import no.nav.domain.events.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.IdentFunnet
+import no.nav.http.client.PdlIdenterFunnet
 import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
 import no.nav.services.AktivOppfolgingsperiode
-import domain.kontorForGt.KontorForGtFantDefaultKontor
-import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
-import no.nav.http.client.PdlIdenterFunnet
-import no.nav.services.KontorTilordningService
 import no.nav.services.NotUnderOppfolging
-import no.nav.utils.bigQueryClient
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.gittIdentIMapping
 import no.nav.utils.kontorTilordningService
@@ -50,14 +63,6 @@ import org.junit.jupiter.api.Test
 import services.IdentService
 import services.OppfolgingsperiodeService
 import services.ingenSensitivitet
-import java.time.Instant
-import java.time.OffsetDateTime
-import java.time.ZoneId
-import java.time.ZonedDateTime
-import java.time.temporal.ChronoUnit
-import java.util.*
-import kotlin.test.fail
-import no.nav.domain.System
 
 class OppfolgingshendelseProcessorTest {
 
@@ -424,7 +429,6 @@ class OppfolgingshendelseProcessorTest {
             { NotUnderOppfolging },
             { sistLagreArenaKontor },
             {},
-            { Result.success(Unit) },
             true
         )
         endringPaOppfolgingsBrukerProcessor.process(
