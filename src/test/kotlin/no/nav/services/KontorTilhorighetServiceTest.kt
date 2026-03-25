@@ -14,12 +14,12 @@ import no.nav.domain.System
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.randomFnr
 import no.nav.utils.randomInternIdent
-import org.jetbrains.exposed.dao.id.EntityID
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.statements.InsertStatement
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.core.dao.id.EntityID
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.Test
 import java.time.OffsetDateTime
+import org.jetbrains.exposed.v1.core.statements.InsertStatement
+import org.jetbrains.exposed.v1.jdbc.insert
 
 class KontorTilhorighetServiceTest {
 

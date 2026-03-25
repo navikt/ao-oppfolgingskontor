@@ -1,10 +1,10 @@
 package db.table
 
-import org.jetbrains.exposed.dao.id.IdTable
-import org.jetbrains.exposed.sql.Sequence
-import org.jetbrains.exposed.sql.Transaction
-import org.jetbrains.exposed.sql.javatime.timestampWithTimeZone
-import org.jetbrains.exposed.sql.kotlin.datetime.CurrentTimestampWithTimeZone
+import org.jetbrains.exposed.v1.core.Sequence
+import org.jetbrains.exposed.v1.core.dao.id.IdTable
+import org.jetbrains.exposed.v1.datetime.CurrentTimestampWithTimeZone
+import org.jetbrains.exposed.v1.javatime.timestampWithTimeZone
+import org.jetbrains.exposed.v1.jdbc.JdbcTransaction
 
 object IdentMappingTable: IdTable<String>("ident_mapping") {
     override val id = char("ident", 20).entityId()
@@ -21,7 +21,7 @@ val InternIdentSequence = Sequence(
     name = "intern_ident_seq",
 )
 
-fun Transaction.nextValueOf(sequence: Sequence): Long = exec("SELECT nextval('${sequence.identifier}');") { resultSet ->
+fun JdbcTransaction.nextValueOf(sequence: Sequence): Long = exec("SELECT nextval('${sequence.identifier}');") { resultSet ->
     if (resultSet.next().not()) {
         throw Error("Missing nextValue in resultSet of sequence '${sequence.identifier}'")
     }

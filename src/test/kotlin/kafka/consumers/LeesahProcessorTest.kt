@@ -45,7 +45,7 @@ import no.nav.utils.gittBrukerUnderOppfolging
 import no.nav.utils.kontorTilordningService
 import no.nav.utils.randomFnr
 import no.nav.utils.randomInternIdent
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.Test
 import utils.Outcome
 

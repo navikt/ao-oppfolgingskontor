@@ -1,9 +1,9 @@
 package no.nav.db.entity
 
 import no.nav.db.table.OppfolgingsperiodeTable
-import org.jetbrains.exposed.dao.Entity
-import org.jetbrains.exposed.dao.ImmutableEntityClass
-import org.jetbrains.exposed.dao.id.EntityID
+import org.jetbrains.exposed.v1.dao.Entity
+import org.jetbrains.exposed.v1.dao.ImmutableEntityClass
+import org.jetbrains.exposed.v1.core.dao.id.EntityID
 
 class OppfolgingsperiodeEntity(id: EntityID<String>) : Entity<String>(id) {
     companion object :

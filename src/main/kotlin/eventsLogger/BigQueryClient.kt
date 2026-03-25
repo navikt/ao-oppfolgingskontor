@@ -6,8 +6,8 @@ import com.google.cloud.bigquery.TableId
 import net.javacrumbs.shedlock.core.LockConfiguration
 import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
 import no.nav.domain.KontorEndringsType
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.time.ZonedDateTime

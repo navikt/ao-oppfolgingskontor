@@ -20,7 +20,7 @@ import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.OppfolgingperiodeOppslagFeil
 import no.nav.services.OppfolgingsperiodeDao
 import no.nav.services.OppfolgingsperiodeOppslagResult
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.slf4j.LoggerFactory
 import utils.Outcome
 

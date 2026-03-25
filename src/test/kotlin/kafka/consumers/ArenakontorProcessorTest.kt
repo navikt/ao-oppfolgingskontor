@@ -23,7 +23,7 @@ import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.kontorTilordningService
 import no.nav.utils.randomFnr
 import org.apache.kafka.streams.processor.api.Record
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 

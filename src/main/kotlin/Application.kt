@@ -29,7 +29,7 @@ import no.nav.kafka.KafkaStreamsPlugin
 import no.nav.kafka.config.createKafkaProducerWithLongKey
 import no.nav.kafka.config.toKafkaEnv
 import no.nav.services.*
-import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.v1.jdbc.Database
 import services.*
 import topics
 import utils.Outcome

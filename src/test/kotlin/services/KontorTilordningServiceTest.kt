@@ -5,7 +5,8 @@ import domain.Systemnavn
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
-import io.mockk.mockk
+import java.time.OffsetDateTime
+import java.util.UUID
 import no.nav.db.Fnr
 import no.nav.db.Ident.HistoriskStatus.AKTIV
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
@@ -15,23 +16,19 @@ import no.nav.db.table.KontorhistorikkTable
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
+import no.nav.domain.System
 import no.nav.domain.events.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep
 import no.nav.domain.events.OppfolgingsperiodeStartetNoeTilordning
 import no.nav.kafka.consumers.KontorEndringer
-import no.nav.services.KontorTilordningService
-import no.nav.utils.bigQueryClient
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.gittBrukerUnderOppfolging
 import no.nav.utils.kontorTilordningService
 import no.nav.utils.randomFnr
-import org.jetbrains.exposed.dao.exceptions.EntityNotFoundException
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.junit.jupiter.api.BeforeAll
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.dao.exceptions.EntityNotFoundException
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.Test
-import java.time.OffsetDateTime
-import java.util.*
-import no.nav.domain.System
 
 
 class KontorTilordningServiceTest {

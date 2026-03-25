@@ -10,7 +10,8 @@ import no.nav.http.client.NorgKontorType
 import no.nav.http.client.MinimaltNorgKontor
 import no.nav.http.client.Norg2Client
 import no.nav.http.graphql.schemas.AlleKontorQueryDto
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.core.eq
 import org.slf4j.LoggerFactory
 
 val velgbareNorgKontorTyper = listOf(

@@ -1,8 +1,9 @@
 package no.nav.db.table
 
-import org.jetbrains.exposed.dao.id.IdTable
-import org.jetbrains.exposed.sql.kotlin.datetime.CurrentTimestampWithTimeZone
-import org.jetbrains.exposed.sql.kotlin.datetime.timestampWithTimeZone
+import org.jetbrains.exposed.v1.core.dao.id.IdTable
+import org.jetbrains.exposed.v1.core.java.javaUUID
+import org.jetbrains.exposed.v1.datetime.CurrentTimestampWithTimeZone
+import org.jetbrains.exposed.v1.datetime.timestampWithTimeZone
 
 object ArbeidsOppfolgingKontorTable: IdTable<String>("arbeidsoppfolgingskontor") {
     override val id = varchar("fnr", 11).entityId() // VARCHAR(11) PRIMARY KEY,
@@ -13,5 +14,5 @@ object ArbeidsOppfolgingKontorTable: IdTable<String>("arbeidsoppfolgingskontor")
     val createdAt = timestampWithTimeZone("created_at").defaultExpression(CurrentTimestampWithTimeZone) // TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     val updatedAt = timestampWithTimeZone("updated_at").defaultExpression(CurrentTimestampWithTimeZone) // TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     val historikkEntry = reference("historikk_entry", KontorhistorikkTable.id)
-    val oppfolgingsperiodeId = uuid("oppfolgingsperiode_id").references(OppfolgingsperiodeTable.oppfolgingsperiodeId)
+    val oppfolgingsperiodeId = javaUUID("oppfolgingsperiode_id").references(OppfolgingsperiodeTable.oppfolgingsperiodeId)
 }

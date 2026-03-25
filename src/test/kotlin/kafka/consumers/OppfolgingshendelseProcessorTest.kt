@@ -55,8 +55,8 @@ import no.nav.utils.randomAktorId
 import no.nav.utils.randomFnr
 import no.nav.utils.randomInternIdent
 import org.apache.kafka.streams.processor.api.Record
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
