@@ -10,12 +10,16 @@ import no.nav.db.MaybeValidIdent
 import no.nav.db.ValidIdent
 import no.nav.db.finnForetrukketIdentRelaxed
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
-import org.jetbrains.exposed.sql.JoinType
-import org.jetbrains.exposed.sql.alias
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.slf4j.LoggerFactory
 import kotlin.collections.map
+import org.jetbrains.exposed.v1.core.JoinType
+import org.jetbrains.exposed.v1.core.alias
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.isNull
+import org.jetbrains.exposed.v1.core.neq
+import org.jetbrains.exposed.v1.jdbc.select
 
 object KontorTilhorighetBulkService {
     val logger = LoggerFactory.getLogger(KontorTilhorighetBulkService::class.java)

@@ -2,10 +2,9 @@ package no.nav.db.entity
 
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.domain.KontorId
-import org.jetbrains.exposed.dao.Entity
-import org.jetbrains.exposed.dao.ImmutableEntityClass
-import org.jetbrains.exposed.dao.IntEntity
-import org.jetbrains.exposed.dao.id.EntityID
+import org.jetbrains.exposed.v1.dao.Entity
+import org.jetbrains.exposed.v1.dao.ImmutableEntityClass
+import org.jetbrains.exposed.v1.core.dao.id.EntityID
 
 class ArbeidsOppfolgingKontorEntity(id: EntityID<String>): Entity<String>(id), KontorEntity {
     companion object : ImmutableEntityClass<String, ArbeidsOppfolgingKontorEntity>(ArbeidsOppfolgingKontorTable)

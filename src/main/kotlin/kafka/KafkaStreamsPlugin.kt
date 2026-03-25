@@ -37,7 +37,7 @@ import no.nav.services.KontorTilordningService
 import no.nav.services.OppfolgingsperiodeDao
 import org.apache.kafka.streams.KafkaStreams
 import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler
-import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.v1.jdbc.Database
 import org.slf4j.LoggerFactory
 import services.IdentService
 import services.OppfolgingsperiodeService

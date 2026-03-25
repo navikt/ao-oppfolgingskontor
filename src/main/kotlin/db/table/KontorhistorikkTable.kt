@@ -1,8 +1,9 @@
 package no.nav.db.table
 
-import org.jetbrains.exposed.dao.id.IntIdTable
-import org.jetbrains.exposed.sql.kotlin.datetime.CurrentTimestampWithTimeZone
-import org.jetbrains.exposed.sql.kotlin.datetime.timestampWithTimeZone
+import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
+import org.jetbrains.exposed.v1.core.java.javaUUID
+import org.jetbrains.exposed.v1.datetime.CurrentTimestampWithTimeZone
+import org.jetbrains.exposed.v1.datetime.timestampWithTimeZone
 
 object KontorhistorikkTable : IntIdTable("kontorhistorikk", "id") {
     val ident = char("ident", 11) // VARCHAR(11) PRIMARY KEY,
@@ -12,5 +13,5 @@ object KontorhistorikkTable : IntIdTable("kontorhistorikk", "id") {
     val kontorendringstype = varchar("kontorendringstype", 255) // VARCHAR(20),
     val createdAt = timestampWithTimeZone("created_at").defaultExpression(CurrentTimestampWithTimeZone) // TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     val kontorType = varchar("kontor_type", 255)
-    val oppfolgingsperiodeId = uuid("oppfolgingsperiode_id").nullable()
+    val oppfolgingsperiodeId = javaUUID("oppfolgingsperiode_id").nullable()
 }

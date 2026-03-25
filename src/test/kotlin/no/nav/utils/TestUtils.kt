@@ -8,7 +8,7 @@ import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.testing.*
 import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
 import no.nav.services.KontorTilordningService
-import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.v1.jdbc.Database
 
 fun ApplicationTestBuilder.getJsonHttpClient(): HttpClient {
     return createClient {

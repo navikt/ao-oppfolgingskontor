@@ -21,9 +21,11 @@ import no.nav.domain.KontorType
 import no.nav.http.client.poaoTilgang.HarTilgangTilBruker
 import no.nav.http.client.poaoTilgang.TilgangTilBrukerResult
 import no.nav.http.graphql.schemas.KontorHistorikkQueryDto
-import org.jetbrains.exposed.sql.JoinType
-import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.core.JoinType
+import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.slf4j.LoggerFactory
 
 class KontorHistorikkQuery(

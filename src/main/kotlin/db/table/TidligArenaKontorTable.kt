@@ -1,7 +1,7 @@
 package db.table
 
-import org.jetbrains.exposed.dao.id.IdTable
-import org.jetbrains.exposed.sql.javatime.timestampWithTimeZone
+import org.jetbrains.exposed.v1.core.dao.id.IdTable
+import org.jetbrains.exposed.v1.javatime.timestampWithTimeZone
 
 object TidligArenaKontorTable: IdTable<String>("tidlig_arena_kontor") {
     override val id = char("ident", 11).entityId()
