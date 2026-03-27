@@ -42,7 +42,7 @@ class KontorEndringProducer(
                 ident,
                 kontorNavnProvider(event.tilordning.kontorId)
             )
-            publiserEndringPåKontor(internIdent, value)
+            return publiserEndringPåKontor(internIdent, value)
         } else {
             return Result.success(Unit)
         }

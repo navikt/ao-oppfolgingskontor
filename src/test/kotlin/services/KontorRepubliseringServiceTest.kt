@@ -1,5 +1,7 @@
 package services
 
+import domain.IdenterFunnet
+import domain.IdenterIkkeFunnet
 import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.test.runTest
@@ -11,6 +13,8 @@ import no.nav.db.table.OppfolgingsperiodeTable
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorId
 import no.nav.domain.KontorNavn
+import no.nav.services.OppfolgingperiodeOppslagFeil
+import no.nav.services.OppfolgingsperiodeOppslagResult
 import no.nav.utils.TestDb
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.gittBrukerUnderOppfolging
@@ -49,7 +53,10 @@ class KontorRepubliseringServiceTest {
                 Result.success(Unit)
             },
             dataSource,
-            {}
+            {},
+            { IdenterIkkeFunnet("Ouf") },
+            { Result.failure(RuntimeException()) },
+            { OppfolgingperiodeOppslagFeil("Ouf") },
         )
         val fnr = randomFnr()
         val aktorId = randomAktorId()
@@ -104,7 +111,10 @@ class KontorRepubliseringServiceTest {
                 Result.success(Unit)
             },
             dataSource,
-            {}
+            {},
+            { IdenterIkkeFunnet("Ouf") },
+            { Result.failure(RuntimeException()) },
+            { OppfolgingperiodeOppslagFeil("Ouf") },
         )
         val fnr = randomFnr()
         val dnr = randomDnr(Ident.HistoriskStatus.HISTORISK)
@@ -166,7 +176,10 @@ class KontorRepubliseringServiceTest {
                 Result.success(Unit)
             },
             dataSource,
-            {}
+            {},
+            { IdenterIkkeFunnet("Ouf") },
+            { Result.failure(RuntimeException()) },
+            { OppfolgingperiodeOppslagFeil("Ouf") },
         )
         val fnr = randomFnr()
         val dnr = randomDnr(Ident.HistoriskStatus.HISTORISK)
@@ -222,7 +235,10 @@ class KontorRepubliseringServiceTest {
                 Result.success(Unit)
             },
             dataSource,
-            {}
+            {},
+            { IdenterIkkeFunnet("Ouf") },
+            { Result.failure(RuntimeException()) },
+            { OppfolgingperiodeOppslagFeil("Ouf") },
         )
         val fnr = randomFnr()
         val dnr = randomDnr(Ident.HistoriskStatus.HISTORISK)
