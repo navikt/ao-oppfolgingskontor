@@ -159,6 +159,20 @@ fun Application.configureAdminModule(
                 }
             }
 
+            post("/admin/republiser-arbeidsoppfolgingskontorendret-tombstone") {
+                runCatching {
+                    val input = call.receive<IdenterInputBody>()
+                    kontorRepubliseringService.republiserTombstone(input.identer.split(","))
+                    call.respond(HttpStatusCode.Accepted, "Republisering av tombstone for utvalgte brukere fullført.")
+                }.onFailure { e ->
+                    log.error("Feil ved republisering av tombstone for utvalgte brukere", e)
+                    call.respond(
+                        HttpStatusCode.InternalServerError,
+                        "Klarte ikke starte republisering av tombstone for utvalgte brukere: ${e.message} \n" + e.stackTraceToString()
+                    )
+                }
+            }
+
             post("/admin/sync-arena-kontor") {
                 runCatching {
                     log.info("Setter i gang syncing av Arena-kontor")

@@ -36,15 +36,13 @@ class KontorEndringProducer(
     * */
     suspend fun publiserEndringPåKontor(event: KontorSattAvVeileder): Result<Unit> {
         if (brukAoRuting) {
-            return runCatching {
-                val (ident, aktorId, internIdent) = finnPubliseringsIdenter(event.tilordning.fnr)
-                val value = event.toKontorTilordningMeldingDto(
-                    aktorId,
-                    ident,
-                    kontorNavnProvider(event.tilordning.kontorId)
-                )
-                publiserEndringPåKontor(internIdent, value)
-            }
+            val (ident, aktorId, internIdent) = finnPubliseringsIdenter(event.tilordning.fnr)
+            val value = event.toKontorTilordningMeldingDto(
+                aktorId,
+                ident,
+                kontorNavnProvider(event.tilordning.kontorId)
+            )
+            publiserEndringPåKontor(internIdent, value)
         } else {
             return Result.success(Unit)
         }

@@ -1,14 +1,25 @@
 package services
 
+import domain.IdenterFunnet
+import domain.IdenterIkkeFunnet
+import domain.IdenterOppslagFeil
+import domain.IdenterResult
+import kotlinx.coroutines.runBlocking
 import no.nav.db.AktorId
 import no.nav.db.Ident
 import no.nav.db.Ident.Companion.validateIdentSomKanLagres
 import no.nav.db.IdentSomKanLagres
 import no.nav.db.InternIdent
+import no.nav.db.ValidIdent
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorId
 import no.nav.domain.KontorNavn
 import no.nav.domain.OppfolgingsperiodeId
+import no.nav.http.client.IdentResult
+import no.nav.services.AktivOppfolgingsperiode
+import no.nav.services.NotUnderOppfolging
+import no.nav.services.OppfolgingperiodeOppslagFeil
+import no.nav.services.OppfolgingsperiodeOppslagResult
 import org.intellij.lang.annotations.Language
 import org.slf4j.LoggerFactory
 import java.sql.ResultSet
@@ -21,6 +32,9 @@ class KontorRepubliseringService(
     val republiserKontor: (KontortilordningSomSkalRepubliseres) -> Result<Unit>,
     val datasource: DataSource,
     val friskOppAlleKontorNavn: suspend () -> Unit,
+    val hentInternIdenterForBrukere: suspend (Ident) -> IdenterResult,
+    val publiserTombstone: suspend (InternIdent) -> Result<Unit>,
+    val hentOppfolgingsperiode: suspend (IdentResult) -> OppfolgingsperiodeOppslagResult,
 ) {
     val log = LoggerFactory.getLogger(this::class.java)
 
@@ -81,7 +95,42 @@ class KontorRepubliseringService(
         log.error("Republisering av kontor feilet", it)
     }
 
+    suspend fun republiserTombstone(identer: List<String>) {
+        identer.toSet()
+            .asSequence()
+            .map { Ident.validate(it, Ident.HistoriskStatus.UKJENT) }
+            .filterIsInstance<ValidIdent>()
+            .map { runBlocking { hentInternIdenterForBrukere(it.ident) } }
+            .mapNotNull {
+                when (it) {
+                    is IdenterFunnet -> it
+                    is IdenterIkkeFunnet -> {
+                        log.error("Fant ikke internIdent: ${it.message}")
+                        null
+                    }
 
+                    is IdenterOppslagFeil -> {
+                        log.error("Feiled å hente internIdent: ${it.message}")
+                        null
+                    }
+                }
+            }
+            .filter {
+                val periodeResult = runBlocking { hentOppfolgingsperiode(it.finnForetrukketIdent()) }
+                when (periodeResult) {
+                    is AktivOppfolgingsperiode -> false // IKKE publiser tombstone på brukere som er aktive
+                    NotUnderOppfolging -> true
+                    is OppfolgingperiodeOppslagFeil -> {
+                        log.error("Klarte ikke gjøre oppslag på oppfølgingsperioden til bruker: ${periodeResult.message}")
+                        false
+                    }
+                }
+            }
+            .forEach {
+                publiserTombstone(it.internIdent)
+                    .onFailure { log.error("Republisering av kontor feilet", it) }
+            }
+    }
 
     fun queryForRepublisering(oppfolgingsperiodeIder: List<OppfolgingsperiodeId> = emptyList()): String {
         val oppfolgingsperiodeIder = oppfolgingsperiodeIder.joinToString(",") { "'${it.value}'" }
