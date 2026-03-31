@@ -14,7 +14,7 @@ channels:
     description: >
       ## Endringer på brukers arbeidsoppfølgingskontor
 
-      Key er oppfolgingsperiodeId, en intern uuid som er identifiserer en oppfølgingsperiode tilhørende en bruker. Samme bruker kan dukke opp flere ganger hvis man leser meldinger før de har blitt compacted, men tilslutt vil det maksimalt være 1 kontor per bruker. Når oppfølgingen til en bruker avsluttes (periode får start-dato) så blir meldingen tombstoned (hele verdien blir null) 
+      Key er en intern personident (long) som identifiserer en bruker. Når oppfølgingen til en bruker avsluttes (periode får slutt-dato) så blir meldingen tombstoned (hele verdien blir null) 
       
       Topicen er **compacted** og har **evig retention**.
       
@@ -33,8 +33,8 @@ channels:
         bindings:
           kafka:
             key:
-              type: uuid
-              description: oppfolgingsperiodeId
+              type: long
+              description: En intern-generert personident. Ikke aktørid/fnr/dnr/npid.
     bindings:
       kafka:
         topic: arbeidsoppfolgingskontortilordninger-v2

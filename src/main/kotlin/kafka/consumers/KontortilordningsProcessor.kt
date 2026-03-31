@@ -80,7 +80,7 @@ class KontortilordningsProcessor(
                                     is TilordningSuccessKontorEndret -> {
                                         kontorTilordningService.tilordneKontor(tilordningResultat.kontorEndretEvent, brukAoRuting)
                                         val aoKontor = tilordningResultat.kontorEndretEvent.aoKontorEndret
-                                        if (aoKontor != null)
+                                        if (brukAoRuting && aoKontor != null)
                                             /* Publishing it done in its own processor to avoid re-setting kontor and creating
                                             extra-history if the publishing to kafka part fails. Forwarding without topicname
                                              send the record to default next step which is configured in the topology */

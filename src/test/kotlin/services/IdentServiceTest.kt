@@ -9,13 +9,14 @@ import db.table.IdentMappingTable.updatedAt
 import db.table.InternIdentSequence
 import db.table.nextValueOf
 import domain.IdenterFunnet
-import domain.IdenterIkkeFunnet
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.ktor.server.testing.*
+import io.ktor.server.testing.testApplication
 import io.mockk.every
 import io.mockk.mockk
+import java.time.OffsetDateTime
+import java.time.ZonedDateTime
 import kafka.consumers.IdentChangeProcessor
 import kafka.consumers.OppdatertIdent
 import kotlinx.coroutines.test.runTest
@@ -26,7 +27,6 @@ import no.nav.db.Ident
 import no.nav.db.Ident.HistoriskStatus.AKTIV
 import no.nav.db.Ident.HistoriskStatus.HISTORISK
 import no.nav.db.Ident.HistoriskStatus.UKJENT
-import no.nav.db.InternIdent
 import no.nav.db.Npid
 import no.nav.http.client.IdentFunnet
 import no.nav.http.client.PdlIdenterFunnet
@@ -37,15 +37,14 @@ import no.nav.person.pdl.aktor.v2.Type
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.randomAktorId
 import no.nav.utils.randomFnr
-import no.nav.utils.randomInternIdent
 import org.apache.kafka.streams.processor.api.Record
-import org.jetbrains.exposed.sql.batchInsert
-import org.jetbrains.exposed.sql.batchUpsert
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.batchInsert
+import org.jetbrains.exposed.v1.jdbc.batchUpsert
+import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.Test
-import java.time.OffsetDateTime
-import java.time.ZonedDateTime
 
 class IdentServiceTest {
 

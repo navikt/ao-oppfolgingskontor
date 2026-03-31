@@ -26,3 +26,6 @@ spec:
     - team: poao
       application: veilarboppfolging
       access: read
+    - team: teamarenanais
+      application: arena-hendelse
+      access: read

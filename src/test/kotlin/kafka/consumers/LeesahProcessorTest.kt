@@ -45,7 +45,7 @@ import no.nav.utils.gittBrukerUnderOppfolging
 import no.nav.utils.kontorTilordningService
 import no.nav.utils.randomFnr
 import no.nav.utils.randomInternIdent
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.Test
 import utils.Outcome
 
@@ -61,7 +61,7 @@ class LeesahProcessorTest {
             flywayMigrationInTest()
             gittNåværendeGtKontor(fnr, KontorId(gammeltKontorId))
             val automatiskKontorRutingService = gittRutingServiceMedGtKontor(KontorId(nyKontorId))
-            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, false, brukAoRuting)
+            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, brukAoRuting)
 
             leesahProcessor.handterLeesahHendelse(BostedsadresseEndret(fnr))
 
@@ -87,7 +87,7 @@ class LeesahProcessorTest {
                 oppfølgingsperiodeId = oppfølgingsperiodeId,
                 hentAoKontor = { ArbeidsoppfolgingsKontor(KontorNavn("Nav IT"), INGEN_GT_KONTOR_FALLBACK) },
             )
-            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, false, brukAoRuting)
+            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, brukAoRuting)
 
             leesahProcessor.handterLeesahHendelse(BostedsadresseEndret(fnr))
 
@@ -117,7 +117,7 @@ class LeesahProcessorTest {
                 oppfølgingsperiodeId = oppfølgingsperiodeId,
                 hentAoKontor = { ArbeidsoppfolgingsKontor(KontorNavn("Nav Testheim"), KontorId(gammeltKontorId)) },
             )
-            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, false, brukAoRuting)
+            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, brukAoRuting)
 
             leesahProcessor.handterLeesahHendelse(BostedsadresseEndret(fnr))
 
@@ -145,7 +145,7 @@ class LeesahProcessorTest {
                 { a, b, c -> KontorForGtFantDefaultKontor(KontorId(nyKontorId), c, b, GeografiskTilknytningBydelNr("3131")) },
                 { ident -> HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(true)) }, oppfølgingsperiodeId
             )
-            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, false, brukAoRuting)
+            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, brukAoRuting)
 
             leesahProcessor.handterLeesahHendelse(AdressebeskyttelseEndret(fnr, Gradering.STRENGT_FORTROLIG))
 
@@ -171,7 +171,7 @@ class LeesahProcessorTest {
             gittNåværendeAOKontor(fnr, KontorId(gammelKontorId), oppfølgingsperiodeId)
             gittNåværendeGtKontor(fnr, KontorId(gammelKontorId))
             val automatiskKontorRutingService = gittRutingServiceMedGtKontor(KontorId(nyKontorId))
-            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService,  false, brukAoRuting)
+            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService,  brukAoRuting)
 
             leesahProcessor.handterLeesahHendelse(AdressebeskyttelseEndret(fnr, Gradering.UGRADERT))
 
@@ -196,7 +196,7 @@ class LeesahProcessorTest {
         val automatiskKontorRutingService = defaultAutomatiskKontorRutingService(
             { a, b, c -> KontorForGtFeil("Noe gikk galt") }
         )
-        val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, false, brukAoRuting)
+        val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, brukAoRuting)
 
         val resultat = leesahProcessor.handterLeesahHendelse(BostedsadresseEndret(fnr))
 
@@ -211,7 +211,7 @@ class LeesahProcessorTest {
         val automatiskKontorRutingService = defaultAutomatiskKontorRutingService(
             { a, b, c -> throw Throwable("Noe gikk galt") }
         )
-        val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, false, brukAoRuting)
+        val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, brukAoRuting)
 
         val resultat = leesahProcessor.handterLeesahHendelse(BostedsadresseEndret(fnr))
 

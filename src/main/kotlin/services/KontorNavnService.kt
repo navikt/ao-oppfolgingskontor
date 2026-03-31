@@ -4,12 +4,14 @@ import no.nav.db.table.KontorNavnTable
 import no.nav.domain.KontorId
 import no.nav.domain.KontorNavn
 import no.nav.http.client.Norg2Client
-import org.jetbrains.exposed.sql.batchUpsert
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.batchUpsert
+import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.time.OffsetDateTime
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.select
 
 class KontorNavnService(
     val norg2Client: Norg2Client

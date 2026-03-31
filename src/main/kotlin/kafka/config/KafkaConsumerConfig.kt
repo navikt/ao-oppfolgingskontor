@@ -3,7 +3,7 @@ package no.nav.kafka.config
 import Topic
 import io.ktor.server.application.ApplicationEnvironment
 import io.ktor.server.config.*
-import kafka.consumers.`ArenakontorVedOppfolgingStartetProcessor`
+import kafka.consumers.ArenakontorVedOppfolgingStartetProcessor
 import kafka.consumers.IdentChangeProcessor
 import kafka.consumers.OppfolgingsHendelseProcessor
 import kafka.consumers.PubliserKontorTilordningProcessor
@@ -125,9 +125,9 @@ fun configureTopology(
         businessLogic = publiserKontorTilordningProcessor::process,
     )
     val arenakontorProcessorSupplier = wrapInRetryProcessor(
-        keyInSerde = `ArenakontorVedOppfolgingStartetProcessor`.identSerde,
-        valueInSerde = `ArenakontorVedOppfolgingStartetProcessor`.oppfolgingsperiodeEndretSerde,
-        topic = `ArenakontorVedOppfolgingStartetProcessor`.processorName,
+        keyInSerde = ArenakontorVedOppfolgingStartetProcessor.identSerde,
+        valueInSerde = ArenakontorVedOppfolgingStartetProcessor.oppfolgingsperiodeEndretSerde,
+        topic = ArenakontorVedOppfolgingStartetProcessor.processorName,
         streamType = StreamType.INTERNAL,
         businessLogic = arenakontorProcessor::process
     )
@@ -140,7 +140,7 @@ fun configureTopology(
                 .process(kontortilordningProcessorSupplier, Named.`as`(KontortilordningsProcessor.processorName))
                 .process(publiserKontorTilordningProcessorSupplier, Named.`as`(PubliserKontorTilordningProcessor.processorName))
             oppfolgingHendelser
-                .process(arenakontorProcessorSupplier, Named.`as`(`ArenakontorVedOppfolgingStartetProcessor`.processorName))
+                .process(arenakontorProcessorSupplier, Named.`as`(ArenakontorVedOppfolgingStartetProcessor.processorName))
         }
 
     /*
@@ -153,6 +153,7 @@ fun configureTopology(
     )
     builder.stream(topics.inn.endringPaOppfolgingsbruker.name, topics.inn.endringPaOppfolgingsbruker.consumedWith())
         .process(endringPaOppfolgingsBrukerProcessorSupplier, Named.`as`(processorName(topics.inn.endringPaOppfolgingsbruker.name)))
+        .process(publiserKontorTilordningProcessorSupplier)
 
     /*
     * Endring i Skjerming (egen ansatt)

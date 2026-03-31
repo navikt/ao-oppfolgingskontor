@@ -1,17 +1,20 @@
 package services
 
+import domain.IdenterFunnet
+import domain.IdenterIkkeFunnet
 import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.test.runTest
 import no.nav.db.Ident
 import no.nav.db.InternIdent
-import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.OppfolgingsperiodeEntity
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.db.table.OppfolgingsperiodeTable
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorId
 import no.nav.domain.KontorNavn
+import no.nav.services.OppfolgingperiodeOppslagFeil
+import no.nav.services.OppfolgingsperiodeOppslagResult
 import no.nav.utils.TestDb
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.gittBrukerUnderOppfolging
@@ -22,11 +25,11 @@ import no.nav.utils.randomAktorId
 import no.nav.utils.randomDnr
 import no.nav.utils.randomFnr
 import no.nav.utils.randomInternIdent
-import org.jetbrains.exposed.sql.deleteAll
-import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.deleteAll
+import org.jetbrains.exposed.v1.jdbc.transactions.experimental.newSuspendedTransaction
+import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 
 class KontorRepubliseringServiceTest {
@@ -50,7 +53,10 @@ class KontorRepubliseringServiceTest {
                 Result.success(Unit)
             },
             dataSource,
-            {}
+            {},
+            { IdenterIkkeFunnet("Ouf") },
+            { Result.failure(RuntimeException()) },
+            { OppfolgingperiodeOppslagFeil("Ouf") },
         )
         val fnr = randomFnr()
         val aktorId = randomAktorId()
@@ -67,7 +73,7 @@ class KontorRepubliseringServiceTest {
         )
 
         var count = 0L
-        newSuspendedTransaction {
+        suspendTransaction {
             count = OppfolgingsperiodeEntity.count()
             kontorRepubliseringService.republiserKontorer()
         }
@@ -105,7 +111,10 @@ class KontorRepubliseringServiceTest {
                 Result.success(Unit)
             },
             dataSource,
-            {}
+            {},
+            { IdenterIkkeFunnet("Ouf") },
+            { Result.failure(RuntimeException()) },
+            { OppfolgingperiodeOppslagFeil("Ouf") },
         )
         val fnr = randomFnr()
         val dnr = randomDnr(Ident.HistoriskStatus.HISTORISK)
@@ -167,7 +176,10 @@ class KontorRepubliseringServiceTest {
                 Result.success(Unit)
             },
             dataSource,
-            {}
+            {},
+            { IdenterIkkeFunnet("Ouf") },
+            { Result.failure(RuntimeException()) },
+            { OppfolgingperiodeOppslagFeil("Ouf") },
         )
         val fnr = randomFnr()
         val dnr = randomDnr(Ident.HistoriskStatus.HISTORISK)
@@ -223,7 +235,10 @@ class KontorRepubliseringServiceTest {
                 Result.success(Unit)
             },
             dataSource,
-            {}
+            {},
+            { IdenterIkkeFunnet("Ouf") },
+            { Result.failure(RuntimeException()) },
+            { OppfolgingperiodeOppslagFeil("Ouf") },
         )
         val fnr = randomFnr()
         val dnr = randomDnr(Ident.HistoriskStatus.HISTORISK)

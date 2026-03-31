@@ -10,11 +10,19 @@ import no.nav.db.table.FailedMessagesTable.messageKeyText
 import no.nav.db.table.FailedMessagesTable.messageValue
 import no.nav.db.table.FailedMessagesTable.queueTimestamp
 import no.nav.db.table.FailedMessagesTable.retryCount
-import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.vendors.ForUpdateOption
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.time.OffsetDateTime
+import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.less
+import org.jetbrains.exposed.v1.core.plus
+import org.jetbrains.exposed.v1.core.vendors.ForUpdateOption
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.insertAndGetId
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.update
+import org.jetbrains.exposed.v1.jdbc.upsert
 
 class RetryableRepository(val repositoryTopic: String) {
 
@@ -87,11 +95,9 @@ class RetryableRepository(val repositoryTopic: String) {
         FailedMessagesTable
             .update({ FailedMessagesTable.id eq messageId })
             {
-                with(SqlExpressionBuilder) {
-                    it[retryCount] = retryCount + 1
-                    it[lastAttemptTimestamp] = OffsetDateTime.now()
-                    it[failureReason] = newReason
-                }
+                it[retryCount] = retryCount + 1
+                it[lastAttemptTimestamp] = OffsetDateTime.now()
+                it[failureReason] = newReason
             }
     }
 

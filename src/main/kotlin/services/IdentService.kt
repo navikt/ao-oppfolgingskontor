@@ -12,6 +12,8 @@ import domain.IdenterFunnet
 import domain.IdenterIkkeFunnet
 import domain.IdenterOppslagFeil
 import domain.IdenterResult
+import java.time.OffsetDateTime
+import java.time.ZonedDateTime
 import kafka.consumers.OppdatertIdent
 import no.nav.db.AktorId
 import no.nav.db.Dnr
@@ -29,16 +31,17 @@ import no.nav.http.client.PdlIdenterFunnet
 import no.nav.http.client.PdlIdenterIkkeFunnet
 import no.nav.http.client.PdlIdenterOppslagFeil
 import no.nav.http.client.PdlIdenterResult
-import org.jetbrains.exposed.sql.JoinType
-import org.jetbrains.exposed.sql.Transaction
-import org.jetbrains.exposed.sql.alias
-import org.jetbrains.exposed.sql.andWhere
-import org.jetbrains.exposed.sql.batchUpsert
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
+import org.jetbrains.exposed.v1.core.JoinType
+import org.jetbrains.exposed.v1.core.alias
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.jdbc.JdbcTransaction
+import org.jetbrains.exposed.v1.jdbc.andWhere
+import org.jetbrains.exposed.v1.jdbc.batchUpsert
+import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
 import org.slf4j.LoggerFactory
-import java.time.OffsetDateTime
-import java.time.ZonedDateTime
 
 class IdentService(
     val hentAlleIdenterSynkrontFraPdl: suspend (aktorId: String) -> PdlIdenterResult,
@@ -126,7 +129,7 @@ class IdentService(
         }
     }
 
-    fun Transaction.getOrCreateInternId(eksitrerendeInternIder: List<Long>): Long {
+    fun JdbcTransaction.getOrCreateInternId(eksitrerendeInternIder: List<Long>): Long {
         return if (eksitrerendeInternIder.isNotEmpty()) {
             if (eksitrerendeInternIder.distinct().size != 1)
                 throw IllegalStateException("Fant flere forskjellige intern-id-er på en ident-liste-response fra PDL")

@@ -29,7 +29,7 @@ import no.nav.kafka.KafkaStreamsPlugin
 import no.nav.kafka.config.createKafkaProducerWithLongKey
 import no.nav.kafka.config.toKafkaEnv
 import no.nav.services.*
-import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.v1.jdbc.Database
 import services.*
 import topics
 import utils.Outcome
@@ -132,7 +132,14 @@ fun Application.module() {
         hentAlleIdenter = { identSomKanLagres -> identService.hentAlleIdenter(identSomKanLagres) },
         brukAoRuting = this.environment.getBrukAoRuting()
     )
-    val republiseringService = KontorRepubliseringService(kontorEndringProducer::republiserKontor, datasource, kontorNavnService::friskOppAlleKontorNavn)
+    val republiseringService = KontorRepubliseringService(
+        kontorEndringProducer::republiserKontor,
+        datasource,
+        kontorNavnService::friskOppAlleKontorNavn,
+        identService::hentAlleIdenter,
+        kontorEndringProducer::publiserTombstone,
+        oppfolgingsperiodeService::getCurrentOppfolgingsperiode
+    )
     val arenaSyncService = ArenaSyncService(veilarbArenaClient, kontorTilordningService, kontorTilhorighetService, oppfolgingsperiodeService, environment.getBrukAoRuting())
     val brukAoRuting = environment.getBrukAoRuting()
 

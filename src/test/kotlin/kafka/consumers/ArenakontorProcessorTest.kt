@@ -5,6 +5,10 @@ import http.client.ArenakontorFunnet
 import http.client.ArenakontorIkkeFunnet
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import java.time.Instant
+import java.time.OffsetDateTime
+import java.time.ZonedDateTime
+import java.util.UUID
 import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.db.entity.ArenaKontorEntity
@@ -19,13 +23,9 @@ import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.kontorTilordningService
 import no.nav.utils.randomFnr
 import org.apache.kafka.streams.processor.api.Record
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
-import java.time.Instant
-import java.time.OffsetDateTime
-import java.time.ZonedDateTime
-import java.util.*
 
 
 class ArenakontorProcessorTest {
@@ -86,7 +86,7 @@ class ArenakontorProcessorTest {
         val record = oppfolgingsperiodeStartetRecord()
         val kontorId = KontorId("1234")
         val gammelKontorId = KontorId("1234")
-        val processor = `ArenakontorVedOppfolgingStartetProcessor`(
+        val processor = ArenakontorVedOppfolgingStartetProcessor(
             { ArenakontorFunnet(kontorId, ZonedDateTime.now()) },
             { throw Exception("Skal ikke lagre når det ikke har vært en endring") },
             {
@@ -161,7 +161,7 @@ class ArenakontorProcessorTest {
     @Test
     fun `Skal returnere commit selv om vi ikke finner arenakontor innkommen FNR`() {
         val record = oppfolgingsperiodeStartetRecord()
-        val processor = `ArenakontorVedOppfolgingStartetProcessor`(
+        val processor = ArenakontorVedOppfolgingStartetProcessor(
             { ArenakontorIkkeFunnet() },
             { kontorTilordningService.tilordneKontor(it, true) },
             { null },
