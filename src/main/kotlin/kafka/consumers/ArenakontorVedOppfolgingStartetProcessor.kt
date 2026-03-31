@@ -88,7 +88,9 @@ class ArenakontorVedOppfolgingStartetProcessor(
                                 else alleredeLagretArenaKontor.sistEndretDatoArena >= kontorTilordning.sistEndretDatoArena
 
                             val kontorIdErLik = alleredeLagretArenaKontor?.kontorId == kontorTilordning.tilordning.kontorId
-                            if (lagretArenakontorErNyest || kontorIdErLik) {
+                            val oppfolgingsperiodeErLik = alleredeLagretArenaKontor?.oppfolgingsperiodeId == oppfølgingsperiodeStartet.periodeId
+
+                            if (lagretArenakontorErNyest || (kontorIdErLik && oppfolgingsperiodeErLik)) {
                                 logger.info("Lagrer ikke funnet arenakontor siden vi har nyere eller lik informasjon lagret")
                                 val arenaKontorSomSkalPubliseres = if (lagretArenakontorErNyest && alleredeLagretArenaKontor != null) alleredeLagretArenaKontor.kontorId else arenakontorOppslag.kontorId
                                 publiserArenaKontor(arenaKontorSomSkalPubliseres, oppfølgingsperiodeStartet.periodeId, fnr)

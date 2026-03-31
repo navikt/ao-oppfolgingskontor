@@ -82,7 +82,7 @@ class ArenakontorProcessorTest {
     }
 
     @Test
-    fun `Skal ikke lagre arenakontor når det ikke har vært en endring`() {
+    fun `Skal ikke lagre arenakontor når det ikke har vært en endring (og oppfolgingsperiode er lik)`() {
         val record = oppfolgingsperiodeStartetRecord()
         val kontorId = KontorId("1234")
         val gammelKontorId = KontorId("1234")
@@ -92,7 +92,7 @@ class ArenakontorProcessorTest {
             {
                 ArenaKontorUtvidet(
                     kontorId = gammelKontorId,
-                    oppfolgingsperiodeId = null,
+                    oppfolgingsperiodeId = record.value().periodeId,
                     sistEndretDatoArena = OffsetDateTime.now().minusDays(1)
                 )
             },
@@ -101,6 +101,37 @@ class ArenakontorProcessorTest {
         )
         val result = processor.process(record)
         result.shouldBeInstanceOf<Skip<*, *>>()
+    }
+
+    @Test
+    fun `Skal lagre arenakontor på ny periode selvom kontorene er like`() {
+        val record = oppfolgingsperiodeStartetRecord()
+        val gammelOppfolgingsperiode = OppfolgingsperiodeId(UUID.randomUUID())
+        val kontorId = KontorId("1234")
+        val gammelKontorId = KontorId("1234")
+        var harPublisertMelding = false
+        val processor = `ArenakontorVedOppfolgingStartetProcessor`(
+            { ArenakontorFunnet(kontorId, ZonedDateTime.now()) },
+            { kontorTilordningService.tilordneKontor(it, true) },
+            {
+                ArenaKontorUtvidet(
+                    kontorId = gammelKontorId,
+                    oppfolgingsperiodeId = gammelOppfolgingsperiode,
+                    sistEndretDatoArena = OffsetDateTime.now().minusDays(1)
+                )
+            },
+            {
+                harPublisertMelding = true
+                Result.success(Unit)
+            },
+            true
+        )
+        val result = processor.process(record)
+        result.shouldBeInstanceOf<Commit<*, *>>()
+        transaction {
+            ArenaKontorEntity.findById(record.value().fnr.value)?.kontorId shouldBe kontorId.id
+        }
+        harPublisertMelding shouldBe true
     }
 
     @Test
