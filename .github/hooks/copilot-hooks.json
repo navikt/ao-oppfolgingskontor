@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "name": "verify-gradle-wrapper",
+        "run": "./gradlew --version"
+      }
+    ],
+    "sessionEnd": [
+      {
+        "name": "run-tests",
+        "run": "./gradlew test"
+      }
+    ]
+  }
+}
