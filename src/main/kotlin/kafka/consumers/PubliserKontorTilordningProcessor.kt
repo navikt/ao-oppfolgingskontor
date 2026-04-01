@@ -26,7 +26,7 @@ class PubliserKontorTilordningProcessor(
         const val processorName = "PubliserKontorTilordningProcessor"
         val oppfolgingsperiodeIdSerde: Serde<OppfolgingsperiodeId> = object : Serde<OppfolgingsperiodeId> {
             override fun serializer(): Serializer<OppfolgingsperiodeId> =
-                Serializer<OppfolgingsperiodeId> { topic, data -> data.toString().toByteArray() }
+                Serializer<OppfolgingsperiodeId> { topic, data -> data.value.toString().toByteArray() }
 
             override fun deserializer(): Deserializer<OppfolgingsperiodeId> =
                 Deserializer<OppfolgingsperiodeId> { topic, data -> OppfolgingsperiodeId(UUID.fromString(data.decodeToString())) }
