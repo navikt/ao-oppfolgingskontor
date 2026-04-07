@@ -6,6 +6,8 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import kafka.consumers.PubliserKontorTilordningProcessor
+import kafka.producers.OppfolgingEndretTilordningMelding
 import kafka.retry.TestLockProvider
 import kafka.retry.library.RetryProcessorWrapper
 import kafka.retry.library.StreamType
@@ -18,6 +20,7 @@ import kotlinx.coroutines.test.runTest
 import no.nav.db.flywayMigrate
 import no.nav.db.table.FailedMessagesTable
 import no.nav.db.table.FailedMessagesTable.messageKeyText
+import no.nav.domain.OppfolgingsperiodeId
 import no.nav.kafka.config.StringStringSinkConfig
 import no.nav.kafka.config.processorName
 import no.nav.kafka.config.streamsErrorHandlerConfig
@@ -52,6 +55,7 @@ import java.util.Properties
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.selectAll
+import java.util.UUID
 
 enum class Res {
     Fail,
@@ -151,16 +155,21 @@ class RetryableProcessorIntegrationTest {
     @Test
     fun `should enqueue message when processing failed for previous message on same key`() = runTest {
         val topic = randomTopicName()
+        val oppfolgingsperiode = OppfolgingsperiodeId(UUID.randomUUID())
+        val keyString = oppfolgingsperiode.value.toString()
         val retryableRepository = RetryableRepository(topic)
 
-        val (testDriver, testInputTopics) =  setupKafkaTestDriver(topic, { _ -> Retry("Dette gikk galt") })
+        val (testDriver, testInputTopics) = setupOppfolgingsperiodeIdKeyKafkaTestDriver(
+            topic,
+            processRecord = { _ -> Retry("Dette gikk galt") }
+        )
 
-        testInputTopics.first().pipeInput("key2", "value2")
-        testInputTopics.first().pipeInput("key2", "value2")
+        testInputTopics.first().pipeInput(oppfolgingsperiode, "value1")
+        testInputTopics.first().pipeInput(oppfolgingsperiode, "value2")
 
         withClue("Shoud have enqueued message in failed message repository after first failure") {
-            retryableRepository.hasFailedMessages("key2") shouldBe true
-            countFailedMessagesOnKey("key2") shouldBe 2
+            retryableRepository.hasFailedMessages(keyString) shouldBe true
+            countFailedMessagesOnKey(keyString) shouldBe 2
         }
 
         testDriver.advanceWallClockTime(Duration.of(1, ChronoUnit.MINUTES))
@@ -402,6 +411,14 @@ class RetryableProcessorIntegrationTest {
         topic, processRecord, sinkConfigs, this.backgroundScope
     )
 
+    fun TestScope.setupOppfolgingsperiodeIdKeyKafkaTestDriver(
+        topic: String,
+        processRecord: ProcessRecord<OppfolgingsperiodeId, String, String, String>,
+        sinkConfigs: StringStringSinkConfig? = null,
+    ) = setupOppfolgingsperiodeIdKafkaTestDriver(
+        topic, processRecord, sinkConfigs, this.backgroundScope
+    )
+
     fun setupKafkaTestDriver(
         topic: String,
         processRecord: ProcessRecord<String, String, String, String>,
@@ -436,11 +453,54 @@ class RetryableProcessorIntegrationTest {
         return setupKafkaMock(topology, listOf(topic), sinkConfigs?.outputTopicName)
     }
 
+    fun setupOppfolgingsperiodeIdKafkaTestDriver(
+        topic: String,
+        processRecord: ProcessRecord<OppfolgingsperiodeId, String, String, String>,
+        sinkConfigs: StringStringSinkConfig? = null,
+        punctuationCoroutineScope: CoroutineScope,
+    ): Triple<TopologyTestDriver, List<TestInputTopic<OppfolgingsperiodeId, String>>, TestOutputTopic<String, String>?> {
+
+        val builder = StreamsBuilder()
+        val testRepository = RetryableRepository(topic)
+        val testSupplier = ProcessorSupplier {
+            RetryableProcessor(
+                config = RetryConfig(),
+                keyInSerde = PubliserKontorTilordningProcessor.oppfolgingsperiodeIdSerde,
+                valueInSerde = Serdes.String(),
+                topic = topic,
+                streamType = StreamType.SOURCE,
+                repository = testRepository,
+                businessLogic = processRecord,
+                lockProvider = TestLockProvider,
+                punctuationCoroutineScope = punctuationCoroutineScope,
+            )
+        }
+
+        builder.stream(topic, Consumed.with(PubliserKontorTilordningProcessor.oppfolgingsperiodeIdSerde, Serdes.String()))
+            .process(testSupplier, Named.`as`(processorName(topic)))
+
+
+        val topology = builder.build()
+        sinkConfigs?.let {
+            topology.addSink(it.sinkName, it.outputTopicName, it.keySerde.serializer(), it.valueSerde.serializer(), processorName(topic)) }
+
+        return setupOppfolgingsperiodeIdKafkaMock(topology, listOf(topic), sinkConfigs?.outputTopicName)
+    }
+
     fun countFailedMessagesOnKey(key: String): Long {
         return transaction {
             FailedMessagesTable
                 .selectAll()
                 .where { messageKeyText eq key }
+                .count()
+        }
+    }
+
+    fun countFailedMessages(): Long {
+        return transaction {
+            FailedMessagesTable
+                .selectAll()
+//                .where { messageKeyText eq key }
                 .count()
         }
     }
@@ -454,6 +514,21 @@ fun setupKafkaMock(topology: Topology, inputTopics: List<String>, outputTopic: S
     val driver = TopologyTestDriver(topology, props)
     val inputTopics = inputTopics.map { inputTopic ->
         driver.createInputTopic(inputTopic, Serdes.String().serializer(), Serdes.String().serializer())
+    }
+    if (outputTopic != null) {
+        val outputTopic = driver.createOutputTopic(outputTopic, Serdes.String().deserializer(), Serdes.String().deserializer())
+        return Triple(driver ,inputTopics, outputTopic)
+    }
+    return Triple(driver ,inputTopics, null)
+}
+
+fun setupOppfolgingsperiodeIdKafkaMock(topology: Topology, inputTopics: List<String>, outputTopic: String? = null): Triple<TopologyTestDriver, List<TestInputTopic<OppfolgingsperiodeId, String>>, TestOutputTopic<String, String>?> {
+    val props = Properties()
+    props.setProperty(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9091")
+    props.streamsErrorHandlerConfig()
+    val driver = TopologyTestDriver(topology, props)
+    val inputTopics = inputTopics.map { inputTopic ->
+        driver.createInputTopic(inputTopic, PubliserKontorTilordningProcessor.oppfolgingsperiodeIdSerde.serializer(), Serdes.String().serializer())
     }
     if (outputTopic != null) {
         val outputTopic = driver.createOutputTopic(outputTopic, Serdes.String().deserializer(), Serdes.String().deserializer())

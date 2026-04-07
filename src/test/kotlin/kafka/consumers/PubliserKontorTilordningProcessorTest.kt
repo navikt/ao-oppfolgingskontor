@@ -28,6 +28,12 @@ class PubliserKontorTilordningProcessorTest {
 
 
     @Test
+    fun `skal toStringe OppfolgingsPeriode`() {
+        OppfolgingsperiodeId(UUID.randomUUID()).toString() shouldBe "OppfolgingsperiodeId(value=dd52f208-9d0e-4f0b-b0f3-4e421aedec1a)"
+    }
+
+
+    @Test
     fun `Skal gi retry når publiserKontorTilordning feiler`() {
         val processor = PubliserKontorTilordningProcessor(
             hentAlleIdenter = { IdenterOppslagFeil("PDL feiler") },
