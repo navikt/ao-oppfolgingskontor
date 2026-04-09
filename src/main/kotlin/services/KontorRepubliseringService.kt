@@ -103,7 +103,7 @@ class KontorRepubliseringService(
             .map {
                 val result = Ident.validate(it, Ident.HistoriskStatus.UKJENT)
                 if (result is InvalidIdent) {
-                    log.info("Fikk ugyldig ident: ${result.message}, hopper over publisering av tombstone på gitt ident")
+                    log.warn("Fikk ugyldig ident: ${result.message}, hopper over publisering av tombstone på gitt ident")
                 }
                 result
             }
@@ -125,7 +125,10 @@ class KontorRepubliseringService(
             .filter {
                 val periodeResult = runBlocking { hentOppfolgingsperiode(it.finnForetrukketIdent()) }
                 when (periodeResult) {
-                    is AktivOppfolgingsperiode -> false // IKKE publiser tombstone på brukere som er aktive
+                    is AktivOppfolgingsperiode -> {
+                        log.warn("Fant aktiv oppfolgingsperiode, hopper over publisering av tombstone på bruker")
+                        false
+                    } // IKKE publiser tombstone på brukere som er aktive
                     NotUnderOppfolging -> true
                     is OppfolgingperiodeOppslagFeil -> {
                         log.error("Klarte ikke gjøre oppslag på oppfølgingsperioden til bruker: ${periodeResult.message}")
