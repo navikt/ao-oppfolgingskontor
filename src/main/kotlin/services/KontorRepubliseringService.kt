@@ -10,6 +10,7 @@ import no.nav.db.Ident
 import no.nav.db.Ident.Companion.validateIdentSomKanLagres
 import no.nav.db.IdentSomKanLagres
 import no.nav.db.InternIdent
+import no.nav.db.InvalidIdent
 import no.nav.db.ValidIdent
 import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorId
@@ -96,9 +97,16 @@ class KontorRepubliseringService(
     }
 
     suspend fun republiserTombstone(identer: List<String>) {
+        log.info("Skal republisere tombstone på ${identer.size} indenter")
         identer.toSet()
             .asSequence()
-            .map { Ident.validate(it, Ident.HistoriskStatus.UKJENT) }
+            .map {
+                val result = Ident.validate(it, Ident.HistoriskStatus.UKJENT)
+                if (result is InvalidIdent) {
+                    log.info("Fikk ugyldig ident: ${result.message}, hopper over publisering av tombstone på gitt ident")
+                }
+                result
+            }
             .filterIsInstance<ValidIdent>()
             .map { runBlocking { hentInternIdenterForBrukere(it.ident) } }
             .mapNotNull {
@@ -108,7 +116,6 @@ class KontorRepubliseringService(
                         log.error("Fant ikke internIdent: ${it.message}")
                         null
                     }
-
                     is IdenterOppslagFeil -> {
                         log.error("Feiled å hente internIdent: ${it.message}")
                         null
