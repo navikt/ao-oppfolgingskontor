@@ -39,6 +39,8 @@ import no.nav.services.TilordningRetry
 import no.nav.services.TilordningSuccessIngenEndring
 import no.nav.services.TilordningSuccessKontorEndret
 import no.nav.utils.OffsetDateTimeSerializer
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.slf4j.LoggerFactory
@@ -197,6 +199,29 @@ fun Application.configureAdminModule(
                         HttpStatusCode.InternalServerError,
                         "Klarte ikke synce Arena-kontor: ${e.message} \n" + e.stackTraceToString()
                     )
+                }
+            }
+
+            delete("/admin/failed-messages/{id}") {
+                val rawId = call.parameters["id"]
+                val messageId = rawId?.toLongOrNull()
+                if (messageId == null || messageId <= 0) {
+                    call.respond(HttpStatusCode.BadRequest, "Ugyldig id: '$rawId'. Id må være et positivt heltall.")
+                    return@delete
+                }
+                runCatching {
+                    val deleted = transaction {
+                        FailedMessagesTable.deleteWhere { FailedMessagesTable.id eq messageId } > 0
+                    }
+                    if (deleted) {
+                        log.info("Slettet failed message med id=$messageId")
+                        call.respond(HttpStatusCode.OK, "Melding med id=$messageId ble slettet.")
+                    } else {
+                        call.respond(HttpStatusCode.NotFound, "Fant ingen melding med id=$messageId.")
+                    }
+                }.onFailure { e ->
+                    log.error("Feil ved sletting av failed message med id=$messageId", e)
+                    call.respond(HttpStatusCode.InternalServerError, "Klarte ikke slette melding: ${e.message}")
                 }
             }
 

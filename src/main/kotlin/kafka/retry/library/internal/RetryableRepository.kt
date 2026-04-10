@@ -123,16 +123,3 @@ class RetryableRepository(val repositoryTopic: String) {
         }.insertedCount > 0
     }
 }
-
-fun FailedMessagesEntity.toFailedMessage(): FailedMessage {
-    return FailedMessage(
-        id = this.id.value,
-        messageKeyText = this.messageKeyText,
-        messageKeyBytes = this.messageKeyBytes,
-        messageValue = this.messageValue,
-        queueTimestamp = this.queueTimestamp,
-        lastAttemptTimestamp = this.lastAttemptTimestamp,
-        retryCount = this.retryCount,
-        failureReason = this.failureReason,
-    )
-}
