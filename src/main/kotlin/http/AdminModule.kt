@@ -27,6 +27,7 @@ import no.nav.audit.traceId
 import no.nav.authenticateCall
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
+import no.nav.db.table.FailedMessagesTable
 import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.getIssuer
@@ -37,11 +38,15 @@ import no.nav.services.TilordningResultat
 import no.nav.services.TilordningRetry
 import no.nav.services.TilordningSuccessIngenEndring
 import no.nav.services.TilordningSuccessKontorEndret
+import no.nav.utils.OffsetDateTimeSerializer
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.slf4j.LoggerFactory
 import services.ArenaSyncService
 import services.KontorRepubliseringService
 import services.KontorSammenSlåing
 import services.KontorSammenslåingService
+import java.time.OffsetDateTime
 import java.util.UUID
 
 val log = LoggerFactory.getLogger("AdminModule")
@@ -195,6 +200,31 @@ fun Application.configureAdminModule(
                 }
             }
 
+            get("/admin/failed-messages") {
+                runCatching {
+                    val messages = transaction {
+                        FailedMessagesTable.selectAll()
+                            .orderBy(FailedMessagesTable.id to org.jetbrains.exposed.v1.core.SortOrder.ASC)
+                            .map { row ->
+                                FailedMessageResponse(
+                                    id = row[FailedMessagesTable.id].value,
+                                    topic = row[FailedMessagesTable.topic],
+                                    messageKeyText = row[FailedMessagesTable.messageKeyText],
+                                    humanReadableValue = row[FailedMessagesTable.humanReadableValue],
+                                    failureReason = row[FailedMessagesTable.failureReason],
+                                    retryCount = row[FailedMessagesTable.retryCount],
+                                    queueTimestamp = row[FailedMessagesTable.queueTimestamp],
+                                    lastAttemptTimestamp = row[FailedMessagesTable.lastAttemptTimestamp],
+                                )
+                            }
+                    }
+                    call.respond(HttpStatusCode.OK, messages)
+                }.onFailure { e ->
+                    log.error("Feil ved henting av failed messages", e)
+                    call.respond(HttpStatusCode.InternalServerError, "Klarte ikke hente failed messages: ${e.message}")
+                }
+            }
+
             post("/admin/finn-kontor") {
                 val principal = when (val authResult = call.authenticateCall(environment.getIssuer())) {
                     is Authenticated -> authResult.principal as? NavAnsatt
@@ -252,6 +282,18 @@ fun Application.configureAdminModule(
         }
     }
 }
+
+@Serializable
+private data class FailedMessageResponse(
+    val id: Long,
+    val topic: String,
+    val messageKeyText: String,
+    val humanReadableValue: String?,
+    val failureReason: String,
+    val retryCount: Int,
+    @Serializable(with = OffsetDateTimeSerializer::class) val queueTimestamp: OffsetDateTime,
+    @Serializable(with = OffsetDateTimeSerializer::class) val lastAttemptTimestamp: OffsetDateTime?,
+)
 
 @Serializable
 private data class IdenterInputBody(val identer: String)
