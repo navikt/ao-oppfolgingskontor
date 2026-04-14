@@ -339,8 +339,8 @@ fun Application.configureAdminModule(
                     if (identer.isEmpty()) {
                         call.respond(HttpStatusCode.NotFound, "Fant ingen identer for intern_ident '${input.internIdent}'")
                     } else {
-                        val aktorId = identer.firstOrNull { it.second == "AKTORID" }?.first?.trim()
-                        val fnr = identer.firstOrNull { it.second == "FOLKEREGID" }?.first?.trim()
+                        val aktorId = identer.firstOrNull { it.second == "AKTOR_ID" }?.first?.trim()
+                        val fnr = identer.firstOrNull { it.second == "FNR" }?.first?.trim()
                         call.respond(HttpStatusCode.OK, IdenterForInternIdentResponse(aktorId = aktorId, fnr = fnr))
                     }
                 }.onFailure { e ->
