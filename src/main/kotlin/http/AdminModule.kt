@@ -28,6 +28,7 @@ import no.nav.authenticateCall
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
 import no.nav.db.table.FailedMessagesTable
+import db.table.IdentMappingTable
 import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.getIssuer
@@ -304,6 +305,27 @@ fun Application.configureAdminModule(
                     )
                 }
             }
+
+            post("/admin/intern-ident") {
+                runCatching {
+                    val input = call.receive<IdentInputBody>()
+                    val internId = transaction {
+                        IdentMappingTable
+                            .select(IdentMappingTable.internIdent)
+                            .where { IdentMappingTable.id eq input.ident }
+                            .map { it[IdentMappingTable.internIdent] }
+                            .firstOrNull()
+                    }
+                    if (internId != null) {
+                        call.respond(HttpStatusCode.OK, InternIdentResponse(internId))
+                    } else {
+                        call.respond(HttpStatusCode.NotFound, "Fant ingen intern ident for '${input.ident}'")
+                    }
+                }.onFailure { e ->
+                    log.error("Feil ved oppslag av intern ident", e)
+                    call.respond(HttpStatusCode.InternalServerError, "Klarte ikke slå opp intern ident: ${e.message}")
+                }
+            }
         }
     }
 }
@@ -340,3 +362,9 @@ private data class KontorSammenslåingBody(
         )
     }
 }
+
+@Serializable
+private data class IdentInputBody(val ident: String)
+
+@Serializable
+private data class InternIdentResponse(val internIdent: Long)
