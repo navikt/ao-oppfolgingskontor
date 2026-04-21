@@ -1,10 +1,8 @@
 package no.nav.http
 
 import arrow.core.Either
-import arrow.core.flatMap
 import arrow.core.flatten
 import arrow.core.left
-import arrow.core.raise.context.bind
 import arrow.core.right
 import audit.Decision
 import com.nimbusds.jose.util.DefaultResourceRetriever
@@ -28,6 +26,7 @@ import no.nav.authenticateCall
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
 import no.nav.db.table.FailedMessagesTable
+import db.table.IdentMappingTable
 import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.getIssuer
@@ -39,8 +38,10 @@ import no.nav.services.TilordningRetry
 import no.nav.services.TilordningSuccessIngenEndring
 import no.nav.services.TilordningSuccessKontorEndret
 import no.nav.utils.OffsetDateTimeSerializer
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.slf4j.LoggerFactory
@@ -304,6 +305,49 @@ fun Application.configureAdminModule(
                     )
                 }
             }
+
+            post("/admin/hent-intern-ident") {
+                runCatching {
+                    val input = call.receive<IdentInputBody>()
+                    val internId = transaction {
+                        IdentMappingTable
+                            .select(IdentMappingTable.internIdent)
+                            .where { IdentMappingTable.id eq input.ident }
+                            .map { it[IdentMappingTable.internIdent] }
+                            .firstOrNull()
+                    }
+                    if (internId != null) {
+                        call.respond(HttpStatusCode.OK, InternIdentResponse(internId))
+                    } else {
+                        call.respond(HttpStatusCode.NotFound, "Fant ingen intern ident for '${input.ident}'")
+                    }
+                }.onFailure { e ->
+                    log.error("Feil ved oppslag av intern ident", e)
+                    call.respond(HttpStatusCode.InternalServerError, "Klarte ikke slå opp intern ident: ${e.message}")
+                }
+            }
+
+            post("/admin/identer-for-intern-ident") {
+                runCatching {
+                    val input = call.receive<InternIdentInputBody>()
+                    val identer = transaction {
+                        IdentMappingTable
+                            .select(IdentMappingTable.id, IdentMappingTable.identType)
+                            .where { (IdentMappingTable.internIdent eq input.internIdent) and (IdentMappingTable.historisk eq false) }
+                            .map { it[IdentMappingTable.id].value to it[IdentMappingTable.identType].trim() }
+                    }
+                    if (identer.isEmpty()) {
+                        call.respond(HttpStatusCode.NotFound, "Fant ingen identer for intern_ident '${input.internIdent}'")
+                    } else {
+                        val aktorId = identer.firstOrNull { it.second == "AKTOR_ID" }?.first?.trim()
+                        val fnr = identer.firstOrNull { it.second == "FNR" }?.first?.trim()
+                        call.respond(HttpStatusCode.OK, IdenterForInternIdentResponse(aktorId = aktorId, fnr = fnr))
+                    }
+                }.onFailure { e ->
+                    log.error("Feil ved oppslag av identer for intern ident", e)
+                    call.respond(HttpStatusCode.InternalServerError, "Klarte ikke slå opp identer: ${e.message}")
+                }
+            }
         }
     }
 }
@@ -340,3 +384,15 @@ private data class KontorSammenslåingBody(
         )
     }
 }
+
+@Serializable
+private data class IdentInputBody(val ident: String)
+
+@Serializable
+private data class InternIdentResponse(val internIdent: Long)
+
+@Serializable
+private data class InternIdentInputBody(val internIdent: Long)
+
+@Serializable
+private data class IdenterForInternIdentResponse(val aktorId: String?, val fnr: String?)
