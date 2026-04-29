@@ -207,9 +207,10 @@ sequenceDiagram
   - `{ "Authorization": "Bearer <token>" }`
 - Legg til variabler i `Variables` fanen
   - `{ "ident": "<ident>" }`
+  - Ident må være en ident fra Dolly som er under arbeidsrettet oppfølging for at tjenesten skal gi ut et kontor
 - Profit?
 
-Eksempel på spørring:
+Eksempel på spørring som henter ut arbeidsoppfølgingskontor:
 ```graphql
 query HentKontorer($ident: String!) {
   kontorTilhorigheter(ident: $ident) {
