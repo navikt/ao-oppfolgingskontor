@@ -205,4 +205,18 @@ sequenceDiagram
 - Skaff et OBO token fra nais sin [azure-token-generator](https://azure-token-generator.intern.dev.nav.no/api/obo?aud=dev-gcp.dab.ao-oppfolgingskontor)
 - Bruk token som en "Authorization" header i `Headers` fanen nederst i [GraphiQl](https://ao-oppfolgingskontor.intern.dev.nav.no/graphiql)
   - `{ "Authorization": "Bearer <token>" }`
+- Legg til variabler i `Variables` fanen
+  - `{ "ident": "<ident>" }`
 - Profit?
+
+Eksempel på spørring:
+```graphql
+query HentKontorer($ident: String!) {
+  kontorTilhorigheter(ident: $ident) {
+    arbeidsoppfolging { kontorId kontorNavn }
+  }
+}
+```
+
+### GraphQL schema (sdl)
+https://ao-oppfolgingskontor.intern.dev.nav.no/sdl
