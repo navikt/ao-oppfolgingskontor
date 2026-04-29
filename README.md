@@ -205,4 +205,10 @@ sequenceDiagram
 - Skaff et OBO token fra nais sin [azure-token-generator](https://azure-token-generator.intern.dev.nav.no/api/obo?aud=dev-gcp.dab.ao-oppfolgingskontor)
 - Bruk token som en "Authorization" header i `Headers` fanen nederst i [GraphiQl](https://ao-oppfolgingskontor.intern.dev.nav.no/graphiql)
   - `{ "Authorization": "Bearer <token>" }`
-- Profit?
+- Eksempel på en spørring som henter ut arbeidsoppfølgingskontor: 
+  ```query HentKontorer($ident: String!) {
+  kontorTilhorigheter(ident: $ident) {
+    arbeidsoppfolging { kontorId kontorNavn }
+  }
+- Ident må være en ident fra Dolly som er under arbeidsrettet oppfølging for at tjenesten skal gi ut et kontor
+
