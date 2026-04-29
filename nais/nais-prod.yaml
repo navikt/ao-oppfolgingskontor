@@ -79,6 +79,9 @@ spec:
         - application: poao-tilgang
           namespace: poao
           cluster: prod-fss
+        - application: amt-person-service
+          namespace: amt
+          cluster: prod-gcp
     outbound:
       rules:
         - application: norg2

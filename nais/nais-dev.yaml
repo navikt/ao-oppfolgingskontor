@@ -85,6 +85,9 @@ spec:
         - application: poao-tilgang
           namespace: poao
           cluster: dev-fss
+        - application: amt-person-service
+          namespace: amt
+          cluster: dev-gcp
     outbound:
       rules:
         - application: norg2
