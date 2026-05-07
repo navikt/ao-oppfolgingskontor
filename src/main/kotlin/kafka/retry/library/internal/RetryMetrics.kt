@@ -42,13 +42,20 @@ internal class RetryMetrics(
     )
 
     // --- Sensorer opprettet med korrekt RecordingLevel ---
-    private val messagesEnqueuedSensor: Sensor = metrics.addSensor("messages-enqueued", Sensor.RecordingLevel.INFO)
-    private val retriesAttemptedSensor: Sensor = metrics.addSensor("retries-attempted", Sensor.RecordingLevel.INFO)
-    private val retriesSucceededSensor: Sensor = metrics.addSensor("retries-succeeded", Sensor.RecordingLevel.INFO)
-    private val retriesFailedSensor: Sensor = metrics.addSensor("retries-failed", Sensor.RecordingLevel.INFO)
-    private val messagesDeadLetteredSensor: Sensor = metrics.addSensor("messages-dead-lettered", Sensor.RecordingLevel.INFO)
-    private val failedMessagesCurrentSensor: Sensor = metrics.addSensor("failed-messages-current", Sensor.RecordingLevel.INFO)
-    private val failedMessagesOlderThan20MinutesSensor: Sensor = metrics.addSensor("failed-messages-older-than-20-minutes", Sensor.RecordingLevel.INFO)
+    // NB: Sensor-navn må være unike per topic. Kafka sin Metrics-registry er global per
+    // KafkaStreams-instans og slår opp Sensor på navn. Hvis flere retry-prosessorer i samme
+    // JVM bruker samme sensor-navn, deler de ÉN Sensor-instans — og Sensor.record() oppdaterer
+    // ALLE underliggende stats samtidig. Det fører til at den siste prosessoren som recorder
+    // overskriver verdiene for alle andre topics (gauge nullstilles, counters blir ikke per-topic).
+    // Selve metrikknavnet (det som eksporteres til Prometheus) er fortsatt uten topic-suffiks,
+    // og topic skilles via tag/label som før.
+    private val messagesEnqueuedSensor: Sensor = metrics.addSensor("messages-enqueued-$topic", Sensor.RecordingLevel.INFO)
+    private val retriesAttemptedSensor: Sensor = metrics.addSensor("retries-attempted-$topic", Sensor.RecordingLevel.INFO)
+    private val retriesSucceededSensor: Sensor = metrics.addSensor("retries-succeeded-$topic", Sensor.RecordingLevel.INFO)
+    private val retriesFailedSensor: Sensor = metrics.addSensor("retries-failed-$topic", Sensor.RecordingLevel.INFO)
+    private val messagesDeadLetteredSensor: Sensor = metrics.addSensor("messages-dead-lettered-$topic", Sensor.RecordingLevel.INFO)
+    private val failedMessagesCurrentSensor: Sensor = metrics.addSensor("failed-messages-current-$topic", Sensor.RecordingLevel.INFO)
+    private val failedMessagesOlderThan20MinutesSensor: Sensor = metrics.addSensor("failed-messages-older-than-20-minutes-$topic", Sensor.RecordingLevel.INFO)
 
     init {
         // --- Definer Telle-metrikker (Counters) ---
