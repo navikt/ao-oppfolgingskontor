@@ -221,3 +221,4 @@ query HentKontorer($ident: String!) {
 
 ### GraphQL schema (sdl)
 https://ao-oppfolgingskontor.intern.dev.nav.no/sdl
+a
