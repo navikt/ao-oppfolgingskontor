@@ -80,7 +80,7 @@ class KontorEndringProducer(
                 internIdent.value,
                 Json.encodeToString(event)
             )
-            producer.send(record)
+            producer.send(record).get()
         }
     }
 
@@ -91,7 +91,7 @@ class KontorEndringProducer(
                 internIdent.value,
                 null
             )
-            producer.send(record)
+            producer.send(record).get()
         }
     }
 
