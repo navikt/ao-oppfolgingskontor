@@ -8,7 +8,6 @@ import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.testing.*
 import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
 import no.nav.services.KontorTilordningService
-import org.jetbrains.exposed.v1.jdbc.Database
 
 fun ApplicationTestBuilder.getJsonHttpClient(): HttpClient {
     return createClient {
@@ -20,6 +19,6 @@ fun ApplicationTestBuilder.getJsonHttpClient(): HttpClient {
 val kontorTilordningService = KontorTilordningService(
     BigQueryClient(
         "ProjectId",
-        ExposedLockProvider(Database.connect(TestDb.postgres))
+        ExposedLockProvider(TestDb.database)
     )::loggSattKontorEvent
 )

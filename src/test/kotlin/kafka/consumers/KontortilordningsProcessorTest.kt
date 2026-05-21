@@ -23,8 +23,6 @@ import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
 import domain.kontorForGt.KontorForGtFantDefaultKontor
 import no.nav.domain.externalEvents.OppfolgingsperiodeEndret
-import no.nav.services.KontorTilordningService
-import no.nav.utils.bigQueryClient
 import no.nav.utils.kontorTilordningService
 import no.nav.utils.randomInternIdent
 import org.apache.kafka.streams.processor.api.Record

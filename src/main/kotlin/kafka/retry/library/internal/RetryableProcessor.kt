@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.time.Instant
 import kotlin.jvm.optionals.getOrElse
+import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 
 /**
  * Den sentrale prosessoren i feilhåndteringsbiblioteket.
@@ -99,11 +100,19 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
 
         try {
             transaction {
-                val result = businessLogic(record)
+                val result = transaction {
+                    return@transaction businessLogic(record).also {
+                        if (it is Retry) {
+                            rollback()
+                        }
+                    }
+                }
                 when (result) {
                     is Commit, is Skip -> {}
                     is Forward -> context.forward(result.forwardedRecord, result.topic)
-                    is Retry -> enqueue(record, result.reason)
+                    is Retry -> {
+                        enqueue(record, result.reason)
+                    }
                 }
             }
         } catch (e: Throwable) {
@@ -150,7 +159,13 @@ internal class RetryableProcessor<KIn, VIn, KOut, VOut>(
                 val reconstructionResult = message.toRecordReconstructedRecord()
                 when (reconstructionResult) {
                     is ReconstructedRecord -> {
-                        val processingResult = businessLogic(reconstructionResult.record)
+                        val processingResult = transaction {
+                            businessLogic(reconstructionResult.record).also {
+                                if (it is Retry) {
+                                    rollback()
+                                }
+                            }
+                        }
                         when (processingResult) {
                             is Retry -> RetryableFail(message, Exception(processingResult.reason))
                             else -> Success(message, processingResult)
