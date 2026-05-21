@@ -29,6 +29,7 @@ import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.http.client.GeografiskTilknytningKommuneNr
+import org.jetbrains.exposed.v1.core.DatabaseConfig
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.batchInsert
@@ -39,8 +40,15 @@ import services.ingenSensitivitet
 import services.toIdentType
 
 object TestDb {
-    val postgres = EmbeddedPostgres.start().postgresDatabase
-        .also { Database.connect(it) }
+    val postgres: DataSource = EmbeddedPostgres.start().postgresDatabase
+    val database: Database
+
+    init {
+        val databaseConfig = DatabaseConfig {
+            useNestedTransactions = true
+        }
+        database = Database.connect(postgres, databaseConfig = databaseConfig)
+    }
 }
 
 fun Application.flywayMigrationInTest(): DataSource {

@@ -19,11 +19,13 @@ import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 import java.util.UUID
 import kafka.consumers.TopicUtils.endringPaaOppfolgingsBrukerMessage
+import kafka.consumers.TopicUtils.oppfolgingAvsluttetMelding
 import kafka.consumers.TopicUtils.oppfolgingStartetMelding
 import kafka.producers.KontorEndringProducer
 import kafka.producers.OppfolgingEndretTilordningMelding
 import kafka.retry.TestLockProvider
 import kafka.retry.library.internal.setupKafkaMock
+import kotlin.Result
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import no.nav.db.AktorId
@@ -154,6 +156,65 @@ class BigAppTest {
                         KontorEndringsType.AutomatiskRutetTilNOE
                     )
                 )
+            }
+        }
+    }
+
+    @Test
+    fun `skal rulle tilbake databaseendringer hvis skriving til kafka feiler`() = testApplication {
+        val fnr = randomFnr()
+        val aktorId = AktorId("4444447890246", Ident.HistoriskStatus.AKTIV)
+        val kontor = KontorId("2232")
+        val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
+        coEvery { kontorEndringProducer.publiserTombstone(any()) } returns Result.failure(
+            RuntimeException("Feil ved publisering av tombstone")
+        )
+
+        environment {
+            config = ApplicationConfig("application.prod.yaml")
+        }
+        application {
+            gittBrukerUnderOppfolging(
+                fnr = fnr,
+                oppfolgingsperiodeId = oppfolgingsperiodeId,
+            )
+            gittIdentMedKontor(
+                ident = fnr,
+                kontorId = kontor,
+                oppfolgingsperiodeId = oppfolgingsperiodeId,
+            )
+            val topics = this.environment.topics()
+            val topology = setupTestEnvironment(
+                fnr,
+                oppfolgingsperiodeId,
+                kontorEndringProducer,
+                kontor,
+                HarSkjerming(false),
+                brukAoRuting = true
+            )
+
+            val (_, inputTopics, _) = setupKafkaMock(
+                topology,
+                listOf(topics.inn.oppfolgingsHendelser.name), null
+            )
+            val bruker = Bruker(fnr, aktorId.value, oppfolgingsperiodeId, ZonedDateTime.now())
+
+            inputTopics.first().pipeInput(
+                fnr.value, oppfolgingAvsluttetMelding(
+                    bruker = bruker,
+                    sluttDato = ZonedDateTime.now(),
+                ).value()
+            )
+
+            withClue("Skal fortsatt finnes Oppfolgingsperiode på bruker") {
+                transaction {
+                    OppfolgingsperiodeEntity.findById(fnr.value)
+                } shouldNotBe null
+            }
+            withClue("Skal fortsatt finnes AO kontor på bruker") {
+                transaction {
+                    ArbeidsOppfolgingKontorEntity.findById(fnr.value)
+                } shouldNotBe null
             }
         }
     }
@@ -453,7 +514,7 @@ class BigAppTest {
             },
             !brukAoRuting,
         )
-        val identService = IdentService { PdlIdenterFunnet(emptyList(), fnr) }
+        val identService = IdentService { PdlIdenterFunnet(listOf(fnr), fnr) }
         val identendringsProcessor = IdentChangeProcessor(identService)
 
         val publiserKontorTilordningProcessor = PubliserKontorTilordningProcessor(
