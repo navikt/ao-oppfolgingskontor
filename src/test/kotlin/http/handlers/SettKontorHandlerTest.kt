@@ -254,7 +254,7 @@ class SettKontorHandlerTest {
             publiserKontorEndring,
             { skjermingResult },
             { adresseResult },
-            true,
+            { true },
         )
     }
 }

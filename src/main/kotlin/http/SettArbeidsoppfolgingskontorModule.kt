@@ -11,6 +11,7 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
 import no.nav.Authenticated
+import no.nav.BrukAoRutingToggleSupplier
 import no.nav.NotAuthenticated
 import no.nav.audit.AuditLogger
 import no.nav.audit.toAuditEntry
@@ -42,7 +43,7 @@ fun Application.configureArbeidsoppfolgingskontorModule(
     authenticateRequest: AuthenticateRequest = { req -> req.call.authenticateCall(environment.getIssuer()) },
     hentSkjerming: suspend (IdentSomKanLagres) -> SkjermingResult,
     hentAdresseBeskyttelse: suspend (IdentSomKanLagres) -> HarStrengtFortroligAdresseResult,
-    brukAoRuting: Boolean
+    brukAoRuting: BrukAoRutingToggleSupplier
 ) {
     val log = LoggerFactory.getLogger("Application.configureArbeidsoppfolgingskontorModule")
 

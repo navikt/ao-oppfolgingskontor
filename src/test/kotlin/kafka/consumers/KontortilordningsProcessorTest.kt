@@ -41,7 +41,7 @@ class KontortilordningsProcessorTest {
             hardtFeilendeAutomatiskKontorRutingService(),
             kontorTilordningService,
             false,
-            false
+            { false }
         )
         val record: Record<Ident, OppfolgingsperiodeEndret> = Record(
             oppfolgingsperiode.fnr as Ident,
@@ -62,7 +62,7 @@ class KontortilordningsProcessorTest {
             feilendeAutomatiskKontorRutingService(oppfolgingsperiode),
             kontorTilordningService,
             false,
-            false
+            { false }
         )
         val record: Record<Ident, OppfolgingsperiodeEndret> = Record(
             oppfolgingsperiode.fnr as Ident,
@@ -82,7 +82,7 @@ class KontortilordningsProcessorTest {
             feilendeAutomatiskKontorRutingService(oppfolgingsperiode),
             kontorTilordningService,
             true,
-            false
+            { false }
         )
         val record: Record<Ident, OppfolgingsperiodeEndret> = Record(
             oppfolgingsperiode.fnr as Ident,

@@ -6,6 +6,7 @@ import domain.IdenterOppslagFeil
 import domain.IdenterResult
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import no.nav.BrukAoRutingToggleSupplier
 import no.nav.db.AktorId
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
@@ -28,14 +29,14 @@ class KontorEndringProducer(
     val kontorTopicNavn: String,
     val kontorNavnProvider: suspend (kontorId: KontorId) -> KontorNavn,
     val hentAlleIdenter: suspend (identInput: IdentSomKanLagres) -> IdenterResult,
-    val brukAoRuting: Boolean
+    val brukAoRuting: BrukAoRutingToggleSupplier
 ) {
 
     /**
     * Brukes ved synkront endring via REST API
     * */
     suspend fun publiserEndringPåKontor(event: KontorSattAvVeileder): Result<Unit> {
-        if (brukAoRuting) {
+        if (brukAoRuting()) {
             val (ident, aktorId, internIdent) = finnPubliseringsIdenter(event.tilordning.fnr)
             val value = event.toKontorTilordningMeldingDto(
                 aktorId,

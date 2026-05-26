@@ -81,7 +81,7 @@ class KafkaApplicationTest {
             oppfolgingsperiodeService::getCurrentOppfolgingsperiode,
             { null },
             { kontorTilordningService.tilordneKontor(it, true)},
-            true
+            { true }
         )
 
         application {
@@ -123,7 +123,7 @@ class KafkaApplicationTest {
             oppfolgingsperiodeService::getCurrentOppfolgingsperiode,
             { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },
             { kontorTilordningService.tilordneKontor(it, true)},
-            true
+            { true }
         )
 
         application {
@@ -162,7 +162,7 @@ class KafkaApplicationTest {
         val fnr =  randomFnr(UKJENT)
         val skjermetKontor = "4555"
         val topic = randomTopicName()
-        val brukAoRuting = true
+        val brukAoRuting = { true }
         val oppfølgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
 
         val automatiskKontorRutingService = AutomatiskKontorRutingService(

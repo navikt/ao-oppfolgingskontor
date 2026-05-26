@@ -3,6 +3,7 @@ package no.nav.kafka.consumers
 import kafka.out.toOppfolgingEndretTilordningMeldingRecord
 import kafka.producers.OppfolgingEndretTilordningMelding
 import kotlinx.coroutines.runBlocking
+import no.nav.BrukAoRutingToggleSupplier
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
 import no.nav.db.finnForetrukketIdent
@@ -31,7 +32,7 @@ import org.slf4j.LoggerFactory
 class LeesahProcessor(
     private val automatiskKontorRutingService: AutomatiskKontorRutingService,
     private val kontorTilordningService: KontorTilordningService,
-    private val brukAoRuting: Boolean
+    private val brukAoRuting: BrukAoRutingToggleSupplier
 ) {
     val log = LoggerFactory.getLogger(this::class.java)
 
@@ -67,6 +68,7 @@ class LeesahProcessor(
         }
         return when (result) {
             is HåndterPersondataEndretSuccess -> {
+                val brukAoRuting = brukAoRuting()
                 val aoKontorEndring = result.endringer.aoKontorEndret
 
                 result.endringer.gtKontorEndret
@@ -75,7 +77,7 @@ class LeesahProcessor(
                 return when {
                     aoKontorEndring != null -> {
                         kontorTilordningService.tilordneKontor(aoKontorEndring, brukAoRuting)
-                        if (brukAoRuting) {
+                        if (brukAoRuting()) {
                             Forward(aoKontorEndring.toOppfolgingEndretTilordningMeldingRecord())
                         }
                         else {

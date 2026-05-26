@@ -21,6 +21,7 @@ import kafka.consumers.OppfolgingsHendelseProcessor
 import kafka.consumers.PubliserKontorTilordningProcessor
 import kafka.producers.KontorEndringProducer
 import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
+import no.nav.BrukAoRutingToggleSupplier
 import no.nav.db.AktorId
 import no.nav.getPubliserArenaKontor
 import no.nav.http.client.IdentResult
@@ -63,7 +64,7 @@ class KafkaStreamsPluginConfig(
     var kontorEndringProducer: KontorEndringProducer? = null,
     var veilarbArenaClient: VeilarbArenaClient? = null,
     var kontorTilordningService: KontorTilordningService? = null,
-    var brukAoRuting: Boolean? = null,
+    var brukAoRuting: BrukAoRutingToggleSupplier? = null,
 )
 
 const val arbeidsoppfolgingkontorSinkName = "endring-pa-arbeidsoppfolgingskontor"
@@ -115,8 +116,8 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
         { oppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) },
         { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },
-        { kontorTilordningService.tilordneKontor(it, brukAoRuting) },
-        environment.getPubliserArenaKontor()
+        { kontorTilordningService.tilordneKontor(it, brukAoRuting()) },
+        { environment.getPubliserArenaKontor() }
     )
 
     val kontorTilordningsProcessor = KontortilordningsProcessor(
@@ -139,10 +140,10 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     )
     val arenakontorProcessor = ArenakontorVedOppfolgingStartetProcessor(
         veilarbArenaClient::hentArenaKontor,
-        { kontorTilordningService.tilordneKontor(it, brukAoRuting) },
+        { kontorTilordningService.tilordneKontor(it, brukAoRuting()) },
         { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },
         { kontorProducer.publiserEndringPåKontor(it) },
-        environment.getPubliserArenaKontor(),
+        { environment.getPubliserArenaKontor() },
     )
 
 

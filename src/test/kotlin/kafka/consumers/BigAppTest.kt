@@ -28,6 +28,7 @@ import kafka.retry.library.internal.setupKafkaMock
 import kotlin.Result
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import no.nav.BrukAoRutingToggleSupplier
 import no.nav.db.AktorId
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
@@ -111,7 +112,7 @@ class BigAppTest {
                 kontorEndringProducer,
                 kontor,
                 HarSkjerming(false),
-                brukAoRuting = true
+                brukAoRuting = { true }
             )
 
             val (_, inputTopics, _) = setupKafkaMock(
@@ -190,7 +191,7 @@ class BigAppTest {
                 kontorEndringProducer,
                 kontor,
                 HarSkjerming(false),
-                brukAoRuting = true
+                brukAoRuting = { true }
             )
 
             val (_, inputTopics, _) = setupKafkaMock(
@@ -245,7 +246,7 @@ class BigAppTest {
                 kontorEndringProducer,
                 skjermetKontor,
                 HarSkjerming(true),
-                brukAoRuting = true,
+                brukAoRuting = { true },
             )
             val (_, inputTopics, _) = setupKafkaMock(
                 topology,
@@ -305,7 +306,7 @@ class BigAppTest {
                 kontorEndringProducer,
                 skjermetKontor,
                 HarSkjerming(true),
-                brukAoRuting = false,
+                brukAoRuting = { false },
             )
             val (_, inputTopics, _) = setupKafkaMock(
                 topology,
@@ -361,7 +362,7 @@ class BigAppTest {
                 kontorEndringProducer,
                 nyttKontor,
                 HarSkjerming(false),
-                brukAoRuting = true,
+                brukAoRuting = { true },
             )
             val (_, inputTopics, _) = setupKafkaMock(
                 topology,
@@ -419,7 +420,7 @@ class BigAppTest {
                 kontorEndringProducer,
                 nyttKontor,
                 HarSkjerming(false),
-                brukAoRuting = false,
+                brukAoRuting = { false },
             )
             val (_, inputTopics, _) = setupKafkaMock(
                 topology,
@@ -464,7 +465,7 @@ class BigAppTest {
         kontorEndringProducer: KontorEndringProducer,
         kontor: KontorId,
         harSkjerming: HarSkjerming,
-        brukAoRuting: Boolean,
+        brukAoRuting: BrukAoRutingToggleSupplier,
     ): Topology {
         val oppfolgingsperiodeProvider =
             { _: Ident -> AktivOppfolgingsperiode(fnr, randomInternIdent(), oppfolgingsperiodeId, OffsetDateTime.now()) }
@@ -509,10 +510,10 @@ class BigAppTest {
                             endretAvRegistrant = System(Systemnavn.ARENA),
                         )
                     ),
-                    brukAoRuting = brukAoRuting,
+                    brukAoRuting = brukAoRuting(),
                 )
             },
-            !brukAoRuting,
+            { !brukAoRuting() },
         )
         val identService = IdentService { PdlIdenterFunnet(listOf(fnr), fnr) }
         val identendringsProcessor = IdentChangeProcessor(identService)

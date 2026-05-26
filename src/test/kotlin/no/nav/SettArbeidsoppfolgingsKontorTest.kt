@@ -81,7 +81,7 @@ class SettArbeidsoppfolgingsKontorTest {
         aktorId: AktorId,
         skjerming: SkjermingResult = SkjermingFunnet(HarSkjerming(false)),
         adressebeskyttelse: HarStrengtFortroligAdresseResult = HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)),
-        brukAoRuting: Boolean = false,
+        brukAoRuting: BrukAoRutingToggleSupplier = { false },
         extraDatabaseSetup: Application.() -> Unit = {},
         ): MockProducer<Long, String?> {
         environment {
@@ -207,7 +207,7 @@ class SettArbeidsoppfolgingsKontorTest {
             val aktorId = randomAktorId(UKJENT)
             val kontorId = "4444"
             val veilederIdent = NavIdent("Z990000")
-            setupTestAppWithAuthAndGraphql(fnr, aktorId, brukAoRuting = true) {
+            setupTestAppWithAuthAndGraphql(fnr, aktorId, brukAoRuting = { true }) {
                 gittIdentIMapping(fnr)
             }
             val httpClient = getJsonHttpClient()
@@ -227,7 +227,7 @@ class SettArbeidsoppfolgingsKontorTest {
             val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
             val veilederIdent = NavIdent("Z990000")
             val harSkjerming = SkjermingFunnet(HarSkjerming(true))
-            setupTestAppWithAuthAndGraphql(fnr, aktorId, brukAoRuting = true, skjerming = harSkjerming) {
+            setupTestAppWithAuthAndGraphql(fnr, aktorId, brukAoRuting = { true }, skjerming = harSkjerming) {
                 gittBrukerUnderOppfolging(fnr, oppfolgingsperiodeId)
                 gittIdentIMapping(fnr)
             }
@@ -249,7 +249,7 @@ class SettArbeidsoppfolgingsKontorTest {
             val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
             val veilederIdent = NavIdent("Z990000")
             val adressebeskyttelse = HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(true))
-            setupTestAppWithAuthAndGraphql(fnr, aktorId, brukAoRuting = true, adressebeskyttelse = adressebeskyttelse) {
+            setupTestAppWithAuthAndGraphql(fnr, aktorId, brukAoRuting = { true }, adressebeskyttelse = adressebeskyttelse) {
                 gittBrukerUnderOppfolging(fnr, oppfolgingsperiodeId)
                 gittIdentIMapping(fnr)
             }

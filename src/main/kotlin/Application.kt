@@ -130,7 +130,7 @@ fun Application.module() {
         kontorTopicNavn = this.environment.topics().ut.arbeidsoppfolgingskontortilordninger.name,
         kontorNavnProvider = { kontorId -> kontorNavnService.getKontorNavn(kontorId) },
         hentAlleIdenter = { identSomKanLagres -> identService.hentAlleIdenter(identSomKanLagres) },
-        brukAoRuting = this.environment.getBrukAoRuting()
+        brukAoRuting = { this.environment.getBrukAoRuting() }
     )
     val republiseringService = KontorRepubliseringService(
         kontorEndringProducer::republiserKontor,
@@ -140,7 +140,7 @@ fun Application.module() {
         kontorEndringProducer::publiserTombstone,
         oppfolgingsperiodeService::getCurrentOppfolgingsperiode
     )
-    val arenaSyncService = ArenaSyncService(veilarbArenaClient, kontorTilordningService, kontorTilhorighetService, oppfolgingsperiodeService, environment.getBrukAoRuting())
+    val arenaSyncService = ArenaSyncService(veilarbArenaClient, kontorTilordningService, kontorTilhorighetService, oppfolgingsperiodeService, { environment.getBrukAoRuting() })
     val brukAoRuting = environment.getBrukAoRuting()
 
     install(KafkaStreamsPlugin) {
@@ -156,7 +156,7 @@ fun Application.module() {
         this.kontorEndringProducer = kontorEndringProducer
         this.veilarbArenaClient = veilarbArenaClient
         this.kontorTilordningService = kontorTilordningService
-        this.brukAoRuting = brukAoRuting
+        this.brukAoRuting = { brukAoRuting }
     }
 
     val issuer = environment.getIssuer()
@@ -178,7 +178,7 @@ fun Application.module() {
         { kontorEndringProducer.publiserEndringPåKontor(it) },
         hentSkjerming = { skjermingsClient.hentSkjerming(it) },
         hentAdresseBeskyttelse = { pdlClient.harStrengtFortroligAdresse(it) },
-        brukAoRuting = environment.getBrukAoRuting(),
+        brukAoRuting = { environment.getBrukAoRuting() },
     )
     configureFinnKontorModule(simulerKontorTilordning, kontorNavnService::getKontorNavn, { call -> call.authenticateCall(issuer) })
     configureAdminModule(simulerKontorTilordning, republiseringService, arenaSyncService, kontorSammenslåingService)
@@ -197,10 +197,12 @@ fun ApplicationEnvironment.isProduction(): Boolean {
         ?.contentEquals("prod-gcp") ?: false
 }
 
+typealias BrukAoRutingToggleSupplier = () -> Boolean
 fun ApplicationEnvironment.getBrukAoRuting(): Boolean {
     return config.property("brukAoRuting").getString().toBoolean()
 }
 
+typealias BrukPubliserArenaKontor = () -> Boolean
 fun ApplicationEnvironment.getPubliserArenaKontor(): Boolean {
     return !getBrukAoRuting()
 }
