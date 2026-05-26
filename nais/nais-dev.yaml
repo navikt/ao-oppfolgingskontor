@@ -88,6 +88,9 @@ spec:
         - application: amt-person-service
           namespace: amt
           cluster: dev-gcp
+        - application: arena
+          namespace: teamarenanais
+          cluster: dev-fss
     outbound:
       rules:
         - application: norg2
