@@ -142,6 +142,41 @@ class PdlClientTest {
     }
 
     @Test
+    fun `hentAlder skal returnere IngenAlderFunnet hvis ingen info om fødselsdato finnes`() = testApplication {
+        val fnr = randomFnr()
+        val client = mockPdl(
+            hentPersonQuery(
+                """
+            {
+                "foedselsdato": []
+            }
+        """.trimIndent()
+            )
+        )
+        val pdlClient = PdlClient(pdlTestUrl, client, isDev = false)
+        val alder = pdlClient.hentAlder(fnr)
+        alder.shouldBeInstanceOf<AlderIkkeFunnet>()
+    }
+
+    @Test
+    fun `hentAlder skal returnere faket alder i dev hvis ingen info om fødselsdato finnes`() = testApplication {
+        val fnr = randomFnr()
+        val client = mockPdl(
+            hentPersonQuery(
+                """
+            {
+                "foedselsdato": []
+            }
+        """.trimIndent()
+            )
+        )
+        val pdlClient = PdlClient(pdlTestUrl, client, isDev = true)
+        val alder = pdlClient.hentAlder(fnr)
+        alder.shouldBeInstanceOf<AlderFunnet>()
+        alder.alder.shouldBePositive()
+    }
+
+    @Test
     fun `harStrengtFortroligAdresse skal returnere strengt fortrolig adresse true når adressebeskyttelse er STRENGT_FORTROLIG_UTLAND`() =
         testApplication {
             val fnr = randomFnr()

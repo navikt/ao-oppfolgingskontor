@@ -40,7 +40,6 @@ class KontortilordningsProcessorTest {
         val processor = KontortilordningsProcessor(
             hardtFeilendeAutomatiskKontorRutingService(),
             kontorTilordningService,
-            false,
             false
         )
         val record: Record<Ident, OppfolgingsperiodeEndret> = Record(
@@ -61,7 +60,6 @@ class KontortilordningsProcessorTest {
         val processor = KontortilordningsProcessor(
             feilendeAutomatiskKontorRutingService(oppfolgingsperiode),
             kontorTilordningService,
-            false,
             false
         )
         val record: Record<Ident, OppfolgingsperiodeEndret> = Record(
@@ -73,26 +71,6 @@ class KontortilordningsProcessorTest {
         val result = processor.process(record)
 
         result.shouldBeInstanceOf<Retry<*, *>>()
-    }
-
-    @Test
-    fun `skal hoppe over melding hvis Retry på uventete feil `() {
-        val oppfolgingsperiode = oppfolgingsperiodeStartet()
-        val processor = KontortilordningsProcessor(
-            feilendeAutomatiskKontorRutingService(oppfolgingsperiode),
-            kontorTilordningService,
-            true,
-            false
-        )
-        val record: Record<Ident, OppfolgingsperiodeEndret> = Record(
-            oppfolgingsperiode.fnr as Ident,
-            oppfolgingsperiode,
-            Instant.now().toEpochMilli(),
-        )
-
-        val result = processor.process(record)
-
-        result.shouldBeInstanceOf<Skip<*, *>>()
     }
 
     fun oppfolgingsperiodeStartet(): OppfolgingsperiodeStartet {

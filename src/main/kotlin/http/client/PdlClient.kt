@@ -16,7 +16,6 @@ import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
-import no.nav.db.InternIdent
 import no.nav.db.finnForetrukketIdent
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.http.client.tokenexchange.SystemTokenPlugin
@@ -28,6 +27,7 @@ import no.nav.http.graphql.generated.client.HentGtQuery
 import no.nav.http.graphql.generated.client.SokAdresseFritekstQuery
 import no.nav.http.graphql.generated.client.enums.AdressebeskyttelseGradering
 import no.nav.http.graphql.generated.client.enums.GtType
+import no.nav.http.graphql.generated.client.hentalderquery.Foedselsdato
 import no.nav.http.graphql.generated.client.inputs.Criterion
 import no.nav.http.graphql.generated.client.inputs.Paging
 import no.nav.http.graphql.generated.client.inputs.SearchRule
@@ -89,10 +89,11 @@ val BehandlingsnummerHeaderPlugin = createClientPlugin("BehandlingsnummerHeaderP
 
 class PdlClient(
     pdlGraphqlUrl: String,
-    ktorHttpClient: HttpClient
+    ktorHttpClient: HttpClient,
+    private val isDev: Boolean = false
 ) {
 
-    constructor(pdlGraphqlUrl: String, azureTokenProvider: suspend () -> TexasTokenResponse) : this(
+    constructor(pdlGraphqlUrl: String, azureTokenProvider: suspend () -> TexasTokenResponse, isDev: Boolean) : this(
         pdlGraphqlUrl,
         HttpClient(CIO) {
             install(BehandlingsnummerHeaderPlugin)
@@ -122,7 +123,10 @@ class PdlClient(
                 return AlderIkkeFunnet(result.errors!!.joinToString { it.message })
             } else {
                 val foedselsdatoObject = result.data?.hentPerson?.foedselsdato?.firstOrNull()
-                    ?: return AlderIkkeFunnet("Ingen foedselsdato i felt 'foedselsdato' fra pdl-spørring, dårlig data i dev?")
+                if (foedselsdatoObject == null) {
+                    if (isDev) return AlderFunnet((18..65).random())
+                    else return AlderIkkeFunnet("Ingen foedselsdato i felt 'foedselsdato' fra pdl-spørring")
+                }
                 val foedselsdato = foedselsdatoObject.foedselsdato
                     ?.let { LocalDate.parse(it, DateTimeFormatter.ISO_LOCAL_DATE) }
                 val now = ZonedDateTime.now().toLocalDate()

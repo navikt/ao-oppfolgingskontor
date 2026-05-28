@@ -478,7 +478,7 @@ class BigAppTest {
             { _, _ -> Outcome.Success(false) },
             { null },
         )
-        val tilordningProcessor = KontortilordningsProcessor(automatiskKontorRutingService, kontorTilordningService, false, brukAoRuting)
+        val tilordningProcessor = KontortilordningsProcessor(automatiskKontorRutingService, kontorTilordningService, brukAoRuting)
         val leesahProcessor = LeesahProcessor(
             automatiskKontorRutingService,
             kontorTilordningService,

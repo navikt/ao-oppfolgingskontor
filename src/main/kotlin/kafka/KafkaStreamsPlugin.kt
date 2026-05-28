@@ -122,8 +122,6 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val kontorTilordningsProcessor = KontortilordningsProcessor(
         automatiskKontorRutingService,
         kontorTilordningService,
-        // Hopp over personer som ikke finnes alder på i nytt felt i dev
-        skipPersonIkkeFunnet = !isProduction,
         brukAoRuting
     )
     val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, brukAoRuting)
