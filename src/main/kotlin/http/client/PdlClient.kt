@@ -124,7 +124,7 @@ class PdlClient(
             } else {
                 val foedselsdatoObject = result.data?.hentPerson?.foedselsdato?.firstOrNull()
                 if (foedselsdatoObject == null) {
-                    if (isDev) return AlderFunnet((18..65).random())
+                    if (isDev) return AlderFunnet((18..65).random()).also { log.info("Returnerer faket alder i dev") }
                     else return AlderIkkeFunnet("Ingen foedselsdato i felt 'foedselsdato' fra pdl-spørring")
                 }
                 val foedselsdato = foedselsdatoObject.foedselsdato
