@@ -106,7 +106,8 @@ class PdlClient(
             install(Logging) {
                 level = LogLevel.INFO
             }
-        }
+        },
+        isDev
     )
 
     val log = LoggerFactory.getLogger(PdlClient::class.java)
