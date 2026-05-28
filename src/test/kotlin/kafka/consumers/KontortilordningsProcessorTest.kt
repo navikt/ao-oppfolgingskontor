@@ -84,25 +84,6 @@ class KontortilordningsProcessorTest {
         )
     }
 
-    fun automatiskKontorRutingService(oppfolging: OppfolgingsperiodeStartet): AutomatiskKontorRutingService {
-        return AutomatiskKontorRutingService(
-            { a, b, c -> KontorForGtFantDefaultKontor(KontorId("3131"), HarSkjerming(false),
-                HarStrengtFortroligAdresse(false), GeografiskTilknytningKommuneNr("3131")) },
-            { AlderFunnet(33) },
-            { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
-            { SkjermingFunnet(HarSkjerming(false)) },
-            { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
-            { AktivOppfolgingsperiode(
-                oppfolging.fnr,
-                randomInternIdent(),
-                oppfolging.periodeId,
-                oppfolging.startDato.toOffsetDateTime()
-            ) },
-            { _, _ -> Outcome.Success(false)  },
-            { null },
-        )
-    }
-
     fun feilendeAutomatiskKontorRutingService(oppfolging: OppfolgingsperiodeStartet): AutomatiskKontorRutingService {
         return AutomatiskKontorRutingService(
             { a, b, c -> KontorForGtFantDefaultKontor(KontorId("3131"), HarSkjerming(false),
