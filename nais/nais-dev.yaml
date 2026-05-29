@@ -113,6 +113,7 @@ spec:
         - host: veilarbarena.dev-fss-pub.nais.io
         - host: aareg-services.dev-fss-pub.nais.io
         - host: ereg-services.dev-fss-pub.nais.io
+        - host: dab-unleash-api.nav.cloud.nais.io
   azure:
     application:
       enabled: true
@@ -120,6 +121,8 @@ spec:
       claims:
         extra:
           - "NAVident"
+  envFrom:
+    - secret: ao-oppfolgingskontor-unleash-api-token
   env:
     - name: AAREG_URL
       value: https://aareg-services.dev-fss-pub.nais.io

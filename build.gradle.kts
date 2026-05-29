@@ -95,6 +95,7 @@ dependencies {
     implementation(libs.google.cloud.bigquery)
     implementation(platform(libs.google.cloud.libraries.bom))
     implementation(libs.arrow.core)
+    implementation(libs.unleash.client.java)
 
     testImplementation(libs.ktor.client.mock)
     testImplementation(libs.embedded.postgres)
