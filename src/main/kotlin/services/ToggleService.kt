@@ -35,7 +35,7 @@ class ToggleService(
     }
     private val unleashClient: Unleash = environment.createUnleashClient(subscriber)
     public var brukAoRutingMutableVar: Boolean = skalBrukeAoRuting()
-    private var isKafkaPaused = false
+    private var isKafkaPaused: Boolean = skalIkkeLeseFraKafka()
 
     private fun refreshToggles() {
         val skalPause = skalIkkeLeseFraKafka()
