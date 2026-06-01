@@ -41,9 +41,11 @@ class ToggleService(
         val skalPause = skalIkkeLeseFraKafka()
         if (!isKafkaPaused && skalPause) {
             onKafkaPaused()
+            isKafkaPaused = true
         }
         if (isKafkaPaused && !skalPause) {
             onKafkaResumed()
+            isKafkaPaused = false
         }
 
         brukAoRutingMutableVar = skalBrukeAoRuting()
