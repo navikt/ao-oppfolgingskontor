@@ -28,14 +28,13 @@ class ToggleService(
     private val onKafkaResumed: () -> Unit,
 
 ) {
-    public var brukAoRutingMutableVar: Boolean = skalBrukeAoRuting()
-
     private val subscriber =  object : UnleashSubscriber {
         override fun togglesFetched(toggleResponse: ClientFeaturesResponse) {
             refreshToggles()
         }
     }
     private val unleashClient: Unleash = environment.createUnleashClient(subscriber)
+    public var brukAoRutingMutableVar: Boolean = skalBrukeAoRuting()
     private var isKafkaPaused = false
 
     private fun refreshToggles() {
