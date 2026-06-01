@@ -57,7 +57,7 @@ fun Application.module() {
                 .builder()
                 .appName(environment.getApplicationName())
                 .instanceId(environment.getApplicationName())
-                .unleashAPI(environment.getUnleashServerApiUrl())
+                .unleashAPI("${environment.getUnleashServerApiUrl()}/api")
                 .apiKey(environment.getUnleashServerApiToken())
                 .build()
         )
