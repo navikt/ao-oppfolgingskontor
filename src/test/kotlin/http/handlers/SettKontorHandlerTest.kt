@@ -106,6 +106,12 @@ class SettKontorHandlerTest {
     @Test
     fun `Skal svare med 400 når bruker er skjermet, veileder har tilgang men nytt kontor ikke er for skjermete brukere`() = runTest {
         val handler = defaultHandler(fnr, skjermingResult = SkjermingFunnet(HarSkjerming(true)))
+        val vanligKontorId = "0318"
+        val kontortilordningVanligKontor = kontortilordning.copy(kontorId = vanligKontorId)
+
+        handler.settKontor(
+            kontortilordningVanligKontor, navAnsatt, "trace"
+        ) shouldBe SettKontorFailure(HttpStatusCode.BadRequest, "Kan ikke sette en skjermet bruker til kontor som ikke er for egne ansatte")
     }
 
     @Test

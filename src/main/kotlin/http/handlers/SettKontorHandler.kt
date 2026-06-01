@@ -173,9 +173,9 @@ class SettKontorHandler(
                     if (nyttKontorErForSkjermedeBruker) {
                         Either.Right(Unit)
                     } else {
-                        val errorMessage = "Kan ikke bytte kontor på skjermet bruker"
+                        val errorMessage = "Kan ikke sette en skjermet bruker til kontor som ikke er for egne ansatte"
                         log.error(errorMessage)
-                        Either.Left(SettKontorFailure(HttpStatusCode.Conflict, errorMessage))
+                        Either.Left(SettKontorFailure(HttpStatusCode.BadRequest, errorMessage))
                     }
                 } else Either.Right(Unit)
             }
