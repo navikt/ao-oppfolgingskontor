@@ -96,7 +96,7 @@ class SettKontorHandlerTest {
             KontorByttetOkResponseDto(
                 fraKontor = null,
                 tilKontor = Kontor(
-                    "Kontor navn", // TODO: Bør vi sjekke for navnet?
+                    "Kontor navn",
                     kontorIdEgneAnsatteOslo.id
                 )
             )
