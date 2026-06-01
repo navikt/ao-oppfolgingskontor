@@ -5,6 +5,8 @@ import eventsLogger.BigQueryClient
 import http.client.*
 import http.configureContentNegotiation
 import http.configureHentArbeidsoppfolgingskontorBulkModule
+import io.getunleash.DefaultUnleash
+import io.getunleash.util.UnleashConfig
 import io.ktor.server.application.*
 import io.ktor.server.netty.*
 import kafka.producers.KontorEndringProducer
@@ -49,6 +51,17 @@ fun Application.module() {
     configureSecurity()
     configureRateLimit()
 
+    val toggleService = ToggleService(
+        unleashClient = DefaultUnleash(
+            UnleashConfig
+                .builder()
+                .appName(environment.getApplicationName())
+                .instanceId(environment.getApplicationName())
+                .unleashAPI("${environment.getUnleashServerApiUrl()}/api")
+                .apiKey(environment.getUnleashServerApiToken())
+                .build()
+        )
+    )
 
     val norg2Client = Norg2Client(environment.getNorg2Url())
 
@@ -161,6 +174,7 @@ fun Application.module() {
         this.veilarbArenaClient = veilarbArenaClient
         this.kontorTilordningService = kontorTilordningService
         this.brukAoRuting = brukAoRuting
+        this.toggleService = toggleService
     }
 
     val issuer = environment.getIssuer()
@@ -209,6 +223,18 @@ fun ApplicationEnvironment.isDev(): Boolean {
 
 fun ApplicationEnvironment.getBrukAoRuting(): Boolean {
     return config.property("brukAoRuting").getString().toBoolean()
+}
+
+fun ApplicationEnvironment.getApplicationName(): String {
+    return config.property("appName").getString()
+}
+
+fun ApplicationEnvironment.getUnleashServerApiUrl(): String {
+    return config.property("unleash.url").getString()
+}
+
+fun ApplicationEnvironment.getUnleashServerApiToken(): String {
+    return config.property("unleash.token").getString()
 }
 
 fun ApplicationEnvironment.getPubliserArenaKontor(): Boolean {
