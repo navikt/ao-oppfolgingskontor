@@ -164,10 +164,12 @@ class BigQueryClient(
         return transaction(database) {
             exec(
                 """
-                        select count(*) as antall
-                        from arenakontor ak
-                                 inner join arbeidsoppfolgingskontor aok on ak.fnr = aok.fnr
-                        where ak.kontor_id != aok.kontor_id;
+                        SELECT count(*) AS antall
+                        FROM arenakontor ak
+                                 JOIN ident_mapping im_ak ON ak.fnr = im_ak.ident
+                                 JOIN ident_mapping im_aok ON im_ak.intern_ident = im_aok.intern_ident
+                                 JOIN arbeidsoppfolgingskontor aok ON im_aok.ident = aok.fnr
+                        WHERE ak.kontor_id != aok.kontor_id;
                     """.trimIndent()
             ) { rs -> if (rs.next()) rs.getLong("antall") else 0L } ?: 0L
         }
