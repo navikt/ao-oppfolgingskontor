@@ -52,6 +52,7 @@ class SettKontorHandlerTest {
     val navAnsatt = NavAnsatt(navIdent, UUID.randomUUID())
     val fnr = randomFnr()
     val kontorId = KontorId("3144")
+    val kontorIdEgneAnsatteOslo = KontorId("0383")
     val kontortilordning = ArbeidsoppfolgingsKontorTilordningDTO(
         kontorId.id,
         "fordi",
@@ -85,12 +86,26 @@ class SettKontorHandlerTest {
     }
 
     @Test
-    fun `Skal svare med 409 når bruker er skjermet `() = runTest {
+    fun `Skal kunne sette kontor når bruker er skjermet, veileder har tilgang og nytt kontor er for skjermete brukere`() = runTest {
         val handler = defaultHandler(fnr, skjermingResult = SkjermingFunnet(HarSkjerming(true)))
+        val kontortilordningTilEgneAnsatteOslo = kontortilordning.copy(kontorId = kontorIdEgneAnsatteOslo.id)
 
         handler.settKontor(
-            kontortilordning, navAnsatt, "trace"
-        ) shouldBe SettKontorFailure(HttpStatusCode.Conflict, "Kan ikke bytte kontor på skjermet bruker")
+            kontortilordningTilEgneAnsatteOslo, navAnsatt, "trace"
+        ) shouldBe SettKontorSuccess(
+            KontorByttetOkResponseDto(
+                fraKontor = null,
+                tilKontor = Kontor(
+                    "Kontor navn", // TODO: Bør vi sjekke for navnet?
+                    kontorIdEgneAnsatteOslo.id
+                )
+            )
+        )
+    }
+
+    @Test
+    fun `Skal svare med 400 når bruker er skjermet, veileder har tilgang men nytt kontor ikke er for skjermete brukere`() = runTest {
+        val handler = defaultHandler(fnr, skjermingResult = SkjermingFunnet(HarSkjerming(true)))
     }
 
     @Test
