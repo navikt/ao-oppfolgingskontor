@@ -219,7 +219,7 @@ class SettArbeidsoppfolgingsKontorTest {
     }
 
     @Test
-    fun `skal svare med 409 når bruker ikke er skjermet (de kan ikke flyttes)`() = testApplication {
+    fun `skal svare med 400 når bruker er skjermet og kontor ikke er for skjermede`() = testApplication {
         withMockOAuth2Server {
             val fnr = randomFnr(UKJENT)
             val aktorId = randomAktorId(UKJENT)
@@ -235,8 +235,8 @@ class SettArbeidsoppfolgingsKontorTest {
 
             val response = httpClient.settKontor(server, fnr = fnr, kontorId = kontorId, navIdent = veilederIdent)
 
-            response.status shouldBe HttpStatusCode.Conflict
-            response.bodyAsText() shouldBe "Kan ikke bytte kontor på skjermet bruker"
+            response.status shouldBe HttpStatusCode.BadRequest
+            response.bodyAsText() shouldBe "Kan ikke sette en skjermet bruker til kontor som ikke er for egne ansatte"
         }
     }
 
