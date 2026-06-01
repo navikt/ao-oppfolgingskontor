@@ -178,7 +178,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
 
     on(MonitoringEvent(KafkaResumedEvent)) {
         if (kafkaStream.isPaused) {
-            logger.warn("Toggle $STOPP_KAFKA_CONSUMERS_TOGGLE er på - pauser Kafka Streams (offsets bevares)")
+            logger.warn("Toggle $STOPP_KAFKA_CONSUMERS_TOGGLE er av - gjenopptar Kafka Streams konsumering")
             kafkaStream.resume()
         }
     }
