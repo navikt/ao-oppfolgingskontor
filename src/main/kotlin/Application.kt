@@ -53,7 +53,11 @@ fun Application.module() {
     val norg2Client = Norg2Client(environment.getNorg2Url())
 
     val texasClient = TexasSystemTokenClient(environment.getNaisTokenEndpoint())
-    val pdlClient = PdlClient(environment.getPDLUrl(), texasClient.tokenProvider(environment.getPdlScope()))
+    val pdlClient = PdlClient(
+        pdlGraphqlUrl = environment.getPDLUrl(),
+        azureTokenProvider = texasClient.tokenProvider(environment.getPdlScope()),
+        isDev = environment.isDev()
+    )
     val arbeidssokerregisterClient = ArbeidssokerregisterClient(
         environment.getArbeidssokerregisteretUrl(),
         texasClient.tokenProvider(environment.getArbeidssokerregisteretScope()))
@@ -195,6 +199,12 @@ fun ApplicationEnvironment.isProduction(): Boolean {
     return config.propertyOrNull("cluster")
         ?.getString()
         ?.contentEquals("prod-gcp") ?: false
+}
+
+fun ApplicationEnvironment.isDev(): Boolean {
+    return config.propertyOrNull("cluster")
+        ?.getString()
+        ?.contains("dev-gcp") ?: false
 }
 
 fun ApplicationEnvironment.getBrukAoRuting(): Boolean {
