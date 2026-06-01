@@ -24,6 +24,8 @@ import no.nav.domain.NavIdent
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseResult
+import no.nav.http.client.MinimaltNorgKontor
+import no.nav.http.client.NorgKontorType
 import no.nav.http.client.PdlIdenterFunnet
 import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.SkjermingResult
@@ -128,6 +130,7 @@ class SettArbeidsoppfolgingsKontorTest {
                 { kontorEndringProducer.publiserEndringPåKontor(it) },
                 hentSkjerming = { skjerming },
                 hentAdresseBeskyttelse = { adressebeskyttelse },
+                hentEnheterForEgneAnsatte = { listOf(MinimaltNorgKontor(kontorId = "0383", "Nav egne ansatte Oslo", NorgKontorType.KO)) },
                 brukAoRuting = brukAoRuting
             )
             routing {

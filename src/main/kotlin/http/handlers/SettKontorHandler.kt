@@ -14,7 +14,6 @@ import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
 import no.nav.db.Npid
-import no.nav.db.table.KontorNavnTable.kontorNavn
 import no.nav.domain.ArbeidsoppfolgingsKontor
 import no.nav.domain.KontorId
 import no.nav.domain.KontorNavn
@@ -31,6 +30,7 @@ import no.nav.http.client.HarStrengtFortroligAdresseIkkeFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseOppslagFeil
 import no.nav.http.client.HarStrengtFortroligAdresseResult
 import no.nav.http.client.IdentFunnet
+import no.nav.http.client.MinimaltNorgKontor
 import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.SkjermingIkkeFunnet
 import no.nav.http.client.SkjermingResult
@@ -63,6 +63,7 @@ class SettKontorHandler(
     private val publiserManuellKontorEndring: PubliserManuellKontorEndring,
     private val hentSkjerming: suspend (IdentSomKanLagres) -> SkjermingResult,
     private val hentAdresseBeskyttelse: suspend (IdentSomKanLagres) -> HarStrengtFortroligAdresseResult,
+    private val hentEnheterForEgneAnsatte: suspend () -> List<MinimaltNorgKontor>,
     private val brukAoRuting: Boolean,
 ) {
     private val log = LoggerFactory.getLogger(this::class.java)
@@ -168,8 +169,9 @@ class SettKontorHandler(
         return when (val skjerming = hentSkjerming(ident)) {
             is SkjermingFunnet -> {
                 if (skjerming.skjermet.value) {
+                    val enheterEgneAnsatte = hentEnheterForEgneAnsatte()
                     val nyttKontorErForSkjermedeBruker =
-                        nyttKontorId in enheterForSkjermedeBrukere.map { it.kontorId }
+                        nyttKontorId in enheterEgneAnsatte.map { it.kontorId }
                     if (nyttKontorErForSkjermedeBruker) {
                         Either.Right(Unit)
                     } else {
@@ -260,23 +262,6 @@ class SettKontorHandler(
                 .fold({ it }, { it })
         }
     }
-
-    val enheterForSkjermedeBrukere = listOf(
-        Kontor(kontorNavn = "Nav egne ansatte Rogaland", kontorId = "1183"),
-        Kontor(kontorNavn = "Nav egne ansatte Troms og Finnmark", kontorId = "1983"),
-        Kontor(kontorNavn = "Nav egne ansatte Møre og Romsdal", kontorId = "1583"),
-        Kontor(kontorNavn = "Nav egne ansatte Oslo", kontorId = "0383"),
-        Kontor(kontorNavn = "Nav egne ansatte Innlandet", kontorId = "0483"),
-        Kontor(kontorNavn = "Nav egne ansatte Vest-Viken", kontorId = "0683"),
-        Kontor(kontorNavn = "Nav egne ansatte Vestland", kontorId = "1283"),
-        Kontor(kontorNavn = "Nav egne ansatte Trøndelag", kontorId = "1683"),
-        Kontor(kontorNavn = "Nav egne ansatte Øst-Viken", kontorId = "0283"),
-        Kontor(kontorNavn = "Nav egne ansatte Vestfold og Telemark", kontorId = "0883"),
-        Kontor(kontorNavn = "Nav arbeid og ytelser egne ansatte", kontorId = "4483"),
-        Kontor(kontorNavn = "Nav egne ansatte Agder", kontorId = "1083"),
-        Kontor(kontorNavn = "Nav egne ansatte Nordland", kontorId = "1883"),
-        Kontor(kontorNavn = "Nav familie- og pensjonsytelser egne ansatte", kontorId = "4883"),
-    )
 }
 
 fun buildResponse(kontorNavn: KontorNavn, kontorId: KontorId, gammeltKontor: ArbeidsoppfolgingsKontor?) =

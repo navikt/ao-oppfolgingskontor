@@ -196,6 +196,7 @@ fun Application.module() {
         { kontorEndringProducer.publiserEndringPåKontor(it) },
         hentSkjerming = { skjermingsClient.hentSkjerming(it) },
         hentAdresseBeskyttelse = { pdlClient.harStrengtFortroligAdresse(it) },
+        hentEnheterForEgneAnsatte = { norg2Client.hentEnheterForEgneAnsatte() },
         brukAoRuting = environment.getBrukAoRuting(),
     )
     configureFinnKontorModule(simulerKontorTilordning, kontorNavnService::getKontorNavn, { call -> call.authenticateCall(issuer) })

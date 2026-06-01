@@ -18,9 +18,6 @@ val velgbareNorgKontorTyper = listOf(
     NorgKontorType.LOKAL,
 )
 
-fun MinimaltNorgKontor.erEgenAnsattKontor() = this.navn.toLowerCasePreservingASCIIRules()
-    .contains("egne ansatte")
-
 fun erValgbartKontor(kontor: MinimaltNorgKontor): Boolean {
     if (kontor.type in velgbareNorgKontorTyper) return true
     if (kontor.erEgenAnsattKontor()) return true

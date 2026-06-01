@@ -26,6 +26,8 @@ import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseIkkeFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseOppslagFeil
 import no.nav.http.client.HarStrengtFortroligAdresseResult
+import no.nav.http.client.MinimaltNorgKontor
+import no.nav.http.client.NorgKontorType
 import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.SkjermingIkkeFunnet
 import no.nav.http.client.SkjermingResult
@@ -275,6 +277,7 @@ class SettKontorHandlerTest {
             publiserKontorEndring,
             { skjermingResult },
             { adresseResult },
+            { listOf(MinimaltNorgKontor(kontorId = "0383", "Nav egne ansatte Oslo", NorgKontorType.KO)) },
             true,
         )
     }
