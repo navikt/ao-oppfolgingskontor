@@ -14,8 +14,6 @@ import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.binder.kafka.KafkaStreamsMetrics
 import java.time.Duration
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import kafka.consumers.ArenakontorVedOppfolgingStartetProcessor
 import kafka.consumers.IdentChangeProcessor
@@ -24,9 +22,6 @@ import kafka.consumers.PubliserKontorTilordningProcessor
 import kafka.producers.KontorEndringProducer
 import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
 import no.nav.BrukAoRutingToggleSupplier
-import no.nav.db.AktorId
-import no.nav.getPubliserArenaKontor
-import no.nav.http.client.IdentResult
 import no.nav.isProduction
 import no.nav.kafka.config.configureTopology
 import no.nav.kafka.config.kafkaStreamsProps
@@ -37,7 +32,6 @@ import no.nav.kafka.consumers.SkjermingProcessor
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.KontorTilhorighetService
 import no.nav.services.KontorTilordningService
-import no.nav.services.OppfolgingsperiodeDao
 import org.apache.kafka.streams.KafkaStreams
 import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler
 import org.jetbrains.exposed.v1.jdbc.Database
@@ -45,7 +39,6 @@ import org.slf4j.LoggerFactory
 import services.IdentService
 import services.OppfolgingsperiodeService
 import services.STOPP_KAFKA_CONSUMERS_TOGGLE
-import services.ToggleService
 
 val KafkaStreamsStarting: EventDefinition<Application> = EventDefinition()
 val KafkaStreamsStarted: EventDefinition<Application> = EventDefinition()
@@ -55,13 +48,14 @@ val KafkaStreamsStopped: EventDefinition<Application> = EventDefinition()
 val shutDownTimeout = Duration.ofSeconds(60)
 val logger = LoggerFactory.getLogger("no.nav.kafka.KafkaStreamsPlugin")
 
+val KafkaPausedEvent: EventDefinition<Unit> = EventDefinition()
+val KafkaResumedEvent: EventDefinition<Unit> = EventDefinition()
+
 class KafkaStreamsPluginConfig(
     var automatiskKontorRutingService: AutomatiskKontorRutingService? = null,
-    var fnrProvider: (suspend (ident: AktorId) -> IdentResult)? = null,
     var database: Database? = null,
     var meterRegistry: MeterRegistry? = null,
     var oppfolgingsperiodeService: OppfolgingsperiodeService? = null,
-    var oppfolgingsperiodeDao: OppfolgingsperiodeDao? = null,
     var identService: IdentService? = null,
     var criticalErrorNotificationFunction: CriticalErrorNotificationFunction? = null,
     var kontorTilhorighetService: KontorTilhorighetService? = null,
@@ -69,21 +63,14 @@ class KafkaStreamsPluginConfig(
     var veilarbArenaClient: VeilarbArenaClient? = null,
     var kontorTilordningService: KontorTilordningService? = null,
     var brukAoRuting: BrukAoRutingToggleSupplier? = null,
-    var toggleService: ToggleService? = null,
 )
 
 val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createApplicationPlugin("KafkaStreams", ::KafkaStreamsPluginConfig) {
     val database = requireNotNull(this.pluginConfig.database) {
         "DataSource must be configured for KafkaStreamsPlugin"
     }
-    val fnrProvider = requireNotNull(this.pluginConfig.fnrProvider) {
-        "fnrProvider must be configured for KafkaStreamPlugin"
-    }
     val automatiskKontorRutingService = requireNotNull(this.pluginConfig.automatiskKontorRutingService) {
         "AutomatiskKontorRutingService must be configured for KafkaStreamPlugin"
-    }
-    val oppfolgingsperiodeDao = requireNotNull(this.pluginConfig.oppfolgingsperiodeDao) {
-        "OppfolgingsperiodeDao must be configured for KafkaStreamPlugin"
     }
     val oppfolgingsperiodeService = requireNotNull(this.pluginConfig.oppfolgingsperiodeService) {
         "OppfolgingsperiodeService must be configured for KafkaStreamPlugin"
@@ -112,18 +99,17 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val brukAoRuting = requireNotNull(this.pluginConfig.brukAoRuting) {
         "BrukAoRuting must be configured for KafkaStreamPlugin"
     }
-    val toggleService = requireNotNull(this.pluginConfig.toggleService) {
-        "ToggleService must be configured for KafkaStreamPlugin"
-    }
 
     val isProduction = environment.isProduction()
     if (isProduction) logger.info("Kjører i produksjonsmodus. Konsumerer kun siste-oppfølgingsperiode.")
+
+    val skalPublisereArenaKontor = { !brukAoRuting() }
 
     val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
         { oppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) },
         { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },
         { kontorTilordningService.tilordneKontor(it, brukAoRuting()) },
-        { environment.getPubliserArenaKontor() }
+        skalPublisereArenaKontor
     )
 
     val kontorTilordningsProcessor = KontortilordningsProcessor(
@@ -147,7 +133,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         { kontorTilordningService.tilordneKontor(it, brukAoRuting()) },
         { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },
         { kontorProducer.publiserEndringPåKontor(it) },
-        { environment.getPubliserArenaKontor() },
+        skalPublisereArenaKontor,
     )
 
 
@@ -183,29 +169,23 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         application.monitor.raise(KafkaStreamsStarted, application)
     }
 
-    val pauseScheduler = Executors.newSingleThreadScheduledExecutor { r ->
-        Thread(r, "kafka-streams-pause-toggle").apply { isDaemon = true }
+    on(MonitoringEvent(KafkaPausedEvent)) {
+        if (!kafkaStream.isPaused) {
+            logger.warn("Toggle $STOPP_KAFKA_CONSUMERS_TOGGLE er på - pauser Kafka Streams (offsets bevares)")
+            kafkaStream.pause()
+        }
     }
-    pauseScheduler.scheduleAtFixedRate({
-        runCatching {
-            val skalStoppe = toggleService.skalIkkeLeseFraKafka()
-            when {
-                skalStoppe && !kafkaStream.isPaused -> {
-                    logger.warn("Toggle $STOPP_KAFKA_CONSUMERS_TOGGLE er på - pauser Kafka Streams (offsets bevares)")
-                    kafkaStream.pause()
-                }
-                !skalStoppe && kafkaStream.isPaused -> {
-                    logger.info("Toggle $STOPP_KAFKA_CONSUMERS_TOGGLE er av - gjenopptar Kafka Streams")
-                    kafkaStream.resume()
-                }
-            }
-        }.onFailure { logger.error("Feil ved sjekk av kafka-pause-toggle", it) }
-    }, 10, 10, TimeUnit.SECONDS)
+
+    on(MonitoringEvent(KafkaResumedEvent)) {
+        if (kafkaStream.isPaused) {
+            logger.warn("Toggle $STOPP_KAFKA_CONSUMERS_TOGGLE er på - pauser Kafka Streams (offsets bevares)")
+            kafkaStream.resume()
+        }
+    }
 
     on(MonitoringEvent(ApplicationStopping)) { application ->
         application.log.info("Stopper Kafka Streams")
         kafkaStreamsApplicationStateInteger.set(0)
-        pauseScheduler.shutdownNow()
         application.monitor.raise(KafkaStreamsStopping, application)
         kafkaStream.close(shutDownTimeout)
         application.monitor.raise(KafkaStreamsStopped, application)

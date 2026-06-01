@@ -31,12 +31,7 @@ import java.time.ZonedDateTime
 class KontortilordningsProcessor(
     private val automatiskKontorRutingService: AutomatiskKontorRutingService,
     private val kontorTilordningService: KontorTilordningService,
-<<<<<<< HEAD
-    private val skipPersonIkkeFunnet: Boolean = false,
     private val brukAoRuting: BrukAoRutingToggleSupplier,
-=======
-    private val brukAoRuting: Boolean,
->>>>>>> cee9afcba51057b27c553ff11c161bd630683f5a
 ) {
     companion object {
         const val processorName = "KontortilordningsProcessor"
