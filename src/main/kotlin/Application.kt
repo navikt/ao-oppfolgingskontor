@@ -204,7 +204,7 @@ fun ApplicationEnvironment.isProduction(): Boolean {
 fun ApplicationEnvironment.isDev(): Boolean {
     return config.propertyOrNull("cluster")
         ?.getString()
-        ?.contains("dev") ?: false
+        ?.contains("dev-gcp") ?: false
 }
 
 fun ApplicationEnvironment.getBrukAoRuting(): Boolean {
