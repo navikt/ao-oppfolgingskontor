@@ -82,9 +82,8 @@ spec:
         - application: amt-person-service
           namespace: amt
           cluster: prod-gcp
-        - application: arena
-          namespace: teamarenanais
-          cluster: prod-fss
+        - application: tiltakspenger-saksbehandling-api
+          namespace: tpts
     outbound:
       rules:
         - application: norg2
