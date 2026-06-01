@@ -5,6 +5,8 @@ import eventsLogger.BigQueryClient
 import http.client.*
 import http.configureContentNegotiation
 import http.configureHentArbeidsoppfolgingskontorBulkModule
+import io.getunleash.DefaultUnleash
+import io.getunleash.util.UnleashConfig
 import io.ktor.server.application.*
 import io.ktor.server.netty.*
 import kafka.producers.KontorEndringProducer
@@ -49,11 +51,26 @@ fun Application.module() {
     configureSecurity()
     configureRateLimit()
 
+    val toggleService = ToggleService(
+        unleashClient = DefaultUnleash(
+            UnleashConfig
+                .builder()
+                .appName(environment.getApplicationName())
+                .instanceId(environment.getApplicationName())
+                .unleashAPI("${environment.getUnleashServerApiUrl()}/api")
+                .apiKey(environment.getUnleashServerApiToken())
+                .build()
+        )
+    )
 
     val norg2Client = Norg2Client(environment.getNorg2Url())
 
     val texasClient = TexasSystemTokenClient(environment.getNaisTokenEndpoint())
-    val pdlClient = PdlClient(environment.getPDLUrl(), texasClient.tokenProvider(environment.getPdlScope()))
+    val pdlClient = PdlClient(
+        pdlGraphqlUrl = environment.getPDLUrl(),
+        azureTokenProvider = texasClient.tokenProvider(environment.getPdlScope()),
+        isDev = environment.isDev()
+    )
     val arbeidssokerregisterClient = ArbeidssokerregisterClient(
         environment.getArbeidssokerregisteretUrl(),
         texasClient.tokenProvider(environment.getArbeidssokerregisteretScope()))
@@ -156,7 +173,12 @@ fun Application.module() {
         this.kontorEndringProducer = kontorEndringProducer
         this.veilarbArenaClient = veilarbArenaClient
         this.kontorTilordningService = kontorTilordningService
+<<<<<<< HEAD
         this.brukAoRuting = { brukAoRuting }
+=======
+        this.brukAoRuting = brukAoRuting
+        this.toggleService = toggleService
+>>>>>>> cee9afcba51057b27c553ff11c161bd630683f5a
     }
 
     val issuer = environment.getIssuer()
@@ -197,12 +219,36 @@ fun ApplicationEnvironment.isProduction(): Boolean {
         ?.contentEquals("prod-gcp") ?: false
 }
 
+<<<<<<< HEAD
 typealias BrukAoRutingToggleSupplier = () -> Boolean
+=======
+fun ApplicationEnvironment.isDev(): Boolean {
+    return config.propertyOrNull("cluster")
+        ?.getString()
+        ?.contains("dev-gcp") ?: false
+}
+
+>>>>>>> cee9afcba51057b27c553ff11c161bd630683f5a
 fun ApplicationEnvironment.getBrukAoRuting(): Boolean {
     return config.property("brukAoRuting").getString().toBoolean()
 }
 
+<<<<<<< HEAD
 typealias BrukPubliserArenaKontor = () -> Boolean
+=======
+fun ApplicationEnvironment.getApplicationName(): String {
+    return config.property("appName").getString()
+}
+
+fun ApplicationEnvironment.getUnleashServerApiUrl(): String {
+    return config.property("unleash.url").getString()
+}
+
+fun ApplicationEnvironment.getUnleashServerApiToken(): String {
+    return config.property("unleash.token").getString()
+}
+
+>>>>>>> cee9afcba51057b27c553ff11c161bd630683f5a
 fun ApplicationEnvironment.getPubliserArenaKontor(): Boolean {
     return !getBrukAoRuting()
 }

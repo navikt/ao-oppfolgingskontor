@@ -40,8 +40,12 @@ class KontortilordningsProcessorTest {
         val processor = KontortilordningsProcessor(
             hardtFeilendeAutomatiskKontorRutingService(),
             kontorTilordningService,
+<<<<<<< HEAD
             false,
             { false }
+=======
+            false
+>>>>>>> cee9afcba51057b27c553ff11c161bd630683f5a
         )
         val record: Record<Ident, OppfolgingsperiodeEndret> = Record(
             oppfolgingsperiode.fnr as Ident,
@@ -61,8 +65,12 @@ class KontortilordningsProcessorTest {
         val processor = KontortilordningsProcessor(
             feilendeAutomatiskKontorRutingService(oppfolgingsperiode),
             kontorTilordningService,
+<<<<<<< HEAD
             false,
             { false }
+=======
+            false
+>>>>>>> cee9afcba51057b27c553ff11c161bd630683f5a
         )
         val record: Record<Ident, OppfolgingsperiodeEndret> = Record(
             oppfolgingsperiode.fnr as Ident,
@@ -75,6 +83,7 @@ class KontortilordningsProcessorTest {
         result.shouldBeInstanceOf<Retry<*, *>>()
     }
 
+<<<<<<< HEAD
     @Test
     fun `skal hoppe over melding hvis Retry på uventete feil `() {
         val oppfolgingsperiode = oppfolgingsperiodeStartet()
@@ -95,6 +104,8 @@ class KontortilordningsProcessorTest {
         result.shouldBeInstanceOf<Skip<*, *>>()
     }
 
+=======
+>>>>>>> cee9afcba51057b27c553ff11c161bd630683f5a
     fun oppfolgingsperiodeStartet(): OppfolgingsperiodeStartet {
         return OppfolgingsperiodeStartet(
             Fnr("12211221333", Ident.HistoriskStatus.AKTIV),
@@ -103,25 +114,6 @@ class KontortilordningsProcessorTest {
             true,
             null,
             null
-        )
-    }
-
-    fun automatiskKontorRutingService(oppfolging: OppfolgingsperiodeStartet): AutomatiskKontorRutingService {
-        return AutomatiskKontorRutingService(
-            { a, b, c -> KontorForGtFantDefaultKontor(KontorId("3131"), HarSkjerming(false),
-                HarStrengtFortroligAdresse(false), GeografiskTilknytningKommuneNr("3131")) },
-            { AlderFunnet(33) },
-            { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
-            { SkjermingFunnet(HarSkjerming(false)) },
-            { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
-            { AktivOppfolgingsperiode(
-                oppfolging.fnr,
-                randomInternIdent(),
-                oppfolging.periodeId,
-                oppfolging.startDato.toOffsetDateTime()
-            ) },
-            { _, _ -> Outcome.Success(false)  },
-            { null },
         )
     }
 

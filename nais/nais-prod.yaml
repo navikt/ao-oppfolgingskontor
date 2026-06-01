@@ -82,9 +82,8 @@ spec:
         - application: amt-person-service
           namespace: amt
           cluster: prod-gcp
-        - application: arena
-          namespace: teamarenanais
-          cluster: prod-fss
+        - application: tiltakspenger-saksbehandling-api
+          namespace: tpts
     outbound:
       rules:
         - application: norg2
@@ -107,6 +106,7 @@ spec:
         - host: veilarbarena.prod-fss-pub.nais.io
         - host: aareg-services.intern.nav.no
         - host: ereg-services.intern.nav.no
+        - host: dab-unleash-api.nav.cloud.nais.io
   azure:
     application:
       enabled: true
@@ -114,6 +114,8 @@ spec:
       claims:
         extra:
           - "NAVident"
+  envFrom:
+    - secret: ao-oppfolgingskontor-unleash-api-token
   env:
     - name: AAREG_URL
       value: https://aareg-services.prod-fss-pub.nais.io
