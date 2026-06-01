@@ -95,14 +95,15 @@ suspend fun HttpClient.kontorHistorikk(fnr: Fnr, bearerToken: String? = null): H
         setBody(kontorHistorikkQuery(fnr))
     }
 }
-suspend fun HttpClient.alleKontor(ident: Ident?, bearerToken: String? = null): HttpResponse {
+suspend fun HttpClient.alleKontor(ident: Ident?, kunEnheterForEgneAnsatte: Boolean? = null, bearerToken: String? = null): HttpResponse {
     return graphqlRequest(bearerToken) {
-        setBody(alleKontorQuery(ident))
+        setBody(alleKontorQuery(ident, kunEnheterForEgneAnsatte))
     }
 }
 
 val pesos = "$"
 val identArg = "${pesos}ident"
+val egneAnsatteArg = "${pesos}kunEnheterForEgneAnsatte"
 
 private fun kontorHistorikkQuery(ident: Ident): String {
     return graphqlPayload(ident, """
@@ -126,9 +127,9 @@ fun alleKontorTilhorigheterQuery(ident: Ident): String {
             }
         """.replace("\n", "").trimIndent())
 }
-private fun alleKontorQuery(ident: Ident?): String {
-    return graphqlPayload(ident, """
-           query alleKontorQuery($identArg: String) { alleKontor(ident: $identArg) { kontorId , kontorNavn } }
+private fun alleKontorQuery(ident: Ident?, kunEnheterForEgneAnsatte: Boolean?): String {
+    return graphqlPayload(ident, kunEnheterForEgneAnsatte, """
+           query alleKontorQuery($identArg: String, $egneAnsatteArg: Boolean) { alleKontor(ident: $identArg, kunEnheterForEgneAnsatte: $egneAnsatteArg) { kontorId , kontorNavn } }
         """.trimIndent())
 }
 private fun graphqlPayload(ident: Ident?, query: String): String {
@@ -140,6 +141,16 @@ private fun graphqlPayload(ident: Ident?, query: String): String {
     return """
             {
                 ${ident?.let(::variablesClause) ?: ""}
+                "query": "$query"
+            }
+        """.trimIndent()
+}
+private fun graphqlPayload(ident: Ident?, kunEnheterForEgneAnsatte: Boolean?, query: String): String {
+    val identJson = ident?.let { "\"$it\"" } ?: "null"
+    val egneAnsatteJson = kunEnheterForEgneAnsatte?.toString() ?: "null"
+    return """
+            {
+                "variables": { "ident": $identJson, "kunEnheterForEgneAnsatte": $egneAnsatteJson },
                 "query": "$query"
             }
         """.trimIndent()
