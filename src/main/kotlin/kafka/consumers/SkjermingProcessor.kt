@@ -51,7 +51,7 @@ class SkjermingProcessor(
                             if (endringResult != null) {
                                 val brukAoRuting = brukAoRuting()
                                 endringResult.let { kontorTilordningService.tilordneKontor(it.endringer, brukAoRuting) }
-                                if (brukAoRuting() && endringResult.endringer.aoKontorEndret != null) {
+                                if (brukAoRuting && endringResult.endringer.aoKontorEndret != null) {
                                     val record = endringResult.endringer.aoKontorEndret.toOppfolgingEndretTilordningMeldingRecord()
                                     Forward(record)
                                 } else {
