@@ -26,6 +26,8 @@ import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseIkkeFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseOppslagFeil
 import no.nav.http.client.HarStrengtFortroligAdresseResult
+import no.nav.http.client.MinimaltNorgKontor
+import no.nav.http.client.NorgKontorType
 import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.SkjermingIkkeFunnet
 import no.nav.http.client.SkjermingResult
@@ -52,6 +54,7 @@ class SettKontorHandlerTest {
     val navAnsatt = NavAnsatt(navIdent, UUID.randomUUID())
     val fnr = randomFnr()
     val kontorId = KontorId("3144")
+    val kontorIdEgneAnsatteOslo = KontorId("0383")
     val kontortilordning = ArbeidsoppfolgingsKontorTilordningDTO(
         kontorId.id,
         "fordi",
@@ -85,12 +88,32 @@ class SettKontorHandlerTest {
     }
 
     @Test
-    fun `Skal svare med 409 når bruker er skjermet `() = runTest {
+    fun `Skal kunne sette kontor når bruker er skjermet, veileder har tilgang og nytt kontor er for skjermete brukere`() = runTest {
         val handler = defaultHandler(fnr, skjermingResult = SkjermingFunnet(HarSkjerming(true)))
+        val kontortilordningTilEgneAnsatteOslo = kontortilordning.copy(kontorId = kontorIdEgneAnsatteOslo.id)
 
         handler.settKontor(
-            kontortilordning, navAnsatt, "trace"
-        ) shouldBe SettKontorFailure(HttpStatusCode.Conflict, "Kan ikke bytte kontor på skjermet bruker")
+            kontortilordningTilEgneAnsatteOslo, navAnsatt, "trace"
+        ) shouldBe SettKontorSuccess(
+            KontorByttetOkResponseDto(
+                fraKontor = null,
+                tilKontor = Kontor(
+                    "Kontor navn",
+                    kontorIdEgneAnsatteOslo.id
+                )
+            )
+        )
+    }
+
+    @Test
+    fun `Skal svare med 400 når bruker er skjermet, veileder har tilgang men nytt kontor ikke er for skjermete brukere`() = runTest {
+        val handler = defaultHandler(fnr, skjermingResult = SkjermingFunnet(HarSkjerming(true)))
+        val vanligKontorId = "0318"
+        val kontortilordningVanligKontor = kontortilordning.copy(kontorId = vanligKontorId)
+
+        handler.settKontor(
+            kontortilordningVanligKontor, navAnsatt, "trace"
+        ) shouldBe SettKontorFailure(HttpStatusCode.BadRequest, "Kan ikke sette en skjermet bruker til kontor som ikke er for egne ansatte")
     }
 
     @Test
@@ -255,6 +278,7 @@ class SettKontorHandlerTest {
             { skjermingResult },
             { adresseResult },
             { true },
+            { listOf(MinimaltNorgKontor(kontorId = "0383", "Nav egne ansatte Oslo", NorgKontorType.KO)) },
         )
     }
 }

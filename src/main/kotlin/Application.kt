@@ -188,6 +188,7 @@ fun Application.module() {
         hentSkjerming = { skjermingsClient.hentSkjerming(it) },
         hentAdresseBeskyttelse = { pdlClient.harStrengtFortroligAdresse(it) },
         brukAoRuting = skalBrukeAoRuting,
+        hentEnheterForEgneAnsatte = { norg2Client.hentEnheterForEgneAnsatte() },
     )
     configureFinnKontorModule(simulerKontorTilordning, kontorNavnService::getKontorNavn, { call -> call.authenticateCall(issuer) })
     configureAdminModule(simulerKontorTilordning, republiseringService, arenaSyncService, kontorSammenslåingService)
@@ -233,6 +234,10 @@ fun Application.installBigQueryDailyScheduler(database: Database, bigQueryClient
                     log.info("Starter BigQuery-jobb for antall 2990 AO-kontor")
                     bigQueryClient.antall2990Kontor(database)
                     log.info("BigQuery-jobb ferdig")
+
+                    log.info("Starter BigQuery-jobb for antall med ulikt AO-kontor og Arenakontor")
+                    bigQueryClient.antallMedUliktArenakontorOgAoKontor(database)
+                    log.info("BigQuery-jobb for ulikt kontor ferdig")
                 }
             }
         }

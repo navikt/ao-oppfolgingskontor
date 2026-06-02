@@ -18,9 +18,6 @@ val velgbareNorgKontorTyper = listOf(
     NorgKontorType.LOKAL,
 )
 
-fun MinimaltNorgKontor.erEgenAnsattKontor() = this.navn.toLowerCasePreservingASCIIRules()
-    .contains("egne ansatte")
-
 fun erValgbartKontor(kontor: MinimaltNorgKontor): Boolean {
     if (kontor.type in velgbareNorgKontorTyper) return true
     if (kontor.erEgenAnsattKontor()) return true
@@ -32,8 +29,14 @@ class AlleKontorQuery(
 ): Query {
     val logger = LoggerFactory.getLogger(AlleKontorQuery::class.java)
 
-    suspend fun alleKontor(ident: String?): List<AlleKontorQueryDto> {
+    suspend fun alleKontor(ident: String?, kunEnheterForEgneAnsatte: Boolean? = null): List<AlleKontorQueryDto> {
         return runCatching {
+            if (kunEnheterForEgneAnsatte == true) {
+                return@runCatching norg2Client.hentEnheterForEgneAnsatte()
+                    .map { AlleKontorQueryDto(it.kontorId, it.navn) }
+                    .sortedBy { it.kontorId.toLong() }
+            }
+
             val gtKontor = transaction {
                 GeografiskTilknyttetKontorEntity.find { GeografiskTilknytningKontorTable.id eq ident }.firstOrNull()
             }

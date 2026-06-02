@@ -27,6 +27,7 @@ class BigQueryClient(
     private val DATASET_NAME = "kontor_metrikker"
     private val TABLE_NAME = "antall_2990_kontor"
     private val KONTOR_EVENTS = "KONTOR_EVENTS"
+    private val ULIKT_KONTOR_TABLE = "antall_ulikt_kontor"
     private val bigQuery = BigQueryOptions.newBuilder().setProjectId(projectId).build().service
     private val log = LoggerFactory.getLogger(this::class.java)
     val kontorEventsTable = TableId.of(DATASET_NAME, KONTOR_EVENTS)
@@ -124,6 +125,52 @@ class BigQueryClient(
                     """.trimIndent()
                     else -> throw IllegalArgumentException("Ukjent tabell: $tabell")
                 }
+            ) { rs -> if (rs.next()) rs.getLong("antall") else 0L } ?: 0L
+        }
+    }
+
+    fun antallMedUliktArenakontorOgAoKontor(database: Database) {
+        val lockConfig = LockConfiguration(
+            ZonedDateTime.now().toInstant(),
+            "bigquery_job_diff_kontor",
+            Duration.ofMinutes(60),
+            Duration.ofMinutes(5)
+        )
+
+        val maybeLock = lockProvider.lock(lockConfig)
+        if (maybeLock.isPresent) {
+            val lock = maybeLock.get()
+            try {
+                val antallUliktKontor = hentAntallMedUliktKontor(database)
+
+                val row = mapOf(
+                    "jobb_timestamp" to ZonedDateTime.now().toInstant().toString(),
+                    "dato" to ZonedDateTime.now().toLocalDate().toString(),
+                    "antall_ulikt_kontor" to antallUliktKontor,
+                )
+
+                val table = TableId.of(DATASET_NAME, ULIKT_KONTOR_TABLE)
+                val insertRequest = table.insertRequest(row)
+                insertWhileToleratingErrors(insertRequest)
+            } finally {
+                lock.unlock()
+            }
+        } else {
+            log.info("Jobben for diff hoppet over – en annen pod har allerede lås")
+        }
+    }
+
+    private fun hentAntallMedUliktKontor(database: Database): Long {
+        return transaction(database) {
+            exec(
+                """
+                        SELECT count(*) AS antall
+                        FROM arenakontor ak
+                                 JOIN ident_mapping im_ak ON ak.fnr = im_ak.ident
+                                 JOIN ident_mapping im_aok ON im_ak.intern_ident = im_aok.intern_ident
+                                 JOIN arbeidsoppfolgingskontor aok ON im_aok.ident = aok.fnr
+                        WHERE ak.kontor_id != aok.kontor_id;
+                    """.trimIndent()
             ) { rs -> if (rs.next()) rs.getLong("antall") else 0L } ?: 0L
         }
     }
