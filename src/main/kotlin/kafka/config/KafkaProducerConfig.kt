@@ -11,7 +11,6 @@ fun createKafkaProducer(config: NaisKafkaEnv): KafkaProducer<String, String> {
         put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, config.KAFKA_BROKERS)
         put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer::class.java.name)
         put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer::class.java.name)
-        put(ProducerConfig.RETRIES_CONFIG, "5") // Enable retries
     }.securityConfig(config)
     return KafkaProducer(producerConfig)
 }
@@ -21,7 +20,6 @@ fun createKafkaProducerWithLongKey(config: NaisKafkaEnv): KafkaProducer<Long, St
         put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, config.KAFKA_BROKERS)
         put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, LongSerializer::class.java.name)
         put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer::class.java.name)
-        put(ProducerConfig.RETRIES_CONFIG, "5") // Enable retries
     }.securityConfig(config)
     return KafkaProducer(producerConfig)
 }

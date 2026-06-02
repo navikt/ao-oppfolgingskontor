@@ -55,7 +55,7 @@ class KontorEndringProducer(
                 ?: throw IllegalArgumentException("Kan ikke publisere kontor-endring på aktørid, trenger annen ident")
             val (fnr, aktorId, internIdent) = finnPubliseringsIdenter(ident)
 
-            publiserEndringPåKontor(
+            return publiserEndringPåKontor(
                 internIdent,
                 KontorTilordningMeldingDto(
                     kontorId = event.kontorId,
