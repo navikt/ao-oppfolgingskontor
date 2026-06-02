@@ -24,6 +24,7 @@ import domain.kontorForGt.KontorForBrukerMedMangelfullGtFunnet
 import domain.kontorForGt.KontorForBrukerMedMangelfullGtIkkeFunnet
 import domain.kontorForGt.KontorForBrukerMedMangelfullGtResultat
 import domain.kontorForGt.KontorForGtFantDefaultKontor
+import io.ktor.util.toLowerCasePreservingASCIIRules
 import org.slf4j.LoggerFactory
 
 class Norg2Client(
@@ -57,6 +58,12 @@ class Norg2Client(
             log.error("Feil ved mapping av NorgKontor til MinimaltKontor: ${e.message}")
             throw e
         }
+    }
+
+    suspend fun hentEnheterForEgneAnsatte(): List<MinimaltNorgKontor> {
+        val alleEnheter = hentAlleEnheter()
+        val kontorerForEgneAnsatte = alleEnheter.filter { it.erEgenAnsattKontor() }
+        return kontorerForEgneAnsatte
     }
 
     suspend fun hentKontor(kontorId: KontorId): MinimaltNorgKontor {
@@ -170,7 +177,10 @@ data class MinimaltNorgKontor(
     val kontorId: String,
     val navn: String,
     val type: NorgKontorType
-)
+) {
+    fun erEgenAnsattKontor() = this.navn.toLowerCasePreservingASCIIRules()
+        .contains("egne ansatte")
+}
 
 enum class GtType {
     Bydel,
@@ -211,6 +221,7 @@ data class NorgKontor(
 
 enum class NorgKontorType {
     LOKAL,
+    KO,
     IRRELEVANT_KONTORTYPE;
     companion object {
         fun fromString(value: String): NorgKontorType {

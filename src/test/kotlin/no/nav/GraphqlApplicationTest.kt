@@ -29,6 +29,7 @@ import no.nav.http.graphql.installGraphQl
 import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
 import no.nav.http.graphql.schemas.RegistrantTypeDto
 import domain.kontorForGt.KontorForGtFantDefaultKontor
+import io.kotest.inspectors.shouldForAll
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldNotBe
@@ -186,6 +187,29 @@ class GraphqlApplicationTest {
         val kontorerEtterSpesialkontorOgGtKontor = kontorer.subList(3, kontorer.size)
         val sorterteKontorer = kontorerEtterSpesialkontorOgGtKontor.sortedBy { it.kontorId.toInt() }
         kontorerEtterSpesialkontorOgGtKontor shouldBe sorterteKontorer
+    }
+
+    @Test
+    fun `skal kun hente kontor for skjermede brukere via graphql`() = testApplication {
+        val fnr = randomFnr(UKJENT)
+        val kontorId = "0383"
+        val geografiskKontorId = "1941"
+        val client = getJsonHttpClient()
+        graphqlServerInTest(fnr)
+        application {
+            gittBrukerMedKontorIArena(fnr, kontorId)
+            gittBrukerMedGeografiskTilknyttetKontor(fnr, geografiskKontorId)
+        }
+
+        val response = client.alleKontor(fnr, true)
+
+        val antallEgneAnsatteKontorer = 14
+        response.status shouldBe OK
+        val payload = response.body<GraphqlResponse<AlleKontor>>()
+        payload.errors shouldBe null
+        val kontorer = payload.data!!.alleKontor
+        kontorer shouldHaveSize (antallEgneAnsatteKontorer)
+        kontorer.map { it.kontorNavn }.shouldForAll { it.contains("egne ansatte") }
     }
 
     @Test
