@@ -260,6 +260,10 @@ fun Application.installBigQueryDailyScheduler(database: Database, bigQueryClient
                     log.info("Starter BigQuery-jobb for antall 2990 AO-kontor")
                     bigQueryClient.antall2990Kontor(database)
                     log.info("BigQuery-jobb ferdig")
+
+                    log.info("Starter BigQuery-jobb for antall med ulikt AO-kontor og Arenakontor")
+                    bigQueryClient.antallMedUliktArenakontorOgAoKontor(database)
+                    log.info("BigQuery-jobb for ulikt kontor ferdig")
                 }
             }
         }
