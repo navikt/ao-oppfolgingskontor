@@ -77,7 +77,7 @@ class LeesahProcessor(
                 return when {
                     aoKontorEndring != null -> {
                         kontorTilordningService.tilordneKontor(aoKontorEndring, brukAoRuting)
-                        if (brukAoRuting()) {
+                        if (brukAoRuting) {
                             Forward(aoKontorEndring.toOppfolgingEndretTilordningMeldingRecord())
                         }
                         else {
