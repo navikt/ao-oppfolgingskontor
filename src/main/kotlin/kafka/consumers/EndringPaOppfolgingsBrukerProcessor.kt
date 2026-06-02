@@ -9,6 +9,7 @@ import kafka.producers.OppfolgingEndretTilordningMelding
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import no.nav.BrukAoRutingToggleSupplier
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
 import no.nav.domain.KontorEndringsType
@@ -35,7 +36,7 @@ class EndringPaOppfolgingsBrukerProcessor(
     val oppfolgingsperiodeProvider: suspend (IdentSomKanLagres) -> OppfolgingsperiodeOppslagResult,
     val arenaKontorProvider: suspend (IdentSomKanLagres) -> ArenaKontorUtvidet?,
     val lagreKontorTilordninger: (KontorEndretEvent) -> Unit,
-    val publiserArenaKontor: Boolean
+    val hentPubliserArenaKontorToggle: BrukAoRutingToggleSupplier
 ) {
     val log = LoggerFactory.getLogger(EndringPaOppfolgingsBrukerProcessor::class.java)
 
@@ -88,7 +89,7 @@ class EndringPaOppfolgingsBrukerProcessor(
                         )
                     }
                 )
-                if (publiserArenaKontor) {
+                if (hentPubliserArenaKontorToggle()) {
                     val kontorEndringstype = if (result.erFørsteArenaKontorIOppfolgingsperiode) {
                         KontorEndringsType.ArenaKontorVedOppfolgingStartMedEtterslep
                     } else {

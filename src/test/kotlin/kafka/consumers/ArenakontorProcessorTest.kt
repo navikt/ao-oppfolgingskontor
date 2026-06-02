@@ -45,7 +45,7 @@ class ArenakontorProcessorTest {
             { kontorTilordningService.tilordneKontor(it, true) },
             { null },
             { Result.success(Unit) },
-            true
+            { true }
         )
         val record = oppfolgingsperiodeAvsluttetRecord()
         val result = processor.process(record)
@@ -71,7 +71,7 @@ class ArenakontorProcessorTest {
                 )
             },
             { Result.success(Unit) },
-            true
+            { true }
         )
         val result = processor.process(record)
         result.shouldBeInstanceOf<Commit<*, *>>()
@@ -97,7 +97,7 @@ class ArenakontorProcessorTest {
                 )
             },
             { Result.success(Unit) },
-            true
+            { true }
         )
         val result = processor.process(record)
         result.shouldBeInstanceOf<Skip<*, *>>()
@@ -124,7 +124,7 @@ class ArenakontorProcessorTest {
                 harPublisertMelding = true
                 Result.success(Unit)
             },
-            true
+            { true }
         )
         val result = processor.process(record)
         result.shouldBeInstanceOf<Commit<*, *>>()
@@ -152,7 +152,7 @@ class ArenakontorProcessorTest {
                 )
             },
             { Result.success(Unit) },
-            true
+            { true }
         )
         val result = processor.process(record)
         result.shouldBeInstanceOf<Skip<*, *>>()
@@ -166,7 +166,7 @@ class ArenakontorProcessorTest {
             { kontorTilordningService.tilordneKontor(it, true) },
             { null },
             { Result.success(Unit) },
-            true
+            { true }
         )
         val result = processor.process(record)
         result.shouldBeInstanceOf<Commit<*, *>>()
@@ -195,7 +195,7 @@ class ArenakontorProcessorTest {
                 harPublisertMelding = true
                 Result.success(Unit)
             },
-            publiserArenaKontor = true
+            hentPubliserArenaKontorToggle = { true }
         )
         val result = processor.process(record)
         result.shouldBeInstanceOf<Commit<*, *>>()
@@ -222,7 +222,7 @@ class ArenakontorProcessorTest {
                 harPublisertMelding = true
                 Result.success(Unit)
             },
-            publiserArenaKontor = false
+            hentPubliserArenaKontorToggle = { false }
         )
         val result = processor.process(record)
         result.shouldBeInstanceOf<Commit<*, *>>()

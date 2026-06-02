@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory
       type: UNTYPED
 ```
  */
-internal class RetryMetrics(
+internal class  RetryMetrics(
     context: ProcessorContext<*, *>,
     private val repository: RetryableRepository,
     private val topic: String,

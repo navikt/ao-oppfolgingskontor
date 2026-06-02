@@ -7,6 +7,7 @@ import arrow.core.getOrElse
 import io.ktor.http.HttpStatusCode
 import kafka.producers.PubliserManuellKontorEndring
 import no.nav.AOPrincipal
+import no.nav.BrukAoRutingToggleSupplier
 import no.nav.NavAnsatt
 import no.nav.db.AktorId
 import no.nav.db.Dnr
@@ -63,8 +64,8 @@ class SettKontorHandler(
     private val publiserManuellKontorEndring: PubliserManuellKontorEndring,
     private val hentSkjerming: suspend (IdentSomKanLagres) -> SkjermingResult,
     private val hentAdresseBeskyttelse: suspend (IdentSomKanLagres) -> HarStrengtFortroligAdresseResult,
+    private val brukAoRuting: BrukAoRutingToggleSupplier,
     private val hentEnheterForEgneAnsatte: suspend () -> List<MinimaltNorgKontor>,
-    private val brukAoRuting: Boolean,
 ) {
     private val log = LoggerFactory.getLogger(this::class.java)
 
@@ -204,7 +205,8 @@ class SettKontorHandler(
         principal: AOPrincipal,
         traceId: String
     ): SettKontorResult {
-        if (!brukAoRuting) {
+        val brukAoRuting = brukAoRuting()
+        if(!brukAoRuting) {
             return SettKontorFailure(HttpStatusCode.NotImplemented, "Kan ikke sette kontor for vi er i prod")
         } else {
             return Either.catch {

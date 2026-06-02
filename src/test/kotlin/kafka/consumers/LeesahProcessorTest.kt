@@ -56,7 +56,7 @@ class LeesahProcessorTest {
         val fnr = randomFnr()
         val gammeltKontorId = "1234"
         val nyKontorId = "5678"
-        val brukAoRuting = true
+        val brukAoRuting = { true }
         application {
             flywayMigrationInTest()
             gittNåværendeGtKontor(fnr, KontorId(gammeltKontorId))
@@ -76,7 +76,7 @@ class LeesahProcessorTest {
     fun `skal sette både gt-kontor og ao-kontor hvis bruker tilhørte Nav IT og får norsk GT`() = testApplication {
         val fnr = randomFnr()
         val nyKontorId = "5678"
-        val brukAoRuting = true
+        val brukAoRuting = { true }
         application {
             flywayMigrationInTest()
             val oppfølgingsperiodeId = gittBrukerUnderOppfolging(fnr)
@@ -106,7 +106,7 @@ class LeesahProcessorTest {
         val fnr = randomFnr()
         val gammeltKontorId = "1234"
         val nyKontorId = "5678"
-        val brukAoRuting = true
+        val brukAoRuting = { true }
         application {
             flywayMigrationInTest()
             val oppfølgingsperiodeId = gittBrukerUnderOppfolging(fnr)
@@ -136,7 +136,7 @@ class LeesahProcessorTest {
         val fnr = randomFnr()
         val gammeltKontorId = "1234"
         val nyKontorId = "5678"
-        val brukAoRuting = true
+        val brukAoRuting = { true }
         application {
             flywayMigrationInTest()
             val oppfølgingsperiodeId = gittBrukerUnderOppfolging(fnr)
@@ -164,7 +164,7 @@ class LeesahProcessorTest {
         val fnr = randomFnr()
         val gammelKontorId = "1234"
         val nyKontorId = "5678"
-        val brukAoRuting = true
+        val brukAoRuting = { true }
         application {
             flywayMigrationInTest()
             val oppfølgingsperiodeId = gittBrukerUnderOppfolging(fnr)
@@ -192,7 +192,7 @@ class LeesahProcessorTest {
     @Test
     fun `skal håndtere at gt-provider returnerer GTKontorFeil`() = testApplication {
         val fnr = randomFnr()
-        val brukAoRuting = false
+        val brukAoRuting = { false }
         val automatiskKontorRutingService = defaultAutomatiskKontorRutingService(
             { a, b, c -> KontorForGtFeil("Noe gikk galt") }
         )
@@ -207,7 +207,7 @@ class LeesahProcessorTest {
     @Test
     fun `skal håndtere at gt-provider kaster throwable`() = testApplication {
         val fnr = randomFnr()
-        val brukAoRuting = true
+        val brukAoRuting = { true }
         val automatiskKontorRutingService = defaultAutomatiskKontorRutingService(
             { a, b, c -> throw Throwable("Noe gikk galt") }
         )

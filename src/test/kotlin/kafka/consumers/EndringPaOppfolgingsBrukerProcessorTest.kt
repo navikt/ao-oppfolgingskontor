@@ -69,7 +69,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
             { AktivOppfolgingsperiode(fnr, randomInternIdent(), oppfolgingsperiode, OffsetDateTime.now().minusDays(2)) },
             { arenaKontor() },
             { KontorTilordningServiceMock.tilordneKontor(it, brukAoRuting) },
-            true
+            { true }
         )
 
         val result = processor.internalProcess(testRecord(fnr, sistEndretDato = rettFørCutoff))
@@ -89,7 +89,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
             { AktivOppfolgingsperiode(fnr, randomInternIdent(),oppfolgingsperiode, OffsetDateTime.now().minusDays(2)) },
             { arenaKontor(endret = etterCutoffMenAnnenTidssone.minusSeconds(1)) },
             { KontorTilordningServiceMock.tilordneKontor(it, brukAoRuting) },
-            true
+            { true }
         )
         val result = processor.internalProcess(testRecord(fnr, sistEndretDato = etterCutoffMenAnnenTidssone))
         withClue("forventer SkalLagre men var ${result.javaClass.simpleName}") {
@@ -106,7 +106,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
             { NotUnderOppfolging },
             { arenaKontorFørCutoff() },
             { KontorTilordningServiceMock.tilordneKontor(it, brukAoRuting) },
-            true
+            { true }
         )
         val result = processor.internalProcess(
             testRecord(
@@ -138,7 +138,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
                 )
             },
             {},
-            true
+            { true }
         )
 
         val result = processor.internalProcess(
@@ -166,7 +166,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
             { AktivOppfolgingsperiode(fnr, randomInternIdent(),oppfolgingsperiodeId, oppfolgingsStartet) },
             { arenaKontor(sisteLagreMeldingTidspunkt) },
             {},
-            true
+            { true }
         )
 
         val result = processor.internalProcess(testRecord(fnr, sistEndretDato = innkommendeMeldingEndretTidspunkt))
@@ -186,7 +186,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
             { AktivOppfolgingsperiode(fnr, randomInternIdent(),oppfolgingsperiodeId, oppfolgingStartet) },
             { arenaKontor(kontor = kontorId, endret = oppfolgingStartet, oppfolgingsperiodeId = oppfolgingsperiodeId) },
             {},
-            true
+            { true }
         )
 
         val result = processor.internalProcess(testRecord(fnr, kontor = kontorId))
@@ -205,7 +205,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
             { AktivOppfolgingsperiode(fnr, randomInternIdent(),oppfolgingsperiodeId, oppfolgingStartet) },
             { arenaKontorMedAnnenOppfolgingsperiode },
             {},
-            true
+            { true }
         )
 
         val result = processor.internalProcess(testRecord(fnr, kontor = kontorId))
@@ -221,7 +221,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
             { OppfolgingperiodeOppslagFeil("Feil med perioder!?") },
             { null },
             {},
-            true
+            { true }
         )
         val result = processor.internalProcess(testRecord(fnr, sistEndretDato = etterCutoffMenAnnenTidssone))
         withClue("forventer Feil men var ${result.javaClass.simpleName}") {
@@ -276,7 +276,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
             { AktivOppfolgingsperiode(fnr, randomInternIdent(), oppfolgingsperiode, OffsetDateTime.now().minusDays(2)) },
             { arenaKontor(endret = etterCutoffMenAnnenTidssone.minusSeconds(1)) },
             {},
-            publiserArenaKontor = true
+            hentPubliserArenaKontorToggle = { true }
         )
 
         val result = processor.process(testRecord(fnr, sistEndretDato = etterCutoffMenAnnenTidssone))
@@ -292,7 +292,7 @@ class EndringPaOppfolgingsBrukerProcessorTest {
             { AktivOppfolgingsperiode(fnr, randomInternIdent(), oppfolgingsperiode, OffsetDateTime.now().minusDays(2)) },
             { arenaKontor(endret = etterCutoffMenAnnenTidssone.minusSeconds(1)) },
             {},
-            publiserArenaKontor = false
+            hentPubliserArenaKontorToggle = { false }
         )
 
         val result = processor.process(testRecord(fnr, sistEndretDato = etterCutoffMenAnnenTidssone))
