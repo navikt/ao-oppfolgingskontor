@@ -32,8 +32,7 @@ class AlleKontorQuery(
     suspend fun alleKontor(ident: String?, kunEnheterForEgneAnsatte: Boolean? = null): List<AlleKontorQueryDto> {
         return runCatching {
             if (kunEnheterForEgneAnsatte == true) {
-                return@runCatching norg2Client.hentAlleEnheter()
-                    .filter { it.erEgenAnsattKontor() }
+                return@runCatching norg2Client.hentEnheterForEgneAnsatte()
                     .map { AlleKontorQueryDto(it.kontorId, it.navn) }
                     .sortedBy { it.kontorId.toLong() }
             }
