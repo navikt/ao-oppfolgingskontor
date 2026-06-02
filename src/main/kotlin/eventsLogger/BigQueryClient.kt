@@ -166,9 +166,9 @@ class BigQueryClient(
                 """
                         SELECT count(*) AS antall
                         FROM arenakontor ak
-                                 JOIN ident_mapping im_ak ON ak.fnr = im_ak.ident
+                                 JOIN ident_mapping im_ak ON ak.fnr = im_ak.ident and im_ak.historisk=false
                                  JOIN ident_mapping im_aok ON im_ak.intern_ident = im_aok.intern_ident
-                                 JOIN arbeidsoppfolgingskontor aok ON im_aok.ident = aok.fnr
+                                 JOIN arbeidsoppfolgingskontor aok ON im_aok.ident = aok.fnr and im_aok.historisk=false
                         WHERE ak.kontor_id != aok.kontor_id;
                     """.trimIndent()
             ) { rs -> if (rs.next()) rs.getLong("antall") else 0L } ?: 0L
