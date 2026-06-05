@@ -1,7 +1,6 @@
 package no.nav.http.graphql.queries
 
 import com.expediagroup.graphql.server.operations.Query
-import io.ktor.util.toLowerCasePreservingASCIIRules
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.GeografiskTilknyttetKontorEntity
 import no.nav.db.table.ArenaKontorTable
@@ -56,6 +55,7 @@ class AlleKontorQuery(
 
             val sykefraværskontorer = listOf(
                 AlleKontorQueryDto("1476","Nav sjukefråværsavdeling region Sunnfjord"),
+                AlleKontorQueryDto("0391","Arbeidslivssenter Oslo"),
                 AlleKontorQueryDto("0491","Arbeidslivssenter Innlandet"),
                 AlleKontorQueryDto("0676","ROE Regional oppfølgingsenhet Vest-Viken"),
             )

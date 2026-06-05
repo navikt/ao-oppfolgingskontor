@@ -169,7 +169,7 @@ class GraphqlApplicationTest {
         val antallSpesialkontorer = 4
         val antallEgneAnsatteKontorer = 14
         val antallLokalkontorer = 248
-        val antallSykefraværskontorer = 3
+        val antallSykefraværskontorer = 4
         response.status shouldBe OK
         val payload = response.body<GraphqlResponse<AlleKontor>>()
         payload.errors shouldBe null
@@ -182,6 +182,7 @@ class GraphqlApplicationTest {
         kontorer shouldContain AlleKontorQueryDto("2103","Nav Vikafossen")
         kontorer shouldContain AlleKontorQueryDto("2990","Nav IT-avdelingen")
         kontorer shouldContain AlleKontorQueryDto("1476","Nav sjukefråværsavdeling region Sunnfjord")
+        kontorer shouldContain AlleKontorQueryDto("0391","Arbeidslivssenter Oslo")
         kontorer shouldContain AlleKontorQueryDto("0491","Arbeidslivssenter Innlandet")
         kontorer shouldContain AlleKontorQueryDto("0676","ROE Regional oppfølgingsenhet Vest-Viken")
         val kontorerEtterSpesialkontorOgGtKontor = kontorer.subList(3, kontorer.size)
