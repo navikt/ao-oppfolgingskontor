@@ -24,6 +24,8 @@ import no.nav.domain.NavIdent
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseResult
+import no.nav.http.client.MinimaltNorgKontor
+import no.nav.http.client.NorgKontorType
 import no.nav.http.client.PdlIdenterFunnet
 import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.SkjermingResult
@@ -81,7 +83,7 @@ class SettArbeidsoppfolgingsKontorTest {
         aktorId: AktorId,
         skjerming: SkjermingResult = SkjermingFunnet(HarSkjerming(false)),
         adressebeskyttelse: HarStrengtFortroligAdresseResult = HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)),
-        brukAoRuting: Boolean = false,
+        brukAoRuting: BrukAoRutingToggleSupplier = { false },
         extraDatabaseSetup: Application.() -> Unit = {},
         ): MockProducer<Long, String?> {
         environment {
@@ -128,6 +130,7 @@ class SettArbeidsoppfolgingsKontorTest {
                 { kontorEndringProducer.publiserEndringPåKontor(it) },
                 hentSkjerming = { skjerming },
                 hentAdresseBeskyttelse = { adressebeskyttelse },
+                hentEnheterForEgneAnsatte = { listOf(MinimaltNorgKontor(kontorId = "0383", "Nav egne ansatte Oslo", NorgKontorType.KO)) },
                 brukAoRuting = brukAoRuting
             )
             routing {
@@ -207,7 +210,7 @@ class SettArbeidsoppfolgingsKontorTest {
             val aktorId = randomAktorId(UKJENT)
             val kontorId = "4444"
             val veilederIdent = NavIdent("Z990000")
-            setupTestAppWithAuthAndGraphql(fnr, aktorId, brukAoRuting = true) {
+            setupTestAppWithAuthAndGraphql(fnr, aktorId, brukAoRuting = { true }) {
                 gittIdentIMapping(fnr)
             }
             val httpClient = getJsonHttpClient()
@@ -219,7 +222,7 @@ class SettArbeidsoppfolgingsKontorTest {
     }
 
     @Test
-    fun `skal svare med 409 når bruker ikke er skjermet (de kan ikke flyttes)`() = testApplication {
+    fun `skal svare med 400 når bruker er skjermet og kontor ikke er for skjermede`() = testApplication {
         withMockOAuth2Server {
             val fnr = randomFnr(UKJENT)
             val aktorId = randomAktorId(UKJENT)
@@ -227,7 +230,7 @@ class SettArbeidsoppfolgingsKontorTest {
             val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
             val veilederIdent = NavIdent("Z990000")
             val harSkjerming = SkjermingFunnet(HarSkjerming(true))
-            setupTestAppWithAuthAndGraphql(fnr, aktorId, brukAoRuting = true, skjerming = harSkjerming) {
+            setupTestAppWithAuthAndGraphql(fnr, aktorId, brukAoRuting = { true }, skjerming = harSkjerming) {
                 gittBrukerUnderOppfolging(fnr, oppfolgingsperiodeId)
                 gittIdentIMapping(fnr)
             }
@@ -235,8 +238,8 @@ class SettArbeidsoppfolgingsKontorTest {
 
             val response = httpClient.settKontor(server, fnr = fnr, kontorId = kontorId, navIdent = veilederIdent)
 
-            response.status shouldBe HttpStatusCode.Conflict
-            response.bodyAsText() shouldBe "Kan ikke bytte kontor på skjermet bruker"
+            response.status shouldBe HttpStatusCode.BadRequest
+            response.bodyAsText() shouldBe "Kan ikke sette en skjermet bruker til kontor som ikke er for egne ansatte"
         }
     }
 
@@ -249,7 +252,7 @@ class SettArbeidsoppfolgingsKontorTest {
             val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
             val veilederIdent = NavIdent("Z990000")
             val adressebeskyttelse = HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(true))
-            setupTestAppWithAuthAndGraphql(fnr, aktorId, brukAoRuting = true, adressebeskyttelse = adressebeskyttelse) {
+            setupTestAppWithAuthAndGraphql(fnr, aktorId, brukAoRuting = { true }, adressebeskyttelse = adressebeskyttelse) {
                 gittBrukerUnderOppfolging(fnr, oppfolgingsperiodeId)
                 gittIdentIMapping(fnr)
             }

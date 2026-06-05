@@ -7,6 +7,7 @@ import arrow.core.getOrElse
 import io.ktor.http.HttpStatusCode
 import kafka.producers.PubliserManuellKontorEndring
 import no.nav.AOPrincipal
+import no.nav.BrukAoRutingToggleSupplier
 import no.nav.NavAnsatt
 import no.nav.db.AktorId
 import no.nav.db.Dnr
@@ -30,6 +31,7 @@ import no.nav.http.client.HarStrengtFortroligAdresseIkkeFunnet
 import no.nav.http.client.HarStrengtFortroligAdresseOppslagFeil
 import no.nav.http.client.HarStrengtFortroligAdresseResult
 import no.nav.http.client.IdentFunnet
+import no.nav.http.client.MinimaltNorgKontor
 import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.SkjermingIkkeFunnet
 import no.nav.http.client.SkjermingResult
@@ -62,28 +64,38 @@ class SettKontorHandler(
     private val publiserManuellKontorEndring: PubliserManuellKontorEndring,
     private val hentSkjerming: suspend (IdentSomKanLagres) -> SkjermingResult,
     private val hentAdresseBeskyttelse: suspend (IdentSomKanLagres) -> HarStrengtFortroligAdresseResult,
-    private val brukAoRuting: Boolean,
+    private val brukAoRuting: BrukAoRutingToggleSupplier,
+    private val hentEnheterForEgneAnsatte: suspend () -> List<MinimaltNorgKontor>,
 ) {
     private val log = LoggerFactory.getLogger(this::class.java)
 
-    private fun validateIdent(ident: String): Either<SettKontorFailure, IdentSomKanLagres>  {
+    private fun validateIdent(ident: String): Either<SettKontorFailure, IdentSomKanLagres> {
         return Either.catch { Ident.validateOrThrow(ident, Ident.HistoriskStatus.UKJENT) }
             .mapLeft { SettKontorFailure(HttpStatusCode.BadRequest, "Kunne ikke sette kontor, ident var ikke gyldig") }
             .map { muligLagrebarIdent ->
                 return when (muligLagrebarIdent) {
                     is AktorId -> Either.Left(
-                        SettKontorFailure(HttpStatusCode.BadRequest, "/api/kontor støtter ikke endring via aktorId, bruk dnr/fnr istedet")
+                        SettKontorFailure(
+                            HttpStatusCode.BadRequest,
+                            "/api/kontor støtter ikke endring via aktorId, bruk dnr/fnr istedet"
+                        )
                     )
+
                     is Dnr, is Fnr, is Npid -> Either.Right(muligLagrebarIdent)
                 }
             }
     }
 
-    private suspend fun sjekkHarTilgang(principal: AOPrincipal, ident: IdentSomKanLagres, kontorId: KontorId, traceId: String): Either<SettKontorFailure, Unit> {
+    private suspend fun sjekkHarTilgang(
+        principal: AOPrincipal,
+        ident: IdentSomKanLagres,
+        kontorId: KontorId,
+        traceId: String
+    ): Either<SettKontorFailure, Unit> {
         val harTilgangTilBruker = harLeseTilgangTilBruker(principal, ident, traceId)
         val harTilgangTilKontor = harTilgangTilKontor(principal, kontorId, traceId)
 
-        if(harTilgangTilBruker is HarTilgangTilBruker || harTilgangTilKontor is HarTilgangTilKontor) {
+        if (harTilgangTilBruker is HarTilgangTilBruker || harTilgangTilKontor is HarTilgangTilKontor) {
             return Either.Right(Unit)
         }
 
@@ -98,11 +110,12 @@ class SettKontorHandler(
             else -> null
         }
 
-        val statusCode = if (harTilgangTilBruker is TilgangTilBrukerOppslagFeil || harTilgangTilKontor is TilgangTilKontorOppslagFeil) {
-            HttpStatusCode.InternalServerError
-        } else {
-            HttpStatusCode.Forbidden
-        }
+        val statusCode =
+            if (harTilgangTilBruker is TilgangTilBrukerOppslagFeil || harTilgangTilKontor is TilgangTilKontorOppslagFeil) {
+                HttpStatusCode.InternalServerError
+            } else {
+                HttpStatusCode.Forbidden
+            }
         val errorMessage = listOfNotNull(tilgangTilBrukerFeil, tilgangTilKontorFeil).joinToString("; ")
         logger.warn(errorMessage)
         return Either.Left(SettKontorFailure(statusCode, errorMessage))
@@ -115,15 +128,21 @@ class SettKontorHandler(
             NotUnderOppfolging -> {
                 Either.Left(SettKontorFailure(HttpStatusCode.Conflict, "Bruker er ikke under oppfølging"))
             }
+
             is OppfolgingperiodeOppslagFeil -> {
                 log.error("Klarte ikke hente oppfølgingsperiode: ${oppfolgingsperiode.message}")
-                Either.Left(SettKontorFailure(HttpStatusCode.InternalServerError, "Klarte ikke hente oppfølgingsperiode"))
+                Either.Left(
+                    SettKontorFailure(
+                        HttpStatusCode.InternalServerError,
+                        "Klarte ikke hente oppfølgingsperiode"
+                    )
+                )
             }
         }
     }
 
     private suspend fun sjekkBrukerHarIkkeAdressebeskyttelse(ident: IdentSomKanLagres): Either<SettKontorFailure, Unit> {
-        return when(val adressebeskyttelse = hentAdresseBeskyttelse(ident)) {
+        return when (val adressebeskyttelse = hentAdresseBeskyttelse(ident)) {
             is HarStrengtFortroligAdresseFunnet -> {
                 if (adressebeskyttelse.harStrengtFortroligAdresse.value) {
                     val errorMessage = "Kan ikke bytte kontor på strengt fortrolig bruker"
@@ -131,10 +150,12 @@ class SettKontorHandler(
                     return Either.Left(SettKontorFailure(HttpStatusCode.Conflict, errorMessage))
                 } else Either.Right(Unit)
             }
+
             is HarStrengtFortroligAdresseIkkeFunnet -> {
                 log.error("Fant ikke adressebeskyttelse ved flytting av bruker: ${adressebeskyttelse.message}")
                 return Either.Left(SettKontorFailure(HttpStatusCode.InternalServerError, adressebeskyttelse.message))
             }
+
             is HarStrengtFortroligAdresseOppslagFeil -> {
                 log.error("Fant ikke adressebeskyttelse ved flytting av bruker: ${adressebeskyttelse.message}")
                 return Either.Left(SettKontorFailure(HttpStatusCode.InternalServerError, adressebeskyttelse.message))
@@ -142,15 +163,26 @@ class SettKontorHandler(
         }
     }
 
-    private suspend fun sjekkBrukerErIkkeSkjermet(ident: IdentSomKanLagres): Either<SettKontorFailure, Unit> {
-        return when(val skjerming = hentSkjerming(ident)) {
+    private suspend fun sjekkOmNyttKontorErForSkjermedeHvisBrukerErSkjermet(
+        ident: IdentSomKanLagres,
+        nyttKontorId: String
+    ): Either<SettKontorFailure, Unit> {
+        return when (val skjerming = hentSkjerming(ident)) {
             is SkjermingFunnet -> {
                 if (skjerming.skjermet.value) {
-                    val errorMessage = "Kan ikke bytte kontor på skjermet bruker"
-                    log.error(errorMessage)
-                    Either.Left(SettKontorFailure(HttpStatusCode.Conflict, errorMessage))
+                    val enheterEgneAnsatte = hentEnheterForEgneAnsatte()
+                    val nyttKontorErForSkjermedeBruker =
+                        nyttKontorId in enheterEgneAnsatte.map { it.kontorId }
+                    if (nyttKontorErForSkjermedeBruker) {
+                        Either.Right(Unit)
+                    } else {
+                        val errorMessage = "Kan ikke sette en skjermet bruker til kontor som ikke er for egne ansatte"
+                        log.error(errorMessage)
+                        Either.Left(SettKontorFailure(HttpStatusCode.BadRequest, errorMessage))
+                    }
                 } else Either.Right(Unit)
             }
+
             is SkjermingIkkeFunnet -> {
                 log.error("Fant ikke skjerming ved flytting av bruker: ${skjerming.melding}")
                 Either.Left(SettKontorFailure(HttpStatusCode.InternalServerError, skjerming.melding))
@@ -168,17 +200,37 @@ class SettKontorHandler(
         }
     }
 
-    suspend fun settKontor(tilordning: ArbeidsoppfolgingsKontorTilordningDTO, principal: AOPrincipal, traceId: String): SettKontorResult {
+    suspend fun settKontor(
+        tilordning: ArbeidsoppfolgingsKontorTilordningDTO,
+        principal: AOPrincipal,
+        traceId: String
+    ): SettKontorResult {
+        val brukAoRuting = brukAoRuting()
         if(!brukAoRuting) {
             return SettKontorFailure(HttpStatusCode.NotImplemented, "Kan ikke sette kontor for vi er i prod")
         } else {
             return Either.catch {
                 validateIdent(tilordning.ident)
-                    .flatMap { ident -> sjekkHarTilgang(principal, ident, KontorId(tilordning.kontorId), traceId).map { ident } }
+                    .flatMap { ident ->
+                        sjekkHarTilgang(
+                            principal,
+                            ident,
+                            KontorId(tilordning.kontorId),
+                            traceId
+                        ).map { ident }
+                    }
                     .flatMap { ident -> sjekkBrukerHarIkkeAdressebeskyttelse(ident).map { ident } }
-                    .flatMap { ident -> sjekkBrukerErIkkeSkjermet(ident).map { ident } }
+                    .flatMap { ident -> sjekkOmNyttKontorErForSkjermedeHvisBrukerErSkjermet(ident, tilordning.kontorId).map { ident } }
                     .flatMap { ident -> sjekkErVeileder(principal).map { it to ident } }
-                    .flatMap { (navAnsatt, ident) -> hentOppfolgingsperiode(ident).map { Triple(it, ident, navAnsatt) } }
+                    .flatMap { (navAnsatt, ident) ->
+                        hentOppfolgingsperiode(ident).map {
+                            Triple(
+                                it,
+                                ident,
+                                navAnsatt
+                            )
+                        }
+                    }
                     .map { (periodeId: OppfolgingsperiodeId, ident: IdentSomKanLagres, navAnsatt: NavAnsatt) ->
                         val gammeltKontor = hentAoKontor(ident)
                         val kontorId = KontorId(tilordning.kontorId)
@@ -198,7 +250,8 @@ class SettKontorHandler(
                         kontorId to gammeltKontor
                     }
                     .map { (kontorId, gammeltKontor) ->
-                        val kontorNavn = Either.catch { hentKontorNavn(kontorId) }.getOrElse { KontorNavn("<Ukjent kontornavn>") }
+                        val kontorNavn =
+                            Either.catch { hentKontorNavn(kontorId) }.getOrElse { KontorNavn("<Ukjent kontornavn>") }
                         val response = buildResponse(kontorNavn, kontorId, gammeltKontor)
                         SettKontorSuccess(response)
                     }
@@ -213,15 +266,16 @@ class SettKontorHandler(
     }
 }
 
-fun buildResponse(kontorNavn: KontorNavn, kontorId: KontorId, gammeltKontor: ArbeidsoppfolgingsKontor?) = KontorByttetOkResponseDto(
-    fraKontor = gammeltKontor?.let {
-        Kontor(
-            kontorNavn = it.kontorNavn.navn,
-            kontorId = it.kontorId.id,
+fun buildResponse(kontorNavn: KontorNavn, kontorId: KontorId, gammeltKontor: ArbeidsoppfolgingsKontor?) =
+    KontorByttetOkResponseDto(
+        fraKontor = gammeltKontor?.let {
+            Kontor(
+                kontorNavn = it.kontorNavn.navn,
+                kontorId = it.kontorId.id,
+            )
+        },
+        tilKontor = Kontor(
+            kontorNavn = kontorNavn.navn,
+            kontorId = kontorId.id
         )
-    },
-    tilKontor = Kontor(
-        kontorNavn = kontorNavn.navn,
-        kontorId = kontorId.id
     )
-)

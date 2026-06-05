@@ -5,8 +5,6 @@ import eventsLogger.BigQueryClient
 import http.client.*
 import http.configureContentNegotiation
 import http.configureHentArbeidsoppfolgingskontorBulkModule
-import io.getunleash.DefaultUnleash
-import io.getunleash.util.UnleashConfig
 import io.ktor.server.application.*
 import io.ktor.server.netty.*
 import kafka.producers.KontorEndringProducer
@@ -27,6 +25,8 @@ import no.nav.http.configureAdminModule
 import no.nav.http.configureFinnKontorModule
 import no.nav.http.configureArbeidsoppfolgingskontorModule
 import no.nav.http.graphql.*
+import no.nav.kafka.KafkaPausedEvent
+import no.nav.kafka.KafkaResumedEvent
 import no.nav.kafka.KafkaStreamsPlugin
 import no.nav.kafka.config.createKafkaProducerWithLongKey
 import no.nav.kafka.config.toKafkaEnv
@@ -52,16 +52,11 @@ fun Application.module() {
     configureRateLimit()
 
     val toggleService = ToggleService(
-        unleashClient = DefaultUnleash(
-            UnleashConfig
-                .builder()
-                .appName(environment.getApplicationName())
-                .instanceId(environment.getApplicationName())
-                .unleashAPI("${environment.getUnleashServerApiUrl()}/api")
-                .apiKey(environment.getUnleashServerApiToken())
-                .build()
-        )
+        environment = environment,
+        onKafkaPaused = { this.monitor.raise(KafkaPausedEvent, Unit) },
+        onKafkaResumed = { this.monitor.raise(KafkaResumedEvent, Unit) }
     )
+    val skalBrukeAoRuting = { toggleService.brukAoRutingMutableVar }
 
     val norg2Client = Norg2Client(environment.getNorg2Url())
 
@@ -147,7 +142,7 @@ fun Application.module() {
         kontorTopicNavn = this.environment.topics().ut.arbeidsoppfolgingskontortilordninger.name,
         kontorNavnProvider = { kontorId -> kontorNavnService.getKontorNavn(kontorId) },
         hentAlleIdenter = { identSomKanLagres -> identService.hentAlleIdenter(identSomKanLagres) },
-        brukAoRuting = this.environment.getBrukAoRuting()
+        brukAoRuting = skalBrukeAoRuting
     )
     val republiseringService = KontorRepubliseringService(
         kontorEndringProducer::republiserKontor,
@@ -157,24 +152,20 @@ fun Application.module() {
         kontorEndringProducer::publiserTombstone,
         oppfolgingsperiodeService::getCurrentOppfolgingsperiode
     )
-    val arenaSyncService = ArenaSyncService(veilarbArenaClient, kontorTilordningService, kontorTilhorighetService, oppfolgingsperiodeService, environment.getBrukAoRuting())
-    val brukAoRuting = environment.getBrukAoRuting()
+    val arenaSyncService = ArenaSyncService(veilarbArenaClient, kontorTilordningService, kontorTilhorighetService, oppfolgingsperiodeService, skalBrukeAoRuting)
 
     install(KafkaStreamsPlugin) {
         this.automatiskKontorRutingService = automatiskKontorRutingService
-        this.fnrProvider = { ident ->  identService.veksleAktorIdIForetrukketIdent(ident) }
         this.database = database
         this.meterRegistry = meterRegistry
         this.oppfolgingsperiodeService = oppfolgingsperiodeService
-        this.oppfolgingsperiodeDao = OppfolgingsperiodeDao
         this.identService = identService
         this.criticalErrorNotificationFunction = setCriticalError
         this.kontorTilhorighetService = kontorTilhorighetService
         this.kontorEndringProducer = kontorEndringProducer
         this.veilarbArenaClient = veilarbArenaClient
         this.kontorTilordningService = kontorTilordningService
-        this.brukAoRuting = brukAoRuting
-        this.toggleService = toggleService
+        this.brukAoRuting = skalBrukeAoRuting
     }
 
     val issuer = environment.getIssuer()
@@ -196,7 +187,8 @@ fun Application.module() {
         { kontorEndringProducer.publiserEndringPåKontor(it) },
         hentSkjerming = { skjermingsClient.hentSkjerming(it) },
         hentAdresseBeskyttelse = { pdlClient.harStrengtFortroligAdresse(it) },
-        brukAoRuting = environment.getBrukAoRuting(),
+        brukAoRuting = skalBrukeAoRuting,
+        hentEnheterForEgneAnsatte = { norg2Client.hentEnheterForEgneAnsatte() },
     )
     configureFinnKontorModule(simulerKontorTilordning, kontorNavnService::getKontorNavn, { call -> call.authenticateCall(issuer) })
     configureAdminModule(simulerKontorTilordning, republiseringService, arenaSyncService, kontorSammenslåingService)
@@ -221,25 +213,7 @@ fun ApplicationEnvironment.isDev(): Boolean {
         ?.contains("dev-gcp") ?: false
 }
 
-fun ApplicationEnvironment.getBrukAoRuting(): Boolean {
-    return config.property("brukAoRuting").getString().toBoolean()
-}
-
-fun ApplicationEnvironment.getApplicationName(): String {
-    return config.property("appName").getString()
-}
-
-fun ApplicationEnvironment.getUnleashServerApiUrl(): String {
-    return config.property("unleash.url").getString()
-}
-
-fun ApplicationEnvironment.getUnleashServerApiToken(): String {
-    return config.property("unleash.token").getString()
-}
-
-fun ApplicationEnvironment.getPubliserArenaKontor(): Boolean {
-    return !getBrukAoRuting()
-}
+typealias BrukAoRutingToggleSupplier = () -> Boolean
 
 fun Application.installBigQueryDailyScheduler(database: Database, bigQueryClient: BigQueryClient) {
     environment.monitor.subscribe(ApplicationStarted) {
@@ -260,6 +234,10 @@ fun Application.installBigQueryDailyScheduler(database: Database, bigQueryClient
                     log.info("Starter BigQuery-jobb for antall 2990 AO-kontor")
                     bigQueryClient.antall2990Kontor(database)
                     log.info("BigQuery-jobb ferdig")
+
+                    log.info("Starter BigQuery-jobb for antall med ulikt AO-kontor og Arenakontor")
+                    bigQueryClient.antallMedUliktArenakontorOgAoKontor(database)
+                    log.info("BigQuery-jobb for ulikt kontor ferdig")
                 }
             }
         }

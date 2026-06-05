@@ -1,7 +1,6 @@
 package no.nav.http.graphql.queries
 
 import com.expediagroup.graphql.server.operations.Query
-import io.ktor.util.toLowerCasePreservingASCIIRules
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.GeografiskTilknyttetKontorEntity
 import no.nav.db.table.ArenaKontorTable
@@ -18,9 +17,6 @@ val velgbareNorgKontorTyper = listOf(
     NorgKontorType.LOKAL,
 )
 
-fun MinimaltNorgKontor.erEgenAnsattKontor() = this.navn.toLowerCasePreservingASCIIRules()
-    .contains("egne ansatte")
-
 fun erValgbartKontor(kontor: MinimaltNorgKontor): Boolean {
     if (kontor.type in velgbareNorgKontorTyper) return true
     if (kontor.erEgenAnsattKontor()) return true
@@ -32,8 +28,14 @@ class AlleKontorQuery(
 ): Query {
     val logger = LoggerFactory.getLogger(AlleKontorQuery::class.java)
 
-    suspend fun alleKontor(ident: String?): List<AlleKontorQueryDto> {
+    suspend fun alleKontor(ident: String?, kunEnheterForEgneAnsatte: Boolean? = null): List<AlleKontorQueryDto> {
         return runCatching {
+            if (kunEnheterForEgneAnsatte == true) {
+                return@runCatching norg2Client.hentEnheterForEgneAnsatte()
+                    .map { AlleKontorQueryDto(it.kontorId, it.navn) }
+                    .sortedBy { it.kontorId.toLong() }
+            }
+
             val gtKontor = transaction {
                 GeografiskTilknyttetKontorEntity.find { GeografiskTilknytningKontorTable.id eq ident }.firstOrNull()
             }
@@ -53,6 +55,7 @@ class AlleKontorQuery(
 
             val sykefraværskontorer = listOf(
                 AlleKontorQueryDto("1476","Nav sjukefråværsavdeling region Sunnfjord"),
+                AlleKontorQueryDto("0391","Arbeidslivssenter Oslo"),
                 AlleKontorQueryDto("0491","Arbeidslivssenter Innlandet"),
                 AlleKontorQueryDto("0676","ROE Regional oppfølgingsenhet Vest-Viken"),
             )

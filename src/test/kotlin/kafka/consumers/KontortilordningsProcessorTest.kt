@@ -9,7 +9,6 @@ import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
-import no.nav.http.client.AlderFunnet
 import no.nav.http.client.AlderIkkeFunnet
 import no.nav.http.client.GeografiskTilknytningKommuneNr
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
@@ -18,7 +17,6 @@ import no.nav.http.client.arbeidssogerregisteret.ProfileringFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
 import no.nav.kafka.consumers.KontortilordningsProcessor
 import no.nav.kafka.processor.Retry
-import no.nav.kafka.processor.Skip
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
 import domain.kontorForGt.KontorForGtFantDefaultKontor
@@ -40,7 +38,7 @@ class KontortilordningsProcessorTest {
         val processor = KontortilordningsProcessor(
             hardtFeilendeAutomatiskKontorRutingService(),
             kontorTilordningService,
-            false
+            { false }
         )
         val record: Record<Ident, OppfolgingsperiodeEndret> = Record(
             oppfolgingsperiode.fnr as Ident,
@@ -60,7 +58,7 @@ class KontortilordningsProcessorTest {
         val processor = KontortilordningsProcessor(
             feilendeAutomatiskKontorRutingService(oppfolgingsperiode),
             kontorTilordningService,
-            false
+            { false }
         )
         val record: Record<Ident, OppfolgingsperiodeEndret> = Record(
             oppfolgingsperiode.fnr as Ident,
