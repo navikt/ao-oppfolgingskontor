@@ -263,6 +263,38 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                 )
             }
 
+            it("skal kunne overstyre kontor på brukere som ikke har profilering enda") {
+                val kontorOverstyring = KontorOverstyring( "testident", StartetAvType.VEILEDER,KontorId("7777"))
+                gitt(brukerUtenProfileringEnnå).tilordneKontorAutomatiskVedStartOppfolging(
+                    oppfolgingsperiodeStartet(brukerUtenProfileringEnnå, kontorOverstyring = kontorOverstyring)
+                ) shouldBe TilordningSuccessKontorEndret(
+                    KontorEndringer(
+                        gtKontorEndret = brukerUtenProfileringEnnå.defaultGtKontorVedOppfolgStart(),
+                        aoKontorEndret = OppfolgingsperiodeStartetManuellTilordning(
+                            brukerUtenProfileringEnnå.fnr(),
+                            brukerUtenProfileringEnnå.oppfolgingsperiodeId(),
+                            kontorOverstyring
+                        )
+                    )
+                )
+            }
+
+            it("skal kunne overstyre kontor på brukere som ikke har alder") {
+                val kontorOverstyring = KontorOverstyring( "testident", StartetAvType.VEILEDER,KontorId("7777"))
+                gitt(brukerMedFeilendeAlder).tilordneKontorAutomatiskVedStartOppfolging(
+                    oppfolgingsperiodeStartet(brukerMedFeilendeAlder, kontorOverstyring = kontorOverstyring)
+                ) shouldBe TilordningSuccessKontorEndret(
+                    KontorEndringer(
+                        gtKontorEndret = brukerMedFeilendeAlder.defaultGtKontorVedOppfolgStart(),
+                        aoKontorEndret = OppfolgingsperiodeStartetManuellTilordning(
+                            brukerMedFeilendeAlder.fnr(),
+                            brukerMedFeilendeAlder.oppfolgingsperiodeId(),
+                            kontorOverstyring
+                        )
+                    )
+                )
+            }
+
             it("skal sette AO kontor til lokalkontor hvis har antatt behov for veiledening") {
                 gitt(ungBrukerMedbehovForVeiledning).tilordneKontorAutomatiskVedStartOppfolging(
                     oppfolgingsperiodeStartet(ungBrukerMedbehovForVeiledning)
@@ -1124,7 +1156,7 @@ val skjermetBruker = Bruker(
     AlderFunnet(20),
     ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
     KontorForGtFantDefaultKontor(
-        KontorId("1234"),
+        KontorId("124434"),
         HarSkjerming(true),
         HarStrengtFortroligAdresse(false),
         GeografiskTilknytningBydelNr("1111")

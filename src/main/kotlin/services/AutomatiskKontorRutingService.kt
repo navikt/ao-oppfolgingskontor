@@ -24,10 +24,10 @@ import no.nav.domain.externalEvents.AdressebeskyttelseEndret
 import no.nav.domain.externalEvents.BostedsadresseEndret
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.domain.externalEvents.SkjermetStatusEndret
-import no.nav.http.client.AlderFunnet
+import no.nav.http.client.AlderFunnet as PdlAlderFunnet
 import no.nav.http.client.AlderIkkeFunnet
 import no.nav.http.client.AlderOppslagFeil
-import no.nav.http.client.AlderResult
+import no.nav.http.client.AlderResult as PdlAlderResult
 import domain.gtForBruker.GtForBrukerSuccess
 import domain.gtForBruker.GtLandForBrukerFunnet
 import domain.kontorForGt.KontorForGtFeil
@@ -75,6 +75,10 @@ data class TilordningSuccessKontorEndret(val kontorEndretEvent: KontorEndringer)
 data class TilordningFeil(val message: String) : TilordningResultat()
 data class TilordningRetry(val message: String) : TilordningResultat()
 
+sealed class AlderResult
+class AlderFunnet(val alder: Int): AlderResult()
+object AlderIkkeRelevant: AlderResult()
+
 data class AutomatiskKontorRutingService(
     private val hentKontorForGt:
     suspend (
@@ -82,7 +86,7 @@ data class AutomatiskKontorRutingService(
         strengtFortroligAdresse: HarStrengtFortroligAdresse,
         skjermet: HarSkjerming
     ) -> KontorForGtResultat,
-    private val hentAlder: suspend (fnr: Ident) -> AlderResult,
+    private val hentAlder: suspend (fnr: Ident) -> PdlAlderResult,
     private val hentProfilering: suspend (fnr: Ident) -> HentProfileringsResultat,
     private val hentSkjerming: suspend (fnr: Ident) -> SkjermingResult,
     private val hentHarStrengtFortroligAdresse:
@@ -152,11 +156,15 @@ data class AutomatiskKontorRutingService(
                 is HarStrengtFortroligAdresseFunnet -> result.harStrengtFortroligAdresse
             }
             val alder = when (val result = aldersResult.await()) {
-                is AlderFunnet -> result.alder
-                is AlderIkkeFunnet -> return TilordningFeil("Kunne ikke hente alder: ${result.message}")
-                is AlderOppslagFeil -> return TilordningFeil("Henting av alder feilet: ${result.message}")
+                is PdlAlderFunnet -> AlderFunnet(result.alder)
+                is AlderIkkeFunnet ->
+                    if (manueltSattKontor != null) AlderIkkeRelevant
+                    else return TilordningFeil("Kunne ikke hente alder: ${result.message}")
+                is AlderOppslagFeil ->
+                    if (manueltSattKontor != null) AlderIkkeRelevant
+                    else return TilordningFeil("Henting av alder feilet: ${result.message}")
             }
-            val profilering: Profilering = when (erArbeidssøkerRegistrering) {
+            val profilering: Profilering = when (erArbeidssøkerRegistrering && manueltSattKontor == null) {
                 true -> {
                     when (val profileringResultat = hentProfilering(ident)) {
                         is ProfileringFunnet -> profileringResultat
@@ -172,30 +180,21 @@ data class AutomatiskKontorRutingService(
                         is ProfileringOppslagFeil -> return TilordningFeil("Kunne ikke hente profilering: ${profileringResultat.error.message}")
                     }
                 }
-
                 false -> ProfileringIkkeAktuell
             }
             val gtKontorResultat = hentKontorForGt(ident, harStrengtFortroligAdresse, erSkjermet)
             val kontorTilordning = when (gtKontorResultat) {
-                is KontorForGtFantIkkeKontor -> velgKontorForBrukerUtenGtKontor(
-                    ident,
-                    alder,
-                    profilering,
-                    oppfolgingsperiodeId,
-                    gtKontorResultat,
-                    manueltSattKontor
-                )
-
-                is KontorForGtFantKontor -> velgKontorForBruker(
-                    ident,
-                    gtKontorResultat,
-                    alder,
-                    profilering,
-                    oppfolgingsperiodeId,
-                    manueltSattKontor
-                )
-
                 is KontorForGtFeil -> return TilordningFeil("Feil ved henting av gt-kontor: ${gtKontorResultat.melding}")
+                is KontorForGtSuccess -> {
+                    velgKontorForBruker(
+                        fnr = ident,
+                        gtResultat = gtKontorResultat,
+                        alder = alder,
+                        profilering = profilering,
+                        oppfolgingsperiodeId = oppfolgingsperiodeId,
+                        kontorOverstyring = manueltSattKontor
+                    )
+                }
             }
                 .let {
                     KontorEndringer(
@@ -220,84 +219,74 @@ data class AutomatiskKontorRutingService(
                 alder in 30..66
     }
 
-    private fun velgKontorForBrukerUtenGtKontor(
-        fnr: IdentSomKanLagres,
-        alder: Int,
-        profilering: Profilering,
-        oppfolgingsperiodeId: OppfolgingsperiodeId,
-        gtResultat: KontorForGtFantIkkeKontor,
-        kontorOverstyring: KontorOverstyring?
-    ): AOKontorEndret {
-        return when {
-            kontorOverstyring != null && !gtResultat.sensitivitet().erSensitiv() -> OppfolgingsperiodeStartetManuellTilordning(
-                fnr,
-                oppfolgingsperiodeId,
-                kontorOverstyring
-            )
-
-            skalTilNasjonalOppfølgingsEnhet(
-                gtResultat.sensitivitet(),
-                profilering,
-                alder
-            ) -> OppfolgingsperiodeStartetNoeTilordning(fnr, oppfolgingsperiodeId)
-
-            gtResultat.erStrengtFortrolig() -> {
-                OppfolgingsPeriodeStartetSensitivKontorTilordning(
-                    KontorTilordning(fnr, VIKAFOSSEN, oppfolgingsperiodeId),
-                    gtResultat.sensitivitet(),
-                    gtResultat
-                )
-            }
-
-            else -> {
-                OppfolgingsPeriodeStartetFallbackKontorTilordning(
-                    fnr,
-                    oppfolgingsperiodeId,
-                    gtResultat.sensitivitet(),
-                    gtResultat
-                )
-            }
-        }
+    fun erOverstyrtOgIkkeSensitiv(kontorOverstyring: KontorOverstyring?, erSensitiv: Boolean): Boolean {
+        return kontorOverstyring != null && !erSensitiv
     }
 
     private fun velgKontorForBruker(
         fnr: IdentSomKanLagres,
-        gtKontor: KontorForGtFantKontor,
-        alder: Int,
+        alder: AlderResult,
         profilering: Profilering,
         oppfolgingsperiodeId: OppfolgingsperiodeId,
+        gtResultat: KontorForGtSuccess,
         kontorOverstyring: KontorOverstyring?
     ): AOKontorEndret {
-        val skalTilNOE by lazy { skalTilNasjonalOppfølgingsEnhet(gtKontor.sensitivitet(), profilering, alder) }
-        val erSensitiv = gtKontor.sensitivitet().erSensitiv()
+        val erSensitiv = gtResultat.sensitivitet().erSensitiv()
         return when {
-            kontorOverstyring != null && !erSensitiv -> OppfolgingsperiodeStartetManuellTilordning(
+            kontorOverstyring != null && erOverstyrtOgIkkeSensitiv(kontorOverstyring, erSensitiv) -> OppfolgingsperiodeStartetManuellTilordning(
                 fnr,
                 oppfolgingsperiodeId,
                 kontorOverstyring
             )
-            skalTilNOE -> OppfolgingsperiodeStartetNoeTilordning(fnr, oppfolgingsperiodeId)
-            erSensitiv -> {
-                if (gtKontor.erStrengtFortrolig()) {
-                    OppfolgingsPeriodeStartetSensitivKontorTilordning(
-                        KontorTilordning(fnr, VIKAFOSSEN, oppfolgingsperiodeId),
-                        gtKontor.sensitivitet(),
-                        gtKontor
-                    )
-                } else {
-                    OppfolgingsPeriodeStartetSensitivKontorTilordning(
-                        KontorTilordning(fnr, gtKontor.kontorId, oppfolgingsperiodeId),
-                        gtKontor.sensitivitet(),
-                        gtKontor
-                    )
-                }
-            }
-
+            alder is AlderFunnet && skalTilNasjonalOppfølgingsEnhet(
+                gtResultat.sensitivitet(),
+                profilering, alder.alder
+            ) -> OppfolgingsperiodeStartetNoeTilordning(fnr, oppfolgingsperiodeId)
             else -> {
-                OppfolgingsPeriodeStartetLokalKontorTilordning(
-                    KontorTilordning(fnr, gtKontor.kontorId, oppfolgingsperiodeId),
-                    gtKontor
-                )
+                when (gtResultat) {
+                    is KontorForGtFantKontor -> {
+                        when {
+                            erSensitiv -> {
+                                if (gtResultat.erStrengtFortrolig()) {
+                                    OppfolgingsPeriodeStartetSensitivKontorTilordning(
+                                        KontorTilordning(fnr, VIKAFOSSEN, oppfolgingsperiodeId),
+                                        gtResultat.sensitivitet(),
+                                        gtResultat
+                                    )
+                                } else {
+                                    OppfolgingsPeriodeStartetSensitivKontorTilordning(
+                                        KontorTilordning(fnr, gtResultat.kontorId, oppfolgingsperiodeId),
+                                        gtResultat.sensitivitet(),
+                                        gtResultat
+                                    )
+                                }
+                            }
+                            else -> OppfolgingsPeriodeStartetLokalKontorTilordning(
+                                KontorTilordning(fnr, gtResultat.kontorId, oppfolgingsperiodeId),
+                                gtResultat
+                            )
+                        }
+
+                    }
+                    is KontorForGtFantIkkeKontor -> {
+                        when {
+                            gtResultat.erStrengtFortrolig() -> {
+                                OppfolgingsPeriodeStartetSensitivKontorTilordning(
+                                    KontorTilordning(fnr, VIKAFOSSEN, oppfolgingsperiodeId),
+                                    gtResultat.sensitivitet(),
+                                    gtResultat
+                                )
+                            }
+                            else -> OppfolgingsPeriodeStartetFallbackKontorTilordning(
+                                fnr,
+                                oppfolgingsperiodeId,
+                                gtResultat.sensitivitet(),
+                                gtResultat
+                            )
+                        }
+
+                    }
+                }
             }
         }
     }
