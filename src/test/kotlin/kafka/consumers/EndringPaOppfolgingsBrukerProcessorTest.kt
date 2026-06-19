@@ -82,7 +82,6 @@ class EndringPaOppfolgingsBrukerProcessorTest {
     fun `skal ikke cutte off når tidspunkt er for 13 aug 2025`() {
         val fnr = randomFnr()
         val oppfolgingsperiode = OppfolgingsperiodeId(UUID.randomUUID())
-        val brukAoRuting = false
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { AktivOppfolgingsperiode(fnr, randomInternIdent(),oppfolgingsperiode, OffsetDateTime.now().minusDays(2)) },
             { arenaKontor(endret = etterCutoffMenAnnenTidssone.minusSeconds(1)) },
@@ -98,7 +97,6 @@ class EndringPaOppfolgingsBrukerProcessorTest {
     @Test
     fun `skal ikke behandle melding når bruker ikke har oppfølgingsperiode lagret`() {
         val fnr = randomFnr()
-        val brukAoRuting = false
         val processor = EndringPaOppfolgingsBrukerProcessor(
             { NotUnderOppfolging },
             { arenaKontorFørCutoff() },

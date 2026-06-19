@@ -139,7 +139,6 @@ class SettArbeidsoppfolgingsKontorTest {
         return producer
     }
 
-    @Disabled
     @Test
     fun `skal kunne sette arbeidsoppfølgingskontor`() = testApplication {
         withMockOAuth2Server {
@@ -170,33 +169,6 @@ class SettArbeidsoppfolgingsKontorTest {
             firstRecord.value() shouldBe """
                 {"kontorId":"${kontorId}","kontorNavn":"Test KontorNavn","oppfolgingsperiodeId":"${oppfolgingsperiodeId.value}","aktorId":"${aktorId.value}","ident":"${fnr.value}","tilordningstype":"ENDRET_KONTOR"}
             """.trimIndent()
-        }
-    }
-
-    @Test
-    fun `skal returnere 501 og ikke lagre noe ved setting av aokontor`() = testApplication {
-        withMockOAuth2Server {
-            val fnr = randomFnr(UKJENT)
-            val aktorId = randomAktorId()
-            val kontorId = "4444"
-            val veilederIdent = NavIdent("Z990000")
-            val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
-            val producer = setupTestAppWithAuthAndGraphql(fnr, aktorId) {
-                gittBrukerUnderOppfolging(fnr, oppfolgingsperiodeId)
-                gittIdentIMapping(fnr)
-            }
-            val httpClient = getJsonHttpClient()
-
-            val response = httpClient.settKontor(server, fnr = fnr, kontorId = kontorId, navIdent = veilederIdent)
-
-            response.status shouldBe HttpStatusCode.NotImplemented
-            val readResponse = httpClient.kontorTilhorighet(fnr, server.issueToken(veilederIdent))
-            readResponse.status shouldBe HttpStatusCode.OK
-            val kontorResponse = readResponse.body<GraphqlResponse<KontorTilhorighet>>()
-            kontorResponse.errors shouldBe null
-            kontorResponse.data?.kontorTilhorighet shouldBe null
-
-            producer.history().size shouldBe 0
         }
     }
 

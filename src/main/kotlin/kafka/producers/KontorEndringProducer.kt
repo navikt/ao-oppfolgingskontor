@@ -6,7 +6,6 @@ import domain.IdenterOppslagFeil
 import domain.IdenterResult
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import no.nav.BrukAoRutingToggleSupplier
 import no.nav.db.AktorId
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres

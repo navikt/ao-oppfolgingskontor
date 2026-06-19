@@ -209,8 +209,6 @@ fun ApplicationEnvironment.isDev(): Boolean {
         ?.contains("dev-gcp") ?: false
 }
 
-typealias BrukAoRutingToggleSupplier = () -> Boolean
-
 fun Application.installBigQueryDailyScheduler(database: Database, bigQueryClient: BigQueryClient) {
     environment.monitor.subscribe(ApplicationStarted) {
         launch {

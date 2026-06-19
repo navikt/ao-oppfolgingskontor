@@ -4,7 +4,6 @@ import kafka.consumers.jsonSerde
 import kafka.producers.OppfolgingEndretTilordningMelding
 import kafka.producers.toKontorTilordningMelding
 import kotlinx.coroutines.runBlocking
-import no.nav.BrukAoRutingToggleSupplier
 import no.nav.db.Ident
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.OppfolgingsperiodeEndret

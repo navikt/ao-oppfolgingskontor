@@ -1,20 +1,14 @@
 package kafka.consumers
 
 import domain.ArenaKontorUtvidet
-import http.client.ArenakontorOppslagFeilet
-import http.client.ArenakontorResult
 import http.client.ArenakontorFunnet
 import http.client.ArenakontorIkkeFunnet
-import kafka.producers.OppfolgingEndretTilordningMelding
-import kafka.producers.PubliserAutomatiskKontorEndring
+import http.client.ArenakontorOppslagFeilet
+import http.client.ArenakontorResult
 import kotlinx.coroutines.runBlocking
-import no.nav.BrukAoRutingToggleSupplier
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
-import no.nav.domain.KontorEndringsType
-import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
-import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.events.ArenaKontorHentetSynkrontVedOppfolgingStart
 import no.nav.domain.externalEvents.OppfolgingsperiodeAvsluttet
 import no.nav.domain.externalEvents.OppfolgingsperiodeEndret
@@ -33,7 +27,6 @@ class ArenakontorVedOppfolgingStartetProcessor(
     private val hentArenakontor: suspend (IdentSomKanLagres) -> ArenakontorResult,
     private val lagreKontortilordning: (ArenaKontorHentetSynkrontVedOppfolgingStart) -> Unit,
     private val arenaKontorProvider: suspend (IdentSomKanLagres) -> ArenaKontorUtvidet?,
-    private val publiserKontorTilordning: PubliserAutomatiskKontorEndring,
 ) {
     companion object {
         const val processorName = "ArenakontorProcessor"
@@ -55,7 +48,6 @@ class ArenakontorVedOppfolgingStartetProcessor(
 
     val logger = LoggerFactory.getLogger(this::class.java)
 
-    // TODO: Publiser melding når vi henter Arena-kontor
     fun process(record: Record<Ident, OppfolgingsperiodeEndret>): RecordProcessingResult<String, String> {
         return runBlocking {
             when (record.value()) {

@@ -95,30 +95,7 @@ class KontorTilordningServiceTest {
     }
 
     @Test
-    fun `skal lagre arena-kontor i aokontor-tabell og arenakontor-tabell når brukAoRuting er false`() {
-        flywayMigrationInTest()
-        val fnr = randomFnr()
-        val oppfolginsperiodeUuid = gittBrukerUnderOppfolging(fnr)
-        val arenaEndring = ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep(
-            KontorTilordning(
-                fnr,
-                KontorId("2121"),
-                oppfolginsperiodeUuid
-            ),
-            sistEndretIArena = OffsetDateTime.now(),
-            endretAvRegistrant = System(Systemnavn.VEILARBOPPFOLGING),
-        )
-
-        kontorTilordningService.tilordneKontor(KontorEndringer(
-            arenaKontorEndret = arenaEndring,
-        ))
-
-        transaction { ArbeidsOppfolgingKontorEntity[fnr.value].fnr.value } shouldBe fnr.value
-        transaction { ArenaKontorEntity[fnr.value].fnr.value } shouldBe fnr.value
-    }
-
-    @Test
-    fun `skal lagre arena-kontor i arenakontor-tabell men ikke i aokontor-tabell når brukAoRuting er true`() {
+    fun `skal lagre arena-kontor i arenakontor-tabell men ikke i aokontor-tabell`() {
         flywayMigrationInTest()
         val fnr = randomFnr().value
         val arenaKontorId = "1122"
@@ -144,7 +121,7 @@ class KontorTilordningServiceTest {
     }
 
     @Test
-    fun `skal lagre ao-kontor i aokontor-tabell når brukAoRuting er true`() {
+    fun `skal lagre ao-kontor i aokontor-tabell`() {
         flywayMigrationInTest()
         val fnr = randomFnr()
         val oppfolginsperiodeUuid = gittBrukerUnderOppfolging(fnr)
@@ -155,23 +132,6 @@ class KontorTilordningServiceTest {
         ))
 
         transaction { ArbeidsOppfolgingKontorEntity[fnr.value].fnr.value } shouldBe fnr.value
-    }
-
-    @Test
-    fun `skal lagre ao-kontor i alternativ_aokontor-tabell når brukAoRuting er false`() {
-        flywayMigrationInTest()
-        val fnr = randomFnr().value
-        val oppfolginsperiodeUuid = OppfolgingsperiodeId(UUID.randomUUID())
-        val aoEndring =  OppfolgingsperiodeStartetNoeTilordning(Fnr(fnr, AKTIV), oppfolginsperiodeUuid)
-
-        kontorTilordningService.tilordneKontor(KontorEndringer(
-            aoKontorEndret = aoEndring,
-        ))
-
-        shouldThrow<EntityNotFoundException> {
-            transaction { ArbeidsOppfolgingKontorEntity[fnr] }
-        }
-        transaction { AlternativAoKontorTable.selectAll().map { it[AlternativAoKontorTable.fnr] }.last() } shouldBe fnr
     }
 
     @Test

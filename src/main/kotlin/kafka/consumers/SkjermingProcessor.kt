@@ -3,7 +3,6 @@ package no.nav.kafka.consumers
 import kafka.out.toOppfolgingEndretTilordningMeldingRecord
 import kafka.producers.OppfolgingEndretTilordningMelding
 import kotlinx.coroutines.runBlocking
-import no.nav.BrukAoRutingToggleSupplier
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
 import no.nav.domain.HarSkjerming

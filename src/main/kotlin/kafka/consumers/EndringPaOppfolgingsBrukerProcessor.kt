@@ -9,7 +9,6 @@ import kafka.producers.OppfolgingEndretTilordningMelding
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import no.nav.BrukAoRutingToggleSupplier
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
 import no.nav.domain.KontorEndringsType

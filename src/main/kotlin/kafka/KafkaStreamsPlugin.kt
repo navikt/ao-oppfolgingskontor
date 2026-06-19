@@ -21,7 +21,6 @@ import kafka.consumers.OppfolgingsHendelseProcessor
 import kafka.consumers.PubliserKontorTilordningProcessor
 import kafka.producers.KontorEndringProducer
 import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
-import no.nav.BrukAoRutingToggleSupplier
 import no.nav.isProduction
 import no.nav.kafka.config.configureTopology
 import no.nav.kafka.config.kafkaStreamsProps
@@ -62,7 +61,6 @@ class KafkaStreamsPluginConfig(
     var kontorEndringProducer: KontorEndringProducer? = null,
     var veilarbArenaClient: VeilarbArenaClient? = null,
     var kontorTilordningService: KontorTilordningService? = null,
-    var brukAoRuting: BrukAoRutingToggleSupplier? = null,
 )
 
 val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createApplicationPlugin("KafkaStreams", ::KafkaStreamsPluginConfig) {
@@ -125,7 +123,6 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         veilarbArenaClient::hentArenaKontor,
         { kontorTilordningService.tilordneKontor(it) },
         { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },
-        { kontorProducer.publiserEndringPåKontor(it) },
     )
 
 

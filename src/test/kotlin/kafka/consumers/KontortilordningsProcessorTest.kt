@@ -38,7 +38,6 @@ class KontortilordningsProcessorTest {
         val processor = KontortilordningsProcessor(
             hardtFeilendeAutomatiskKontorRutingService(),
             kontorTilordningService,
-            { false }
         )
         val record: Record<Ident, OppfolgingsperiodeEndret> = Record(
             oppfolgingsperiode.fnr as Ident,
@@ -58,7 +57,6 @@ class KontortilordningsProcessorTest {
         val processor = KontortilordningsProcessor(
             feilendeAutomatiskKontorRutingService(oppfolgingsperiode),
             kontorTilordningService,
-            { false }
         )
         val record: Record<Ident, OppfolgingsperiodeEndret> = Record(
             oppfolgingsperiode.fnr as Ident,

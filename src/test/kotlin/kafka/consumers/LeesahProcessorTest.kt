@@ -187,7 +187,6 @@ class LeesahProcessorTest {
     @Test
     fun `skal håndtere at gt-provider returnerer GTKontorFeil`() = testApplication {
         val fnr = randomFnr()
-        val brukAoRuting = { false }
         val automatiskKontorRutingService = defaultAutomatiskKontorRutingService(
             { a, b, c -> KontorForGtFeil("Noe gikk galt") }
         )

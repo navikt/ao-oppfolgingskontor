@@ -11,7 +11,6 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
 import no.nav.Authenticated
-import no.nav.BrukAoRutingToggleSupplier
 import no.nav.NotAuthenticated
 import no.nav.audit.AuditLogger
 import no.nav.audit.toAuditEntry

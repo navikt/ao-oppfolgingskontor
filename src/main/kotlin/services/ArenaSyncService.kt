@@ -4,7 +4,6 @@ import http.client.ArenakontorFunnet
 import http.client.ArenakontorIkkeFunnet
 import http.client.ArenakontorOppslagFeilet
 import http.client.VeilarbArenaClient
-import no.nav.BrukAoRutingToggleSupplier
 import no.nav.db.IdentSomKanLagres
 import no.nav.domain.KontorTilordning
 import no.nav.domain.events.ManuellSynkVeilarbArena
