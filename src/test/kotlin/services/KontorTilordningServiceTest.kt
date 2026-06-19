@@ -2,6 +2,8 @@ package services
 
 import db.table.AlternativAoKontorTable
 import domain.Systemnavn
+import eventsLogger.KontorTypeForBigQuery
+import eventsLogger.LoggSattKontorEvent
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -12,12 +14,16 @@ import no.nav.db.Ident.HistoriskStatus.AKTIV
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.KontorHistorikkEntity
+import no.nav.domain.KontorEndringsType
 import no.nav.db.table.KontorhistorikkTable
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
+import no.nav.domain.NavIdent
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.System
+import no.nav.domain.Veileder
 import no.nav.domain.events.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep
+import no.nav.domain.events.KontorSattAvVeileder
 import no.nav.domain.events.OppfolgingsperiodeStartetNoeTilordning
 import no.nav.kafka.consumers.KontorEndringer
 import no.nav.utils.flywayMigrationInTest
@@ -32,6 +38,13 @@ import org.junit.jupiter.api.Test
 
 
 class KontorTilordningServiceTest {
+
+    private data class LoggetKontorEvent(
+        val kontorId: String,
+        val fraKontorId: String?,
+        val kontorEndringsType: KontorEndringsType?,
+        val kontorType: KontorTypeForBigQuery,
+    )
 
     @Test
     fun `Kontortilordning skal peke på historikkentry`() {
@@ -159,5 +172,33 @@ class KontorTilordningServiceTest {
             transaction { ArbeidsOppfolgingKontorEntity[fnr] }
         }
         transaction { AlternativAoKontorTable.selectAll().map { it[AlternativAoKontorTable.fnr] }.last() } shouldBe fnr
+    }
+
+    @Test
+    fun `skal logge fraKontorId ved flytting av veileder`() {
+        flywayMigrationInTest()
+        val loggedeHendelser = mutableListOf<LoggetKontorEvent>()
+        val loggSattKontorEvent: LoggSattKontorEvent = { kontorId, fraKontorId, kontorEndringsType, kontorType ->
+            loggedeHendelser += LoggetKontorEvent(kontorId, fraKontorId, kontorEndringsType, kontorType)
+        }
+        val kontorTilordningService = no.nav.services.KontorTilordningService(loggSattKontorEvent)
+        val fnr = randomFnr()
+        val oppfolginsperiodeUuid = gittBrukerUnderOppfolging(fnr)
+
+        kontorTilordningService.tilordneKontor(OppfolgingsperiodeStartetNoeTilordning(fnr, oppfolginsperiodeUuid), brukAoRuting = true)
+        kontorTilordningService.tilordneKontor(
+            KontorSattAvVeileder(
+                KontorTilordning(fnr, KontorId("1122"), oppfolginsperiodeUuid),
+                Veileder(NavIdent("Z123456"))
+            ),
+            brukAoRuting = true
+        )
+
+        loggedeHendelser.last() shouldBe LoggetKontorEvent(
+            kontorId = "1122",
+            fraKontorId = "4154",
+            kontorEndringsType = KontorEndringsType.FlyttetAvVeileder,
+            kontorType = KontorTypeForBigQuery.ARBEIDSOPPFOLGINGSKONTOR,
+        )
     }
 }

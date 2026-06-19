@@ -19,6 +19,7 @@ import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.upsert
 
@@ -40,6 +41,7 @@ class KontorTilordningService(
             when (kontorEndring) {
                 is AOKontorEndret -> {
                     if(brukAoRuting) {
+                        val forrigeKontorId = hentGjeldendeKontorIdFraArbeidsoppfolgingskontor(kontorTilhorighet.fnr.value)
                         val entryId = settKontorIHistorikk(kontorEndring)
                         ArbeidsOppfolgingKontorTable.upsert {
                             it[kontorId] = kontorTilhorighet.kontorId.id
@@ -52,6 +54,7 @@ class KontorTilordningService(
                         }
                         loggSattKontorEvent(
                             kontorTilhorighet.kontorId.id,
+                            forrigeKontorId,
                             kontorEndring.kontorEndringsType(),
                             KontorTypeForBigQuery.ARBEIDSOPPFOLGINGSKONTOR
                         )
@@ -67,6 +70,7 @@ class KontorTilordningService(
                         }
                         loggSattKontorEvent(
                             kontorTilhorighet.kontorId.id,
+                            null,
                             kontorEndring.kontorEndringsType(),
                             KontorTypeForBigQuery.ALTERNATIV_AOKONTOR
                         )
@@ -86,6 +90,7 @@ class KontorTilordningService(
                         }
                         loggSattKontorEvent(
                             kontorTilhorighet.kontorId.id,
+                            null,
                             kontorEndring.toHistorikkInnslag().kontorendringstype,
                             KontorTypeForBigQuery.ARBEIDSOPPFOLGINGSKONTOR
                         )
@@ -99,6 +104,7 @@ class KontorTilordningService(
                     }
                     loggSattKontorEvent(
                         kontorTilhorighet.kontorId.id,
+                        null,
                         kontorEndring.toHistorikkInnslag().kontorendringstype,
                         KontorTypeForBigQuery.ARENAKONTOR
                     )
@@ -139,5 +145,13 @@ class KontorTilordningService(
             it[kontorType] = historikkInnslag.kontorType.name
             it[oppfolgingsperiodeId] = historikkInnslag.oppfolgingId.value
         }[KontorhistorikkTable.id]
+    }
+
+    private fun hentGjeldendeKontorIdFraArbeidsoppfolgingskontor(fnr: String): String? {
+        return ArbeidsOppfolgingKontorTable
+            .select(ArbeidsOppfolgingKontorTable.kontorId)
+            .where { ArbeidsOppfolgingKontorTable.id eq fnr }
+            .map { it[ArbeidsOppfolgingKontorTable.kontorId] }
+            .firstOrNull()
     }
 }

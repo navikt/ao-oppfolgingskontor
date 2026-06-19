@@ -19,7 +19,7 @@ class `KontorSammenslåingServiceTest` {
     fun `skal stoppe å kjøre batcher når alle brukere er flyttet`() {
         // Denne testen har ikke asserts, men den terminerer ikke hvis feilen er tilstedet
         flywayMigrationInTest()
-        val loggSattKontorEvent: LoggSattKontorEvent = { a, b, c -> Unit }
+        val loggSattKontorEvent: LoggSattKontorEvent = { _, _, _, _ -> }
         val kontorTilordningService = KontorTilordningService(loggSattKontorEvent)
         val service = KontorSammenslåingService(kontorTilordningService::tilordneKontor)
         val ident = randomFnr()
@@ -37,7 +37,7 @@ class `KontorSammenslåingServiceTest` {
     @Test
     fun `skal telle antall personer på et kontor`() {
         flywayMigrationInTest()
-        val loggSattKontorEvent: LoggSattKontorEvent = { a, b, c -> Unit }
+        val loggSattKontorEvent: LoggSattKontorEvent = { _, _, _, _ -> }
         val kontorTilordningService = KontorTilordningService(loggSattKontorEvent)
         val service = KontorSammenslåingService(kontorTilordningService::tilordneKontor)
         val ident = randomFnr()

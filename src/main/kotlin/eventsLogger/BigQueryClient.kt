@@ -18,7 +18,7 @@ enum class KontorTypeForBigQuery {
     ARENAKONTOR
 }
 
-typealias LoggSattKontorEvent = (kontorId: String, kontorEndringsType: KontorEndringsType?, kontorType: KontorTypeForBigQuery) -> Unit
+typealias LoggSattKontorEvent = (kontorId: String, fraKontorId: String?, kontorEndringsType: KontorEndringsType?, kontorType: KontorTypeForBigQuery) -> Unit
 
 class BigQueryClient(
     projectId: String,
@@ -32,14 +32,15 @@ class BigQueryClient(
     private val log = LoggerFactory.getLogger(this::class.java)
     val kontorEventsTable = TableId.of(DATASET_NAME, KONTOR_EVENTS)
 
-    fun loggSattKontorEvent(kontorId: String, kontorEndringsType: KontorEndringsType?, kontorType: KontorTypeForBigQuery) {
+    fun loggSattKontorEvent(kontorId: String, fraKontorId: String?, kontorEndringsType: KontorEndringsType?, kontorType: KontorTypeForBigQuery) {
         insertIntoKontorEvents(kontorEventsTable) {
-            mapOf(
-                "kontorId" to kontorId,
-                "timestamp" to ZonedDateTime.now().toOffsetDateTime().toString(),
-                "kontorEndringsType" to kontorEndringsType.toString(),
-                "kontorType" to kontorType.toString(),
-            )
+            buildMap {
+                put("kontorId", kontorId)
+                fraKontorId?.let { put("fraKontorId", it) }
+                put("timestamp", ZonedDateTime.now().toOffsetDateTime().toString())
+                put("kontorEndringsType", kontorEndringsType.toString())
+                put("kontorType", kontorType.toString())
+            }
         }
     }
 
