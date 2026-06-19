@@ -29,24 +29,19 @@ class KontorEndringProducer(
     val kontorTopicNavn: String,
     val kontorNavnProvider: suspend (kontorId: KontorId) -> KontorNavn,
     val hentAlleIdenter: suspend (identInput: IdentSomKanLagres) -> IdenterResult,
-    val brukAoRuting: BrukAoRutingToggleSupplier
 ) {
 
     /**
     * Brukes ved synkront endring via REST API
     * */
     suspend fun publiserEndringPåKontor(event: KontorSattAvVeileder): Result<Unit> {
-        if (brukAoRuting()) {
-            val (ident, aktorId, internIdent) = finnPubliseringsIdenter(event.tilordning.fnr)
-            val value = event.toKontorTilordningMeldingDto(
-                aktorId,
-                ident,
-                kontorNavnProvider(event.tilordning.kontorId)
-            )
-            return publiserEndringPåKontor(internIdent, value)
-        } else {
-            return Result.success(Unit)
-        }
+        val (ident, aktorId, internIdent) = finnPubliseringsIdenter(event.tilordning.fnr)
+        val value = event.toKontorTilordningMeldingDto(
+            aktorId,
+            ident,
+            kontorNavnProvider(event.tilordning.kontorId)
+        )
+        return publiserEndringPåKontor(internIdent, value)
     }
 
     suspend fun publiserEndringPåKontor(event: OppfolgingEndretTilordningMelding): Result<Unit> {

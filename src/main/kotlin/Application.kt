@@ -56,7 +56,6 @@ fun Application.module() {
         onKafkaPaused = { this.monitor.raise(KafkaPausedEvent, Unit) },
         onKafkaResumed = { this.monitor.raise(KafkaResumedEvent, Unit) }
     )
-    val skalBrukeAoRuting = { toggleService.brukAoRutingMutableVar }
 
     val norg2Client = Norg2Client(environment.getNorg2Url())
 
@@ -142,7 +141,6 @@ fun Application.module() {
         kontorTopicNavn = this.environment.topics().ut.arbeidsoppfolgingskontortilordninger.name,
         kontorNavnProvider = { kontorId -> kontorNavnService.getKontorNavn(kontorId) },
         hentAlleIdenter = { identSomKanLagres -> identService.hentAlleIdenter(identSomKanLagres) },
-        brukAoRuting = skalBrukeAoRuting
     )
     val republiseringService = KontorRepubliseringService(
         kontorEndringProducer::republiserKontor,
@@ -152,7 +150,7 @@ fun Application.module() {
         kontorEndringProducer::publiserTombstone,
         oppfolgingsperiodeService::getCurrentOppfolgingsperiode
     )
-    val arenaSyncService = ArenaSyncService(veilarbArenaClient, kontorTilordningService, kontorTilhorighetService, oppfolgingsperiodeService, skalBrukeAoRuting)
+    val arenaSyncService = ArenaSyncService(veilarbArenaClient, kontorTilordningService, kontorTilhorighetService, oppfolgingsperiodeService)
 
     install(KafkaStreamsPlugin) {
         this.automatiskKontorRutingService = automatiskKontorRutingService
@@ -165,7 +163,6 @@ fun Application.module() {
         this.kontorEndringProducer = kontorEndringProducer
         this.veilarbArenaClient = veilarbArenaClient
         this.kontorTilordningService = kontorTilordningService
-        this.brukAoRuting = skalBrukeAoRuting
     }
 
     val issuer = environment.getIssuer()
@@ -187,7 +184,6 @@ fun Application.module() {
         { kontorEndringProducer.publiserEndringPåKontor(it) },
         hentSkjerming = { skjermingsClient.hentSkjerming(it) },
         hentAdresseBeskyttelse = { pdlClient.harStrengtFortroligAdresse(it) },
-        brukAoRuting = skalBrukeAoRuting,
         hentEnheterForEgneAnsatte = { norg2Client.hentEnheterForEgneAnsatte() },
     )
     configureFinnKontorModule(simulerKontorTilordning, kontorNavnService::getKontorNavn, { call -> call.authenticateCall(issuer) })

@@ -1,7 +1,6 @@
 package no.nav.services
 
 import arrow.core.Either
-import db.table.AlternativAoKontorTable
 import eventsLogger.KontorTypeForBigQuery
 import eventsLogger.LoggSattKontorEvent
 import java.time.ZonedDateTime
@@ -23,78 +22,43 @@ import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.upsert
 
-typealias TilordneKontor = (kontorEndringer: KontorEndretEvent, brukAoRuting: Boolean) -> Unit
+typealias TilordneKontor = (kontorEndringer: KontorEndretEvent) -> Unit
 
 class KontorTilordningService(
     private val loggSattKontorEvent: LoggSattKontorEvent
 ) {
 
-    fun tilordneKontor (kontorEndringer: KontorEndringer, brukAoRuting: Boolean) {
-        kontorEndringer.aoKontorEndret?.let { tilordneKontor(it, brukAoRuting) }
-        kontorEndringer.arenaKontorEndret?.let { tilordneKontor(it, brukAoRuting) }
-        kontorEndringer.gtKontorEndret?.let { tilordneKontor(it, brukAoRuting) }
+    fun tilordneKontor (kontorEndringer: KontorEndringer) {
+        kontorEndringer.aoKontorEndret?.let { tilordneKontor(it) }
+        kontorEndringer.arenaKontorEndret?.let { tilordneKontor(it) }
+        kontorEndringer.gtKontorEndret?.let { tilordneKontor(it) }
     }
-    fun tilordneKontor(kontorEndring: KontorEndretEvent, brukAoRuting: Boolean) {
+    fun tilordneKontor(kontorEndring: KontorEndretEvent) {
         val kontorTilhorighet = kontorEndring.tilordning
         transaction {
             kontorEndring.logg()
             when (kontorEndring) {
                 is AOKontorEndret -> {
-                    if(brukAoRuting) {
-                        val forrigeKontorId = hentGjeldendeKontorIdFraArbeidsoppfolgingskontor(kontorTilhorighet.fnr.value)
-                        val entryId = settKontorIHistorikk(kontorEndring)
-                        ArbeidsOppfolgingKontorTable.upsert {
-                            it[kontorId] = kontorTilhorighet.kontorId.id
-                            it[id] = kontorTilhorighet.fnr.value
-                            it[endretAv] = kontorEndring.registrant.getIdent()
-                            it[endretAvType] = kontorEndring.registrant.getType()
-                            it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
-                            it[historikkEntry] = entryId.value
-                            it[oppfolgingsperiodeId] = kontorEndring.tilordning.oppfolgingsperiodeId.value
-                        }
-                        loggSattKontorEvent(
-                            kontorTilhorighet.kontorId.id,
-                            forrigeKontorId,
-                            kontorEndring.kontorEndringsType(),
-                            KontorTypeForBigQuery.ARBEIDSOPPFOLGINGSKONTOR
-                        )
-                    } else
-                    {
-                        AlternativAoKontorTable.insert {
-                            it[fnr] = kontorTilhorighet.fnr.value
-                            it[kontorId] = kontorTilhorighet.kontorId.id
-                            it[endretAv] = kontorEndring.registrant.getIdent()
-                            it[endretAvType] = kontorEndring.registrant.getType()
-                            it[kontorendringstype] = kontorEndring.kontorEndringsType().name
-                            it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
-                        }
-                        loggSattKontorEvent(
-                            kontorTilhorighet.kontorId.id,
-                            null,
-                            kontorEndring.kontorEndringsType(),
-                            KontorTypeForBigQuery.ALTERNATIV_AOKONTOR
-                        )
+                    val forrigeKontorId = hentGjeldendeKontorIdFraArbeidsoppfolgingskontor(kontorTilhorighet.fnr.value)
+                    val entryId = settKontorIHistorikk(kontorEndring)
+                    ArbeidsOppfolgingKontorTable.upsert {
+                        it[kontorId] = kontorTilhorighet.kontorId.id
+                        it[id] = kontorTilhorighet.fnr.value
+                        it[endretAv] = kontorEndring.registrant.getIdent()
+                        it[endretAvType] = kontorEndring.registrant.getType()
+                        it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
+                        it[historikkEntry] = entryId.value
+                        it[oppfolgingsperiodeId] = kontorEndring.tilordning.oppfolgingsperiodeId.value
                     }
+                    loggSattKontorEvent(
+                        kontorTilhorighet.kontorId.id,
+                        forrigeKontorId,
+                        kontorEndring.kontorEndringsType(),
+                        KontorTypeForBigQuery.ARBEIDSOPPFOLGINGSKONTOR
+                    )
                 }
                 is ArenaKontorEndret -> {
                     val entryId = settKontorIHistorikk(kontorEndring)
-                    if(!brukAoRuting){
-                        ArbeidsOppfolgingKontorTable.upsert {
-                            it[kontorId] = kontorTilhorighet.kontorId.id
-                            it[id] = kontorTilhorighet.fnr.value
-                            it[endretAv] = kontorEndring.endretAv.getIdent()
-                            it[endretAvType] = kontorEndring.endretAv.getType()
-                            it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
-                            it[historikkEntry] = entryId.value
-                            it[oppfolgingsperiodeId] = kontorEndring.tilordning.oppfolgingsperiodeId.value
-                        }
-                        loggSattKontorEvent(
-                            kontorTilhorighet.kontorId.id,
-                            null,
-                            kontorEndring.toHistorikkInnslag().kontorendringstype,
-                            KontorTypeForBigQuery.ARBEIDSOPPFOLGINGSKONTOR
-                        )
-                    }
                     ArenaKontorTable.upsert {
                         it[kontorId] = kontorTilhorighet.kontorId.id
                         it[id] = kontorTilhorighet.fnr.value

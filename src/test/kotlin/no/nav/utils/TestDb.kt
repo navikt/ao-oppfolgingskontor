@@ -116,8 +116,7 @@ fun gittIdentMedKontor(ident: IdentSomKanLagres, kontorId: KontorId, oppfolgings
                 geografiskTilknytningNr = GeografiskTilknytningKommuneNr("2121")
             )
 
-        ),
-        true
+        )
     )
 }
 

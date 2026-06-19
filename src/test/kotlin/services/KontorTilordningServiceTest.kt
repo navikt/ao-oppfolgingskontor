@@ -53,8 +53,8 @@ class KontorTilordningServiceTest {
         val oppfolginsperiodeUuid = gittBrukerUnderOppfolging(fnr)
         val kontorEndretEvent = OppfolgingsperiodeStartetNoeTilordning(Fnr(fnr.value, AKTIV), oppfolginsperiodeUuid)
 
-        kontorTilordningService.tilordneKontor(kontorEndretEvent, true)
-        kontorTilordningService.tilordneKontor(kontorEndretEvent, true)
+        kontorTilordningService.tilordneKontor(kontorEndretEvent)
+        kontorTilordningService.tilordneKontor(kontorEndretEvent)
 
         val (arbeidsoppfolgingskontor, historikkEntries) = transaction {
             val arbeidsoppfolgingskontor = ArbeidsOppfolgingKontorEntity[fnr.value]
@@ -88,7 +88,7 @@ class KontorTilordningServiceTest {
         kontorTilordningService.tilordneKontor(KontorEndringer(
             aoKontorEndret = aoEndring,
             arenaKontorEndret = arenaEndring,
-        ), true)
+        ))
 
         transaction { ArbeidsOppfolgingKontorEntity[fnr.value].kontorId } shouldBe "4154"
         transaction { ArenaKontorEntity[fnr.value].kontorId } shouldBe "1122"
@@ -111,7 +111,7 @@ class KontorTilordningServiceTest {
 
         kontorTilordningService.tilordneKontor(KontorEndringer(
             arenaKontorEndret = arenaEndring,
-        ), brukAoRuting = false)
+        ))
 
         transaction { ArbeidsOppfolgingKontorEntity[fnr.value].fnr.value } shouldBe fnr.value
         transaction { ArenaKontorEntity[fnr.value].fnr.value } shouldBe fnr.value
@@ -135,7 +135,7 @@ class KontorTilordningServiceTest {
 
         kontorTilordningService.tilordneKontor(KontorEndringer(
             arenaKontorEndret = arenaEndring,
-        ), brukAoRuting = true)
+        ))
 
         shouldThrow<EntityNotFoundException> {
             transaction { ArbeidsOppfolgingKontorEntity[fnr] }
@@ -152,7 +152,7 @@ class KontorTilordningServiceTest {
 
         kontorTilordningService.tilordneKontor(KontorEndringer(
             aoKontorEndret = aoEndring,
-        ), brukAoRuting = true)
+        ))
 
         transaction { ArbeidsOppfolgingKontorEntity[fnr.value].fnr.value } shouldBe fnr.value
     }
@@ -166,7 +166,7 @@ class KontorTilordningServiceTest {
 
         kontorTilordningService.tilordneKontor(KontorEndringer(
             aoKontorEndret = aoEndring,
-        ), brukAoRuting = false)
+        ))
 
         shouldThrow<EntityNotFoundException> {
             transaction { ArbeidsOppfolgingKontorEntity[fnr] }
@@ -185,13 +185,12 @@ class KontorTilordningServiceTest {
         val fnr = randomFnr()
         val oppfolginsperiodeUuid = gittBrukerUnderOppfolging(fnr)
 
-        kontorTilordningService.tilordneKontor(OppfolgingsperiodeStartetNoeTilordning(fnr, oppfolginsperiodeUuid), brukAoRuting = true)
+        kontorTilordningService.tilordneKontor(OppfolgingsperiodeStartetNoeTilordning(fnr, oppfolginsperiodeUuid))
         kontorTilordningService.tilordneKontor(
             KontorSattAvVeileder(
                 KontorTilordning(fnr, KontorId("1122"), oppfolginsperiodeUuid),
                 Veileder(NavIdent("Z123456"))
-            ),
-            brukAoRuting = true
+            )
         )
 
         loggedeHendelser.last() shouldBe LoggetKontorEvent(

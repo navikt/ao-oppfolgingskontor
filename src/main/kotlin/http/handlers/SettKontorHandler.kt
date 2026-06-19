@@ -7,7 +7,6 @@ import arrow.core.getOrElse
 import io.ktor.http.HttpStatusCode
 import kafka.producers.PubliserManuellKontorEndring
 import no.nav.AOPrincipal
-import no.nav.BrukAoRutingToggleSupplier
 import no.nav.NavAnsatt
 import no.nav.db.AktorId
 import no.nav.db.Dnr
@@ -60,11 +59,10 @@ class SettKontorHandler(
     private val harLeseTilgangTilBruker: suspend (AOPrincipal, IdentSomKanLagres, String) -> TilgangTilBrukerResult,
     private val harTilgangTilKontor: suspend (AOPrincipal, KontorId, String) -> TilgangTilKontorResult,
     private val hentOppfolgingsPeriode: (IdentFunnet) -> OppfolgingsperiodeOppslagResult,
-    private val tilordneKontor: (KontorEndretEvent, Boolean) -> Unit,
+    private val tilordneKontor: (KontorEndretEvent) -> Unit,
     private val publiserManuellKontorEndring: PubliserManuellKontorEndring,
     private val hentSkjerming: suspend (IdentSomKanLagres) -> SkjermingResult,
     private val hentAdresseBeskyttelse: suspend (IdentSomKanLagres) -> HarStrengtFortroligAdresseResult,
-    private val brukAoRuting: BrukAoRutingToggleSupplier,
     private val hentEnheterForEgneAnsatte: suspend () -> List<MinimaltNorgKontor>,
 ) {
     private val log = LoggerFactory.getLogger(this::class.java)
@@ -205,65 +203,60 @@ class SettKontorHandler(
         principal: AOPrincipal,
         traceId: String
     ): SettKontorResult {
-        val brukAoRuting = brukAoRuting()
-        if(!brukAoRuting) {
-            return SettKontorFailure(HttpStatusCode.NotImplemented, "Kan ikke sette kontor for vi er i prod")
-        } else {
-            return Either.catch {
-                validateIdent(tilordning.ident)
-                    .flatMap { ident ->
-                        sjekkHarTilgang(
-                            principal,
-                            ident,
-                            KontorId(tilordning.kontorId),
-                            traceId
-                        ).map { ident }
-                    }
-                    .flatMap { ident -> sjekkBrukerHarIkkeAdressebeskyttelse(ident).map { ident } }
-                    .flatMap { ident -> sjekkOmNyttKontorErForSkjermedeHvisBrukerErSkjermet(ident, tilordning.kontorId).map { ident } }
-                    .flatMap { ident -> sjekkErVeileder(principal).map { it to ident } }
-                    .flatMap { (navAnsatt, ident) ->
-                        hentOppfolgingsperiode(ident).map {
-                            Triple(
-                                it,
-                                ident,
-                                navAnsatt
-                            )
-                        }
-                    }
-                    .map { (periodeId: OppfolgingsperiodeId, ident: IdentSomKanLagres, navAnsatt: NavAnsatt) ->
-                        val gammeltKontor = hentAoKontor(ident)
-                        val kontorId = KontorId(tilordning.kontorId)
-
-                        val kontorEndring = KontorSattAvVeileder(
-                            tilhorighet = KontorTilordning(ident, kontorId, periodeId),
-                            registrant = Veileder(navAnsatt.navIdent)
-                        )
-                        if (gammeltKontor?.kontorId == kontorId) {
-                            logger.warn("Bruker tilhører allerede kontoret")
-                            val response = buildResponse(gammeltKontor.kontorNavn, kontorId, gammeltKontor)
-                            return SettKontorSuccess(response)
-                        }
-                        tilordneKontor(kontorEndring, brukAoRuting)
-                        val result = publiserManuellKontorEndring(kontorEndring)
-                        if (result.isFailure) throw result.exceptionOrNull()!!
-                        kontorId to gammeltKontor
-                    }
-                    .map { (kontorId, gammeltKontor) ->
-                        val kontorNavn =
-                            Either.catch { hentKontorNavn(kontorId) }.getOrElse { KontorNavn("<Ukjent kontornavn>") }
-                        val response = buildResponse(kontorNavn, kontorId, gammeltKontor)
-                        SettKontorSuccess(response)
-                    }
-            }
-                .mapLeft { error ->
-                    logger.error("Kunne ikke oppdatere kontor", error)
-                    SettKontorFailure(HttpStatusCode.InternalServerError, "Kunne ikke oppdatere kontor")
+        return Either.catch {
+            validateIdent(tilordning.ident)
+                .flatMap { ident ->
+                    sjekkHarTilgang(
+                        principal,
+                        ident,
+                        KontorId(tilordning.kontorId),
+                        traceId
+                    ).map { ident }
                 }
-                .flatten()
-                .fold({ it }, { it })
+                .flatMap { ident -> sjekkBrukerHarIkkeAdressebeskyttelse(ident).map { ident } }
+                .flatMap { ident -> sjekkOmNyttKontorErForSkjermedeHvisBrukerErSkjermet(ident, tilordning.kontorId).map { ident } }
+                .flatMap { ident -> sjekkErVeileder(principal).map { it to ident } }
+                .flatMap { (navAnsatt, ident) ->
+                    hentOppfolgingsperiode(ident).map {
+                        Triple(
+                            it,
+                            ident,
+                            navAnsatt
+                        )
+                    }
+                }
+                .map { (periodeId: OppfolgingsperiodeId, ident: IdentSomKanLagres, navAnsatt: NavAnsatt) ->
+                    val gammeltKontor = hentAoKontor(ident)
+                    val kontorId = KontorId(tilordning.kontorId)
+
+                    val kontorEndring = KontorSattAvVeileder(
+                        tilhorighet = KontorTilordning(ident, kontorId, periodeId),
+                        registrant = Veileder(navAnsatt.navIdent)
+                    )
+                    if (gammeltKontor?.kontorId == kontorId) {
+                        logger.warn("Bruker tilhører allerede kontoret")
+                        val response = buildResponse(gammeltKontor.kontorNavn, kontorId, gammeltKontor)
+                        return SettKontorSuccess(response)
+                    }
+                    tilordneKontor(kontorEndring)
+                    val result = publiserManuellKontorEndring(kontorEndring)
+                    if (result.isFailure) throw result.exceptionOrNull()!!
+                    kontorId to gammeltKontor
+                }
+                .map { (kontorId, gammeltKontor) ->
+                    val kontorNavn =
+                        Either.catch { hentKontorNavn(kontorId) }.getOrElse { KontorNavn("<Ukjent kontornavn>") }
+                    val response = buildResponse(kontorNavn, kontorId, gammeltKontor)
+                    SettKontorSuccess(response)
+                }
         }
-    }
+            .mapLeft { error ->
+                logger.error("Kunne ikke oppdatere kontor", error)
+                SettKontorFailure(HttpStatusCode.InternalServerError, "Kunne ikke oppdatere kontor")
+            }
+            .flatten()
+            .fold({ it }, { it })
+        }
 }
 
 fun buildResponse(kontorNavn: KontorNavn, kontorId: KontorId, gammeltKontor: ArbeidsoppfolgingsKontor?) =

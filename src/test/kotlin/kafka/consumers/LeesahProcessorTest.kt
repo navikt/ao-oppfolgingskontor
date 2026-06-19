@@ -56,12 +56,11 @@ class LeesahProcessorTest {
         val fnr = randomFnr()
         val gammeltKontorId = "1234"
         val nyKontorId = "5678"
-        val brukAoRuting = { true }
         application {
             flywayMigrationInTest()
             gittNåværendeGtKontor(fnr, KontorId(gammeltKontorId))
             val automatiskKontorRutingService = gittRutingServiceMedGtKontor(KontorId(nyKontorId))
-            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, brukAoRuting)
+            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService)
 
             leesahProcessor.handterLeesahHendelse(BostedsadresseEndret(fnr))
 
@@ -76,7 +75,6 @@ class LeesahProcessorTest {
     fun `skal sette både gt-kontor og ao-kontor hvis bruker tilhørte Nav IT og får norsk GT`() = testApplication {
         val fnr = randomFnr()
         val nyKontorId = "5678"
-        val brukAoRuting = { true }
         application {
             flywayMigrationInTest()
             val oppfølgingsperiodeId = gittBrukerUnderOppfolging(fnr)
@@ -87,7 +85,7 @@ class LeesahProcessorTest {
                 oppfølgingsperiodeId = oppfølgingsperiodeId,
                 hentAoKontor = { ArbeidsoppfolgingsKontor(KontorNavn("Nav IT"), INGEN_GT_KONTOR_FALLBACK) },
             )
-            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, brukAoRuting)
+            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService)
 
             leesahProcessor.handterLeesahHendelse(BostedsadresseEndret(fnr))
 
@@ -106,7 +104,6 @@ class LeesahProcessorTest {
         val fnr = randomFnr()
         val gammeltKontorId = "1234"
         val nyKontorId = "5678"
-        val brukAoRuting = { true }
         application {
             flywayMigrationInTest()
             val oppfølgingsperiodeId = gittBrukerUnderOppfolging(fnr)
@@ -117,7 +114,7 @@ class LeesahProcessorTest {
                 oppfølgingsperiodeId = oppfølgingsperiodeId,
                 hentAoKontor = { ArbeidsoppfolgingsKontor(KontorNavn("Nav Testheim"), KontorId(gammeltKontorId)) },
             )
-            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, brukAoRuting)
+            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService)
 
             leesahProcessor.handterLeesahHendelse(BostedsadresseEndret(fnr))
 
@@ -136,7 +133,6 @@ class LeesahProcessorTest {
         val fnr = randomFnr()
         val gammeltKontorId = "1234"
         val nyKontorId = "5678"
-        val brukAoRuting = { true }
         application {
             flywayMigrationInTest()
             val oppfølgingsperiodeId = gittBrukerUnderOppfolging(fnr)
@@ -145,7 +141,7 @@ class LeesahProcessorTest {
                 { a, b, c -> KontorForGtFantDefaultKontor(KontorId(nyKontorId), c, b, GeografiskTilknytningBydelNr("3131")) },
                 { ident -> HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(true)) }, oppfølgingsperiodeId
             )
-            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, brukAoRuting)
+            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService)
 
             leesahProcessor.handterLeesahHendelse(AdressebeskyttelseEndret(fnr, Gradering.STRENGT_FORTROLIG))
 
@@ -164,14 +160,13 @@ class LeesahProcessorTest {
         val fnr = randomFnr()
         val gammelKontorId = "1234"
         val nyKontorId = "5678"
-        val brukAoRuting = { true }
         application {
             flywayMigrationInTest()
             val oppfølgingsperiodeId = gittBrukerUnderOppfolging(fnr)
             gittNåværendeAOKontor(fnr, KontorId(gammelKontorId), oppfølgingsperiodeId)
             gittNåværendeGtKontor(fnr, KontorId(gammelKontorId))
             val automatiskKontorRutingService = gittRutingServiceMedGtKontor(KontorId(nyKontorId))
-            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService,  brukAoRuting)
+            val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService)
 
             leesahProcessor.handterLeesahHendelse(AdressebeskyttelseEndret(fnr, Gradering.UGRADERT))
 
@@ -196,7 +191,7 @@ class LeesahProcessorTest {
         val automatiskKontorRutingService = defaultAutomatiskKontorRutingService(
             { a, b, c -> KontorForGtFeil("Noe gikk galt") }
         )
-        val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, brukAoRuting)
+        val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService)
 
         val resultat = leesahProcessor.handterLeesahHendelse(BostedsadresseEndret(fnr))
 
@@ -207,11 +202,10 @@ class LeesahProcessorTest {
     @Test
     fun `skal håndtere at gt-provider kaster throwable`() = testApplication {
         val fnr = randomFnr()
-        val brukAoRuting = { true }
         val automatiskKontorRutingService = defaultAutomatiskKontorRutingService(
             { a, b, c -> throw Throwable("Noe gikk galt") }
         )
-        val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, brukAoRuting)
+        val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService)
 
         val resultat = leesahProcessor.handterLeesahHendelse(BostedsadresseEndret(fnr))
 
@@ -253,8 +247,7 @@ class LeesahProcessorTest {
                 kontorEndringsType = KontorEndringsType.EndretBostedsadresse,
                 gt = GtNummerForBrukerFunnet(GeografiskTilknytningBydelNr("3131")),
                 registrant = System(Systemnavn.PDL),
-            ),
-            true
+            )
         )
     }
 
@@ -268,8 +261,7 @@ class LeesahProcessorTest {
                     HarStrengtFortroligAdresse(false),
                     geografiskTilknytningNr = GeografiskTilknytningBydelNr("313121")
                 ),
-            ),
-            true
+            )
         )
     }
 }

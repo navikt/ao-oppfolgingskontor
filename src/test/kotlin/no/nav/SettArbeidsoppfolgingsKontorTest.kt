@@ -83,7 +83,6 @@ class SettArbeidsoppfolgingsKontorTest {
         aktorId: AktorId,
         skjerming: SkjermingResult = SkjermingFunnet(HarSkjerming(false)),
         adressebeskyttelse: HarStrengtFortroligAdresseResult = HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)),
-        brukAoRuting: BrukAoRutingToggleSupplier = { false },
         extraDatabaseSetup: Application.() -> Unit = {},
         ): MockProducer<Long, String?> {
         environment {
@@ -107,7 +106,6 @@ class SettArbeidsoppfolgingsKontorTest {
             "arbeidsoppfolgingskontortilordninger",
             { KontorNavn("Test KontorNavn") },
             { identerFunnet },
-            brukAoRuting
         )
         application {
             flywayMigrationInTest()
@@ -131,7 +129,6 @@ class SettArbeidsoppfolgingsKontorTest {
                 hentSkjerming = { skjerming },
                 hentAdresseBeskyttelse = { adressebeskyttelse },
                 hentEnheterForEgneAnsatte = { listOf(MinimaltNorgKontor(kontorId = "0383", "Nav egne ansatte Oslo", NorgKontorType.KO)) },
-                brukAoRuting = brukAoRuting
             )
             routing {
                 authenticate("EntraAD") {
@@ -210,7 +207,7 @@ class SettArbeidsoppfolgingsKontorTest {
             val aktorId = randomAktorId(UKJENT)
             val kontorId = "4444"
             val veilederIdent = NavIdent("Z990000")
-            setupTestAppWithAuthAndGraphql(fnr, aktorId, brukAoRuting = { true }) {
+            setupTestAppWithAuthAndGraphql(fnr, aktorId) {
                 gittIdentIMapping(fnr)
             }
             val httpClient = getJsonHttpClient()
@@ -230,7 +227,7 @@ class SettArbeidsoppfolgingsKontorTest {
             val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
             val veilederIdent = NavIdent("Z990000")
             val harSkjerming = SkjermingFunnet(HarSkjerming(true))
-            setupTestAppWithAuthAndGraphql(fnr, aktorId, brukAoRuting = { true }, skjerming = harSkjerming) {
+            setupTestAppWithAuthAndGraphql(fnr, aktorId, skjerming = harSkjerming) {
                 gittBrukerUnderOppfolging(fnr, oppfolgingsperiodeId)
                 gittIdentIMapping(fnr)
             }
@@ -252,7 +249,7 @@ class SettArbeidsoppfolgingsKontorTest {
             val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
             val veilederIdent = NavIdent("Z990000")
             val adressebeskyttelse = HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(true))
-            setupTestAppWithAuthAndGraphql(fnr, aktorId, brukAoRuting = { true }, adressebeskyttelse = adressebeskyttelse) {
+            setupTestAppWithAuthAndGraphql(fnr, aktorId, adressebeskyttelse = adressebeskyttelse) {
                 gittBrukerUnderOppfolging(fnr, oppfolgingsperiodeId)
                 gittIdentIMapping(fnr)
             }

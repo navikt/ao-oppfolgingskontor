@@ -261,7 +261,7 @@ class SettKontorHandlerTest {
          skjermingResult: SkjermingResult = SkjermingFunnet(HarSkjerming(false)),
          adresseResult: HarStrengtFortroligAdresseResult = HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)),
          oppfolgingsperiodeResult: OppfolgingsperiodeOppslagResult = AktivOppfolgingsperiode(ident, randomInternIdent(),OppfolgingsperiodeId(UUID.randomUUID()), startDato = OffsetDateTime.now()),
-         tilordneKontor: (event: KontorEndretEvent, brukAORuting: Boolean) -> Unit = { a, b -> Unit },
+         tilordneKontor: (event: KontorEndretEvent) -> Unit = { a, b -> Unit },
          publiserKontorEndring: (event: KontorEndretEvent) -> Result<Unit> = { a -> Result.success(Unit) },
          hentAoKontor: suspend (ident: IdentSomKanLagres) -> ArbeidsoppfolgingsKontor? = { null },
     ): SettKontorHandler {
@@ -277,7 +277,6 @@ class SettKontorHandlerTest {
             publiserKontorEndring,
             { skjermingResult },
             { adresseResult },
-            { true },
             { listOf(MinimaltNorgKontor(kontorId = "0383", "Nav egne ansatte Oslo", NorgKontorType.KO)) },
         )
     }

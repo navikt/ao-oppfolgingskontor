@@ -36,7 +36,6 @@ class EndringPaOppfolgingsBrukerProcessor(
     val oppfolgingsperiodeProvider: suspend (IdentSomKanLagres) -> OppfolgingsperiodeOppslagResult,
     val arenaKontorProvider: suspend (IdentSomKanLagres) -> ArenaKontorUtvidet?,
     val lagreKontorTilordninger: (KontorEndretEvent) -> Unit,
-    val hentPubliserArenaKontorToggle: BrukAoRutingToggleSupplier
 ) {
     val log = LoggerFactory.getLogger(EndringPaOppfolgingsBrukerProcessor::class.java)
 
@@ -89,16 +88,7 @@ class EndringPaOppfolgingsBrukerProcessor(
                         )
                     }
                 )
-                if (hentPubliserArenaKontorToggle()) {
-                    val kontorEndringstype = if (result.erFørsteArenaKontorIOppfolgingsperiode) {
-                        KontorEndringsType.ArenaKontorVedOppfolgingStartMedEtterslep
-                    } else {
-                        KontorEndringsType.EndretIArena
-                    }
-                    Forward(toRecord(kontorTilordning, kontorEndringstype))
-                } else {
-                    Commit()
-                }
+                Commit()
             }
         }
     }

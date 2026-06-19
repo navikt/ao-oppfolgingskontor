@@ -34,7 +34,6 @@ class ArenakontorVedOppfolgingStartetProcessor(
     private val lagreKontortilordning: (ArenaKontorHentetSynkrontVedOppfolgingStart) -> Unit,
     private val arenaKontorProvider: suspend (IdentSomKanLagres) -> ArenaKontorUtvidet?,
     private val publiserKontorTilordning: PubliserAutomatiskKontorEndring,
-    private val hentPubliserArenaKontorToggle: BrukAoRutingToggleSupplier
 ) {
     companion object {
         const val processorName = "ArenakontorProcessor"
@@ -93,21 +92,11 @@ class ArenakontorVedOppfolgingStartetProcessor(
 
                             if (lagretArenakontorErNyest || (kontorIdErLik && oppfolgingsperiodeErLik)) {
                                 logger.info("Lagrer ikke funnet arenakontor siden vi har nyere eller lik informasjon lagret")
-                                val arenaKontorSomSkalPubliseres = if (lagretArenakontorErNyest && alleredeLagretArenaKontor != null) alleredeLagretArenaKontor.kontorId else arenakontorOppslag.kontorId
-                                publiserArenaKontor(arenaKontorSomSkalPubliseres, oppfølgingsperiodeStartet.periodeId, fnr)
                                 Skip<String, String>()
                             } else {
                                 logger.info("Lagrer funnet arenakontor")
                                 lagreKontortilordning(kontorTilordning)
-                                val publiserResult = publiserArenaKontor(kontorTilordning.tilordning.kontorId, oppfølgingsperiodeStartet.periodeId, fnr)
-                                if (publiserResult.isFailure) {
-                                    val exception = publiserResult.exceptionOrNull()
-                                    val message = "Kunne ikke publisere hentet arenakontor ved start oppfølging"
-                                    logger.error("Lagrer ikke funnet arenakontor", exception)
-                                    Retry(message)
-                                } else {
-                                    Commit()
-                                }
+                                Commit()
                             }
                         }
 
@@ -119,19 +108,5 @@ class ArenakontorVedOppfolgingStartetProcessor(
                 }
             }
         }
-    }
-
-    private suspend fun publiserArenaKontor(kontorId: KontorId, oppfolgingsperiodeId: OppfolgingsperiodeId, ident: IdentSomKanLagres): Result<Unit> {
-        if (hentPubliserArenaKontorToggle()) {
-            return publiserKontorTilordning(
-                OppfolgingEndretTilordningMelding(
-                    kontorId = kontorId.id,
-                    oppfolgingsperiodeId = oppfolgingsperiodeId.value.toString(),
-                    ident =  ident.value,
-                    kontorEndringsType = KontorEndringsType.ArenaKontorHentetSynkrontVedOppfolgingsStart
-                )
-            )
-        }
-        return Result.success(Unit)
     }
 }

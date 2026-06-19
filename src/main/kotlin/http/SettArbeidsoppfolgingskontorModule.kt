@@ -44,7 +44,6 @@ fun Application.configureArbeidsoppfolgingskontorModule(
     authenticateRequest: AuthenticateRequest = { req -> req.call.authenticateCall(environment.getIssuer()) },
     hentSkjerming: suspend (IdentSomKanLagres) -> SkjermingResult,
     hentAdresseBeskyttelse: suspend (IdentSomKanLagres) -> HarStrengtFortroligAdresseResult,
-    brukAoRuting: BrukAoRutingToggleSupplier,
     hentEnheterForEgneAnsatte: suspend () -> List<MinimaltNorgKontor>,
 ) {
     val log = LoggerFactory.getLogger("Application.configureArbeidsoppfolgingskontorModule")
@@ -56,11 +55,10 @@ fun Application.configureArbeidsoppfolgingskontorModule(
             .also { AuditLogger.logSettKontor(it.toAuditEntry()) } },
         { principal, kontorId, traceId -> poaoTilgangClient.harTilgangTilKontor(principal, kontorId, traceId) },
         oppfolgingsperiodeService::getCurrentOppfolgingsperiode,
-        { event: KontorEndretEvent, brukAoRuting2: Boolean -> kontorTilordningService.tilordneKontor(event, brukAoRuting2) },
+        { event: KontorEndretEvent -> kontorTilordningService.tilordneKontor(event) },
         publiserKontorEndring,
         hentSkjerming,
         hentAdresseBeskyttelse,
-        brukAoRuting,
         hentEnheterForEgneAnsatte,
     )
 

@@ -28,7 +28,6 @@ import kafka.retry.library.internal.setupKafkaMock
 import kotlin.Result
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import no.nav.BrukAoRutingToggleSupplier
 import no.nav.db.AktorId
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
@@ -112,7 +111,6 @@ class BigAppTest {
                 kontorEndringProducer,
                 kontor,
                 HarSkjerming(false),
-                brukAoRuting = { true }
             )
 
             val (_, inputTopics, _) = setupKafkaMock(
@@ -191,7 +189,6 @@ class BigAppTest {
                 kontorEndringProducer,
                 kontor,
                 HarSkjerming(false),
-                brukAoRuting = { true }
             )
 
             val (_, inputTopics, _) = setupKafkaMock(
@@ -246,7 +243,6 @@ class BigAppTest {
                 kontorEndringProducer,
                 skjermetKontor,
                 HarSkjerming(true),
-                brukAoRuting = { true },
             )
             val (_, inputTopics, _) = setupKafkaMock(
                 topology,
@@ -306,7 +302,6 @@ class BigAppTest {
                 kontorEndringProducer,
                 skjermetKontor,
                 HarSkjerming(true),
-                brukAoRuting = { false },
             )
             val (_, inputTopics, _) = setupKafkaMock(
                 topology,
@@ -362,7 +357,6 @@ class BigAppTest {
                 kontorEndringProducer,
                 nyttKontor,
                 HarSkjerming(false),
-                brukAoRuting = { true },
             )
             val (_, inputTopics, _) = setupKafkaMock(
                 topology,
@@ -420,7 +414,6 @@ class BigAppTest {
                 kontorEndringProducer,
                 nyttKontor,
                 HarSkjerming(false),
-                brukAoRuting = { false },
             )
             val (_, inputTopics, _) = setupKafkaMock(
                 topology,
@@ -465,7 +458,6 @@ class BigAppTest {
         kontorEndringProducer: KontorEndringProducer,
         kontor: KontorId,
         harSkjerming: HarSkjerming,
-        brukAoRuting: BrukAoRutingToggleSupplier,
     ): Topology {
         val oppfolgingsperiodeProvider =
             { _: Ident -> AktivOppfolgingsperiode(fnr, randomInternIdent(), oppfolgingsperiodeId, OffsetDateTime.now()) }
@@ -479,16 +471,14 @@ class BigAppTest {
             { _, _ -> Outcome.Success(false) },
             { null },
         )
-        val tilordningProcessor = KontortilordningsProcessor(automatiskKontorRutingService, kontorTilordningService, brukAoRuting)
+        val tilordningProcessor = KontortilordningsProcessor(automatiskKontorRutingService, kontorTilordningService)
         val leesahProcessor = LeesahProcessor(
             automatiskKontorRutingService,
             kontorTilordningService,
-            brukAoRuting,
         )
         val skjermingProcessor = SkjermingProcessor(
             automatiskKontorRutingService,
             kontorTilordningService,
-            brukAoRuting,
         )
         val endringPaaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
             oppfolgingsperiodeProvider,
@@ -510,10 +500,8 @@ class BigAppTest {
                             endretAvRegistrant = System(Systemnavn.ARENA),
                         )
                     ),
-                    brukAoRuting = brukAoRuting(),
                 )
             },
-            { !brukAoRuting() },
         )
         val identService = IdentService { PdlIdenterFunnet(listOf(fnr), fnr) }
         val identendringsProcessor = IdentChangeProcessor(identService)
