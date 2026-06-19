@@ -14,8 +14,11 @@ import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import kafka.producers.KontorEndringProducer
 import no.nav.db.AktorId
+import no.nav.db.Ident
+import no.nav.db.Ident.HistoriskStatus.AKTIV
 import no.nav.db.Ident.HistoriskStatus.UKJENT
 import no.nav.db.IdentSomKanLagres
+import no.nav.db.InternIdent
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorNavn
@@ -56,7 +59,6 @@ import org.apache.kafka.clients.producer.Partitioner
 import org.apache.kafka.common.Cluster
 import org.apache.kafka.common.serialization.LongSerializer
 import org.apache.kafka.common.serialization.StringSerializer
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import services.IdentService
 import services.OppfolgingsperiodeService
@@ -81,6 +83,7 @@ class SettArbeidsoppfolgingsKontorTest {
     fun ApplicationTestBuilder.setupTestAppWithAuthAndGraphql(
         ident: IdentSomKanLagres,
         aktorId: AktorId,
+        internIdent: InternIdent = randomInternIdent(),
         skjerming: SkjermingResult = SkjermingFunnet(HarSkjerming(false)),
         adressebeskyttelse: HarStrengtFortroligAdresseResult = HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)),
         extraDatabaseSetup: Application.() -> Unit = {},
@@ -91,7 +94,6 @@ class SettArbeidsoppfolgingsKontorTest {
         val norg2Client = mockNorg2Host()
         val poaoTilgangClient = mockPoaoTilgangHost(null)
         val kontorNavnService = KontorNavnService(norg2Client)
-        val internIdent = randomInternIdent()
         val pdlIdenterFunnet = PdlIdenterFunnet(listOf(ident, aktorId), ident)
         val identerFunnet = IdenterFunnet(listOf(ident, aktorId), ident, internIdent)
         val identService = IdentService { pdlIdenterFunnet }
@@ -142,12 +144,13 @@ class SettArbeidsoppfolgingsKontorTest {
     @Test
     fun `skal kunne sette arbeidsoppfølgingskontor`() = testApplication {
         withMockOAuth2Server {
-            val fnr = randomFnr(UKJENT)
+            val fnr = randomFnr(AKTIV)
             val aktorId = randomAktorId()
+            val internIdent = randomInternIdent()
             val kontorId = "4444"
             val veilederIdent = NavIdent("Z990000")
             val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
-            val producer = setupTestAppWithAuthAndGraphql(fnr, aktorId) {
+            val producer = setupTestAppWithAuthAndGraphql(fnr, aktorId, internIdent) {
                 gittBrukerUnderOppfolging(fnr, oppfolgingsperiodeId)
                 gittIdentIMapping(fnr)
             }
@@ -165,7 +168,7 @@ class SettArbeidsoppfolgingsKontorTest {
             kontorResponse.data?.kontorTilhorighet?.registrantType shouldBe RegistrantTypeDto.VEILEDER
             kontorResponse.data?.kontorTilhorighet?.kontorType shouldBe KontorType.ARBEIDSOPPFOLGING
             val firstRecord = producer.history().first()
-            firstRecord.key() shouldBe oppfolgingsperiodeId.value.toString()
+            firstRecord.key() shouldBe internIdent.value
             firstRecord.value() shouldBe """
                 {"kontorId":"${kontorId}","kontorNavn":"Test KontorNavn","oppfolgingsperiodeId":"${oppfolgingsperiodeId.value}","aktorId":"${aktorId.value}","ident":"${fnr.value}","tilordningstype":"ENDRET_KONTOR"}
             """.trimIndent()

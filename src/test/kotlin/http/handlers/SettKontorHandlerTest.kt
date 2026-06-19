@@ -262,7 +262,8 @@ class SettKontorHandlerTest {
          adresseResult: HarStrengtFortroligAdresseResult = HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)),
          oppfolgingsperiodeResult: OppfolgingsperiodeOppslagResult = AktivOppfolgingsperiode(ident, randomInternIdent(),OppfolgingsperiodeId(UUID.randomUUID()), startDato = OffsetDateTime.now()),
          tilordneKontor: (event: KontorEndretEvent) -> Unit = { a -> Unit },
-         publiserKontorEndring: (event: KontorEndretEvent) -> Result<Unit> = { a -> Result.success(Unit) },
+         publiserKontorEndring: (event: KontorEndretEvent) -> Result<Unit> = { _ ->
+             Result.success(Unit) },
          hentAoKontor: suspend (ident: IdentSomKanLagres) -> ArbeidsoppfolgingsKontor? = { null },
     ): SettKontorHandler {
         val harTilgang = suspend { a: AOPrincipal, b: IdentSomKanLagres, traceId: String -> harTilgangTilBruker }
