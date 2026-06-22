@@ -51,7 +51,7 @@ fun Application.module() {
     configureSecurity()
     configureRateLimit()
 
-    val toggleService = ToggleService(
+    ToggleService(
         environment = environment,
         onKafkaPaused = { this.monitor.raise(KafkaPausedEvent, Unit) },
         onKafkaResumed = { this.monitor.raise(KafkaResumedEvent, Unit) }

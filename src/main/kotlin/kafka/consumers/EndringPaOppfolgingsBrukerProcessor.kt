@@ -145,22 +145,6 @@ class EndringPaOppfolgingsBrukerProcessor(
             }
         }
     }
-
-    private fun toRecord(
-        kontorTilordning: KontorTilordning,
-        kontorEndringstype: KontorEndringsType,
-    ): Record<OppfolgingsperiodeId, OppfolgingEndretTilordningMelding> {
-        return Record(
-            kontorTilordning.oppfolgingsperiodeId,
-            OppfolgingEndretTilordningMelding(
-                kontorId = kontorTilordning.kontorId.id,
-                oppfolgingsperiodeId = kontorTilordning.oppfolgingsperiodeId.value.toString(),
-                ident = kontorTilordning.fnr.value,
-                kontorEndringsType = kontorEndringstype
-            ),
-            ZonedDateTime.now().toEpochSecond(),
-        )
-    }
 }
 
 fun harKontorBlittEndret(arenaKontorUtvidet: ArenaKontorUtvidet?, oppfolgingsEnhetFraTopic: String, oppfolgingsperiodeId: OppfolgingsperiodeId): ArenaKontorEndringsType {
