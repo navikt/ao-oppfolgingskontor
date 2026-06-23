@@ -14,7 +14,6 @@ import java.time.ZonedDateTime
 
 enum class KontorTypeForBigQuery {
     ARBEIDSOPPFOLGINGSKONTOR,
-    ALTERNATIV_AOKONTOR,
     ARENAKONTOR
 }
 
@@ -78,14 +77,12 @@ class BigQueryClient(
         if (maybeLock.isPresent) {
             val lock = maybeLock.get()
             try {
-                val antallAlternativAoKontor = hentAntall(database, "alternativ_aokontor")
                 val antallArbeidsoppfolgingskontor = hentAntall(database, "arbeidsoppfolgingskontor")
                 val antallArenaKontor = hentAntall(database, "arenakontor")
 
                 val row = mapOf(
                     "jobb_timestamp" to ZonedDateTime.now().toInstant().toString(),
                     "dato" to ZonedDateTime.now().toLocalDate().toString(),
-                    "alternativ_aokontor" to antallAlternativAoKontor,
                     "arenakontor" to antallArenaKontor,
                     "arbeidsoppfolgingskontor" to antallArbeidsoppfolgingskontor
                 )
@@ -105,15 +102,6 @@ class BigQueryClient(
         return transaction(database) {
             exec(
                 when (tabell) {
-                    "alternativ_aokontor" -> """
-                        SELECT COUNT(*) AS antall
-                        FROM (
-                            SELECT DISTINCT ON (fnr) fnr, kontor_id
-                            FROM alternativ_aokontor
-                            ORDER BY fnr, created_at DESC
-                        ) siste_per_person
-                        WHERE kontor_id = '2990';
-                    """.trimIndent()
                     "arbeidsoppfolgingskontor" -> """
                         SELECT COUNT(*) AS antall
                         FROM arbeidsoppfolgingskontor
