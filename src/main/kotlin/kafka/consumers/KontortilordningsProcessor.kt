@@ -4,7 +4,6 @@ import kafka.consumers.jsonSerde
 import kafka.producers.OppfolgingEndretTilordningMelding
 import kafka.producers.toKontorTilordningMelding
 import kotlinx.coroutines.runBlocking
-import no.nav.BrukAoRutingToggleSupplier
 import no.nav.db.Ident
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.externalEvents.OppfolgingsperiodeEndret
@@ -31,7 +30,6 @@ import java.time.ZonedDateTime
 class KontortilordningsProcessor(
     private val automatiskKontorRutingService: AutomatiskKontorRutingService,
     private val kontorTilordningService: KontorTilordningService,
-    private val brukAoRuting: BrukAoRutingToggleSupplier,
 ) {
     companion object {
         const val processorName = "KontortilordningsProcessor"
@@ -73,10 +71,9 @@ class KontortilordningsProcessor(
                                         log.info("Behandlet start oppfølging uten at noen kontor ble endret")
                                     }
                                     is TilordningSuccessKontorEndret -> {
-                                        val brukAoRuting = brukAoRuting()
-                                        kontorTilordningService.tilordneKontor(tilordningResultat.kontorEndretEvent, brukAoRuting)
+                                        kontorTilordningService.tilordneKontor(tilordningResultat.kontorEndretEvent)
                                         val aoKontor = tilordningResultat.kontorEndretEvent.aoKontorEndret
-                                        if (brukAoRuting && aoKontor != null)
+                                        if (aoKontor != null)
                                             /* Publishing it done in its own processor to avoid re-setting kontor and creating
                                             extra-history if the publishing to kafka part fails. Forwarding without topicname
                                              send the record to default next step which is configured in the topology */

@@ -80,8 +80,7 @@ class KafkaApplicationTest {
         val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
             oppfolgingsperiodeService::getCurrentOppfolgingsperiode,
             { null },
-            { kontorTilordningService.tilordneKontor(it, true)},
-            { true }
+            { kontorTilordningService.tilordneKontor(it)},
         )
 
         application {
@@ -122,8 +121,7 @@ class KafkaApplicationTest {
         val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
             oppfolgingsperiodeService::getCurrentOppfolgingsperiode,
             { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },
-            { kontorTilordningService.tilordneKontor(it, true)},
-            { true }
+            { kontorTilordningService.tilordneKontor(it)},
         )
 
         application {
@@ -162,7 +160,6 @@ class KafkaApplicationTest {
         val fnr =  randomFnr(UKJENT)
         val skjermetKontor = "4555"
         val topic = randomTopicName()
-        val brukAoRuting = { true }
         val oppfølgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
 
         val automatiskKontorRutingService = AutomatiskKontorRutingService(
@@ -185,7 +182,6 @@ class KafkaApplicationTest {
         val skjermingProcessor = SkjermingProcessor(
             automatiskKontorRutingService,
             kontorTilordningService,
-            brukAoRuting,
         )
 
         application {

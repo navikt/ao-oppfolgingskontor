@@ -107,8 +107,7 @@ class OppfolgingshendelseProcessorTest {
                     ingenSensitivitet.strengtFortroligAdresse,
                     geografiskTilknytningNr = GeografiskTilknytningBydelNr("313131")
                 )
-            ),
-            true
+            )
         )
     }
 
@@ -118,8 +117,7 @@ class OppfolgingshendelseProcessorTest {
                 KontorTilordning(this.ident, kontorId, this.oppfolgingsperiodeId),
                 OffsetDateTime.now(),
                 System(Systemnavn.VEILARBOPPFOLGING),
-            ),
-            true
+            )
         )
     }
 
@@ -429,7 +427,6 @@ class OppfolgingshendelseProcessorTest {
             { NotUnderOppfolging },
             { sistLagreArenaKontor },
             {},
-            { true }
         )
         endringPaOppfolgingsBrukerProcessor.process(
             TopicUtils.endringPaaOppfolgingsBrukerMessage(

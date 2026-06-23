@@ -42,10 +42,8 @@ class ArenakontorProcessorTest {
     fun `Skal ignorere OppfolgingsperiodeAvsluttet-hendelser`() {
         val processor = ArenakontorVedOppfolgingStartetProcessor(
             { ArenakontorIkkeFunnet() },
-            { kontorTilordningService.tilordneKontor(it, true) },
+            { kontorTilordningService.tilordneKontor(it) },
             { null },
-            { Result.success(Unit) },
-            { true }
         )
         val record = oppfolgingsperiodeAvsluttetRecord()
         val result = processor.process(record)
@@ -62,16 +60,14 @@ class ArenakontorProcessorTest {
         val gammelKontorId = KontorId("4321")
         val processor = ArenakontorVedOppfolgingStartetProcessor(
             { ArenakontorFunnet(kontorId, ZonedDateTime.now()) },
-            { kontorTilordningService.tilordneKontor(it, true) },
+            { kontorTilordningService.tilordneKontor(it) },
             {
                 ArenaKontorUtvidet(
                     kontorId = gammelKontorId,
                     oppfolgingsperiodeId = null,
                     sistEndretDatoArena = OffsetDateTime.now().minusDays(1)
                 )
-            },
-            { Result.success(Unit) },
-            { true }
+            }
         )
         val result = processor.process(record)
         result.shouldBeInstanceOf<Commit<*, *>>()
@@ -95,9 +91,7 @@ class ArenakontorProcessorTest {
                     oppfolgingsperiodeId = record.value().periodeId,
                     sistEndretDatoArena = OffsetDateTime.now().minusDays(1)
                 )
-            },
-            { Result.success(Unit) },
-            { true }
+            }
         )
         val result = processor.process(record)
         result.shouldBeInstanceOf<Skip<*, *>>()
@@ -109,10 +103,9 @@ class ArenakontorProcessorTest {
         val gammelOppfolgingsperiode = OppfolgingsperiodeId(UUID.randomUUID())
         val kontorId = KontorId("1234")
         val gammelKontorId = KontorId("1234")
-        var harPublisertMelding = false
         val processor = `ArenakontorVedOppfolgingStartetProcessor`(
             { ArenakontorFunnet(kontorId, ZonedDateTime.now()) },
-            { kontorTilordningService.tilordneKontor(it, true) },
+            { kontorTilordningService.tilordneKontor(it) },
             {
                 ArenaKontorUtvidet(
                     kontorId = gammelKontorId,
@@ -120,18 +113,12 @@ class ArenakontorProcessorTest {
                     sistEndretDatoArena = OffsetDateTime.now().minusDays(1)
                 )
             },
-            {
-                harPublisertMelding = true
-                Result.success(Unit)
-            },
-            { true }
         )
         val result = processor.process(record)
         result.shouldBeInstanceOf<Commit<*, *>>()
         transaction {
             ArenaKontorEntity.findById(record.value().fnr.value)?.kontorId shouldBe kontorId.id
         }
-        harPublisertMelding shouldBe true
     }
 
     @Test
@@ -150,9 +137,7 @@ class ArenakontorProcessorTest {
                     oppfolgingsperiodeId = null,
                     sistEndretDatoArena = tidspunktKontorIdIDatabasen
                 )
-            },
-            { Result.success(Unit) },
-            { true }
+            }
         )
         val result = processor.process(record)
         result.shouldBeInstanceOf<Skip<*, *>>()
@@ -163,70 +148,14 @@ class ArenakontorProcessorTest {
         val record = oppfolgingsperiodeStartetRecord()
         val processor = ArenakontorVedOppfolgingStartetProcessor(
             { ArenakontorIkkeFunnet() },
-            { kontorTilordningService.tilordneKontor(it, true) },
-            { null },
-            { Result.success(Unit) },
-            { true }
+            { kontorTilordningService.tilordneKontor(it) },
+            { null }
         )
         val result = processor.process(record)
         result.shouldBeInstanceOf<Commit<*, *>>()
         transaction {
             ArenaKontorEntity.findById(record.value().fnr.value) shouldBe null
         }
-    }
-
-    @Test
-    fun `Skal publisere melding på topic når PUBLISER_ARENA_KONTOR er true`() {
-        val record = oppfolgingsperiodeStartetRecord()
-        val kontorId = KontorId("1234")
-        val gammelKontorId = KontorId("4321")
-        var harPublisertMelding = false
-        val processor = ArenakontorVedOppfolgingStartetProcessor(
-            { ArenakontorFunnet(kontorId, ZonedDateTime.now()) },
-            { kontorTilordningService.tilordneKontor(it, true) },
-            {
-                ArenaKontorUtvidet(
-                    kontorId = gammelKontorId,
-                    oppfolgingsperiodeId = null,
-                    sistEndretDatoArena = OffsetDateTime.now().minusDays(1)
-                )
-            },
-            {
-                harPublisertMelding = true
-                Result.success(Unit)
-            },
-            hentPubliserArenaKontorToggle = { true }
-        )
-        val result = processor.process(record)
-        result.shouldBeInstanceOf<Commit<*, *>>()
-        harPublisertMelding shouldBe true
-    }
-
-    @Test
-    fun `Skal ikke publisere melding på topic når PUBLISER_ARENA_KONTOR er false`() {
-        val record = oppfolgingsperiodeStartetRecord()
-        val kontorId = KontorId("1234")
-        val gammelKontorId = KontorId("4321")
-        var harPublisertMelding = false
-        val processor = ArenakontorVedOppfolgingStartetProcessor(
-            { ArenakontorFunnet(kontorId, ZonedDateTime.now()) },
-            { kontorTilordningService.tilordneKontor(it, true) },
-            {
-                ArenaKontorUtvidet(
-                    kontorId = gammelKontorId,
-                    oppfolgingsperiodeId = null,
-                    sistEndretDatoArena = OffsetDateTime.now().minusDays(1)
-                )
-            },
-            {
-                harPublisertMelding = true
-                Result.success(Unit)
-            },
-            hentPubliserArenaKontorToggle = { false }
-        )
-        val result = processor.process(record)
-        result.shouldBeInstanceOf<Commit<*, *>>()
-        harPublisertMelding shouldBe false
     }
 
     fun oppfolgingsperiodeAvsluttetRecord(): Record<Ident, OppfolgingsperiodeEndret> {

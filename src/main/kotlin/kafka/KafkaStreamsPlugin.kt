@@ -21,7 +21,6 @@ import kafka.consumers.OppfolgingsHendelseProcessor
 import kafka.consumers.PubliserKontorTilordningProcessor
 import kafka.producers.KontorEndringProducer
 import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
-import no.nav.BrukAoRutingToggleSupplier
 import no.nav.isProduction
 import no.nav.kafka.config.configureTopology
 import no.nav.kafka.config.kafkaStreamsProps
@@ -62,7 +61,6 @@ class KafkaStreamsPluginConfig(
     var kontorEndringProducer: KontorEndringProducer? = null,
     var veilarbArenaClient: VeilarbArenaClient? = null,
     var kontorTilordningService: KontorTilordningService? = null,
-    var brukAoRuting: BrukAoRutingToggleSupplier? = null,
 )
 
 val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createApplicationPlugin("KafkaStreams", ::KafkaStreamsPluginConfig) {
@@ -96,29 +94,22 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val kontorTilordningService = requireNotNull(this.pluginConfig.kontorTilordningService) {
         "KontorTilordningService must be configured for KafkaStreamPlugin"
     }
-    val brukAoRuting = requireNotNull(this.pluginConfig.brukAoRuting) {
-        "BrukAoRuting must be configured for KafkaStreamPlugin"
-    }
 
     val isProduction = environment.isProduction()
     if (isProduction) logger.info("Kjører i produksjonsmodus. Konsumerer kun siste-oppfølgingsperiode.")
 
-    val skalPublisereArenaKontor = { !brukAoRuting() }
-
     val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
         { oppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) },
         { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },
-        { kontorTilordningService.tilordneKontor(it, brukAoRuting()) },
-        skalPublisereArenaKontor
+        { kontorTilordningService.tilordneKontor(it) },
     )
 
     val kontorTilordningsProcessor = KontortilordningsProcessor(
         automatiskKontorRutingService,
         kontorTilordningService,
-        brukAoRuting
     )
-    val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService, brukAoRuting)
-    val skjermingProcessor = SkjermingProcessor(automatiskKontorRutingService, kontorTilordningService, brukAoRuting)
+    val leesahProcessor = LeesahProcessor(automatiskKontorRutingService, kontorTilordningService)
+    val skjermingProcessor = SkjermingProcessor(automatiskKontorRutingService, kontorTilordningService)
     val identEndringProcessor = IdentChangeProcessor(identService)
     val oppfolgingsHendelseProcessor = OppfolgingsHendelseProcessor(
         oppfolgingsperiodeService,
@@ -130,10 +121,8 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     )
     val arenakontorProcessor = ArenakontorVedOppfolgingStartetProcessor(
         veilarbArenaClient::hentArenaKontor,
-        { kontorTilordningService.tilordneKontor(it, brukAoRuting()) },
+        { kontorTilordningService.tilordneKontor(it) },
         { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },
-        { kontorProducer.publiserEndringPåKontor(it) },
-        skalPublisereArenaKontor,
     )
 
 

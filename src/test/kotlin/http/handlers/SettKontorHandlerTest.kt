@@ -167,7 +167,7 @@ class SettKontorHandlerTest {
         val handler = defaultHandler(
             fnr,
             hentAoKontor = { brukersKontor },
-            tilordneKontor = { _, _ -> harTilordnetKontor = true },
+            tilordneKontor = { _ -> harTilordnetKontor = true },
             publiserKontorEndring = { _ ->
                 harPublisertKontorEndring = true
                 Result.success(Unit)
@@ -240,7 +240,7 @@ class SettKontorHandlerTest {
     fun `Skal ikke publisere kontorendring hvis lagring av kontor feiler`() = runTest {
         val publiserMockk = mockk<(KontorEndretEvent) -> Result<Unit>>()
         val handler = defaultHandler(fnr,
-            tilordneKontor = { a,b -> throw Exception("Noe gikk galt") },
+            tilordneKontor = { a -> throw Exception("Noe gikk galt") },
             publiserKontorEndring = publiserMockk
         )
 
@@ -261,8 +261,9 @@ class SettKontorHandlerTest {
          skjermingResult: SkjermingResult = SkjermingFunnet(HarSkjerming(false)),
          adresseResult: HarStrengtFortroligAdresseResult = HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)),
          oppfolgingsperiodeResult: OppfolgingsperiodeOppslagResult = AktivOppfolgingsperiode(ident, randomInternIdent(),OppfolgingsperiodeId(UUID.randomUUID()), startDato = OffsetDateTime.now()),
-         tilordneKontor: (event: KontorEndretEvent, brukAORuting: Boolean) -> Unit = { a, b -> Unit },
-         publiserKontorEndring: (event: KontorEndretEvent) -> Result<Unit> = { a -> Result.success(Unit) },
+         tilordneKontor: (event: KontorEndretEvent) -> Unit = { a -> Unit },
+         publiserKontorEndring: (event: KontorEndretEvent) -> Result<Unit> = { _ ->
+             Result.success(Unit) },
          hentAoKontor: suspend (ident: IdentSomKanLagres) -> ArbeidsoppfolgingsKontor? = { null },
     ): SettKontorHandler {
         val harTilgang = suspend { a: AOPrincipal, b: IdentSomKanLagres, traceId: String -> harTilgangTilBruker }
@@ -277,7 +278,6 @@ class SettKontorHandlerTest {
             publiserKontorEndring,
             { skjermingResult },
             { adresseResult },
-            { true },
             { listOf(MinimaltNorgKontor(kontorId = "0383", "Nav egne ansatte Oslo", NorgKontorType.KO)) },
         )
     }

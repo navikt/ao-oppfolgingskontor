@@ -8,7 +8,6 @@ import io.getunleash.util.UnleashConfig
 import io.ktor.server.application.ApplicationEnvironment
 
 const val STOPP_KAFKA_CONSUMERS_TOGGLE = "ao-kontor.stopp-kafkalyttere"
-const val BRUK_AO_RUTING = "bruk_ao_kontor_som_master"
 
 fun ApplicationEnvironment.createUnleashClient(subscriber: UnleashSubscriber) = DefaultUnleash(
     UnleashConfig
@@ -34,7 +33,6 @@ class ToggleService(
         }
     }
     private val unleashClient: Unleash = environment.createUnleashClient(subscriber)
-    public var brukAoRutingMutableVar: Boolean = skalBrukeAoRuting()
     private var isKafkaPaused: Boolean = skalIkkeLeseFraKafka()
 
     private fun refreshToggles() {
@@ -47,16 +45,10 @@ class ToggleService(
             onKafkaResumed()
             isKafkaPaused = false
         }
-
-        brukAoRutingMutableVar = skalBrukeAoRuting()
     }
 
     fun skalIkkeLeseFraKafka(): Boolean {
         return unleashClient.isEnabled(STOPP_KAFKA_CONSUMERS_TOGGLE)
-    }
-
-    fun skalBrukeAoRuting(): Boolean {
-        return unleashClient.isEnabled(BRUK_AO_RUTING)
     }
 }
 

@@ -4,7 +4,6 @@ import http.client.ArenakontorFunnet
 import http.client.ArenakontorIkkeFunnet
 import http.client.ArenakontorOppslagFeilet
 import http.client.VeilarbArenaClient
-import no.nav.BrukAoRutingToggleSupplier
 import no.nav.db.IdentSomKanLagres
 import no.nav.domain.KontorTilordning
 import no.nav.domain.events.ManuellSynkVeilarbArena
@@ -20,7 +19,6 @@ class ArenaSyncService(
     val kontorTilordningService: KontorTilordningService,
     val kontorTilhorighetService: KontorTilhorighetService,
     val oppfolgingsperiodeService: OppfolgingsperiodeService,
-    val brukAoRuting: BrukAoRutingToggleSupplier
 ) {
     val log = LoggerFactory.getLogger(ArenaSyncService::class.java)
 
@@ -49,7 +47,6 @@ class ArenaSyncService(
         val harSammeKontorMenForskjelligPeriode = !harForskjelligKontor && currentLocalArenaKontor.oppfolgingsperiodeId != currentOpenOppfolgingsperiode.periodeId
 
         if (currentLocalArenaKontor == null || harForskjelligKontor || harSammeKontorMenForskjelligPeriode) {
-            val brukAoRuting = brukAoRuting()
             kontorTilordningService.tilordneKontor(
                 ManuellSynkVeilarbArena(
                     kontorTilordning = KontorTilordning(
@@ -58,8 +55,7 @@ class ArenaSyncService(
                         currentOpenOppfolgingsperiode.periodeId
                     ),
                     sistEndretIArena = currentRemoteArenaKontor.sistEndret.toOffsetDateTime()
-                ),
-                brukAoRuting,
+                )
             )
             log.info("Fant ulike arena-kontor i veilarbarena og lokalt, oppdaterer arena-kontor")
         } else {

@@ -14,8 +14,11 @@ import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import kafka.producers.KontorEndringProducer
 import no.nav.db.AktorId
+import no.nav.db.Ident
+import no.nav.db.Ident.HistoriskStatus.AKTIV
 import no.nav.db.Ident.HistoriskStatus.UKJENT
 import no.nav.db.IdentSomKanLagres
+import no.nav.db.InternIdent
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.KontorNavn
@@ -56,7 +59,6 @@ import org.apache.kafka.clients.producer.Partitioner
 import org.apache.kafka.common.Cluster
 import org.apache.kafka.common.serialization.LongSerializer
 import org.apache.kafka.common.serialization.StringSerializer
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import services.IdentService
 import services.OppfolgingsperiodeService
@@ -81,9 +83,9 @@ class SettArbeidsoppfolgingsKontorTest {
     fun ApplicationTestBuilder.setupTestAppWithAuthAndGraphql(
         ident: IdentSomKanLagres,
         aktorId: AktorId,
+        internIdent: InternIdent = randomInternIdent(),
         skjerming: SkjermingResult = SkjermingFunnet(HarSkjerming(false)),
         adressebeskyttelse: HarStrengtFortroligAdresseResult = HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)),
-        brukAoRuting: BrukAoRutingToggleSupplier = { false },
         extraDatabaseSetup: Application.() -> Unit = {},
         ): MockProducer<Long, String?> {
         environment {
@@ -92,7 +94,6 @@ class SettArbeidsoppfolgingsKontorTest {
         val norg2Client = mockNorg2Host()
         val poaoTilgangClient = mockPoaoTilgangHost(null)
         val kontorNavnService = KontorNavnService(norg2Client)
-        val internIdent = randomInternIdent()
         val pdlIdenterFunnet = PdlIdenterFunnet(listOf(ident, aktorId), ident)
         val identerFunnet = IdenterFunnet(listOf(ident, aktorId), ident, internIdent)
         val identService = IdentService { pdlIdenterFunnet }
@@ -107,7 +108,6 @@ class SettArbeidsoppfolgingsKontorTest {
             "arbeidsoppfolgingskontortilordninger",
             { KontorNavn("Test KontorNavn") },
             { identerFunnet },
-            brukAoRuting
         )
         application {
             flywayMigrationInTest()
@@ -131,7 +131,6 @@ class SettArbeidsoppfolgingsKontorTest {
                 hentSkjerming = { skjerming },
                 hentAdresseBeskyttelse = { adressebeskyttelse },
                 hentEnheterForEgneAnsatte = { listOf(MinimaltNorgKontor(kontorId = "0383", "Nav egne ansatte Oslo", NorgKontorType.KO)) },
-                brukAoRuting = brukAoRuting
             )
             routing {
                 authenticate("EntraAD") {
@@ -142,16 +141,16 @@ class SettArbeidsoppfolgingsKontorTest {
         return producer
     }
 
-    @Disabled
     @Test
     fun `skal kunne sette arbeidsoppfølgingskontor`() = testApplication {
         withMockOAuth2Server {
-            val fnr = randomFnr(UKJENT)
+            val fnr = randomFnr(AKTIV)
             val aktorId = randomAktorId()
+            val internIdent = randomInternIdent()
             val kontorId = "4444"
             val veilederIdent = NavIdent("Z990000")
             val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
-            val producer = setupTestAppWithAuthAndGraphql(fnr, aktorId) {
+            val producer = setupTestAppWithAuthAndGraphql(fnr, aktorId, internIdent) {
                 gittBrukerUnderOppfolging(fnr, oppfolgingsperiodeId)
                 gittIdentIMapping(fnr)
             }
@@ -169,37 +168,10 @@ class SettArbeidsoppfolgingsKontorTest {
             kontorResponse.data?.kontorTilhorighet?.registrantType shouldBe RegistrantTypeDto.VEILEDER
             kontorResponse.data?.kontorTilhorighet?.kontorType shouldBe KontorType.ARBEIDSOPPFOLGING
             val firstRecord = producer.history().first()
-            firstRecord.key() shouldBe oppfolgingsperiodeId.value.toString()
+            firstRecord.key() shouldBe internIdent.value
             firstRecord.value() shouldBe """
                 {"kontorId":"${kontorId}","kontorNavn":"Test KontorNavn","oppfolgingsperiodeId":"${oppfolgingsperiodeId.value}","aktorId":"${aktorId.value}","ident":"${fnr.value}","tilordningstype":"ENDRET_KONTOR"}
             """.trimIndent()
-        }
-    }
-
-    @Test
-    fun `skal returnere 501 og ikke lagre noe ved setting av aokontor`() = testApplication {
-        withMockOAuth2Server {
-            val fnr = randomFnr(UKJENT)
-            val aktorId = randomAktorId()
-            val kontorId = "4444"
-            val veilederIdent = NavIdent("Z990000")
-            val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
-            val producer = setupTestAppWithAuthAndGraphql(fnr, aktorId) {
-                gittBrukerUnderOppfolging(fnr, oppfolgingsperiodeId)
-                gittIdentIMapping(fnr)
-            }
-            val httpClient = getJsonHttpClient()
-
-            val response = httpClient.settKontor(server, fnr = fnr, kontorId = kontorId, navIdent = veilederIdent)
-
-            response.status shouldBe HttpStatusCode.NotImplemented
-            val readResponse = httpClient.kontorTilhorighet(fnr, server.issueToken(veilederIdent))
-            readResponse.status shouldBe HttpStatusCode.OK
-            val kontorResponse = readResponse.body<GraphqlResponse<KontorTilhorighet>>()
-            kontorResponse.errors shouldBe null
-            kontorResponse.data?.kontorTilhorighet shouldBe null
-
-            producer.history().size shouldBe 0
         }
     }
 
@@ -210,7 +182,7 @@ class SettArbeidsoppfolgingsKontorTest {
             val aktorId = randomAktorId(UKJENT)
             val kontorId = "4444"
             val veilederIdent = NavIdent("Z990000")
-            setupTestAppWithAuthAndGraphql(fnr, aktorId, brukAoRuting = { true }) {
+            setupTestAppWithAuthAndGraphql(fnr, aktorId) {
                 gittIdentIMapping(fnr)
             }
             val httpClient = getJsonHttpClient()
@@ -230,7 +202,7 @@ class SettArbeidsoppfolgingsKontorTest {
             val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
             val veilederIdent = NavIdent("Z990000")
             val harSkjerming = SkjermingFunnet(HarSkjerming(true))
-            setupTestAppWithAuthAndGraphql(fnr, aktorId, brukAoRuting = { true }, skjerming = harSkjerming) {
+            setupTestAppWithAuthAndGraphql(fnr, aktorId, skjerming = harSkjerming) {
                 gittBrukerUnderOppfolging(fnr, oppfolgingsperiodeId)
                 gittIdentIMapping(fnr)
             }
@@ -252,7 +224,7 @@ class SettArbeidsoppfolgingsKontorTest {
             val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
             val veilederIdent = NavIdent("Z990000")
             val adressebeskyttelse = HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(true))
-            setupTestAppWithAuthAndGraphql(fnr, aktorId, brukAoRuting = { true }, adressebeskyttelse = adressebeskyttelse) {
+            setupTestAppWithAuthAndGraphql(fnr, aktorId, adressebeskyttelse = adressebeskyttelse) {
                 gittBrukerUnderOppfolging(fnr, oppfolgingsperiodeId)
                 gittIdentIMapping(fnr)
             }

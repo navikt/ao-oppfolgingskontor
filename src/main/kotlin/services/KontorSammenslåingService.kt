@@ -65,7 +65,7 @@ class `KontorSammenslåingService`(
                 bruker.second,
             ),
             adminBruker = veileder
-        ),true)
+        ))
     }
 }
 

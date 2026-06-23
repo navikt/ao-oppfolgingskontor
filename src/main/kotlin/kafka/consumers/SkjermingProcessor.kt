@@ -3,7 +3,6 @@ package no.nav.kafka.consumers
 import kafka.out.toOppfolgingEndretTilordningMeldingRecord
 import kafka.producers.OppfolgingEndretTilordningMelding
 import kotlinx.coroutines.runBlocking
-import no.nav.BrukAoRutingToggleSupplier
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
 import no.nav.domain.HarSkjerming
@@ -22,7 +21,6 @@ import org.slf4j.LoggerFactory
 class SkjermingProcessor(
     val automatiskKontorRutingService: AutomatiskKontorRutingService,
     val kontorTilordningService: KontorTilordningService,
-    val brukAoRuting: BrukAoRutingToggleSupplier,
 ) {
     val log = LoggerFactory.getLogger(SkjermingProcessor::class.java)
 
@@ -49,14 +47,13 @@ class SkjermingProcessor(
                             val endringResult = result.getOrNull()
                             log.info("Behandling endring i skjerming med resultat: $endringResult")
                             if (endringResult != null) {
-                                val brukAoRuting = brukAoRuting()
-                                endringResult.let { kontorTilordningService.tilordneKontor(it.endringer, brukAoRuting) }
-                                if (brukAoRuting && endringResult.endringer.aoKontorEndret != null) {
+                                endringResult.let { kontorTilordningService.tilordneKontor(it.endringer) }
+                                if (endringResult.endringer.aoKontorEndret != null) {
                                     val record = endringResult.endringer.aoKontorEndret.toOppfolgingEndretTilordningMeldingRecord()
                                     Forward(record)
                                 } else {
-                                    log.info("Produserer ikke melding ved endring i skjerming fordi funkjsonaliteten er togglet av")
-                                    Commit()
+                                    log.error("Fikk melding om endring av skjermet men klarte ikke å sette nytt kontor: $endringResult")
+                                    Retry("Fikk melding om endring av skjermet men klarte ikke å sette nytt kontor: $endringResult")
                                 }
                             } else {
                                 Commit()
