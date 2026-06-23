@@ -80,6 +80,7 @@ spec:
             roles:
               - "bulk-hent-kontor"
         - application: inngar
+          namespace: dab
         - application: poao-tilgang
           namespace: poao
         - application: poao-tilgang
