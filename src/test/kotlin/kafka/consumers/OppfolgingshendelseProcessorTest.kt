@@ -41,7 +41,6 @@ import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.IdentFunnet
 import no.nav.http.client.PdlIdenterFunnet
-import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
 import no.nav.kafka.processor.Commit
 import no.nav.kafka.processor.Forward
 import no.nav.kafka.processor.Retry
@@ -415,38 +414,6 @@ class OppfolgingshendelseProcessorTest {
         val result = oppfolgingshendelseProcessor.process(record)
 
         result.shouldBeInstanceOf<Skip<Ident, OppfolgingsperiodeStartet>>()
-    }
-
-    fun gittBrukerMedTidligArenaKontor(ident: Ident, sistLagretArenaKontor: String, arenaKontor: String) {
-        val sistLagreArenaKontor = ArenaKontorUtvidet(
-            kontorId = KontorId(sistLagretArenaKontor),
-            oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID()),
-            sistEndretDatoArena = OffsetDateTime.now().minusSeconds(1)
-        )
-        val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
-            { NotUnderOppfolging },
-            { sistLagreArenaKontor },
-            {},
-        )
-        endringPaOppfolgingsBrukerProcessor.process(
-            TopicUtils.endringPaaOppfolgingsBrukerMessage(
-                ident,
-                arenaKontor,
-                Instant.now().atZone(ZoneId.of("Europe/Oslo")).toOffsetDateTime(),
-                no.nav.kafka.consumers.FormidlingsGruppe.ARBS,
-                no.nav.kafka.consumers.Kvalifiseringsgruppe.IKVAL
-            )
-        )
-    }
-
-    fun Bruker.skalHaTidligArenaKontor(foreventetKontor: String?, annenIdent: Ident? = null) {
-        val identMedArenaKontor = annenIdent ?: this.ident
-        val arenaKontor = transaction {
-            TidligArenaKontorEntity.findById(identMedArenaKontor.value)?.kontorId
-        }
-        withClue("Forventet bruker skulle ha forhåndslagret arenakontor for oppfølging-start: $foreventetKontor men hadde $arenaKontor") {
-            arenaKontor shouldBe foreventetKontor
-        }
     }
 
     fun Bruker.skalHaArenaKontor(foreventetKontor: String?) {

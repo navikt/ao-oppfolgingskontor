@@ -24,7 +24,6 @@ import net.javacrumbs.shedlock.provider.exposed.ExposedLockProvider
 import no.nav.isProduction
 import no.nav.kafka.config.configureTopology
 import no.nav.kafka.config.kafkaStreamsProps
-import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
 import no.nav.kafka.consumers.KontortilordningsProcessor
 import no.nav.kafka.consumers.LeesahProcessor
 import no.nav.kafka.consumers.SkjermingProcessor
@@ -98,12 +97,6 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val isProduction = environment.isProduction()
     if (isProduction) logger.info("Kjører i produksjonsmodus. Konsumerer kun siste-oppfølgingsperiode.")
 
-    val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
-        { oppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) },
-        { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },
-        { kontorTilordningService.tilordneKontor(it) },
-    )
-
     val kontorTilordningsProcessor = KontortilordningsProcessor(
         automatiskKontorRutingService,
         kontorTilordningService,
@@ -132,7 +125,6 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         kontortilordningsProcessor = kontorTilordningsProcessor,
         leesahProcessor = leesahProcessor,
         skjermingProcessor = skjermingProcessor,
-        endringPaOppfolgingsBrukerProcessor = endringPaOppfolgingsBrukerProcessor,
         identEndringsProcessor = identEndringProcessor,
         oppfolgingsHendelseProcessor = oppfolgingsHendelseProcessor,
         publiserKontorTilordningProcessor = publiserKontorTilordningProcessor,

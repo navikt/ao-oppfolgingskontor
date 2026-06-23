@@ -35,9 +35,6 @@ import no.nav.http.client.arbeidssogerregisteret.ProfileringFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
 import no.nav.kafka.config.processorName
 import no.nav.kafka.config.streamsErrorHandlerConfig
-import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
-import no.nav.kafka.consumers.FormidlingsGruppe
-import no.nav.kafka.consumers.Kvalifiseringsgruppe
 import no.nav.kafka.consumers.SkjermingProcessor
 import no.nav.kafka.processor.ProcessRecord
 import no.nav.kafka.retry.library.RetryConfig
@@ -45,7 +42,6 @@ import no.nav.kafka.retry.library.internal.RetryableProcessor
 import no.nav.kafka.retry.library.internal.RetryableRepository
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
-import no.nav.services.KontorTilhorighetService
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.gittBrukerUnderOppfolging
 import no.nav.utils.kontorTilordningService
@@ -66,94 +62,9 @@ import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.core.eq
 import org.junit.jupiter.api.Test
-import services.OppfolgingsperiodeService
 import utils.Outcome
 
 class KafkaApplicationTest {
-
-    @Test
-    fun `skal lagre alle nye endringer på arena-kontor i historikk tabellen`() = testApplication {
-        val topic = randomTopicName()
-        val fnr = randomFnr()
-        val oppfolgingsperiodeService = OppfolgingsperiodeService({ IdenterFunnet(listOf(fnr), fnr, randomInternIdent()) },
-            kontorTilordningService::slettArbeidsoppfølgingskontorTilordning)
-        val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
-            oppfolgingsperiodeService::getCurrentOppfolgingsperiode,
-            { null },
-            { kontorTilordningService.tilordneKontor(it)},
-        )
-
-        application {
-            flywayMigrationInTest()
-            gittBrukerUnderOppfolging(fnr)
-            val topology = configureStringStringInputTopology(endringPaOppfolgingsBrukerProcessor::process, topic)
-            val kafkaMockTopic = setupKafkaMock(topology, topic)
-            kafkaMockTopic.pipeInput(
-                fnr.value,
-                endringPaOppfolgingsBrukerMessage(fnr, "1234", ZonedDateTime.parse("2025-08-13T13:01:14+02:00")).value()
-            )
-            kafkaMockTopic.pipeInput(
-                fnr.value,
-                endringPaOppfolgingsBrukerMessage(fnr, "4321", ZonedDateTime.parse("2025-08-14T13:01:14+02:00")).value()
-            )
-            transaction {
-                withClue("") {
-                    ArenaKontorEntity.findById(fnr.value)?.kontorId shouldBe "4321"
-                }
-
-                KontorHistorikkEntity
-                    .find { KontorhistorikkTable.ident eq fnr.value }
-                    .count() shouldBe 2
-            }
-        }
-    }
-
-    @Test
-    fun `skal kun lagre nyere data i arena-kontor tabell og historikk tabellen`() = testApplication {
-        val fnr = randomFnr()
-        val topic = randomTopicName()
-        val internIdent = randomInternIdent()
-        val oppfolgingsperiodeService = OppfolgingsperiodeService({ IdenterFunnet(listOf(fnr), fnr, internIdent) },
-            kontorTilordningService::slettArbeidsoppfølgingskontorTilordning)
-        val kontorTilhorighetService = KontorTilhorighetService(
-            kontorNavnService = mockk(),
-        ) { IdenterFunnet(listOf(fnr), fnr, internIdent) }
-        val endringPaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
-            oppfolgingsperiodeService::getCurrentOppfolgingsperiode,
-            { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },
-            { kontorTilordningService.tilordneKontor(it)},
-        )
-
-        application {
-            flywayMigrationInTest()
-            gittBrukerUnderOppfolging(fnr)
-            val topology = configureStringStringInputTopology(endringPaOppfolgingsBrukerProcessor::process, topic)
-
-            val kafkaMockTopic = setupKafkaMock(topology, topic)
-            kafkaMockTopic.pipeInput(
-                fnr.value,
-                endringPaOppfolgingsBrukerMessage(
-                    fnr,
-                    "1234",
-                    ZonedDateTime.parse("2025-08-14T13:01:14+02:00")
-                ).value(),
-            )
-            kafkaMockTopic.pipeInput(
-                fnr.value,
-                endringPaOppfolgingsBrukerMessage(
-                    fnr,
-                    "4321",
-                    ZonedDateTime.parse("2025-08-13T13:01:14+02:00")
-                ).value(),
-            )
-            transaction {
-                ArenaKontorEntity.findById(fnr.value)?.kontorId shouldBe "1234"
-                KontorHistorikkEntity
-                    .find { KontorhistorikkTable.ident eq fnr.value }
-                    .count() shouldBe 1
-            }
-        }
-    }
 
     @Test
     fun `skal behandle endring i skjerming sett kontor fra GT`() = testApplication {
@@ -200,20 +111,6 @@ class KafkaApplicationTest {
                     .count() shouldBe 2
             }
         }
-    }
-
-    fun endringPaOppfolgingsBrukerMessage(
-        ident: Ident,
-        kontorId: String,
-        sistEndretDato: ZonedDateTime
-    ): Record<String, String> {
-        return TopicUtils.endringPaaOppfolgingsBrukerMessage(
-            ident,
-            kontorId,
-            sistEndretDato.toOffsetDateTime(),
-            FormidlingsGruppe.ISERV,
-            Kvalifiseringsgruppe.BATT
-        )
     }
 
     fun <KIn, VIn, KOut, VOut> wrapInRetryProcessor(

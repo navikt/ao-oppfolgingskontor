@@ -11,13 +11,11 @@ import io.ktor.http.HttpStatusCode.Companion.OK
 import io.ktor.server.routing.*
 import io.ktor.server.testing.*
 import no.nav.Authenticated
-import no.nav.SystemPrincipal
 import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.db.Ident.HistoriskStatus.AKTIV
 import no.nav.db.Ident.HistoriskStatus.UKJENT
 import no.nav.domain.*
-import no.nav.domain.events.EndringPaaOppfolgingsBrukerFraArena
 import no.nav.domain.events.GTKontorEndret
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.http.client.GeografiskTilknytningBydelNr
@@ -38,7 +36,6 @@ import no.nav.NavAnsatt
 import no.nav.http.graphql.schemas.AlleKontorQueryDto
 import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
-import no.nav.services.KontorTilordningService
 import no.nav.utils.*
 import no.nav.utils.KontorTilhorighet
 import org.junit.jupiter.api.Test
@@ -81,23 +78,21 @@ class GraphqlApplicationTest {
 
     @Test
     fun `skal kunne hente kontor via graphql`() = testApplication {
-        val fnr = randomFnr()
-        val kontorId = "4142"
-        val client = getJsonHttpClient()
+        val fnr = randomFnr(UKJENT)
+        val AOKontor = "4152"
         graphqlServerInTest(fnr)
         application {
-            gittBrukerMedKontorIArena(fnr, kontorId)
+            val oppfølgingsperiodeId = gittBrukerUnderOppfolging(fnr)
+            gittBrukerMedAOKontor(fnr, AOKontor, oppfølgingsperiodeId)
         }
+        val client = getJsonHttpClient()
 
         val response = client.kontorTilhorighet(fnr)
 
         response.status shouldBe OK
-        val payload = response.body<GraphqlResponse<KontorTilhorighet>>()
-        payload shouldBe GraphqlResponse(
-            KontorTilhorighet(
-                KontorTilhorighetQueryDto(kontorId, "NAV test", KontorType.ARENA, "Arena", RegistrantTypeDto.ARENA)
-            )
-        )
+        val payload = response.body<GraphqlResponse<KontorTilhorigheter>>()
+        payload.errors shouldBe null
+        payload.data!!.kontorTilhorigheter.arbeidsoppfolging?.kontorId shouldBe AOKontor
     }
 
     @Test
@@ -133,8 +128,10 @@ class GraphqlApplicationTest {
         val kontorId = "4144"
         val client = getJsonHttpClient()
         graphqlServerInTest(fnr)
+        val AOKontor = "4152"
         application {
-            gittBrukerMedKontorIArena(fnr, kontorId)
+            val oppfølgingsperiodeId = gittBrukerUnderOppfolging(fnr)
+            gittBrukerMedAOKontor(fnr, AOKontor, oppfølgingsperiodeId)
         }
 
         val response = client.kontorHistorikk(fnr)
@@ -145,7 +142,7 @@ class GraphqlApplicationTest {
         payload.data!!.kontorHistorikk shouldHaveSize 1
         val kontorhistorikk = payload.data.kontorHistorikk.first()
         kontorhistorikk.kontorId shouldBe kontorId
-        kontorhistorikk.kontorType shouldBe KontorType.ARENA
+        kontorhistorikk.kontorType shouldBe KontorType.ARBEIDSOPPFOLGING
         kontorhistorikk.endringsType shouldBe KontorEndringsType.EndretIArena
         kontorhistorikk.endretAv shouldBe System(Systemnavn.ARENA).getIdent()
         kontorhistorikk.kontorNavn shouldBe null
@@ -160,7 +157,7 @@ class GraphqlApplicationTest {
         val client = getJsonHttpClient()
         graphqlServerInTest(fnr)
         application {
-            gittBrukerMedKontorIArena(fnr, kontorId)
+            // TODO: Lag bruker med et kontor
             gittBrukerMedGeografiskTilknyttetKontor(fnr, geografiskKontorId)
         }
 
@@ -198,7 +195,7 @@ class GraphqlApplicationTest {
         val client = getJsonHttpClient()
         graphqlServerInTest(fnr)
         application {
-            gittBrukerMedKontorIArena(fnr, kontorId)
+            // TODO: Lag bruker med et kontor
             gittBrukerMedGeografiskTilknyttetKontor(fnr, geografiskKontorId)
         }
 
@@ -221,7 +218,7 @@ class GraphqlApplicationTest {
         val client = getJsonHttpClient()
         graphqlServerInTest(fnr)
         application {
-            gittBrukerMedKontorIArena(fnr, kontorId)
+            // TODO: Lag bruker med et kontor
             gittBrukerMedGeografiskTilknyttetKontor(fnr, geografiskKontorId)
         }
 
@@ -260,7 +257,6 @@ class GraphqlApplicationTest {
         graphqlServerInTest(fnr)
         application {
             val oppfølgingsperiodeId = gittBrukerUnderOppfolging(fnr)
-            gittBrukerMedKontorIArena(fnr, arenaKontorId)
             gittBrukerMedGeografiskTilknyttetKontor(fnr, GTkontorId)
             gittBrukerMedAOKontor(fnr, AOKontor, oppfølgingsperiodeId)
         }
@@ -290,15 +286,6 @@ class GraphqlApplicationTest {
         payload.data!!.kontorTilhorigheter.arbeidsoppfolging?.kontorId shouldBe null
         payload.data.kontorTilhorigheter.arena?.kontorId shouldBe null
         payload.data.kontorTilhorigheter.geografiskTilknytning?.kontorId shouldBe null
-    }
-
-    private fun gittBrukerMedKontorIArena(fnr: Fnr, kontorId: String, insertTime: ZonedDateTime = ZonedDateTime.now()) {
-        kontorTilordningService.tilordneKontor(
-            EndringPaaOppfolgingsBrukerFraArena(
-                kontorTilordning = KontorTilordning(fnr, KontorId(kontorId), OppfolgingsperiodeId(UUID.randomUUID())),
-                sistEndretIArena = insertTime.toOffsetDateTime()
-            )
-        )
     }
 
     private fun gittBrukerMedGeografiskTilknyttetKontor(fnr: Fnr, kontorId: String) {
