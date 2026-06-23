@@ -42,27 +42,25 @@ class SkjermingProcessor(
                     val result = automatiskKontorRutingService.handterEndringISkjermingStatus(
                         SkjermetStatusEndret(ident, HarSkjerming(skjermingStatus))
                     )
-                    when (result.isSuccess) {
-                        true -> {
-                            val endringResult = result.getOrNull()
-                            log.info("Behandling endring i skjerming med resultat: $endringResult")
-                            if (endringResult != null) {
-                                endringResult.let { kontorTilordningService.tilordneKontor(it.endringer) }
-                                if (endringResult.endringer.aoKontorEndret != null) {
-                                    val record = endringResult.endringer.aoKontorEndret.toOppfolgingEndretTilordningMeldingRecord()
-                                    Forward(record)
-                                } else {
-                                    log.error("Fikk melding om endring av skjermet men klarte ikke å sette nytt kontor: $endringResult")
-                                    Retry("Fikk melding om endring av skjermet men klarte ikke å sette nytt kontor: $endringResult")
-                                }
+                    when (result) {
+                        is EndringISkjermingSuccess -> {
+                            log.info("Behandling endring i skjerming med resultat: $result")
+                            kontorTilordningService.tilordneKontor(result.endringer)
+                            if (result.endringer.aoKontorEndret != null) {
+                                val record = result.endringer.aoKontorEndret.toOppfolgingEndretTilordningMeldingRecord()
+                                Forward(record)
                             } else {
-                                Commit()
+                                log.error("Fikk melding om endring av skjermet men klarte ikke å sette nytt kontor: $result")
+                                Retry("Fikk melding om endring av skjermet men klarte ikke å sette nytt kontor: $result")
                             }
                         }
-                        false -> {
-                            val exception = result.exceptionOrNull()
-                            log.error("Kunne ikke behandle melding om endring i skjermingstatus", exception)
-                            Retry("Kunne ikke behandle melding om endring i skjermingstatus: ${exception?.message}")
+                        EndringISkjermingBrukerIkkeUnderOppfølging -> {
+                            log.info("Fikk melding om skjerming for bruker som ikke er under oppfølging, ignorerer melding")
+                            Commit()
+                        }
+                        is EndringISkjermingBehandlingFeilet -> {
+                            log.error("Kunne ikke behandle melding om endring i skjermingstatus", result.exception)
+                            Retry("Kunne ikke behandle melding om endring i skjermingstatus: ${result.exception.message}")
                         }
                     }
                 },
@@ -74,6 +72,11 @@ class SkjermingProcessor(
     }
 }
 
-data class EndringISkjermingResult(
+sealed interface EndringISkjermingResult
+
+data class EndringISkjermingSuccess(
     val endringer: KontorEndringer
-)
+): EndringISkjermingResult
+
+object EndringISkjermingBrukerIkkeUnderOppfølging: EndringISkjermingResult
+data class EndringISkjermingBehandlingFeilet(val exception: Exception): EndringISkjermingResult

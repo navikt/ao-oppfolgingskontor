@@ -22,6 +22,7 @@ import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.GeografiskTilknyttetKontorEntity
 import no.nav.db.entity.KontorHistorikkEntity
+import no.nav.db.table.FailedMessagesEntity
 import no.nav.db.table.KontorhistorikkTable
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
@@ -46,6 +47,8 @@ import no.nav.kafka.retry.library.internal.RetryableRepository
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.KontorTilhorighetService
+import no.nav.services.NotUnderOppfolging
+import no.nav.services.OppfolgingsperiodeOppslagResult
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.gittBrukerUnderOppfolging
 import no.nav.utils.kontorTilordningService
@@ -198,6 +201,52 @@ class KafkaApplicationTest {
                 KontorHistorikkEntity
                     .find { KontorhistorikkTable.ident eq fnr.value }
                     .count() shouldBe 2
+            }
+        }
+    }
+
+    @Test
+    fun `skal ignorere melding om skjerming for bruker som ikke er under oppfølging`() = testApplication {
+        val fnr =  randomFnr(UKJENT)
+        val skjermetKontor = "4555"
+        val topic = randomTopicName()
+
+        val automatiskKontorRutingService = AutomatiskKontorRutingService(
+            { _, b, a ->
+                KontorForGtFantDefaultKontor(
+                    KontorId(skjermetKontor),
+                    a,
+                    b,
+                    GeografiskTilknytningBydelNr("3131")
+                )
+            },
+            { AlderFunnet(40) },
+            { ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER) },
+            { SkjermingFunnet(HarSkjerming(true)) },
+            { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
+            { NotUnderOppfolging },
+            { _, _ -> Outcome.Success(false) },
+            { null },
+        )
+        val skjermingProcessor = SkjermingProcessor(
+            automatiskKontorRutingService,
+            kontorTilordningService,
+        )
+
+        application {
+            flywayMigrationInTest()
+            val topology = configureStringOptionalStringInputTopology(skjermingProcessor::process, topic)
+            val kafkaMockTopic = setupKafkaMock(topology, topic)
+
+            kafkaMockTopic.pipeInput(fnr.value, "true")
+
+            transaction {
+                GeografiskTilknyttetKontorEntity.findById(fnr.value)?.kontorId shouldBe null
+                ArbeidsOppfolgingKontorEntity.findById(fnr.value)?.kontorId shouldBe null
+                KontorHistorikkEntity
+                    .find { KontorhistorikkTable.ident eq fnr.value }
+                    .count() shouldBe 0
+                FailedMessagesEntity.all().count() shouldBe 0
             }
         }
     }
