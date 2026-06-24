@@ -17,8 +17,10 @@ import domain.kontorForGt.KontorForGtNrFantFallbackKontorForManglendeGt
 import domain.kontorForGt.KontorForGtResultat
 import domain.kontorForGt.KontorForGtSuccess
 import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.matchers.equals.shouldBeEqual
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import io.kotest.matchers.types.shouldBeSameInstanceAs
 import java.time.OffsetDateTime
 import java.util.UUID
 import kafka.consumers.oppfolgingsHendelser.StartetAvType
@@ -69,7 +71,9 @@ import no.nav.http.client.arbeidssogerregisteret.HentProfileringsResultat
 import no.nav.http.client.arbeidssogerregisteret.ProfileringFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringIkkeFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
-import no.nav.kafka.consumers.EndringISkjermingResult
+import no.nav.kafka.consumers.EndringISkjermingBehandlingFeilet
+import no.nav.kafka.consumers.EndringISkjermingBrukerIkkeUnderOppfølging
+import no.nav.kafka.consumers.EndringISkjermingSuccess
 import no.nav.kafka.consumers.HåndterPersondataEndretFail
 import no.nav.kafka.consumers.HåndterPersondataEndretSuccess
 import no.nav.kafka.consumers.KontorEndringer
@@ -593,28 +597,26 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                     ungBrukerMedGodeMuligheter.fnr(),
                     HarSkjerming(true)
                 )
-            ) shouldBe Result.success(
-                EndringISkjermingResult(
-                    KontorEndringer(
-                        gtKontorEndret = GTKontorEndret.endretPgaSkjermingEndret(
-                            KontorTilordning(
-                                ungBrukerMedGodeMuligheter.fnr(),
-                                ungBrukerMedGodeMuligheter.gtKontor(),
-                                ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()
-                            ),
-                            HarSkjerming(true),
-                            ungBrukerMedGodeMuligheter.gtForBruker as GtForBrukerFunnet
+            ) shouldBe EndringISkjermingSuccess(
+                KontorEndringer(
+                    gtKontorEndret = GTKontorEndret.endretPgaSkjermingEndret(
+                        KontorTilordning(
+                            ungBrukerMedGodeMuligheter.fnr(),
+                            ungBrukerMedGodeMuligheter.gtKontor(),
+                            ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()
                         ),
-                        aoKontorEndret = AOKontorEndretPgaSkjermingEndret(
-                            KontorTilordning(
-                                ungBrukerMedGodeMuligheter.fnr(),
-                                ungBrukerMedGodeMuligheter.gtKontor(),
-                                ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()
-                            ),
-                            skjerming = HarSkjerming(true),
-                            registrant = System(Systemnavn.SKJERMING),
+                        HarSkjerming(true),
+                        ungBrukerMedGodeMuligheter.gtForBruker as GtForBrukerFunnet
+                    ),
+                    aoKontorEndret = AOKontorEndretPgaSkjermingEndret(
+                        KontorTilordning(
+                            ungBrukerMedGodeMuligheter.fnr(),
+                            ungBrukerMedGodeMuligheter.gtKontor(),
+                            ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()
                         ),
-                    )
+                        skjerming = HarSkjerming(true),
+                        registrant = System(Systemnavn.SKJERMING),
+                    ),
                 )
             )
         }
@@ -625,30 +627,29 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                     brukerMedLandskodeOgFallback.fnr(),
                     HarSkjerming(true)
                 )
-            ) shouldBe Result.success(
-                EndringISkjermingResult(
-                    KontorEndringer(
-                        gtKontorEndret = GTKontorEndret.endretPgaSkjermingEndret(
-                            KontorTilordning(
-                                brukerMedLandskodeOgFallback.fnr(),
-                                brukerMedLandskodeOgFallback.gtKontor(),
-                                brukerMedLandskodeOgFallback.oppfolgingsperiodeId()
-                            ),
-                            HarSkjerming(true),
-                            brukerMedLandskodeOgFallback.gtForBruker as GtLandForBrukerFunnet
+            ) shouldBe EndringISkjermingSuccess(
+                KontorEndringer(
+                    gtKontorEndret = GTKontorEndret.endretPgaSkjermingEndret(
+                        KontorTilordning(
+                            brukerMedLandskodeOgFallback.fnr(),
+                            brukerMedLandskodeOgFallback.gtKontor(),
+                            brukerMedLandskodeOgFallback.oppfolgingsperiodeId()
                         ),
-                        aoKontorEndret = AOKontorEndretPgaSkjermingEndret(
-                            KontorTilordning(
-                                brukerMedLandskodeOgFallback.fnr(),
-                                brukerMedLandskodeOgFallback.gtKontor(),
-                                brukerMedLandskodeOgFallback.oppfolgingsperiodeId()
-                            ),
-                            skjerming = HarSkjerming(true),
-                            registrant = System(Systemnavn.SKJERMING),
+                        HarSkjerming(true),
+                        brukerMedLandskodeOgFallback.gtForBruker as GtLandForBrukerFunnet
+                    ),
+                    aoKontorEndret = AOKontorEndretPgaSkjermingEndret(
+                        KontorTilordning(
+                            brukerMedLandskodeOgFallback.fnr(),
+                            brukerMedLandskodeOgFallback.gtKontor(),
+                            brukerMedLandskodeOgFallback.oppfolgingsperiodeId()
                         ),
-                    )
+                        skjerming = HarSkjerming(true),
+                        registrant = System(Systemnavn.SKJERMING),
+                    ),
                 )
             )
+
         }
 
         it("skal ikke sette AO kontor men GT kontor til skjermet kontor når bruker blir skjermet også når bruker har landskode og norg svarer 404") {
@@ -658,8 +659,8 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                     HarSkjerming(true)
                 )
             ).let {
-                it.isFailure shouldBe true
-                it.exceptionOrNull()?.message shouldBe "Skjermede brukere uten geografisk tilknytning eller med land som GT kan ikke tilordnes kontor: gt - 5050 type: Kommune"
+                it.shouldBeInstanceOf<EndringISkjermingBehandlingFeilet>()
+                it.exception.message shouldBe "Uventet feil ved håndtering av endring i skjerming: Skjermede brukere uten geografisk tilknytning eller med land som GT kan ikke tilordnes kontor: gt - 5050 type: Kommune"
             }
         }
 
@@ -669,7 +670,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                     brukerMedLandskodeUtenFallback.fnr(),
                     HarSkjerming(true)
                 )
-            ) shouldBe Result.success(EndringISkjermingResult(
+            ) shouldBe EndringISkjermingSuccess(
                 KontorEndringer(
                     gtKontorEndret = GTKontorEndret.endretPgaSkjermingEndret(
                         KontorTilordning(
@@ -689,8 +690,8 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                         skjerming = HarSkjerming(true),
                         registrant = System(Systemnavn.SKJERMING),
                     ),
-                ))
-            ) shouldBe Result.success(EndringISkjermingResult(
+                )
+            ) shouldBe EndringISkjermingSuccess(
                 KontorEndringer(
                     gtKontorEndret = GTKontorEndret.endretPgaSkjermingEndret(
                         KontorTilordning(
@@ -712,7 +713,6 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                     ),
                 )
             )
-            )
         }
 
         it("skal sette GT-kontor og AO-kontor når bruker blir av-skjermet") {
@@ -721,63 +721,59 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                     ungBrukerMedGodeMuligheter.fnr(),
                     HarSkjerming(false)
                 )
-            ) shouldBe Result.success(
-                EndringISkjermingResult(
-                    KontorEndringer(
-                        gtKontorEndret = GTKontorEndret.endretPgaSkjermingEndret(
-                            KontorTilordning(
-                                ungBrukerMedGodeMuligheter.fnr(),
-                                ungBrukerMedGodeMuligheter.gtKontor(),
-                                ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()
-                            ),
-                            HarSkjerming(false),
-                            ungBrukerMedGodeMuligheter.gtForBruker as GtForBrukerFunnet
+            ) shouldBe EndringISkjermingSuccess(
+                KontorEndringer(
+                    gtKontorEndret = GTKontorEndret.endretPgaSkjermingEndret(
+                        KontorTilordning(
+                            ungBrukerMedGodeMuligheter.fnr(),
+                            ungBrukerMedGodeMuligheter.gtKontor(),
+                            ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()
                         ),
-                        aoKontorEndret = AOKontorEndretPgaSkjermingEndret(
-                            KontorTilordning(
-                                ungBrukerMedGodeMuligheter.fnr(),
-                                ungBrukerMedGodeMuligheter.gtKontor(),
-                                ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()
-                            ),
-                            skjerming = HarSkjerming(false),
-                            registrant = System(Systemnavn.SKJERMING),
+                        HarSkjerming(false),
+                        ungBrukerMedGodeMuligheter.gtForBruker as GtForBrukerFunnet
+                    ),
+                    aoKontorEndret = AOKontorEndretPgaSkjermingEndret(
+                        KontorTilordning(
+                            ungBrukerMedGodeMuligheter.fnr(),
+                            ungBrukerMedGodeMuligheter.gtKontor(),
+                            ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()
                         ),
-                    )
+                        skjerming = HarSkjerming(false),
+                        registrant = System(Systemnavn.SKJERMING),
+                    ),
                 )
             )
         }
 
-        it("skal ikke behandle brukere som ikke er under oppfølging") {
+        it("skal ikke opprette kontorendringer for brukere som ikke er under oppfølging") {
             gitt(brukerIkkeUnderOppfolging).handterEndringISkjermingStatus(
                 SkjermetStatusEndret(brukerIkkeUnderOppfolging.fnr(), HarSkjerming(true))
-            ) shouldBe Result.success(EndringISkjermingResult(KontorEndringer()))
+            ) shouldBe EndringISkjermingBrukerIkkeUnderOppfølging
         }
 
         it("skal sette hardkodet-fallback kontor (navit) på ao-kontor og gt-kontor hvis gt ikke finnes og fallback til arbeidsfordeling heller ikke finner kontor og skjerming er true") {
             gitt(brukerSomManglerGt).handterEndringISkjermingStatus(
                 SkjermetStatusEndret(brukerSomManglerGt.fnr(), HarSkjerming(true))
-            ) shouldBe Result.success(
-                EndringISkjermingResult(
-                    KontorEndringer(
-                        gtKontorEndret = GTKontorEndret.endretPgaSkjermingEndret(
-                            KontorTilordning(
-                                brukerSomManglerGt.fnr(),
-                                INGEN_GT_KONTOR_FALLBACK,
-                                brukerSomManglerGt.oppfolgingsperiodeId()
-                            ),
-                            HarSkjerming(true),
-                            brukerSomManglerGt.gtForBruker as GtForBrukerIkkeFunnet
+            ) shouldBe EndringISkjermingSuccess(
+                KontorEndringer(
+                    gtKontorEndret = GTKontorEndret.endretPgaSkjermingEndret(
+                        KontorTilordning(
+                            brukerSomManglerGt.fnr(),
+                            INGEN_GT_KONTOR_FALLBACK,
+                            brukerSomManglerGt.oppfolgingsperiodeId()
                         ),
-                        aoKontorEndret = AOKontorEndretPgaSkjermingEndret(
-                            KontorTilordning(
-                                brukerSomManglerGt.fnr(),
-                                INGEN_GT_KONTOR_FALLBACK,
-                                brukerSomManglerGt.oppfolgingsperiodeId()
-                            ),
-                            skjerming = HarSkjerming(true),
-                            registrant = System(Systemnavn.SKJERMING),
+                        HarSkjerming(true),
+                        brukerSomManglerGt.gtForBruker as GtForBrukerIkkeFunnet
+                    ),
+                    aoKontorEndret = AOKontorEndretPgaSkjermingEndret(
+                        KontorTilordning(
+                            brukerSomManglerGt.fnr(),
+                            INGEN_GT_KONTOR_FALLBACK,
+                            brukerSomManglerGt.oppfolgingsperiodeId()
                         ),
-                    )
+                        skjerming = HarSkjerming(true),
+                        registrant = System(Systemnavn.SKJERMING),
+                    ),
                 )
             )
         }
@@ -930,12 +926,18 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
             it("handterEndringISkjermingStatus - feil ved henting av adressebeskyttelse skal returnere feil") {
                 gitt(brukerMedFeilendeAdressebeskyttelse).handterEndringISkjermingStatus(
                     SkjermetStatusEndret(brukerMedFeilendeAdressebeskyttelse.fnr(), HarSkjerming(true))
-                ).isFailure shouldBe true
+                ).let {
+                    it.shouldBeInstanceOf<EndringISkjermingBehandlingFeilet>()
+                    it.exception.message shouldBe "Kunne ikke hente adressebeskyttelse ved endring i skjermingstatus: feil i adressebeskyttelse"
+                }
             }
             it("handterEndringISkjermingStatus - feil ved henting av gt skal returnere feil") {
                 gitt(brukerMedFeilendeKontorForGt).handterEndringISkjermingStatus(
                     SkjermetStatusEndret(brukerMedFeilendeKontorForGt.fnr(), HarSkjerming(true))
-                ).isFailure shouldBe true
+                ).let {
+                    it.shouldBeInstanceOf<EndringISkjermingBehandlingFeilet>()
+                    it.exception.message shouldBe "Kunne ikke håndtere endring i skjerming pga feil ved henting av gt-kontor: Feil i gt-kontor oppslag"
+                }
             }
         }
 
