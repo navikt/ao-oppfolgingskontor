@@ -76,12 +76,20 @@ class LeesahProcessor(
                         kontorTilordningService.tilordneKontor(aoKontorEndring)
                         Forward(aoKontorEndring.toOppfolgingEndretTilordningMeldingRecord())
                     }
-                    else -> Commit()
+                    else -> {
+                        log.info("Ingen endringer i kontor for hendelse ${hendelse.javaClass.simpleName}")
+                        Commit()
+                    }
                 }
             }
             is HåndterPersondataEndretFail -> {
                 log.error(result.message, result.error)
                 Retry(result.message)
+            }
+
+            HåndterPersondataEndretIkkeUnderOppfølging -> {
+                log.info("Ingen endringer i kontor for hendelse ${hendelse.javaClass.simpleName} for person som ikke er under oppfølging")
+                Commit()
             }
         }
     }
@@ -108,6 +116,7 @@ fun Pair<IdentSomKanLagres, Personhendelse>.toHendelse(): PersondataEndret {
 sealed class HåndterPersondataEndretResultat()
 data class HåndterPersondataEndretSuccess(val endringer: KontorEndringer): HåndterPersondataEndretResultat()
 class HåndterPersondataEndretFail(val message: String, val error: Throwable? = null): HåndterPersondataEndretResultat()
+object HåndterPersondataEndretIkkeUnderOppfølging: HåndterPersondataEndretResultat()
 
 data class KontorEndringer(
     val arenaKontorEndret: ArenaKontorEndret? = null,

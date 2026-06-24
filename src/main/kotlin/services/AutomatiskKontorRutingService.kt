@@ -70,6 +70,7 @@ import no.nav.domain.events.AOKontorEndretPgaNorskGT
 import no.nav.kafka.consumers.EndringISkjermingBehandlingFeilet
 import no.nav.kafka.consumers.EndringISkjermingBrukerIkkeUnderOppfølging
 import no.nav.kafka.consumers.EndringISkjermingResult
+import no.nav.kafka.consumers.HåndterPersondataEndretIkkeUnderOppfølging
 
 sealed class TilordningResultat
 sealed class TilordningSuccess : TilordningResultat()
@@ -302,7 +303,7 @@ data class AutomatiskKontorRutingService(
             val oppfolgingsperiodeId = when (oppfolgingsStatus) {
                 is NotUnderOppfolging -> {
                     log.info("Skipping bostedsadresse endring - no active oppfølgingsperiode")
-                    return HåndterPersondataEndretSuccess(KontorEndringer())
+                    return HåndterPersondataEndretIkkeUnderOppfølging
                 }
 
                 is OppfolgingperiodeOppslagFeil -> {
@@ -393,7 +394,7 @@ data class AutomatiskKontorRutingService(
             val oppfolgingsperiodeId = when (oppfolgingsStatus) {
                 is NotUnderOppfolging -> {
                     log.info("Skipping adressebeskyttelse endring - no active oppfølgingsperiode")
-                    return HåndterPersondataEndretSuccess(KontorEndringer())
+                    return HåndterPersondataEndretIkkeUnderOppfølging
                 }
 
                 is OppfolgingperiodeOppslagFeil -> {
