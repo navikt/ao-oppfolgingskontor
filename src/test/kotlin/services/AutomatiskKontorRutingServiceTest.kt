@@ -75,6 +75,7 @@ import no.nav.kafka.consumers.EndringISkjermingBehandlingFeilet
 import no.nav.kafka.consumers.EndringISkjermingBrukerIkkeUnderOppfølging
 import no.nav.kafka.consumers.EndringISkjermingSuccess
 import no.nav.kafka.consumers.HåndterPersondataEndretFail
+import no.nav.kafka.consumers.HåndterPersondataEndretIkkeUnderOppfølging
 import no.nav.kafka.consumers.HåndterPersondataEndretSuccess
 import no.nav.kafka.consumers.KontorEndringer
 import no.nav.person.pdl.leesah.adressebeskyttelse.Gradering
@@ -558,7 +559,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
             gitt(brukerIkkeUnderOppfolging)
                 .handterEndringForAdressebeskyttelse(
                     AdressebeskyttelseEndret(brukerIkkeUnderOppfolging.fnr(), Gradering.STRENGT_FORTROLIG)
-                ) shouldBe HåndterPersondataEndretSuccess(KontorEndringer())
+                ) shouldBe HåndterPersondataEndretIkkeUnderOppfølging
         }
 
         it("skal sette ao-kotor og gt-kontor på brukere som mangler GT og har adressebeskyttelse") {
@@ -868,7 +869,7 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
         it("skal ikke behandle brukere som ikke er under oppfølging") {
             gitt(brukerIkkeUnderOppfolging).handterEndringForBostedsadresse(
                 BostedsadresseEndret(brukerIkkeUnderOppfolging.fnr())
-            ) shouldBe HåndterPersondataEndretSuccess(KontorEndringer())
+            ) shouldBe HåndterPersondataEndretIkkeUnderOppfølging
         }
 
         it("skal sette hardkodet-fallback kontor hvis gt ikke finnes og fallback til arbeidsforedeling også feiler") {
