@@ -33,11 +33,26 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldNotBe
 import no.nav.AOPrincipal
 import no.nav.NavAnsatt
+import no.nav.db.table.ArenaKontorTable
+import no.nav.db.table.ArenaKontorTable.historikkEntry
+import no.nav.db.table.ArenaKontorTable.id
+import no.nav.db.table.ArenaKontorTable.sistEndretDatoArena
+import no.nav.db.table.ArenaKontorTable.updatedAt
+import no.nav.db.table.KontorhistorikkTable
+import no.nav.db.table.KontorhistorikkTable.endretAv
+import no.nav.db.table.KontorhistorikkTable.endretAvType
+import no.nav.db.table.KontorhistorikkTable.ident
+import no.nav.db.table.KontorhistorikkTable.kontorType
+import no.nav.db.table.KontorhistorikkTable.kontorendringstype
+import no.nav.db.table.KontorhistorikkTable.oppfolgingsperiodeId
 import no.nav.http.graphql.schemas.AlleKontorQueryDto
 import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
 import no.nav.utils.*
 import no.nav.utils.KontorTilhorighet
+import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.upsert
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.Test
 import services.ingenSensitivitet
 import java.time.Instant
@@ -87,12 +102,15 @@ class GraphqlApplicationTest {
             gittBrukerMedAOKontor(fnr, AOKontor, oppfølgingsperiodeId)
         }
 
+        val client = getJsonHttpClient()
+
         val response = client.kontorTilhorighet(fnr)
 
         response.status shouldBe OK
-        val payload = response.body<GraphqlResponse<KontorTilhorigheter>>()
+        val payload = response.body<GraphqlResponse<KontorTilhorighet>>()
         payload.errors shouldBe null
-        payload.data!!.kontorTilhorigheter.arbeidsoppfolging?.kontorId shouldBe AOKontor
+        payload.data!!.kontorTilhorighet?.kontorType shouldBe KontorType.ARBEIDSOPPFOLGING
+        payload.data!!.kontorTilhorighet?.kontorId shouldBe AOKontor
     }
 
     @Test
@@ -258,7 +276,7 @@ class GraphqlApplicationTest {
             val oppfølgingsperiodeId = gittBrukerUnderOppfolging(fnr)
             gittBrukerMedGeografiskTilknyttetKontor(fnr, GTkontorId)
             gittBrukerMedAOKontor(fnr, AOKontor, oppfølgingsperiodeId)
-            // TODO: Oppsett med "historisk" Arena-kontor
+            gittBrukerMedKontorIArena(fnr, arenaKontorId)
         }
         val client = getJsonHttpClient()
 
@@ -311,5 +329,27 @@ class GraphqlApplicationTest {
                 )
             )
         )
+    }
+
+    private fun gittBrukerMedKontorIArena(fnr: Fnr, kontorId: String, insertTime: ZonedDateTime = ZonedDateTime.now()) {
+        transaction {
+            val entryId = KontorhistorikkTable.insert {
+                it[KontorhistorikkTable.kontorId] = kontorId
+                it[ident] = fnr.value
+                it[endretAv] = "ARENA"
+                it[endretAvType] = "SYSTEM"
+                it[kontorendringstype] = KontorEndringsType.EndretIArena.name
+                it[kontorType] = KontorType.ARENA.name
+                it[oppfolgingsperiodeId] = UUID.randomUUID()
+            }[KontorhistorikkTable.id]
+
+            ArenaKontorTable.upsert {
+                it[ArenaKontorTable.kontorId] = kontorId
+                it[id] = fnr.value
+                it[updatedAt] = insertTime.toOffsetDateTime()
+                it[sistEndretDatoArena] = insertTime.toOffsetDateTime()
+                it[historikkEntry] = entryId
+            }
+        }
     }
 }
