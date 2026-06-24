@@ -23,10 +23,19 @@ import no.nav.http.client.poaoTilgang.TilgangTilBrukerResult
 import no.nav.http.graphql.schemas.KontorHistorikkQueryDto
 import org.jetbrains.exposed.v1.core.JoinType
 import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.less
+import org.jetbrains.exposed.v1.core.not
+import org.jetbrains.exposed.v1.jdbc.andWhere
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.slf4j.LoggerFactory
+import org.threeten.extra.OffsetDate
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 
 class KontorHistorikkQuery(
     val hentAlleIdenter: suspend (Ident) -> IdenterResult,
