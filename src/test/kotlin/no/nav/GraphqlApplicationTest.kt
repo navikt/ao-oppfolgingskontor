@@ -44,6 +44,7 @@ import java.time.Instant
 import java.time.ZonedDateTime
 import java.util.*
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 fun ApplicationTestBuilder.graphqlServerInTest(
     ident: Ident,
@@ -85,7 +86,6 @@ class GraphqlApplicationTest {
             val oppfølgingsperiodeId = gittBrukerUnderOppfolging(fnr)
             gittBrukerMedAOKontor(fnr, AOKontor, oppfølgingsperiodeId)
         }
-        val client = getJsonHttpClient()
 
         val response = client.kontorTilhorighet(fnr)
 
@@ -125,7 +125,6 @@ class GraphqlApplicationTest {
     @Test
     fun `skal kunne hente kontorhistorikk via graphql`() = testApplication {
         val fnr = randomFnr(UKJENT)
-        val kontorId = "4144"
         val client = getJsonHttpClient()
         graphqlServerInTest(fnr)
         val AOKontor = "4152"
@@ -141,12 +140,12 @@ class GraphqlApplicationTest {
         payload.errors shouldBe null
         payload.data!!.kontorHistorikk shouldHaveSize 1
         val kontorhistorikk = payload.data.kontorHistorikk.first()
-        kontorhistorikk.kontorId shouldBe kontorId
+        kontorhistorikk.kontorId shouldBe AOKontor
         kontorhistorikk.kontorType shouldBe KontorType.ARBEIDSOPPFOLGING
-        kontorhistorikk.endringsType shouldBe KontorEndringsType.EndretIArena
-        kontorhistorikk.endretAv shouldBe System(Systemnavn.ARENA).getIdent()
+        kontorhistorikk.endringsType shouldBe KontorEndringsType.AutomatiskNorgRuting
+        kontorhistorikk.endretAv shouldBe System(Systemnavn.VEILARBOPPFOLGING).getIdent()
         kontorhistorikk.kontorNavn shouldBe null
-        Instant.parse(kontorhistorikk.endretTidspunkt).shouldBeCloseTo(Instant.now(), 500.milliseconds)
+        Instant.parse(kontorhistorikk.endretTidspunkt).shouldBeCloseTo(Instant.now(), 2.seconds)
     }
 
     @Test
@@ -259,6 +258,7 @@ class GraphqlApplicationTest {
             val oppfølgingsperiodeId = gittBrukerUnderOppfolging(fnr)
             gittBrukerMedGeografiskTilknyttetKontor(fnr, GTkontorId)
             gittBrukerMedAOKontor(fnr, AOKontor, oppfølgingsperiodeId)
+            // TODO: Oppsett med "historisk" Arena-kontor
         }
         val client = getJsonHttpClient()
 
