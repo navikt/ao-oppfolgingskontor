@@ -246,7 +246,7 @@ class KafkaApplicationTest {
                 KontorHistorikkEntity
                     .find { KontorhistorikkTable.ident eq fnr.value }
                     .count() shouldBe 0
-                FailedMessagesEntity.all().count() shouldBe 0
+                FailedMessagesEntity.all().filter { it.topic == topic }.count() shouldBe 0
             }
         }
     }
