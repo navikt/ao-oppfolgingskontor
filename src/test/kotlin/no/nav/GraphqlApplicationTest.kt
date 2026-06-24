@@ -3,62 +3,50 @@ package no.nav.no.nav
 import com.expediagroup.graphql.server.ktor.graphQLPostRoute
 import domain.IdenterFunnet
 import domain.Systemnavn
+import domain.gtForBruker.GtNummerForBrukerFunnet
+import domain.kontorForGt.KontorForGtFantDefaultKontor
+import io.kotest.inspectors.shouldForAll
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.date.shouldBeCloseTo
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.ktor.client.call.*
 import io.ktor.http.HttpStatusCode.Companion.OK
 import io.ktor.server.routing.*
 import io.ktor.server.testing.*
+import no.nav.AOPrincipal
 import no.nav.Authenticated
+import no.nav.NavAnsatt
 import no.nav.db.Fnr
 import no.nav.db.Ident
 import no.nav.db.Ident.HistoriskStatus.AKTIV
 import no.nav.db.Ident.HistoriskStatus.UKJENT
+import no.nav.db.table.ArenaKontorTable
+import no.nav.db.table.KontorhistorikkTable
 import no.nav.domain.*
 import no.nav.domain.events.GTKontorEndret
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.http.client.GeografiskTilknytningBydelNr
 import no.nav.http.client.GeografiskTilknytningKommuneNr
-import domain.gtForBruker.GtNummerForBrukerFunnet
 import no.nav.http.client.mockNorg2Host
 import no.nav.http.client.mockPoaoTilgangHost
 import no.nav.http.graphql.installGraphQl
-import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
-import no.nav.http.graphql.schemas.RegistrantTypeDto
-import domain.kontorForGt.KontorForGtFantDefaultKontor
-import io.kotest.inspectors.shouldForAll
-import io.kotest.matchers.collections.shouldContain
-import io.kotest.matchers.nulls.shouldNotBeNull
-import io.kotest.matchers.shouldNotBe
-import no.nav.AOPrincipal
-import no.nav.NavAnsatt
-import no.nav.db.table.ArenaKontorTable
-import no.nav.db.table.ArenaKontorTable.historikkEntry
-import no.nav.db.table.ArenaKontorTable.id
-import no.nav.db.table.ArenaKontorTable.sistEndretDatoArena
-import no.nav.db.table.ArenaKontorTable.updatedAt
-import no.nav.db.table.KontorhistorikkTable
-import no.nav.db.table.KontorhistorikkTable.endretAv
-import no.nav.db.table.KontorhistorikkTable.endretAvType
-import no.nav.db.table.KontorhistorikkTable.ident
-import no.nav.db.table.KontorhistorikkTable.kontorType
-import no.nav.db.table.KontorhistorikkTable.kontorendringstype
-import no.nav.db.table.KontorhistorikkTable.oppfolgingsperiodeId
 import no.nav.http.graphql.schemas.AlleKontorQueryDto
 import no.nav.services.KontorNavnService
 import no.nav.services.KontorTilhorighetService
 import no.nav.utils.*
 import no.nav.utils.KontorTilhorighet
 import org.jetbrains.exposed.v1.jdbc.insert
-import org.jetbrains.exposed.v1.jdbc.upsert
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.upsert
 import org.junit.jupiter.api.Test
 import services.ingenSensitivitet
 import java.time.Instant
-import java.time.ZonedDateTime
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 import java.util.*
-import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 fun ApplicationTestBuilder.graphqlServerInTest(
@@ -91,6 +79,24 @@ fun ApplicationTestBuilder.graphqlServerInTest(
 }
 
 class GraphqlApplicationTest {
+
+    @Test
+    fun `skal ikke inkludere arenakontor i historikken etter at ao-kontor ble lansert`() = testApplication {
+        val fnr = randomFnr(UKJENT)
+        val arenaKontorId = "4150"
+        graphqlServerInTest(fnr)
+        application {
+            gittBrukerMedKontorIArena(fnr, arenaKontorId, OffsetDateTime.of(2026, 6, 18, 0, 0, 0, 0, ZoneOffset.UTC))
+        }
+        val client = getJsonHttpClient()
+
+        val response = client.alleKontorTilhorigheter(fnr)
+
+        response.status shouldBe OK
+        val payload = response.body<GraphqlResponse<KontorTilhorigheter>>()
+        payload.errors shouldBe null
+        payload.data!!.kontorTilhorigheter.arena shouldBe null
+    }
 
     @Test
     fun `skal kunne hente kontor via graphql`() = testApplication {
@@ -331,7 +337,7 @@ class GraphqlApplicationTest {
         )
     }
 
-    private fun gittBrukerMedKontorIArena(fnr: Fnr, kontorId: String, insertTime: ZonedDateTime = ZonedDateTime.now()) {
+    private fun gittBrukerMedKontorIArena(fnr: Fnr, kontorId: String, insertTime: OffsetDateTime = OffsetDateTime.of(2026, 6, 10, 0, 0, 0, 0, ZoneOffset.UTC)) {
         transaction {
             val entryId = KontorhistorikkTable.insert {
                 it[KontorhistorikkTable.kontorId] = kontorId
@@ -341,13 +347,14 @@ class GraphqlApplicationTest {
                 it[kontorendringstype] = KontorEndringsType.EndretIArena.name
                 it[kontorType] = KontorType.ARENA.name
                 it[oppfolgingsperiodeId] = UUID.randomUUID()
+                it[createdAt] = insertTime
             }[KontorhistorikkTable.id]
 
             ArenaKontorTable.upsert {
                 it[ArenaKontorTable.kontorId] = kontorId
                 it[id] = fnr.value
-                it[updatedAt] = insertTime.toOffsetDateTime()
-                it[sistEndretDatoArena] = insertTime.toOffsetDateTime()
+                it[updatedAt] = insertTime
+                it[sistEndretDatoArena] = insertTime.minusSeconds(2)
                 it[historikkEntry] = entryId
             }
         }
