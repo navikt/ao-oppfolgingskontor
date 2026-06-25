@@ -1,25 +1,15 @@
 package no.nav.no.nav
 
-import domain.IdenterFunnet
 import domain.kontorForGt.KontorForGtFantDefaultKontor
-import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
-import io.ktor.server.testing.testApplication
-import io.mockk.mockk
-import java.time.OffsetDateTime
-import java.time.ZonedDateTime
-import java.util.Properties
-import java.util.UUID
-import kafka.consumers.TopicUtils
+import io.ktor.server.testing.*
 import kafka.producers.OppfolgingEndretTilordningMelding
 import kafka.retry.TestLockProvider
 import kafka.retry.library.StreamType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import no.nav.db.Ident
 import no.nav.db.Ident.HistoriskStatus.UKJENT
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
-import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.GeografiskTilknyttetKontorEntity
 import no.nav.db.entity.KontorHistorikkEntity
 import no.nav.db.table.FailedMessagesEntity
@@ -43,31 +33,20 @@ import no.nav.kafka.retry.library.internal.RetryableProcessor
 import no.nav.kafka.retry.library.internal.RetryableRepository
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
-import no.nav.services.KontorTilhorighetService
 import no.nav.services.NotUnderOppfolging
-import no.nav.services.OppfolgingsperiodeOppslagResult
-import no.nav.utils.flywayMigrationInTest
-import no.nav.utils.gittBrukerUnderOppfolging
-import no.nav.utils.kontorTilordningService
-import no.nav.utils.randomFnr
-import no.nav.utils.randomInternIdent
-import no.nav.utils.randomTopicName
+import no.nav.utils.*
 import org.apache.kafka.common.serialization.Serde
 import org.apache.kafka.common.serialization.Serdes
-import org.apache.kafka.streams.StreamsBuilder
-import org.apache.kafka.streams.StreamsConfig
-import org.apache.kafka.streams.TestInputTopic
-import org.apache.kafka.streams.Topology
-import org.apache.kafka.streams.TopologyTestDriver
+import org.apache.kafka.streams.*
 import org.apache.kafka.streams.kstream.Consumed
 import org.apache.kafka.streams.kstream.Named
 import org.apache.kafka.streams.processor.api.ProcessorSupplier
-import org.apache.kafka.streams.processor.api.Record
-import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.Test
-import services.OppfolgingsperiodeService
 import utils.Outcome
+import java.time.OffsetDateTime
+import java.util.*
 
 class KafkaApplicationTest {
 
@@ -162,20 +141,6 @@ class KafkaApplicationTest {
                 FailedMessagesEntity.all().filter { it.topic == topic }.count() shouldBe 0
             }
         }
-    }
-
-    fun endringPaOppfolgingsBrukerMessage(
-        ident: Ident,
-        kontorId: String,
-        sistEndretDato: ZonedDateTime
-    ): Record<String, String> {
-        return TopicUtils.endringPaaOppfolgingsBrukerMessage(
-            ident,
-            kontorId,
-            sistEndretDato.toOffsetDateTime(),
-            FormidlingsGruppe.ISERV,
-            Kvalifiseringsgruppe.BATT
-        )
     }
 
     fun <KIn, VIn, KOut, VOut> wrapInRetryProcessor(
