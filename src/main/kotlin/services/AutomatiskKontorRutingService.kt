@@ -54,7 +54,7 @@ import no.nav.http.client.arbeidssogerregisteret.ProfileringIkkeAktuell
 import no.nav.http.client.arbeidssogerregisteret.ProfileringIkkeFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
 import no.nav.http.client.arbeidssogerregisteret.ProfileringOppslagFeil
-import no.nav.kafka.consumers.EndringISkjermingResult
+import no.nav.kafka.consumers.EndringISkjermingSuccess
 import no.nav.kafka.consumers.HåndterPersondataEndretFail
 import no.nav.kafka.consumers.HåndterPersondataEndretResultat
 import no.nav.kafka.consumers.HåndterPersondataEndretSuccess
@@ -67,6 +67,10 @@ import java.time.ZonedDateTime
 import no.nav.domain.ArbeidsoppfolgingsKontor
 import no.nav.domain.System
 import no.nav.domain.events.AOKontorEndretPgaNorskGT
+import no.nav.kafka.consumers.EndringISkjermingBehandlingFeilet
+import no.nav.kafka.consumers.EndringISkjermingBrukerIkkeUnderOppfølging
+import no.nav.kafka.consumers.EndringISkjermingResult
+import no.nav.kafka.consumers.HåndterPersondataEndretIkkeUnderOppfølging
 
 sealed class TilordningResultat
 sealed class TilordningSuccess : TilordningResultat()
@@ -299,7 +303,7 @@ data class AutomatiskKontorRutingService(
             val oppfolgingsperiodeId = when (oppfolgingsStatus) {
                 is NotUnderOppfolging -> {
                     log.info("Skipping bostedsadresse endring - no active oppfølgingsperiode")
-                    return HåndterPersondataEndretSuccess(KontorEndringer())
+                    return HåndterPersondataEndretIkkeUnderOppfølging
                 }
 
                 is OppfolgingperiodeOppslagFeil -> {
@@ -390,7 +394,7 @@ data class AutomatiskKontorRutingService(
             val oppfolgingsperiodeId = when (oppfolgingsStatus) {
                 is NotUnderOppfolging -> {
                     log.info("Skipping adressebeskyttelse endring - no active oppfølgingsperiode")
-                    return HåndterPersondataEndretSuccess(KontorEndringer())
+                    return HåndterPersondataEndretIkkeUnderOppfølging
                 }
 
                 is OppfolgingperiodeOppslagFeil -> {
@@ -462,14 +466,14 @@ data class AutomatiskKontorRutingService(
 
     suspend fun handterEndringISkjermingStatus(
         endringISkjermingStatus: SkjermetStatusEndret
-    ): Result<EndringISkjermingResult> {
+    ): EndringISkjermingResult {
         return runCatching {
             val oppfolgingsperiodeId =
                 when (val result = hentGjeldendeOppfolgingsperiode(endringISkjermingStatus.fnr)) {
                     is AktivOppfolgingsperiode -> result.periodeId
-                    NotUnderOppfolging -> return Result.success(EndringISkjermingResult(KontorEndringer()))
+                    NotUnderOppfolging -> return EndringISkjermingBrukerIkkeUnderOppfølging
                     is OppfolgingperiodeOppslagFeil ->
-                        return Result.failure(
+                        return EndringISkjermingBehandlingFeilet(
                             Exception("Kunne ikke håndtere endring i skjerming pga feil ved henting av oppfolgingsstatus: ${result.message}")
                         )
                 }
@@ -477,14 +481,14 @@ data class AutomatiskKontorRutingService(
             val harStrengtFortroligAdresse =
                 when (val result = hentHarStrengtFortroligAdresse(endringISkjermingStatus.fnr)) {
                     is HarStrengtFortroligAdresseIkkeFunnet ->
-                        return Result.failure(
+                        return EndringISkjermingBehandlingFeilet(
                             Exception(
                                 "Kunne ikke hente adressebeskyttelse ved endring i skjermingstatus: ${result.message}"
                             )
                         )
 
                     is HarStrengtFortroligAdresseOppslagFeil ->
-                        return Result.failure(
+                        return EndringISkjermingBehandlingFeilet(
                             Exception(
                                 "Kunne ikke hente adressebeskyttelse ved endring i skjermingstatus: ${result.message}"
                             )
@@ -520,16 +524,20 @@ data class AutomatiskKontorRutingService(
                         aoKontorEndret = aoKontorEndring,
                         gtKontorEndret = gtKontorEndring,
                     )
-                    Result.success(EndringISkjermingResult(kontorEndringer))
+                    EndringISkjermingSuccess(kontorEndringer)
                 }
 
                 is KontorForGtFeil -> {
                     val feilmelding =
                         "Kunne ikke håndtere endring i skjerming pga feil ved henting av gt-kontor: ${gtKontorResultat.melding}"
                     log.error(feilmelding)
-                    return Result.failure(Exception(feilmelding))
+                    EndringISkjermingBehandlingFeilet(Exception(feilmelding))
                 }
             }
+        }.getOrElse { error ->
+            EndringISkjermingBehandlingFeilet(
+                Exception("Uventet feil ved håndtering av endring i skjerming: ${error.message}", error)
+            )
         }
     }
 

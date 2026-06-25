@@ -23,6 +23,9 @@ fun erValgbartKontor(kontor: MinimaltNorgKontor): Boolean {
     return false
 }
 
+fun erAvvikletKontor(kontor: AlleKontorQueryDto): Boolean =
+    kontor.kontorNavn.trimStart().startsWith("avviklet", ignoreCase = true)
+
 class AlleKontorQuery(
     val norg2Client: Norg2Client
 ): Query {
@@ -63,6 +66,7 @@ class AlleKontorQuery(
             val lokalKontorer = norg2Client.hentAlleEnheter()
                 .filter { erValgbartKontor(it) }
                 .map { AlleKontorQueryDto(it.kontorId,it.navn) }
+                .filterNot { erAvvikletKontor(it) }
 
             val gtKontorDto = lokalKontorer
                 .firstOrNull { it.kontorId == gtKontor?.kontorId }
