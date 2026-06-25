@@ -1,9 +1,9 @@
 package no.nav.http.graphql.queries
 
 import com.expediagroup.graphql.server.operations.Query
-import no.nav.db.entity.ArenaKontorEntity
+import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.GeografiskTilknyttetKontorEntity
-import no.nav.db.table.ArenaKontorTable
+import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.db.table.GeografiskTilknytningKontorTable
 import no.nav.http.client.NorgKontorType
 import no.nav.http.client.MinimaltNorgKontor
@@ -43,7 +43,7 @@ class AlleKontorQuery(
                 GeografiskTilknyttetKontorEntity.find { GeografiskTilknytningKontorTable.id eq ident }.firstOrNull()
             }
             val aoKontor = transaction {
-                ArenaKontorEntity.find { ArenaKontorTable.id eq ident }.firstOrNull()
+                ArbeidsOppfolgingKontorEntity.find { ArbeidsOppfolgingKontorTable.id eq ident }.firstOrNull()
             }
             val skalSortereGtKontorFørst = gtKontor != null && (aoKontor == null || aoKontor.kontorId != gtKontor.kontorId)
 

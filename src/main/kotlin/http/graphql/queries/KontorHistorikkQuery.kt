@@ -23,16 +23,25 @@ import no.nav.http.client.poaoTilgang.TilgangTilBrukerResult
 import no.nav.http.graphql.schemas.KontorHistorikkQueryDto
 import org.jetbrains.exposed.v1.core.JoinType
 import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.less
+import org.jetbrains.exposed.v1.core.not
+import org.jetbrains.exposed.v1.jdbc.andWhere
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.slf4j.LoggerFactory
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 
 class KontorHistorikkQuery(
     val hentAlleIdenter: suspend (Ident) -> IdenterResult,
     val harLeseTilgangTilBruker: suspend (navAnsatt: AOPrincipal, ident: Ident, traceId: String) -> TilgangTilBrukerResult,
 ) : Query {
     val logger = LoggerFactory.getLogger(KontorHistorikkQuery::class.java)
+    private val lanseringstidspunktAoKontor = OffsetDateTime.of(2026, 6, 17, 22, 15, 0, 0, ZoneOffset.UTC)
 
     suspend fun kontorHistorikk(ident: String, dataFetchingEnvironment: DataFetchingEnvironment): List<KontorHistorikkQueryDto> {
         val principal = dataFetchingEnvironment.graphQlContext.get<AOPrincipal>("principal")
@@ -64,6 +73,12 @@ class KontorHistorikkQuery(
                         kontorType
                     )
                     .where { KontorhistorikkTable.ident inList alleIdenter.identer.map { it.value } }
+                    .andWhere {
+                        not(
+                            (kontorType eq KontorType.ARENA.name) and
+                                not(createdAt less lanseringstidspunktAoKontor)
+                        )
+                    }
                     .orderBy(createdAt to SortOrder.DESC)
                     .map {
                         val endringsType = KontorEndringsType.valueOf(it[KontorhistorikkTable.kontorendringstype])

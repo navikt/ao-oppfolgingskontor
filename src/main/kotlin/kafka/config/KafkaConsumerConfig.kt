@@ -12,7 +12,6 @@ import kafka.retry.library.StreamType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import net.javacrumbs.shedlock.core.LockProvider
-import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
 import no.nav.kafka.consumers.KontortilordningsProcessor
 import no.nav.kafka.consumers.LeesahProcessor
 import no.nav.kafka.consumers.SkjermingProcessor
@@ -72,7 +71,6 @@ fun configureTopology(
     publiserKontorTilordningProcessor: PubliserKontorTilordningProcessor,
     leesahProcessor: LeesahProcessor,
     skjermingProcessor: SkjermingProcessor,
-    endringPaOppfolgingsBrukerProcessor: EndringPaOppfolgingsBrukerProcessor,
     identEndringsProcessor: IdentChangeProcessor,
     oppfolgingsHendelseProcessor: OppfolgingsHendelseProcessor,
     arenakontorProcessor: ArenakontorVedOppfolgingStartetProcessor
@@ -142,18 +140,6 @@ fun configureTopology(
             oppfolgingHendelser
                 .process(arenakontorProcessorSupplier, Named.`as`(ArenakontorVedOppfolgingStartetProcessor.processorName))
         }
-
-    /*
-    * Endring på oppfølgingsbruker (Arena)
-    * */
-    val endringPaOppfolgingsBrukerProcessorSupplier = wrapInRetryProcessor(
-        topic = topics.inn.endringPaOppfolgingsbruker,
-        streamType = StreamType.SOURCE,
-        businessLogic = endringPaOppfolgingsBrukerProcessor::process
-    )
-    builder.stream(topics.inn.endringPaOppfolgingsbruker.name, topics.inn.endringPaOppfolgingsbruker.consumedWith())
-        .process(endringPaOppfolgingsBrukerProcessorSupplier, Named.`as`(processorName(topics.inn.endringPaOppfolgingsbruker.name)))
-        .process(publiserKontorTilordningProcessorSupplier)
 
     /*
     * Endring i Skjerming (egen ansatt)

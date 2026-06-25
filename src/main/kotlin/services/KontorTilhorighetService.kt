@@ -18,16 +18,21 @@ import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.http.graphql.queries.toKontorTilhorighetQueryDto
 import no.nav.http.graphql.schemas.KontorTilhorighetQueryDto
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.jdbc.SizedIterable
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.slf4j.LoggerFactory
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 
 class KontorTilhorighetService(
     val kontorNavnService: KontorNavnService,
     val hentAlleIdenter: suspend (Ident) -> IdenterResult,
 ) {
     val log = LoggerFactory.getLogger(KontorTilhorighetService::class.java)
+    private val lanseringstidspunktAoKontor = OffsetDateTime.of(2026, 6, 17, 22, 15, 0, 0, ZoneOffset.UTC)
 
     suspend fun getKontorTilhorigheter(alleIdenter: IdenterFunnet): Triple<ArbeidsoppfolgingsKontor?, ArenaKontor?, GeografiskTilknyttetKontor?> {
         val aokontor = getArbeidsoppfolgingKontorTilhorighet(alleIdenter)
@@ -116,7 +121,10 @@ class KontorTilhorighetService(
     }
     private fun getArenaKontor(identer: List<Ident>) = transaction {
         ArenaKontorEntity
-            .find { ArenaKontorTable.id inList (identer.map { it.value }) }
+            .find {
+                (ArenaKontorTable.id inList (identer.map { it.value })) and
+                    (ArenaKontorTable.updatedAt less lanseringstidspunktAoKontor)
+            }
             .firstOrNullOrThrow(identer) { it.fnr.value }
     }
     private fun getAOKontor(identer: List<Ident>) = transaction {

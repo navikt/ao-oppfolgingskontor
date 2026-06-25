@@ -7,8 +7,6 @@ import no.nav.db.IdentSomKanLagres
 import no.nav.db.InternIdent
 import no.nav.domain.KontorId
 import no.nav.domain.OppfolgingsperiodeId
-import no.nav.kafka.consumers.FormidlingsGruppe
-import no.nav.kafka.consumers.Kvalifiseringsgruppe
 import no.nav.person.pdl.aktor.v2.Aktor
 import no.nav.person.pdl.aktor.v2.Identifikator
 import no.nav.utils.randomInternIdent
@@ -50,20 +48,6 @@ object TopicUtils {
                 "avregistreringsType": "UtmeldtEtter28Dager"
             }
         """.trimIndent(), System.currentTimeMillis())
-    }
-
-    fun endringPaaOppfolgingsBrukerMessage(
-            ident: Ident,
-            kontorId: String,
-            sistEndretDato: OffsetDateTime,
-            formidlingsGruppe: FormidlingsGruppe,
-            kvalifiseringsgruppe: Kvalifiseringsgruppe): Record<String, String> {
-        return Record(ident.value, """{
-              "oppfolgingsenhet": "$kontorId",
-              "sistEndretDato": "$sistEndretDato",
-              "formidlingsgruppe": "${formidlingsGruppe.name}",
-              "kvalifiseringsgruppe": "${kvalifiseringsgruppe.name}"
-        }""".trimIndent(), System.currentTimeMillis())
     }
 
     fun aktorV2Message(aktorId: String, identer: List<Ident>): Record<String, Aktor> {

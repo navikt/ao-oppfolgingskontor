@@ -17,7 +17,6 @@ import io.mockk.mockk
 import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 import java.util.UUID
-import kafka.consumers.TopicUtils.endringPaaOppfolgingsBrukerMessage
 import kafka.consumers.TopicUtils.oppfolgingAvsluttetMelding
 import kafka.consumers.TopicUtils.oppfolgingStartetMelding
 import kafka.producers.KontorEndringProducer
@@ -51,11 +50,8 @@ import no.nav.http.client.SkjermingFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
 import no.nav.kafka.config.configureTopology
-import no.nav.kafka.consumers.EndringPaOppfolgingsBrukerProcessor
-import no.nav.kafka.consumers.FormidlingsGruppe
 import no.nav.kafka.consumers.KontorEndringer
 import no.nav.kafka.consumers.KontortilordningsProcessor
-import no.nav.kafka.consumers.Kvalifiseringsgruppe
 import no.nav.kafka.consumers.LeesahProcessor
 import no.nav.kafka.consumers.SkjermingProcessor
 import no.nav.services.AktivOppfolgingsperiode
@@ -274,63 +270,6 @@ class BigAppTest {
         }
     }
 
-    @Test
-    fun `skal ikke forwarde oppdatert arenakontor til kafkaproducer ved endret oppfølgingsbruker`() = testApplication {
-        val fnr = randomFnr()
-        val kontor = KontorId("2232")
-        val nyttKontor = KontorId("0101")
-        val oppfolgingsperiodeId = OppfolgingsperiodeId(UUID.randomUUID())
-        environment {
-            config = ApplicationConfig("application.prod.yaml")
-        }
-        application {
-            gittBrukerUnderOppfolging(
-                fnr = fnr,
-                oppfolgingsperiodeId = oppfolgingsperiodeId,
-            )
-            gittIdentMedKontor(
-                ident = fnr,
-                kontorId = kontor,
-                oppfolgingsperiodeId = oppfolgingsperiodeId,
-            )
-            val topics = this.environment.topics()
-            val topology = setupTestEnvironment(
-                fnr,
-                oppfolgingsperiodeId,
-                kontorEndringProducer,
-                nyttKontor,
-                HarSkjerming(false),
-            )
-            val (_, inputTopics, _) = setupKafkaMock(
-                topology,
-                listOf(topics.inn.endringPaOppfolgingsbruker.name), null
-            )
-            inputTopics.first().pipeInput(
-                fnr.value, endringPaaOppfolgingsBrukerMessage(
-                    ident = fnr,
-                    kontorId = nyttKontor.id,
-                    sistEndretDato = OffsetDateTime.now(),
-                    formidlingsGruppe = FormidlingsGruppe.ISERV,
-                    kvalifiseringsgruppe = Kvalifiseringsgruppe.BATT,
-                ).value()
-            )
-
-            withClue("Skal oppdatere arenakontor på bruker") {
-                transaction {
-                    ArenaKontorEntity.findById(fnr.value)
-                }?.kontorId shouldBe nyttKontor.id
-            }
-            withClue("Skal ikke oppdatere AO-kontor på bruker") {
-                transaction {
-                    ArbeidsOppfolgingKontorEntity.findById(fnr.value)
-                }?.kontorId shouldBe kontor.id
-            }
-            coVerify(exactly = 0) {
-                kontorEndringProducer.publiserEndringPåKontor(any<OppfolgingEndretTilordningMelding>())
-            }
-        }
-    }
-
     private fun Application.setupTestEnvironment(
         fnr: IdentSomKanLagres,
         oppfolgingsperiodeId: OppfolgingsperiodeId,
@@ -359,29 +298,6 @@ class BigAppTest {
             automatiskKontorRutingService,
             kontorTilordningService,
         )
-        val endringPaaOppfolgingsBrukerProcessor = EndringPaOppfolgingsBrukerProcessor(
-            oppfolgingsperiodeProvider,
-            { ArenaKontorUtvidet(
-                kontorId = KontorId("4321"),
-                oppfolgingsperiodeId = oppfolgingsperiodeId,
-                sistEndretDatoArena = OffsetDateTime.now().minusDays(10),
-            ) },
-            {
-                kontorTilordningService.tilordneKontor(
-                    kontorEndringer = KontorEndringer(
-                        arenaKontorEndret = ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep(
-                            kontorTilordning = KontorTilordning(
-                                fnr = fnr,
-                                kontorId = kontor,
-                                oppfolgingsperiodeId = oppfolgingsperiodeId
-                            ),
-                            sistEndretIArena = OffsetDateTime.now(),
-                            endretAvRegistrant = System(Systemnavn.ARENA),
-                        )
-                    ),
-                )
-            },
-        )
         val identService = IdentService { PdlIdenterFunnet(listOf(fnr), fnr) }
         val identendringsProcessor = IdentChangeProcessor(identService)
 
@@ -397,7 +313,6 @@ class BigAppTest {
             publiserKontorTilordningProcessor,
             leesahProcessor,
             skjermingProcessor,
-            endringPaaOppfolgingsBrukerProcessor,
             identendringsProcessor,
             OppfolgingsHendelseProcessor(
                 OppfolgingsperiodeService(identService::hentAlleIdenter, kontorTilordningService::slettArbeidsoppfølgingskontorTilordning),
