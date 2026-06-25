@@ -15,7 +15,6 @@ import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.binder.kafka.KafkaStreamsMetrics
 import java.time.Duration
 import java.util.concurrent.atomic.AtomicInteger
-import kafka.consumers.ArenakontorVedOppfolgingStartetProcessor
 import kafka.consumers.IdentChangeProcessor
 import kafka.consumers.OppfolgingsHendelseProcessor
 import kafka.consumers.PubliserKontorTilordningProcessor
@@ -112,12 +111,6 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         identService::hentAlleIdenter,
         { kontorProducer.publiserEndringPåKontor(it) },
     )
-    val arenakontorProcessor = ArenakontorVedOppfolgingStartetProcessor(
-        veilarbArenaClient::hentArenaKontor,
-        { kontorTilordningService.tilordneKontor(it) },
-        { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },
-    )
-
 
     val topology = configureTopology(
         environment,
@@ -128,7 +121,6 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         identEndringsProcessor = identEndringProcessor,
         oppfolgingsHendelseProcessor = oppfolgingsHendelseProcessor,
         publiserKontorTilordningProcessor = publiserKontorTilordningProcessor,
-        arenakontorProcessor = arenakontorProcessor,
     )
     val kafkaStream = KafkaStreams(topology, kafkaStreamsProps(environment.config))
 
