@@ -96,10 +96,6 @@ fun ApplicationEnvironment.getPDLUrl(): String {
     return config.property("apis.pdl.url").getString()
 }
 
-fun ApplicationEnvironment.getVeilarbArenaUrl(): String {
-    return config.property("apis.veilarbarena.url").getString()
-}
-
 fun ApplicationEnvironment.getAaregUrl(): String {
     return config.property("apis.aareg.url").getString()
 }

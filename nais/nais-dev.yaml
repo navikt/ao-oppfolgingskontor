@@ -110,7 +110,6 @@ spec:
       external:
         - host: norg2.dev-fss-pub.nais.io
         - host: pdl-api.dev-fss-pub.nais.io
-        - host: veilarbarena.dev-fss-pub.nais.io
         - host: aareg-services.dev-fss-pub.nais.io
         - host: ereg-services.dev-fss-pub.nais.io
         - host: dab-unleash-api.nav.cloud.nais.io
@@ -150,7 +149,3 @@ spec:
       value: http://skjermede-personer-pip.nom
     - name: SKJERMEDE_PERSONER_PIP_SCOPE
       value: api://dev-gcp.nom.skjermede-personer-pip/.default
-    - name: VEILARBARENA_URL
-      value: https://veilarbarena.dev-fss-pub.nais.io
-    - name: VEILARBARENA_SCOPE
-      value: api://dev-fss.pto.veilarbarena/.default

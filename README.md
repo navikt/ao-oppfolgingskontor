@@ -10,39 +10,36 @@ Oppfølgingskontor for Arbeidsrettet Oppfølging
 | Endepunkt                              | Beskrivelse                                                       |      
 |----------------------------------------|-------------------------------------------------------------------|
 | `POST /api/kontor`                     | Setter arbeidsoppfolgings-kontor for en bruker (Kontortilordning) |
-| `pto.endring-paa-oppfolgingsbruker-v2` | Alle oppfolgingskontor fra arena                                  |
 | `Liste over Kontor fra Norg`           | Henter liste over kontor fra Norg2                                |
 
 ## Ubiquitous language
 - **Arbeidsoppfolging-kontor**: Alltid satt manuelt av veileder (foreløpig)
-- **Arena-kontor**: satt enten manuelt eller automatisk i Arena
+- **Arena-kontor**: Settes ikke lenger, men finnes som en del av historikken for kontortilordninger før konseptet med ao-kontor ble lansert (17.06.2026, kl: 20:12)
 - **Geografisk-tilknyttet-kontor**: Kontor som tilhører brukers folkeregistrerte adresse
   - Gitt en geografisk tilknytning (GT), sjekk i Norg2 hvilket kontor som er tilknyttet den GT-en
 - **Kontortilhørighet**: hvilket kontor en bruker tilhører
-  - Kan være arbeidsoppfølging-kontor, arena-kontor eller GT-kontor
+  - Kan være arbeidsoppfølging-kontor eller GT-kontor
   - Kan være flere kontortilhørigheter samtidig men kun én av hver type
-  - Har prioriteringsrekkefølge: arbeidsoppfølging-kontor (viktigst) > arena-kontor > GT-kontor
-- **Kontortilordning**: handlingen å sette kontoret til en bruker, kan være manuelt eller automatisk. Alle tre kontortyper kan settes. Inneholder hvem som utførte handlingen (system eller veileder-ident) og tidspunkt for når kontoret ble satt.
+  - Har prioriteringsrekkefølge: arbeidsoppfølging-kontor (viktigst) > GT-kontor
+- **Kontortilordning**: handlingen å sette kontoret til en bruker, kan være manuelt eller automatisk. Begge kontortyper kan settes. Inneholder hvem som utførte handlingen (system eller veileder-ident) og tidspunkt for når kontoret ble satt.
   - AOKontorEndret
     - KontorSattAvVeileder
     - OppfolgingsPeriodeStartetLokalKontorTilordning
     - OppfolgingsperiodeStartetNoeTilordning
-  - ArenaKontorEndret
-    - EndringPaaOppfolgingsBrukerFraArena
   - GTKontorEndret
     - Ingen foreløpig :(
 
 ## Business rules
-- Arbeidsoppfølgings-kontor > Arena-kontor > GT-kontor. 
+- Arbeidsoppfølgings-kontor > GT-kontor. 
 - kontorForBruker gir ut kontoret med høyest prioritet.
 
 ## Outbound data
-| Endepunkt                    | Beskrivelse                                                                                                                 |      
-|------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
-| `/graphql (alleKontor)`      | Liste over alle kontor som kan velges når man skal sette kontor                                                             |
+| Endepunkt                    | Beskrivelse                                                                                                                |      
+|------------------------------|----------------------------------------------------------------------------------------------------------------------------|
+| `/graphql (alleKontor)`      | Liste over alle kontor som kan velges når man skal sette kontor                                                            |
 | `/graphql (kontorForBruker)` | Nåværende, høyest prioriterte **Kontortilhørighet**. Returnerer ett en tilhørighet men kontoret kan være av alle tre typene |
-| `/graphql (kontorHistorikk)` | Alle historiske **Kontortilhørighet**-er                                                                                    |
-| `topic for kontorendringer`  | Alle endringer? Bare "overstyringer"? Bare Arena + arbeidsoppfølging?                                                       |
+| `/graphql (kontorHistorikk)` | Alle historiske **Kontortilhørighet**-er                                                                                   |
+| `topic for kontorendringer`  | Alle endringer? Bare "overstyringer"? Bare arbeidsoppfølging?                                                       |
 
 ## Automatisk kontortilordning - forklaring
 
@@ -190,7 +187,7 @@ sequenceDiagram
         System->>Database: Lagre GT-kontor tilordning
         System->>Kafka: Publiser KontorEndret event
         
-        Note over System: Både AO-kontor og GT-kontor lagres.<br/>GT-kontor brukes hvis ingen AO-kontor eller Arena-kontor finnes.
+        Note over System: Både AO-kontor og GT-kontor lagres.<br/>GT-kontor brukes hvis ingen AO-kontor finnes.
     end
 ```
 

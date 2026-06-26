@@ -1,7 +1,6 @@
 package no.nav.kafka
 
 import dab.poao.nav.no.health.CriticalErrorNotificationFunction
-import http.client.VeilarbArenaClient
 import io.ktor.events.EventDefinition
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationPlugin
@@ -57,7 +56,6 @@ class KafkaStreamsPluginConfig(
     var criticalErrorNotificationFunction: CriticalErrorNotificationFunction? = null,
     var kontorTilhorighetService: KontorTilhorighetService? = null,
     var kontorEndringProducer: KontorEndringProducer? = null,
-    var veilarbArenaClient: VeilarbArenaClient? = null,
     var kontorTilordningService: KontorTilordningService? = null,
 )
 
@@ -85,9 +83,6 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     }
     val kontorProducer = requireNotNull(this.pluginConfig.kontorEndringProducer) {
         "KontorTilhorighetService must be configured for KafkaStreamsPlugin"
-    }
-    val veilarbArenaClient = requireNotNull(this.pluginConfig.veilarbArenaClient) {
-        "VeilarbArenaClient must be configured for KafkaStreamPlugin"
     }
     val kontorTilordningService = requireNotNull(this.pluginConfig.kontorTilordningService) {
         "KontorTilordningService must be configured for KafkaStreamPlugin"
@@ -120,7 +115,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         skjermingProcessor = skjermingProcessor,
         identEndringsProcessor = identEndringProcessor,
         oppfolgingsHendelseProcessor = oppfolgingsHendelseProcessor,
-        publiserKontorTilordningProcessor = publiserKontorTilordningProcessor,
+        publiserKontorTilordningProcessor = publiserKontorTilordningProcessor
     )
     val kafkaStream = KafkaStreams(topology, kafkaStreamsProps(environment.config))
 

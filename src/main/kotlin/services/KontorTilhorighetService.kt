@@ -44,9 +44,6 @@ class KontorTilhorighetService(
     suspend fun getArbeidsoppfolgingKontorTilhorighet(ident: Ident)
         = getArbeidsoppfolgingKontorTilhorighet(hentAlleIdenter(ident).getOrThrow())
 
-    suspend fun getArenaKontorTilhorighet(ident: Ident)
-        = getArenaKontorTilhorighet(hentAlleIdenter(ident).getOrThrow())
-
     /* Nåværedne arena-kontor med oppfølgingsperiode og sistEndretDatoArena */
     suspend fun getArenaKontorMedOppfolgingsperiode(ident: Ident): ArenaKontorUtvidet? {
         val alleIdenter = hentAlleIdenter(ident).getOrThrow()

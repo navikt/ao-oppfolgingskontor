@@ -154,7 +154,7 @@ enum class Tilordningstype {
     KONTOR_VED_OPPFOLGINGSPERIODE_START,
     ENDRET_KONTOR;
 
-    // TODO: Midlertidig tillatt arenakontor-endringstyper
+    // Arenakontor-endringstyper er fra før lansering av ao-kontor
     companion object {
         fun fraKontorEndringsType(kontorEndringsType: KontorEndringsType): Tilordningstype {
             return when (kontorEndringsType) {
@@ -186,14 +186,6 @@ enum class Tilordningstype {
                 KontorEndringsType.FikkNorskGt -> ENDRET_KONTOR
 
                 /* Endringer som midlertidig publiseres siden egen ruting ikke er lansert */
-//                KontorEndringsType.EndretIArena,
-//                KontorEndringsType.ArenaKontorHentetSynkrontVedOppfolgingsStart,
-//                KontorEndringsType.ArenaKontorVedOppfolgingStartMedEtterslep,
-//                KontorEndringsType.ArenaKontorVedOppfolgingsStart,
-//                KontorEndringsType.TidligArenaKontorVedOppfolgingStart,
-//                KontorEndringsType.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStart,
-//                KontorEndringsType.MIGRERING,
-//                KontorEndringsType.PATCH,
                 KontorEndringsType.GTKontorVedOppfolgingStart,
                 KontorEndringsType.EndretBostedsadresse -> {
                     throw RuntimeException("Vi skal ikke publisere kontorendringer på kontor-endring av type $kontorEndringsType")

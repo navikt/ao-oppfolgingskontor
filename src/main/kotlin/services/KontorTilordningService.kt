@@ -3,14 +3,11 @@ package no.nav.services
 import arrow.core.Either
 import eventsLogger.KontorTypeForBigQuery
 import eventsLogger.LoggSattKontorEvent
-import java.time.ZonedDateTime
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
-import no.nav.db.table.ArenaKontorTable
 import no.nav.db.table.GeografiskTilknytningKontorTable
 import no.nav.db.table.KontorhistorikkTable
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.events.AOKontorEndret
-import no.nav.domain.events.ArenaKontorEndret
 import no.nav.domain.events.GTKontorEndret
 import no.nav.domain.events.KontorEndretEvent
 import no.nav.kafka.consumers.KontorEndringer
@@ -21,6 +18,7 @@ import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.upsert
+import java.time.ZonedDateTime
 
 typealias TilordneKontor = (kontorEndringer: KontorEndretEvent) -> Unit
 
@@ -30,7 +28,6 @@ class KontorTilordningService(
 
     fun tilordneKontor (kontorEndringer: KontorEndringer) {
         kontorEndringer.aoKontorEndret?.let { tilordneKontor(it) }
-        kontorEndringer.arenaKontorEndret?.let { tilordneKontor(it) }
         kontorEndringer.gtKontorEndret?.let { tilordneKontor(it) }
     }
     fun tilordneKontor(kontorEndring: KontorEndretEvent) {
@@ -55,22 +52,6 @@ class KontorTilordningService(
                         forrigeKontorId,
                         kontorEndring.kontorEndringsType(),
                         KontorTypeForBigQuery.ARBEIDSOPPFOLGINGSKONTOR
-                    )
-                }
-                is ArenaKontorEndret -> {
-                    val entryId = settKontorIHistorikk(kontorEndring)
-                    ArenaKontorTable.upsert {
-                        it[kontorId] = kontorTilhorighet.kontorId.id
-                        it[id] = kontorTilhorighet.fnr.value
-                        it[updatedAt] = ZonedDateTime.now().toOffsetDateTime()
-                        it[sistEndretDatoArena] = kontorEndring.sistEndretDatoArena
-                        it[historikkEntry] = entryId
-                    }
-                    loggSattKontorEvent(
-                        kontorTilhorighet.kontorId.id,
-                        null,
-                        kontorEndring.toHistorikkInnslag().kontorendringstype,
-                        KontorTypeForBigQuery.ARENAKONTOR
                     )
                 }
                 is GTKontorEndret -> {

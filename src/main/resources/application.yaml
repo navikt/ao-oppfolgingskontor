@@ -42,9 +42,6 @@ apis:
   skjermedePersoner:
     url: "$SKJERMEDE_PERSONER_PIP_URL"
     scope: "$SKJERMEDE_PERSONER_PIP_SCOPE"
-  veilarbarena:
-    url: "$VEILARBARENA_URL"
-    scope: "$VEILARBARENA_SCOPE"
 
 unleash:
   url: "$UNLEASH_SERVER_API_URL"

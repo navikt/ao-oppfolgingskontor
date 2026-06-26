@@ -296,7 +296,7 @@ class BigAppTest {
             OppfolgingsHendelseProcessor(
                 OppfolgingsperiodeService(identService::hentAlleIdenter, kontorTilordningService::slettArbeidsoppfølgingskontorTilordning),
                 kontorEndringProducer::publiserTombstone,
-            )
+            ),
         )
     }
 }

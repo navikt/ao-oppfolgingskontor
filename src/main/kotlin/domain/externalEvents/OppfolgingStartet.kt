@@ -49,10 +49,3 @@ class OppfolgingsperiodeAvsluttet(
         return true
     }
 }
-
-@Serializable
-data class TidligArenaKontor(
-    @Serializable(with = OffsetDateTimeSerializer::class)
-    val sistEndretDato: OffsetDateTime,
-    val kontor: KontorId,
-)

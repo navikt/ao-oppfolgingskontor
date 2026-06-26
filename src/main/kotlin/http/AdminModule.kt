@@ -45,7 +45,6 @@ import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.slf4j.LoggerFactory
-import services.ArenaSyncService
 import services.KontorRepubliseringService
 import services.KontorSammenSlåing
 import services.KontorSammenslåingService
@@ -73,7 +72,6 @@ fun navAnsattOrUnauthorized(authResult: AuthResult): Either<HttpReject, NavAnsat
 fun Application.configureAdminModule(
     simulerKontorTilordning: suspend (ident: IdentSomKanLagres, erArbeidssøker: Boolean) -> TilordningResultat,
     kontorRepubliseringService: KontorRepubliseringService,
-    arenaSyncService: ArenaSyncService,
     kontorSammenslåingService: `KontorSammenslåingService`
 ) {
     routing {
@@ -181,28 +179,6 @@ fun Application.configureAdminModule(
                 }
             }
 
-            post("/admin/sync-arena-kontor") {
-                runCatching {
-                    log.info("Setter i gang syncing av Arena-kontor")
-                    val input = call.receive<IdenterInputBody>()
-                    val identer = input.identer.split(",")
-                    val godkjenteIdenter =
-                        identer.map { Ident.validateIdentSomKanLagres(it, Ident.HistoriskStatus.UKJENT) }
-
-                    log.info("Setter i gang sync av arena-kontor for ${godkjenteIdenter.size} identer av ${identer.size} mottatte identer")
-
-                    arenaSyncService.refreshArenaKontor(godkjenteIdenter)
-                    call.respond(HttpStatusCode.Accepted, "Syncing av Arena-kontorer startet")
-                }.onFailure { e ->
-                    log.error("Feil ved syncing av Arena-kontor", e)
-
-                    call.respond(
-                        HttpStatusCode.InternalServerError,
-                        "Klarte ikke synce Arena-kontor: ${e.message} \n" + e.stackTraceToString()
-                    )
-                }
-            }
-
             delete("/admin/failed-messages/{id}") {
                 val rawId = call.parameters["id"]
                 val messageId = rawId?.toLongOrNull()
@@ -287,7 +263,6 @@ fun Application.configureAdminModule(
                             is TilordningSuccessKontorEndret -> """
                                 FNR: ${godkjentIdent.value}
                                 ao-kontor: ${res.kontorEndretEvent.aoKontorEndret?.tilordning?.kontorId?.id}
-                                arenakontor: ${res.kontorEndretEvent.arenaKontorEndret?.tilordning?.kontorId?.id}
                                 gt-kontor: ${res.kontorEndretEvent.gtKontorEndret?.tilordning?.kontorId?.id}
                             """.trimIndent()
                         }
