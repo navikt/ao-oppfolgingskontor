@@ -21,7 +21,6 @@ import no.nav.domain.NavIdent
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.System
 import no.nav.domain.Veileder
-import no.nav.domain.events.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep
 import no.nav.domain.events.KontorSattAvVeileder
 import no.nav.domain.events.OppfolgingsperiodeStartetNoeTilordning
 import no.nav.kafka.consumers.KontorEndringer
@@ -68,54 +67,17 @@ class KontorTilordningServiceTest {
     }
 
     @Test
-    fun `skal lagre arena og ao kontor`() {
+    fun `skal lagre ao-kontor`() {
         flywayMigrationInTest()
         val fnr = randomFnr()
         val oppfolginsperiodeUuid = gittBrukerUnderOppfolging(fnr)
         val aoEndring =  OppfolgingsperiodeStartetNoeTilordning(fnr, oppfolginsperiodeUuid)
-        val arenaEndring = ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep(
-            KontorTilordning(
-                fnr,
-                KontorId("1122"),
-                oppfolginsperiodeUuid
-            ),
-            sistEndretIArena = OffsetDateTime.now(),
-            endretAvRegistrant = System(Systemnavn.VEILARBOPPFOLGING),
-        )
 
         kontorTilordningService.tilordneKontor(KontorEndringer(
             aoKontorEndret = aoEndring,
-            arenaKontorEndret = arenaEndring,
         ))
 
         transaction { ArbeidsOppfolgingKontorEntity[fnr.value].kontorId } shouldBe "4154"
-        transaction { ArenaKontorEntity[fnr.value].kontorId } shouldBe "1122"
-    }
-
-    @Test
-    fun `skal lagre arena-kontor i arenakontor-tabell men ikke i aokontor-tabell`() {
-        flywayMigrationInTest()
-        val fnr = randomFnr().value
-        val arenaKontorId = "1122"
-        val oppfolginsperiodeUuid = OppfolgingsperiodeId(UUID.randomUUID())
-        val arenaEndring = ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep(
-            KontorTilordning(
-                Fnr(fnr, AKTIV),
-                KontorId(arenaKontorId),
-                oppfolginsperiodeUuid
-            ),
-            sistEndretIArena = OffsetDateTime.now(),
-            endretAvRegistrant = System(Systemnavn.VEILARBOPPFOLGING),
-        )
-
-        kontorTilordningService.tilordneKontor(KontorEndringer(
-            arenaKontorEndret = arenaEndring,
-        ))
-
-        shouldThrow<EntityNotFoundException> {
-            transaction { ArbeidsOppfolgingKontorEntity[fnr] }
-        }
-        transaction { ArenaKontorEntity[fnr].fnr.value } shouldBe fnr
     }
 
     @Test

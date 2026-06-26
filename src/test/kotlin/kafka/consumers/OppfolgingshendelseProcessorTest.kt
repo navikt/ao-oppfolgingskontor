@@ -1,41 +1,21 @@
 package kafka.consumers
 
-import db.entity.TidligArenaKontorEntity
-import domain.ArenaKontorUtvidet
 import domain.IdenterFunnet
-import domain.Systemnavn
 import domain.kontorForGt.KontorForGtFantDefaultKontor
 import io.kotest.assertions.withClue
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.ktor.server.testing.testApplication
-import java.time.Instant
-import java.time.OffsetDateTime
-import java.time.ZoneId
-import java.time.ZonedDateTime
-import java.time.temporal.ChronoUnit
-import java.util.UUID
-import kotlin.test.fail
-import no.nav.db.AktorId
-import no.nav.db.Dnr
-import no.nav.db.Fnr
-import no.nav.db.Ident
-import no.nav.db.Ident.HistoriskStatus.AKTIV
-import no.nav.db.Ident.HistoriskStatus.HISTORISK
-import no.nav.db.Ident.HistoriskStatus.UKJENT
-import no.nav.db.InternIdent
-import no.nav.db.Npid
+import io.ktor.server.testing.*
+import no.nav.db.*
+import no.nav.db.Ident.HistoriskStatus.*
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
-import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.OppfolgingsperiodeEntity
 import no.nav.db.table.OppfolgingsperiodeTable
 import no.nav.domain.KontorId
 import no.nav.domain.KontorTilordning
 import no.nav.domain.OppfolgingsperiodeId
-import no.nav.domain.System
-import no.nav.domain.events.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep
 import no.nav.domain.events.OppfolgingsPeriodeStartetLokalKontorTilordning
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.http.client.GeografiskTilknytningBydelNr
@@ -47,21 +27,21 @@ import no.nav.kafka.processor.Retry
 import no.nav.kafka.processor.Skip
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.NotUnderOppfolging
-import no.nav.utils.flywayMigrationInTest
-import no.nav.utils.gittIdentIMapping
-import no.nav.utils.kontorTilordningService
-import no.nav.utils.randomAktorId
-import no.nav.utils.randomFnr
-import no.nav.utils.randomInternIdent
+import no.nav.utils.*
 import org.apache.kafka.streams.processor.api.Record
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import services.IdentService
 import services.OppfolgingsperiodeService
 import services.ingenSensitivitet
+import java.time.Instant
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.time.temporal.ChronoUnit
+import java.util.*
+import kotlin.test.fail
 
 class OppfolgingshendelseProcessorTest {
 
@@ -106,16 +86,6 @@ class OppfolgingshendelseProcessorTest {
                     ingenSensitivitet.strengtFortroligAdresse,
                     geografiskTilknytningNr = GeografiskTilknytningBydelNr("313131")
                 )
-            )
-        )
-    }
-
-    fun Bruker.gittArenaKontorTilordning(kontorId: KontorId) {
-        kontorTilordningService.tilordneKontor(
-            ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep(
-                KontorTilordning(this.ident, kontorId, this.oppfolgingsperiodeId),
-                OffsetDateTime.now(),
-                System(Systemnavn.VEILARBOPPFOLGING),
             )
         )
     }
@@ -363,7 +333,6 @@ class OppfolgingshendelseProcessorTest {
     fun `Skal forwarde start-melding om på allerede lagrede oppfølgingsperioder hvis kontortilordning (ao-kontor) ikke er gjort`() {
         val bruker = testBruker()
         bruker.gittBrukerUnderOppfolging()
-        bruker.gittArenaKontorTilordning(KontorId("1199"))
         val oppfolgingshendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
         val startmelding = oppfolgingStartetMelding(bruker)
 
@@ -385,26 +354,6 @@ class OppfolgingshendelseProcessorTest {
         result.shouldBeInstanceOf<Skip<*, *>>()
     }
 
-    @Disabled
-    @Test
-    fun `Skal hoppe over start-melding men oppdatere kontor når perioden er allerede er startet (men ikke avsluttet)`() {
-        val bruker = testBruker()
-        val arenaKontor = KontorId("1122")
-        val oppfolgingshendelseProcessor = bruker.defaultOppfolgingsHendelseProcessor()
-        val startmelding = oppfolgingStartetMelding(bruker, arenaKontor)
-        oppfolgingshendelseProcessor.process(startmelding).shouldBeInstanceOf<Forward<*, *>>()
-        bruker.gittAOKontorTilordning(KontorId("1199"))
-
-        /* Hvis arenakontor ikke allerede er satt skal det settes */
-        oppfolgingshendelseProcessor.process(startmelding).shouldBeInstanceOf<Commit<*, *>>()
-
-        bruker.gittArenaKontorTilordning(KontorId("1122"))
-        /* Når arena-kontoret er satt kan man skippe melding */
-        oppfolgingshendelseProcessor.process(startmelding).shouldBeInstanceOf<Skip<*, *>>()
-
-        bruker.skalHaArenaKontor(arenaKontor.id)
-    }
-
     @Test
     fun `Skal hoppe over avslutt-melding for en periode vi ikke visste om`() {
         val bruker = testBruker()
@@ -414,15 +363,6 @@ class OppfolgingshendelseProcessorTest {
         val result = oppfolgingshendelseProcessor.process(record)
 
         result.shouldBeInstanceOf<Skip<Ident, OppfolgingsperiodeStartet>>()
-    }
-
-    fun Bruker.skalHaArenaKontor(foreventetKontor: String?) {
-        val arenaKontor = transaction {
-            ArenaKontorEntity.findById(this@skalHaArenaKontor.ident.value)?.kontorId
-        }
-        withClue("Forventet bruker skulle arenakontor: $foreventetKontor men hadde $arenaKontor") {
-            arenaKontor shouldBe foreventetKontor
-        }
     }
 
     class Asserts(val service: OppfolgingsperiodeService, val bruker: Bruker) {

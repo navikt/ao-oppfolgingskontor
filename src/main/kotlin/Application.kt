@@ -76,10 +76,6 @@ fun Application.module() {
         environment.getPoaoTilgangUrl(),
         texasClient.tokenProvider(environment.getPoaoTilgangScope())
     )
-    val veilarbArenaClient = VeilarbArenaClient(
-        baseUrl = environment.getVeilarbArenaUrl(),
-        azureTokenProvider = texasClient.tokenProvider(environment.getVeilarbarenaScope())
-    )
     val aaregClient = AaregClient(
         baseUrl = environment.getAaregUrl(),
         azureTokenProvider = texasClient.tokenProvider(environment.getAaregScope())
@@ -150,7 +146,6 @@ fun Application.module() {
         kontorEndringProducer::publiserTombstone,
         oppfolgingsperiodeService::getCurrentOppfolgingsperiode
     )
-    val arenaSyncService = ArenaSyncService(veilarbArenaClient, kontorTilordningService, kontorTilhorighetService, oppfolgingsperiodeService)
 
     install(KafkaStreamsPlugin) {
         this.automatiskKontorRutingService = automatiskKontorRutingService
@@ -161,7 +156,6 @@ fun Application.module() {
         this.criticalErrorNotificationFunction = setCriticalError
         this.kontorTilhorighetService = kontorTilhorighetService
         this.kontorEndringProducer = kontorEndringProducer
-        this.veilarbArenaClient = veilarbArenaClient
         this.kontorTilordningService = kontorTilordningService
     }
 
@@ -187,7 +181,7 @@ fun Application.module() {
         hentEnheterForEgneAnsatte = { norg2Client.hentEnheterForEgneAnsatte() },
     )
     configureFinnKontorModule(simulerKontorTilordning, kontorNavnService::getKontorNavn, { call -> call.authenticateCall(issuer) })
-    configureAdminModule(simulerKontorTilordning, republiseringService, arenaSyncService, kontorSammenslåingService)
+    configureAdminModule(simulerKontorTilordning, republiseringService, kontorSammenslåingService)
     configureHentArbeidsoppfolgingskontorBulkModule(KontorTilhorighetBulkService)
 }
 

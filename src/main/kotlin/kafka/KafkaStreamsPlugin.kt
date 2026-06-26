@@ -1,7 +1,6 @@
 package no.nav.kafka
 
 import dab.poao.nav.no.health.CriticalErrorNotificationFunction
-import http.client.VeilarbArenaClient
 import io.ktor.events.EventDefinition
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationPlugin
@@ -15,7 +14,6 @@ import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.binder.kafka.KafkaStreamsMetrics
 import java.time.Duration
 import java.util.concurrent.atomic.AtomicInteger
-import kafka.consumers.ArenakontorVedOppfolgingStartetProcessor
 import kafka.consumers.IdentChangeProcessor
 import kafka.consumers.OppfolgingsHendelseProcessor
 import kafka.consumers.PubliserKontorTilordningProcessor
@@ -58,7 +56,6 @@ class KafkaStreamsPluginConfig(
     var criticalErrorNotificationFunction: CriticalErrorNotificationFunction? = null,
     var kontorTilhorighetService: KontorTilhorighetService? = null,
     var kontorEndringProducer: KontorEndringProducer? = null,
-    var veilarbArenaClient: VeilarbArenaClient? = null,
     var kontorTilordningService: KontorTilordningService? = null,
 )
 
@@ -87,9 +84,6 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
     val kontorProducer = requireNotNull(this.pluginConfig.kontorEndringProducer) {
         "KontorTilhorighetService must be configured for KafkaStreamsPlugin"
     }
-    val veilarbArenaClient = requireNotNull(this.pluginConfig.veilarbArenaClient) {
-        "VeilarbArenaClient must be configured for KafkaStreamPlugin"
-    }
     val kontorTilordningService = requireNotNull(this.pluginConfig.kontorTilordningService) {
         "KontorTilordningService must be configured for KafkaStreamPlugin"
     }
@@ -112,12 +106,6 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         identService::hentAlleIdenter,
         { kontorProducer.publiserEndringPåKontor(it) },
     )
-    val arenakontorProcessor = ArenakontorVedOppfolgingStartetProcessor(
-        veilarbArenaClient::hentArenaKontor,
-        { kontorTilordningService.tilordneKontor(it) },
-        { kontorTilhorighetService.getArenaKontorMedOppfolgingsperiode(it) },
-    )
-
 
     val topology = configureTopology(
         environment,
@@ -127,8 +115,7 @@ val KafkaStreamsPlugin: ApplicationPlugin<KafkaStreamsPluginConfig> = createAppl
         skjermingProcessor = skjermingProcessor,
         identEndringsProcessor = identEndringProcessor,
         oppfolgingsHendelseProcessor = oppfolgingsHendelseProcessor,
-        publiserKontorTilordningProcessor = publiserKontorTilordningProcessor,
-        arenakontorProcessor = arenakontorProcessor,
+        publiserKontorTilordningProcessor = publiserKontorTilordningProcessor
     )
     val kafkaStream = KafkaStreams(topology, kafkaStreamsProps(environment.config))
 

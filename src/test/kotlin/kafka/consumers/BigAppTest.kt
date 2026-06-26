@@ -1,67 +1,43 @@
 package kafka.consumers
 
 import db.table.KafkaOffsetTable
-import domain.ArenaKontorUtvidet
-import domain.Systemnavn
 import domain.kontorForGt.KontorForGtFantDefaultKontor
 import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
-import io.ktor.server.application.Application
-import io.ktor.server.config.ApplicationConfig
-import io.ktor.server.testing.testApplication
+import io.ktor.server.application.*
+import io.ktor.server.config.*
+import io.ktor.server.testing.*
 import io.mockk.clearMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
-import java.time.OffsetDateTime
-import java.time.ZonedDateTime
-import java.util.UUID
 import kafka.consumers.TopicUtils.oppfolgingAvsluttetMelding
 import kafka.consumers.TopicUtils.oppfolgingStartetMelding
 import kafka.producers.KontorEndringProducer
 import kafka.producers.OppfolgingEndretTilordningMelding
 import kafka.retry.TestLockProvider
 import kafka.retry.library.internal.setupKafkaMock
-import kotlin.Result
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import no.nav.db.AktorId
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
-import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.KontorHistorikkEntity
 import no.nav.db.entity.OppfolgingsperiodeEntity
 import no.nav.db.table.KontorhistorikkTable
-import no.nav.domain.HarSkjerming
-import no.nav.domain.HarStrengtFortroligAdresse
-import no.nav.domain.KontorEndringsType
-import no.nav.domain.KontorId
-import no.nav.domain.KontorTilordning
-import no.nav.domain.OppfolgingsperiodeId
-import no.nav.domain.System
-import no.nav.domain.events.ArenaKontorFraOppfolgingsbrukerVedOppfolgingStartMedEtterslep
-import no.nav.http.client.AlderFunnet
-import no.nav.http.client.GeografiskTilknytningBydelNr
-import no.nav.http.client.HarStrengtFortroligAdresseFunnet
-import no.nav.http.client.PdlIdenterFunnet
-import no.nav.http.client.SkjermingFunnet
+import no.nav.domain.*
+import no.nav.http.client.*
 import no.nav.http.client.arbeidssogerregisteret.ProfileringFunnet
 import no.nav.http.client.arbeidssogerregisteret.ProfileringsResultat
 import no.nav.kafka.config.configureTopology
-import no.nav.kafka.consumers.KontorEndringer
 import no.nav.kafka.consumers.KontortilordningsProcessor
 import no.nav.kafka.consumers.LeesahProcessor
 import no.nav.kafka.consumers.SkjermingProcessor
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
-import no.nav.utils.flywayMigrationInTest
-import no.nav.utils.gittBrukerUnderOppfolging
-import no.nav.utils.gittIdentMedKontor
-import no.nav.utils.kontorTilordningService
-import no.nav.utils.randomFnr
-import no.nav.utils.randomInternIdent
+import no.nav.utils.*
 import org.apache.kafka.streams.Topology
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.deleteAll
@@ -72,6 +48,9 @@ import services.IdentService
 import services.OppfolgingsperiodeService
 import topics
 import utils.Outcome
+import java.time.OffsetDateTime
+import java.time.ZonedDateTime
+import java.util.*
 
 class BigAppTest {
     private val kontorEndringProducer = mockk<KontorEndringProducer>()
@@ -318,7 +297,6 @@ class BigAppTest {
                 OppfolgingsperiodeService(identService::hentAlleIdenter, kontorTilordningService::slettArbeidsoppfølgingskontorTilordning),
                 kontorEndringProducer::publiserTombstone,
             ),
-            mockk<ArenakontorVedOppfolgingStartetProcessor>()
         )
     }
 }

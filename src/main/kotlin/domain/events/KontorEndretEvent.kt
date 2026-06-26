@@ -112,12 +112,3 @@ sealed class AOKontorEndret(
 ) : KontorEndretEvent(tilordning, registrant) {
     abstract fun kontorEndringsType(): KontorEndringsType
 }
-
-sealed class ArenaKontorEndret(
-    tilordning: KontorTilordning,
-    val sistEndretDatoArena: OffsetDateTime,
-) : KontorEndretEvent(tilordning, System(Systemnavn.ARENA)) {
-    override fun logg() {
-        logger.info("${this::class.simpleName}: kontorId=${tilordning.kontorId}, oppfolginsperiode=${tilordning.oppfolgingsperiodeId}")
-    }
-}

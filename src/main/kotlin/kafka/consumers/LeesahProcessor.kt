@@ -8,7 +8,6 @@ import no.nav.db.IdentSomKanLagres
 import no.nav.db.finnForetrukketIdent
 import no.nav.domain.OppfolgingsperiodeId
 import no.nav.domain.events.AOKontorEndret
-import no.nav.domain.events.ArenaKontorEndret
 import no.nav.domain.events.GTKontorEndret
 import no.nav.domain.externalEvents.AdressebeskyttelseEndret
 import no.nav.domain.externalEvents.BostedsadresseEndret
@@ -119,7 +118,6 @@ class HåndterPersondataEndretFail(val message: String, val error: Throwable? = 
 object HåndterPersondataEndretIkkeUnderOppfølging: HåndterPersondataEndretResultat()
 
 data class KontorEndringer(
-    val arenaKontorEndret: ArenaKontorEndret? = null,
     val gtKontorEndret: GTKontorEndret? = null,
     val aoKontorEndret: AOKontorEndret? = null,
 )

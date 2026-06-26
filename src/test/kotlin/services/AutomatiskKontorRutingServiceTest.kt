@@ -50,7 +50,6 @@ import no.nav.domain.externalEvents.BostedsadresseEndret
 import no.nav.domain.externalEvents.KontorOverstyring
 import no.nav.domain.externalEvents.OppfolgingsperiodeStartet
 import no.nav.domain.externalEvents.SkjermetStatusEndret
-import no.nav.domain.externalEvents.TidligArenaKontor
 import no.nav.http.client.AlderFunnet
 import no.nav.http.client.AlderIkkeFunnet
 import no.nav.http.client.AlderResult
@@ -452,29 +451,6 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                 gitt(brukerMedTilordnetKontorForOppfolgingStartet).tilordneKontorAutomatiskVedStartOppfolging(
                     oppfolgingsperiodeStartet(brukerMedTilordnetKontorForOppfolgingStartet)
                 ) shouldBe TilordningSuccessIngenEndring
-            }
-
-            it("skal ikke sette Arenakontor selvom det kommer med i start-oppfolging melding") {
-                val arenaKontor = KontorId("3311")
-                gitt(ungBrukerMedGodeMuligheter).tilordneKontorAutomatiskVedStartOppfolging(
-                    oppfolgingsperiodeStartet(
-                        bruker = ungBrukerMedGodeMuligheter,
-                        tidligArenaKontor = TidligArenaKontor(OffsetDateTime.now(), arenaKontor)
-                    )
-                ) shouldBe TilordningSuccessKontorEndret(
-                    KontorEndringer(
-                        gtKontorEndret = ungBrukerMedGodeMuligheter.defaultGtKontorVedOppfolgStart(),
-                        aoKontorEndret = OppfolgingsPeriodeStartetLokalKontorTilordning(
-                            KontorTilordning(
-                                ungBrukerMedGodeMuligheter.fnr(),
-                                ungBrukerMedGodeMuligheter.gtKontor(),
-                                ungBrukerMedGodeMuligheter.oppfolgingsperiodeId()
-                            ),
-                            ungBrukerMedGodeMuligheter.gtKontor as KontorForGtFantKontor
-                        ),
-                        arenaKontorEndret = null
-                    )
-                )
             }
         }
     }
@@ -977,19 +953,16 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
 
 fun oppfolgingsperiodeStartet(
     bruker: Bruker,
-    tidligArenaKontor: TidligArenaKontor? = null,
     kontorOverstyring: KontorOverstyring? = null
 ) =
     oppfolgingsperiodeStartet(
         bruker.fnr(),
-        tidligArenaKontor,
         (bruker.oppfolgingsPeriodeResult as AktivOppfolgingsperiode).startDato,
         kontorOverstyring
     )
 
 fun oppfolgingsperiodeStartet(
     fnr: IdentSomKanLagres,
-    tidligArenaKontor: TidligArenaKontor? = null,
     startDato: OffsetDateTime = OffsetDateTime.now(),
     kontorOverstyring: KontorOverstyring? = null
 ): OppfolgingsperiodeStartet {
