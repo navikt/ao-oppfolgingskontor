@@ -123,11 +123,8 @@ fun configureTopology(
 
     builder.stream(topics.inn.oppfolgingsHendelser.name, topics.inn.oppfolgingsHendelser.consumedWith())
         .process(oppfolgingHendelseProcessorSupplier, Named.`as`(processorName(topics.inn.oppfolgingsHendelser.name)))
-        .let { oppfolgingHendelser ->
-            oppfolgingHendelser
-                .process(kontortilordningProcessorSupplier, Named.`as`(KontortilordningsProcessor.processorName))
-                .process(publiserKontorTilordningProcessorSupplier, Named.`as`(PubliserKontorTilordningProcessor.processorName))
-        }
+        .process(kontortilordningProcessorSupplier, Named.`as`(KontortilordningsProcessor.processorName))
+        .process(publiserKontorTilordningProcessorSupplier, Named.`as`(PubliserKontorTilordningProcessor.processorName))
 
     /*
     * Endring i Skjerming (egen ansatt)
