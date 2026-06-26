@@ -33,7 +33,7 @@ class BigQueryClient(
         insertIntoKontorEvents(kontorEventsTable) {
             buildMap {
                 put("kontorId", kontorId)
-                put("fraKontorId", fraKontorId ?: null)
+                put("fraKontorId", fraKontorId)
                 put("timestamp", ZonedDateTime.now().toOffsetDateTime().toString())
                 put("kontorEndringsType", kontorEndringsType.toString())
                 put("kontorType", kontorType.toString())
