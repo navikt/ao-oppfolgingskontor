@@ -33,7 +33,7 @@ class BigQueryClient(
         insertIntoKontorEvents(kontorEventsTable) {
             buildMap {
                 put("kontorId", kontorId)
-                fraKontorId?.let { put("fraKontorId", it) }
+                put("fraKontorId", fraKontorId ?: null)
                 put("timestamp", ZonedDateTime.now().toOffsetDateTime().toString())
                 put("kontorEndringsType", kontorEndringsType.toString())
                 put("kontorType", kontorType.toString())
@@ -41,11 +41,11 @@ class BigQueryClient(
         }
     }
 
-    private fun TableId.insertRequest(row: Map<String, Any>): InsertAllRequest {
+    private fun TableId.insertRequest(row: Map<String, Any?>): InsertAllRequest {
         return InsertAllRequest.newBuilder(this).addRow(row).build()
     }
 
-    private fun insertIntoKontorEvents(table: TableId, getRow: () -> Map<String, Any>?) {
+    private fun insertIntoKontorEvents(table: TableId, getRow: () -> Map<String, Any?>?) {
         runCatching {
             val row = getRow()
             if (row == null) return
