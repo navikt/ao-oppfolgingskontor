@@ -3,7 +3,6 @@ package no.nav.kafka.config
 import Topic
 import io.ktor.server.application.ApplicationEnvironment
 import io.ktor.server.config.*
-import kafka.consumers.ArenakontorVedOppfolgingStartetProcessor
 import kafka.consumers.IdentChangeProcessor
 import kafka.consumers.OppfolgingsHendelseProcessor
 import kafka.consumers.PubliserKontorTilordningProcessor
@@ -73,7 +72,6 @@ fun configureTopology(
     skjermingProcessor: SkjermingProcessor,
     identEndringsProcessor: IdentChangeProcessor,
     oppfolgingsHendelseProcessor: OppfolgingsHendelseProcessor,
-    arenakontorProcessor: ArenakontorVedOppfolgingStartetProcessor
 ): Topology {
     val topics = environment.topics()
     val builder = StreamsBuilder()
@@ -122,24 +120,11 @@ fun configureTopology(
         streamType = StreamType.INTERNAL,
         businessLogic = publiserKontorTilordningProcessor::process,
     )
-    val arenakontorProcessorSupplier = wrapInRetryProcessor(
-        keyInSerde = ArenakontorVedOppfolgingStartetProcessor.identSerde,
-        valueInSerde = ArenakontorVedOppfolgingStartetProcessor.oppfolgingsperiodeEndretSerde,
-        topic = ArenakontorVedOppfolgingStartetProcessor.processorName,
-        streamType = StreamType.INTERNAL,
-        businessLogic = arenakontorProcessor::process
-    )
 
     builder.stream(topics.inn.oppfolgingsHendelser.name, topics.inn.oppfolgingsHendelser.consumedWith())
         .process(oppfolgingHendelseProcessorSupplier, Named.`as`(processorName(topics.inn.oppfolgingsHendelser.name)))
-        .let { oppfolgingHendelser ->
-            // Sender videre oppfolgingshendelser til både vanlig kontor-processor og arena-processor
-            oppfolgingHendelser
-                .process(kontortilordningProcessorSupplier, Named.`as`(KontortilordningsProcessor.processorName))
-                .process(publiserKontorTilordningProcessorSupplier, Named.`as`(PubliserKontorTilordningProcessor.processorName))
-            oppfolgingHendelser
-                .process(arenakontorProcessorSupplier, Named.`as`(ArenakontorVedOppfolgingStartetProcessor.processorName))
-        }
+        .process(kontortilordningProcessorSupplier, Named.`as`(KontortilordningsProcessor.processorName))
+        .process(publiserKontorTilordningProcessorSupplier, Named.`as`(PubliserKontorTilordningProcessor.processorName))
 
     /*
     * Endring i Skjerming (egen ansatt)
