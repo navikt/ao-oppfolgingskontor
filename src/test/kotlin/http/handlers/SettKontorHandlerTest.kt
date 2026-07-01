@@ -278,7 +278,7 @@ class SettKontorHandlerTest {
             publiserKontorEndring,
             { skjermingResult },
             { adresseResult },
-            { listOf(MinimaltNorgKontor(kontorId = "0383", "Nav egne ansatte Oslo", NorgKontorType.KO)) },
+            { listOf(MinimaltNorgKontor(kontorId = "0383", "Nav egne ansatte Oslo", NorgKontorType.KO, false)) },
         )
     }
 }

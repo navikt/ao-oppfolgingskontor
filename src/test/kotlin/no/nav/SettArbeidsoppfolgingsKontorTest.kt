@@ -130,7 +130,7 @@ class SettArbeidsoppfolgingsKontorTest {
                 { kontorEndringProducer.publiserEndringPåKontor(it) },
                 hentSkjerming = { skjerming },
                 hentAdresseBeskyttelse = { adressebeskyttelse },
-                hentEnheterForEgneAnsatte = { listOf(MinimaltNorgKontor(kontorId = "0383", "Nav egne ansatte Oslo", NorgKontorType.KO)) },
+                hentEnheterForEgneAnsatte = { listOf(MinimaltNorgKontor(kontorId = "0383", "Nav egne ansatte Oslo", NorgKontorType.KO, false)) },
             )
             routing {
                 authenticate("EntraAD") {
