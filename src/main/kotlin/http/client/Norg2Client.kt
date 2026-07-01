@@ -176,7 +176,8 @@ data class NorgKontorForGtFeil(val message: String): NorgKontorForGtResultat()
 data class MinimaltNorgKontor(
     val kontorId: String,
     val navn: String,
-    val type: NorgKontorType
+    val type: NorgKontorType,
+    val nedlagt: Boolean,
 ) {
     fun erEgenAnsattKontor() = this.navn.toLowerCasePreservingASCIIRules()
         .contains("egne ansatte")
@@ -196,6 +197,7 @@ fun NorgKontor.toMinimaltKontor() = MinimaltNorgKontor(
     kontorId = this.enhetNr,
     navn = this.navn,
     NorgKontorType.fromString(this.type),
+    nedlagt = this.nedleggelsesdato != null
 )
 
 @Serializable
