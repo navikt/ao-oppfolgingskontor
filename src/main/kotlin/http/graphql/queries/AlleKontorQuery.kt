@@ -65,6 +65,7 @@ class AlleKontorQuery(
 
             val lokalKontorer = norg2Client.hentAlleEnheter()
                 .filter { erValgbartKontor(it) }
+                .filterNot { it.nedlagt }
                 .map { AlleKontorQueryDto(it.kontorId,it.navn) }
                 .filterNot { erAvvikletKontor(it) }
 
