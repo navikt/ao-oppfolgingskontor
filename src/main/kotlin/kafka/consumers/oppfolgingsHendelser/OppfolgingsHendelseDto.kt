@@ -40,6 +40,6 @@ val module = SerializersModule {
 val oppfolgingsHendelseJson = Json {
     serializersModule = module
     prettyPrint = true
-    ignoreUnknownKeys = false
+    ignoreUnknownKeys = true
     encodeDefaults = true
 }
