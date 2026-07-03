@@ -28,7 +28,6 @@ object TopicUtils {
                 "startetAv": "G151415",
                 "startetAvType": "VEILEDER",
                 "startetBegrunnelse": "ARBEIDSSOKER_REGISTRERING",
-                "arenaKontor": ${arenaKontor?.id?.let { "\"$it\"" } ?: "null" },
                 "foretrukketArbeidsoppfolgingskontor": ${foretrukketArbeidsoppfolgingskontor?.let { "\"${it.id}\"" } ?: "null" },
                 "fnr": "${bruker.ident.value}"
             }
