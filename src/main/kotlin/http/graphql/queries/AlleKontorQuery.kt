@@ -53,7 +53,9 @@ class AlleKontorQuery(
 
             val andreSpesialKontorer = listOf(
                 AlleKontorQueryDto("2103","Nav Vikafossen"),
-                AlleKontorQueryDto("2990","Nav IT-avdelingen")
+                AlleKontorQueryDto("2990","Nav IT-avdelingen"),
+                // https://jira.adeo.no/browse/FAGSYSTEM-446361
+                AlleKontorQueryDto("0691","Nav arbeidslivssenter Vest-Viken")
             )
 
             val sykefraværskontorer = listOf(

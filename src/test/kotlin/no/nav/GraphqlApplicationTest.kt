@@ -186,7 +186,7 @@ class GraphqlApplicationTest {
 
         val response = client.alleKontor(fnr)
 
-        val antallSpesialkontorer = 4
+        val antallSpesialkontorer = 5
         val antallEgneAnsatteKontorer = 14
         val antallLokalkontorer = 248
         val antallSykefraværskontorer = 4
