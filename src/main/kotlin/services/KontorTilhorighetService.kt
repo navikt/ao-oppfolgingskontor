@@ -7,7 +7,7 @@ import no.nav.db.Ident
 import no.nav.db.entity.ArbeidsOppfolgingKontorEntity
 import no.nav.db.entity.ArenaKontorEntity
 import no.nav.db.entity.GeografiskTilknyttetKontorEntity
-import no.nav.db.finnForetrukketIdent
+import no.nav.db.finnForetrukketIdentRelaxed
 import no.nav.db.table.ArbeidsOppfolgingKontorTable
 import no.nav.db.table.ArenaKontorTable
 import no.nav.db.table.GeografiskTilknytningKontorTable
@@ -98,18 +98,23 @@ class KontorTilhorighetService(
     }
 
     private inline fun <reified T> SizedIterable<T>.firstOrNullOrThrow(identer: List<Ident>, identProvider: (T) -> String): T? {
-        val historiskeIdenter = identer.filter { it.historisk == Ident.HistoriskStatus.HISTORISK }.map { it.value }
-        val withoutHistorisk = this.filter { !historiskeIdenter.contains(identProvider(it)) }
-        return when (withoutHistorisk.size) {
-            0 -> null
-            1 ->  this.first()
-            else -> { // Har flere nåværende kontor på en person
-                log.error("Fant flere ressurser på en person, ressurstype ${T::class.simpleName}")
-                return identer.finnForetrukketIdent()
-                    ?.let { foretrukketIdent -> this.firstOrNull { identProvider(it) == foretrukketIdent.value } }
-                    ?: throw IllegalStateException("Fant flere ressurser på 1 person men ingen av dem bruker foretrukket ident, ressurstype:${T::class.simpleName}")
-            }
-        }
+        val alleRader = this.toList()
+        if (alleRader.isEmpty()) return null
+
+        val aktiveIdenter = identer.filter { it.historisk == Ident.HistoriskStatus.AKTIV }.map { it.value }.toSet()
+
+        // Hvis det finnes treff på aktiv ident bruker vi det videre, hvis ikke bruker vi treff på historisk ident
+        val relevanteRader = alleRader.filter { identProvider(it) in aktiveIdenter }.ifEmpty { alleRader }
+        if (relevanteRader.size == 1) return relevanteRader.single()
+
+        // Har flere nåværende kontor på en person
+        log.error("Fant flere ressurser på en person, ressurstype ${T::class.simpleName}")
+        val foretrukketIdentMedKontor = identer
+            .filter { ident -> relevanteRader.any { identProvider(it) == ident.value } }
+            .finnForetrukketIdentRelaxed()
+        return foretrukketIdentMedKontor
+            ?.let { ident -> relevanteRader.firstOrNull { identProvider(it) == ident.value } }
+            ?: throw IllegalStateException("Fant flere ressurser på 1 person men ingen av dem bruker foretrukket ident, ressurstype:${T::class.simpleName}")
     }
 
     private fun getGTKontor(identer: List<Ident>) = transaction { GeografiskTilknyttetKontorEntity
