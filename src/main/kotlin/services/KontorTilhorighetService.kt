@@ -109,10 +109,10 @@ class KontorTilhorighetService(
 
         // Har flere nåværende kontor på en person
         log.error("Fant flere ressurser på en person, ressurstype ${T::class.simpleName}")
-        val foretrukketIdent = identer
+        val foretrukketIdentMedKontor = identer
             .filter { ident -> relevanteRader.any { identProvider(it) == ident.value } }
             .finnForetrukketIdentRelaxed()
-        return foretrukketIdent
+        return foretrukketIdentMedKontor
             ?.let { ident -> relevanteRader.firstOrNull { identProvider(it) == ident.value } }
             ?: throw IllegalStateException("Fant flere ressurser på 1 person men ingen av dem bruker foretrukket ident, ressurstype:${T::class.simpleName}")
     }
