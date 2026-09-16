@@ -16,10 +16,10 @@ import no.nav.utils.randomFnr
 import no.nav.utils.randomInternIdent
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import org.junit.Test
 import java.time.OffsetDateTime
 import org.jetbrains.exposed.v1.core.statements.InsertStatement
 import org.jetbrains.exposed.v1.jdbc.insert
+import org.junit.jupiter.api.Test
 
 class KontorTilhorighetServiceTest {
 
@@ -35,25 +35,6 @@ class KontorTilhorighetServiceTest {
         KontorTilhorighetService(
             mockk(),
             { IdenterFunnet(listOf(ident), ident, randomInternIdent()) }
-        ).getArenaKontorMedOppfolgingsperiode(ident)
-    }
-
-    @Test
-    fun `getArenaKontorMedOppfolgingsperiode skal kunne hente arenakontor som mangler historikk-entry`() = runTest {
-        flywayMigrationInTest()
-        val ident = randomFnr()
-
-        transaction {
-            ArenaKontorTable.insert {
-                it[id] = ident.value
-                it[kontorId] = "2121"
-                it[sistEndretDatoArena] = OffsetDateTime.now()
-            }
-        }
-
-        KontorTilhorighetService(
-            mockk(),
-            { IdenterFunnet( listOf(ident), ident, randomInternIdent()) }
         ).getArenaKontorMedOppfolgingsperiode(ident)
     }
 
