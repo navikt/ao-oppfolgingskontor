@@ -14,6 +14,7 @@ import domain.kontorForGt.KontorForGtSuccess
 import kafka.consumers.oppfolgingsHendelser.StartetAvType
 import no.nav.db.Ident
 import no.nav.db.IdentSomKanLagres
+import no.nav.domain.Admin
 import no.nav.domain.Bruker
 import no.nav.domain.INGEN_GT_KONTOR_FALLBACK
 import no.nav.domain.KontorEndringsType
@@ -197,6 +198,7 @@ data class OppfolgingsperiodeStartetManuellTilordning(
                 StartetAvType.SYSTEM -> System(Systemnavn.VEILARBOPPFOLGING)
                 StartetAvType.BRUKER -> Bruker(Ident.validateIdentSomKanLagres(kontorOverstyring.registrantIdent, Ident.HistoriskStatus.UKJENT))
                 StartetAvType.VEILEDER -> Veileder(NavIdent(kontorOverstyring.registrantIdent))
+                StartetAvType.ADMIN -> Admin(NavIdent(kontorOverstyring.registrantIdent))
             },
             kontorendringstype = rutingResultat.toKontorEndringsType(),
             kontorType = KontorType.ARBEIDSOPPFOLGING,

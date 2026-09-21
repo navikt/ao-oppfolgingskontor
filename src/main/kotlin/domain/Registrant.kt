@@ -22,3 +22,9 @@ data class Bruker(val ident: IdentSomKanLagres) : Registrant() {
     override fun getIdent() = ident.value
     override fun getType() = "BRUKER"
 }
+
+data class Admin(val ident: NavIdent) : Registrant() {
+    override fun getIdent() = ident.id
+    override fun getType() = "ADMIN"
+
+}
