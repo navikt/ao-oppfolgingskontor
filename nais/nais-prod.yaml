@@ -84,6 +84,8 @@ spec:
           cluster: prod-gcp
         - application: tiltakspenger-saksbehandling-api
           namespace: tpts
+        - application: veilarboppfolging
+          namespace: poao
     outbound:
       rules:
         - application: norg2
