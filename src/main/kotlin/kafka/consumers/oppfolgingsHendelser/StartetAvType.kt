@@ -3,6 +3,7 @@ package kafka.consumers.oppfolgingsHendelser
 enum class StartetAvType {
     SYSTEM,
     BRUKER,
-    VEILEDER
+    VEILEDER,
+    ADMIN
 }
 typealias AvsluttetAvType = StartetAvType
