@@ -25,7 +25,7 @@ class SkjermingProcessor(
     val log = LoggerFactory.getLogger(SkjermingProcessor::class.java)
 
     fun process(record: Record<String, String?>): RecordProcessingResult<OppfolgingsperiodeId, OppfolgingEndretTilordningMelding> {
-        println("Processing Skjerming record: ${record.value()}")
+        log.info("Mottatt hendelse for skjerming")
         return handterEndringISKjermetStatus(record.key(), record.value()?.toBoolean())
     }
 
