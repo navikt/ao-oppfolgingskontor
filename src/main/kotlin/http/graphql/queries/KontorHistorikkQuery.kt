@@ -98,7 +98,7 @@ class KontorHistorikkQuery(
             .fold(
                 { historikk -> return historikk },
                 {
-                    logger.error("Feil ved henting av kontorhistorikk", it)
+                    logger.error("Feil ved henting av kontorhistorikk: ${it.message}", it)
                     throw it
                 }
             )
