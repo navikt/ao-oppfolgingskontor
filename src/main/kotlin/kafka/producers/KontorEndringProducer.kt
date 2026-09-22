@@ -71,7 +71,7 @@ class KontorEndringProducer(
     }
 
     private fun publiserEndringPåKontor(internIdent: InternIdent, event: KontorTilordningMeldingDto): Result<Unit> {
-        log.debug("Publiserer melding om kontorendring for internIdent ${internIdent.value}")
+        log.info("Publiserer melding om kontorendring for internIdent ${internIdent.value}")
         return runCatching {
             val record = ProducerRecord(
                 kontorTopicNavn,
@@ -83,7 +83,7 @@ class KontorEndringProducer(
     }
 
     fun publiserTombstone(internIdent: InternIdent): Result<Unit> {
-        log.debug("Publiserer tombstone for internIdent ${internIdent.value}")
+        log.info("Publiserer tombstone for internIdent ${internIdent.value}")
         return runCatching {
             val record: ProducerRecord<Long, String?> = ProducerRecord(
                 kontorTopicNavn,
