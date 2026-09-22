@@ -18,6 +18,7 @@ import no.nav.domain.events.AOKontorEndret
 import no.nav.domain.events.KontorSattAvVeileder
 import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.clients.producer.ProducerRecord
+import org.slf4j.LoggerFactory
 import services.KontortilordningSomSkalRepubliseres
 
 typealias PubliserManuellKontorEndring = suspend (KontorSattAvVeileder) -> Result<Unit>
@@ -29,6 +30,7 @@ class KontorEndringProducer(
     val kontorNavnProvider: suspend (kontorId: KontorId) -> KontorNavn,
     val hentAlleIdenter: suspend (identInput: IdentSomKanLagres) -> IdenterResult,
 ) {
+    private val log = LoggerFactory.getLogger(javaClass)
 
     /**
     * Brukes ved synkront endring via REST API
@@ -69,6 +71,7 @@ class KontorEndringProducer(
     }
 
     private fun publiserEndringPåKontor(internIdent: InternIdent, event: KontorTilordningMeldingDto): Result<Unit> {
+        log.debug("Publiserer melding om kontorendring for internIdent ${internIdent.value}")
         return runCatching {
             val record = ProducerRecord(
                 kontorTopicNavn,
@@ -80,6 +83,7 @@ class KontorEndringProducer(
     }
 
     fun publiserTombstone(internIdent: InternIdent): Result<Unit> {
+        log.debug("Publiserer tombstone for internIdent ${internIdent.value}")
         return runCatching {
             val record: ProducerRecord<Long, String?> = ProducerRecord(
                 kontorTopicNavn,
