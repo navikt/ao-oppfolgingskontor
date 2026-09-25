@@ -59,7 +59,10 @@ class KontorRepubliseringService(
         }
 
         log.info("Fant ${kontorerSomSkalRepubliseres.size} kontorer som skal republiseres for ${periodeIder.size} oppgitte oppfolgingsperioder")
-        kontorerSomSkalRepubliseres.forEach { republiserKontor(it).getOrThrow() }
+        kontorerSomSkalRepubliseres.forEach {
+            republiserKontor(it)
+                .getOrThrow()
+        }
     }
 
     suspend fun republiserKontorer() {
