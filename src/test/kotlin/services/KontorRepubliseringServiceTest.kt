@@ -1,6 +1,5 @@
 package services
 
-import domain.IdenterFunnet
 import domain.IdenterIkkeFunnet
 import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
@@ -14,7 +13,6 @@ import no.nav.domain.KontorEndringsType
 import no.nav.domain.KontorId
 import no.nav.domain.KontorNavn
 import no.nav.services.OppfolgingperiodeOppslagFeil
-import no.nav.services.OppfolgingsperiodeOppslagResult
 import no.nav.utils.TestDb
 import no.nav.utils.flywayMigrationInTest
 import no.nav.utils.gittBrukerUnderOppfolging
@@ -138,7 +136,7 @@ class KontorRepubliseringServiceTest {
         )
 
         var count = 0L
-        newSuspendedTransaction {
+        suspendTransaction {
             count = OppfolgingsperiodeEntity.count()
             kontorRepubliseringService.republiserKontorer(listOf(periode))
         }

@@ -128,9 +128,6 @@ fun Application.module() {
                 null
             )
         }
-    val kontorSammenslåingService = KontorSammenslåingService(
-        tilordneKontor = kontorTilordningService::tilordneKontor
-    )
 
     val kontorEndringProducer = KontorEndringProducer(
         producer = createKafkaProducerWithLongKey(this.environment.config.toKafkaEnv()),
@@ -138,6 +135,7 @@ fun Application.module() {
         kontorNavnProvider = { kontorId -> kontorNavnService.getKontorNavn(kontorId) },
         hentAlleIdenter = { identSomKanLagres -> identService.hentAlleIdenter(identSomKanLagres) },
     )
+
     val republiseringService = KontorRepubliseringService(
         kontorEndringProducer::republiserKontor,
         datasource,
@@ -145,6 +143,11 @@ fun Application.module() {
         identService::hentAlleIdenter,
         kontorEndringProducer::publiserTombstone,
         oppfolgingsperiodeService::getCurrentOppfolgingsperiode
+    )
+
+    val kontorSammenslåingService = KontorSammenslåingService(
+        tilordneKontor = kontorTilordningService::tilordneKontor,
+        kontorRepubliseringService = republiseringService
     )
 
     install(KafkaStreamsPlugin) {
