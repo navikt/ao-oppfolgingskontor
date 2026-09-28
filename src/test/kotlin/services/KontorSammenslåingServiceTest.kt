@@ -81,7 +81,6 @@ class `KontorSammenslåingServiceTest` {
 
     @Test
     fun `skal republisere flyttede brukere`() = testSuspend {
-        // Denne testen har ikke asserts, men den terminerer ikke hvis feilen er tilstedet
         flywayMigrationInTest()
         val loggSattKontorEvent: LoggSattKontorEvent = { _, _, _, _ -> }
         val kontorTilordningService = KontorTilordningService(loggSattKontorEvent)
