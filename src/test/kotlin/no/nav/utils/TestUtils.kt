@@ -17,8 +17,5 @@ fun ApplicationTestBuilder.getJsonHttpClient(): HttpClient {
 }
 
 val kontorTilordningService = KontorTilordningService(
-    BigQueryClient(
-        "ProjectId",
-        ExposedLockProvider(TestDb.database)
-    )::loggSattKontorEvent
+    { kontorId, fraKontorId, kontorEndringsType, kontorType ->  }
 )

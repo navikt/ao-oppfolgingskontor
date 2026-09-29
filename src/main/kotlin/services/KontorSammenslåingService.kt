@@ -13,28 +13,34 @@ import no.nav.services.TilordneKontor
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 
 class `KontorSammenslåingService`(
-    val tilordneKontor: TilordneKontor
+    val tilordneKontor: TilordneKontor,
+    val kontorRepubliseringService: KontorRepubliseringService
 ) {
 
-    fun slåSammenKontorer(navAnsatt: NavAnsatt, kontorer: KontorSammenSlåing) {
+    suspend fun slåSammenKontorer(navAnsatt: NavAnsatt, kontorer: KontorSammenSlåing) {
         // Sikre at alle endringer skjer samtidig
-        transaction {
+        suspendTransaction {
             prosesserAlleBrukereIBatch(navAnsatt, kontorer)
         }
     }
 
-    private tailrec fun prosesserAlleBrukereIBatch(navAnsatt: NavAnsatt, kontorer: KontorSammenSlåing) {
-        val batchMedBrukereSomHvorKontorSkalMigreres = hentKontorBatch(kontorer.fraKontorer, 2000)
+    private tailrec suspend fun prosesserAlleBrukereIBatch(navAnsatt: NavAnsatt, kontorSammenSlåing: KontorSammenSlåing) {
+        val batchMedBrukereSomHvorKontorSkalMigreres = hentKontorBatch(kontorSammenSlåing.fraKontorer, 2000)
         if (batchMedBrukereSomHvorKontorSkalMigreres.isEmpty()) return
         // For hver entry, sett kontoret
         // Alle kontor-endringer må ha en tilsvarende kontor-historikk entry i samme transaksjon som selve endringen i kontoret
-        batchMedBrukereSomHvorKontorSkalMigreres
-            .map { tilordneKontorForBruker(Veileder(navAnsatt.navIdent), it, kontorer.tilKontor) }
+        val perioderSomSkalRepubliseres = batchMedBrukereSomHvorKontorSkalMigreres
+            .map {
+                tilordneKontorForBruker(Veileder(navAnsatt.navIdent), it, kontorSammenSlåing.tilKontor)
+                it.second
+            }
+        kontorRepubliseringService.republiserKontorer(perioderSomSkalRepubliseres)
 
-        prosesserAlleBrukereIBatch(navAnsatt, kontorer)
+        prosesserAlleBrukereIBatch(navAnsatt, kontorSammenSlåing)
     }
 
     fun antallKontorerSomSkalEndres(fraKontorer: List<KontorId>): Long = transaction {
