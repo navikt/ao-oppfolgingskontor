@@ -2,6 +2,7 @@ package kafka.consumers.oppfolgingsHendelser
 
 enum class OppfolgingStartBegrunnelse {
     ARBEIDSSOKER_REGISTRERING,
+    AAP_SØKNAD,
     ARENA_SYNC_ARBS,
     ARENA_SYNC_IARBS,
     REAKTIVERT_OPPFØLGING,
