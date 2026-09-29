@@ -1,5 +1,22 @@
 -- Kjørt manuelt i dev og prod 16/3-26 for å sette mer spesifikke endret-av-verdier for endringer gjort av system.
 
+-- alternativ_aokontor:
+update alternativ_aokontor
+set endret_av = 'VEILARBOPPFOLGING'
+where endret_av = 'SYSTEM'
+  and kontorendringstype in ('AutomatiskNorgRuting', 'AutomatiskNorgRutingFallback', 'AutomatiskRutetTilNavItGtErLand',
+                             'AutomatiskRutetTilNavItUgyldigGt', 'AutomatiskRutetTilNOE',
+                             'AutomatiskRutingArbeidsgiverFallback');
+
+update alternativ_aokontor
+set endret_av = 'PDL'
+where endret_av = 'SYSTEM'
+  and kontorendringstype = 'FikkAddressebeskyttelse';
+
+update alternativ_aokontor
+set endret_av = 'SKJERMING'
+where endret_av = 'SYSTEM'
+  and kontorendringstype in ('FikkSkjerming', 'MistetSkjerming');
 
 -- kontorhistorikk:
 update kontorhistorikk
