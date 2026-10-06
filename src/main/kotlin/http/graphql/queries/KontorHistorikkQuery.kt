@@ -41,7 +41,9 @@ class KontorHistorikkQuery(
     val harLeseTilgangTilBruker: suspend (navAnsatt: AOPrincipal, ident: Ident, traceId: String) -> TilgangTilBrukerResult,
 ) : Query {
     val logger = LoggerFactory.getLogger(KontorHistorikkQuery::class.java)
-    private val lanseringstidspunktAoKontor = OffsetDateTime.of(2026, 6, 17, 22, 15, 0, 0, ZoneOffset.UTC)
+    companion object {
+        val lanseringstidspunktAoKontor = OffsetDateTime.of(2026, 6, 17, 19, 0, 0, 0, ZoneOffset.UTC)
+    }
 
     suspend fun kontorHistorikk(ident: String, dataFetchingEnvironment: DataFetchingEnvironment): List<KontorHistorikkQueryDto> {
         val principal = dataFetchingEnvironment.graphQlContext.get<AOPrincipal>("principal")
