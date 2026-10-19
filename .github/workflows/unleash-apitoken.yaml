@@ -18,12 +18,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
       - name: deploy to dev-gcp
-        uses: nais/deploy/actions/deploy@9850be311389ca754d9a9f2280615419d738c891
+        uses: nais/deploy/actions/deploy@d003bddf74ce5b96fa3056ae60bd4b9b3bbc89ef
         env:
           CLUSTER: dev-gcp
           RESOURCE: nais/unleash-apitoken-dev.yaml
       - name: deploy to prod-gcp
-        uses: nais/deploy/actions/deploy@9850be311389ca754d9a9f2280615419d738c891
+        uses: nais/deploy/actions/deploy@d003bddf74ce5b96fa3056ae60bd4b9b3bbc89ef
         env:
           CLUSTER: prod-gcp
           RESOURCE: nais/unleash-apitoken.yaml
