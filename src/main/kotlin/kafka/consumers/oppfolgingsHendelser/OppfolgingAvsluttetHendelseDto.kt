@@ -24,5 +24,6 @@ enum class AvregistreringsType {
     ManuellAvregistrering,
     ArenaIservKanIkkeReaktiveres,
     AdminAvregistrering,
-    KandidatUtmeldtEtter28Dager
+    KandidatUtmeldtEtter28Dager,
+    Dodsfall
 }
