@@ -108,6 +108,11 @@ class OppfolgingsperiodeService(
     }
 
     fun handterPeriodeStartet(oppfolgingsperiode: OppfolgingsperiodeStartet): HandterPeriodeStartetResultat {
+        if (OppfolgingsperiodeDao.harNyerePeriodePåIdent(oppfolgingsperiode)) {
+            log.warn("Hadde nyere periode på ident, hopper over melding")
+            return HaddeNyerePeriodePåIdent
+        }
+
         val identer = runBlocking { hentAlleIdenter(oppfolgingsperiode.fnr) }
         when (identer) {
             is IdenterFunnet -> {
@@ -148,10 +153,7 @@ class OppfolgingsperiodeService(
             }
         }
 
-        if (OppfolgingsperiodeDao.harNyerePeriodePåIdent(oppfolgingsperiode)) {
-            log.warn("Hadde nyere periode på ident, hopper over melding")
-            return HaddeNyerePeriodePåIdent
-        }
+
         if (OppfolgingsperiodeDao.finnesPeriode(oppfolgingsperiode.periodeId)) {
             val periodeHarFåttTilordning = when (val result = OppfolgingsperiodeDao.finnesAoKontorPåPeriode(oppfolgingsperiode.periodeId)) {
                 is Outcome.Failure -> throw Error("Klarte ikke sjekke om oppfolgingsperiode hadde tilordning: ${result.exception.message}", result.exception)
