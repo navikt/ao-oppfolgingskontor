@@ -37,8 +37,12 @@ class OppfolgingsperiodeService(
         val identerResult = runBlocking { hentAlleIdenter(oppfolgingsperiode.fnr) }
         val identer = when (identerResult) {
             is IdenterFunnet -> identerResult
-            is IdenterIkkeFunnet -> throw Exception("Skal ikke skje")
-            is IdenterOppslagFeil -> throw Exception("Skal ikke skje")
+            is IdenterIkkeFunnet -> {
+                throw Exception("Fant ingen indenter på bruker ved behandling av avslutt-oppfølgingsperiode melding ${oppfolgingsperiode.periodeId.value}: ${identerResult.message}")
+            }
+            is IdenterOppslagFeil -> {
+                throw Exception("Feil ved oppslag på identer ved behandling av avslutt-oppfølgingsperiode melding ${oppfolgingsperiode.periodeId.value}: ${identerResult.message}")
+            }
         }
         val aktiveOppfolgingsperioder: List<AktivOppfolgingsperiode> = getNåværendePerioder(oppfolgingsperiode.fnr)
 
@@ -121,8 +125,12 @@ class OppfolgingsperiodeService(
                         }
                 }
             }
-            is IdenterIkkeFunnet -> {}
-            is IdenterOppslagFeil -> {}
+            is IdenterIkkeFunnet -> {
+                throw Exception("Fant ingen indenter på bruker ved behandling av start-oppfølgingsperiode melding ${oppfolgingsperiode.periodeId.value}: ${identer.message}")
+            }
+            is IdenterOppslagFeil -> {
+                throw Exception("Feil ved oppslag på identer ved behandling av start-oppfølgingsperiode melding ${oppfolgingsperiode.periodeId.value}: ${identer.message}")
+            }
         }
 
         if (OppfolgingsperiodeDao.harNyerePeriodePåIdent(oppfolgingsperiode)) {
