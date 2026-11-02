@@ -18,6 +18,7 @@ import no.nav.http.client.IdentOppslagFeil
 import no.nav.http.client.IdentResult
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.FlereOppfolgingPerioderPåBrukerFeil
+import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingperiodeOppslagFeil
 import no.nav.services.OppfolgingsperiodeDao
 import no.nav.services.OppfolgingsperiodeOppslagResult
@@ -111,18 +112,32 @@ class OppfolgingsperiodeService(
         when (identer) {
             is IdenterFunnet -> {
                 val currentOppfolgingsperiode = OppfolgingsperiodeDao.getCurrentOppfolgingsperiode(identer)
-                if (currentOppfolgingsperiode is FlereOppfolgingPerioderPåBrukerFeil) {
-                    currentOppfolgingsperiode.oppfolgingsperioder
-                        .filter { it.oppfolgingsperiodeId != oppfolgingsperiode.periodeId.value }
-                        .forEach { gammelPeriode ->
-                            handterPeriodeAvsluttet(
-                                oppfolgingsperiode = OppfolgingsperiodeAvsluttet(
-                                    fnr = currentOppfolgingsperiode.ident,
-                                    startDato = gammelPeriode.startDato.toZonedDateTime(),
-                                    periodeId = OppfolgingsperiodeId(UUID.fromString(gammelPeriode.id.value))
-                                )
+                when (currentOppfolgingsperiode) {
+                    is AktivOppfolgingsperiode  -> {
+                        if (oppfolgingsperiode.periodeId != currentOppfolgingsperiode.periodeId)
+                        handterPeriodeAvsluttet(
+                            oppfolgingsperiode = OppfolgingsperiodeAvsluttet(
+                                fnr = currentOppfolgingsperiode.fnr,
+                                startDato = currentOppfolgingsperiode.startDato.toZonedDateTime(),
+                                periodeId = currentOppfolgingsperiode.periodeId
                             )
-                        }
+                        )
+                    }
+                    is FlereOppfolgingPerioderPåBrukerFeil -> {
+                        currentOppfolgingsperiode.oppfolgingsperioder
+                            .filter { it.oppfolgingsperiodeId != oppfolgingsperiode.periodeId.value }
+                            .forEach { gammelPeriode ->
+                                handterPeriodeAvsluttet(
+                                    oppfolgingsperiode = OppfolgingsperiodeAvsluttet(
+                                        fnr = currentOppfolgingsperiode.ident,
+                                        startDato = gammelPeriode.startDato.toZonedDateTime(),
+                                        periodeId = OppfolgingsperiodeId(gammelPeriode.oppfolgingsperiodeId)
+                                    )
+                                )
+                            }
+                    }
+                    NotUnderOppfolging -> {}
+                    is OppfolgingperiodeOppslagFeil -> {}
                 }
             }
             is IdenterIkkeFunnet -> {
@@ -202,7 +217,7 @@ class OppfolgingsperiodeService(
                 .map { AktivOppfolgingsperiode(
                     currentOppfolgingsperiodeResult.ident,
                     currentOppfolgingsperiodeResult.internIdent,
-                    OppfolgingsperiodeId(UUID.fromString(it.id.value)),
+                    OppfolgingsperiodeId(it.oppfolgingsperiodeId),
                     it.startDato)
                 }
             else -> emptyList()
