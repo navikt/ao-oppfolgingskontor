@@ -29,7 +29,13 @@ import org.jetbrains.exposed.v1.jdbc.upsert
 sealed class OppfolgingsperiodeOppslagResult()
 data class AktivOppfolgingsperiode(val fnr: IdentSomKanLagres, val internIdent: InternIdent, val periodeId: OppfolgingsperiodeId, val startDato: OffsetDateTime) : OppfolgingsperiodeOppslagResult()
 object NotUnderOppfolging : OppfolgingsperiodeOppslagResult()
-data class OppfolgingperiodeOppslagFeil(val message: String) : OppfolgingsperiodeOppslagResult()
+open class OppfolgingperiodeOppslagFeil(open val message: String) : OppfolgingsperiodeOppslagResult()
+class FlereOppfolgingPerioderPåBrukerFeil(
+    override val message: String,
+    val oppfolgingsperioder: List<OppfolgingsperiodeEntity>,
+    val ident: IdentSomKanLagres,
+    val internIdent: InternIdent
+) : OppfolgingperiodeOppslagFeil(message)
 
 object OppfolgingsperiodeDao {
     private val log = LoggerFactory.getLogger(this::class.java)
@@ -126,7 +132,8 @@ object OppfolgingsperiodeDao {
                 OppfolgingsperiodeId(oppfolgingsperioder.first().oppfolgingsperiodeId),
                 oppfolgingsperioder.first().startDato,
             )
-            else -> OppfolgingperiodeOppslagFeil("Fant flere oppfølgingsperioder (${oppfolgingsperioder.size}). Dnr til fnr?")
+            else -> FlereOppfolgingPerioderPåBrukerFeil("Fant flere oppfølgingsperioder (${oppfolgingsperioder.size}). Dnr til fnr?", oppfolgingsperioder,
+                identer.finnForetrukketIdent() ?: throw IllegalStateException("Kan ikke ha oppfølgingsperiode når det ikke finnes noen foretrukken ident"), identerResult.internIdent)
         }
     }
 }
