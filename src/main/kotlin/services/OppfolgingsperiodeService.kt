@@ -130,13 +130,13 @@ class OppfolgingsperiodeService(
                     }
                     is FlereOppfolgingPerioderPåBrukerFeil -> {
                         currentOppfolgingsperiode.oppfolgingsperioder
-                            .filter { it.oppfolgingsperiodeId != oppfolgingsperiode.periodeId.value }
+                            .filter { it.periodeId != oppfolgingsperiode.periodeId }
                             .forEach { gammelPeriode ->
                                 handterPeriodeAvsluttet(
                                     oppfolgingsperiode = OppfolgingsperiodeAvsluttet(
                                         fnr = currentOppfolgingsperiode.ident,
                                         startDato = gammelPeriode.startDato.toZonedDateTime(),
-                                        periodeId = OppfolgingsperiodeId(gammelPeriode.oppfolgingsperiodeId)
+                                        periodeId = gammelPeriode.periodeId
                                     )
                                 )
                             }
@@ -219,7 +219,7 @@ class OppfolgingsperiodeService(
                 .map { AktivOppfolgingsperiode(
                     currentOppfolgingsperiodeResult.ident,
                     currentOppfolgingsperiodeResult.internIdent,
-                    OppfolgingsperiodeId(it.oppfolgingsperiodeId),
+                    it.periodeId,
                     it.startDato)
                 }
             else -> emptyList()

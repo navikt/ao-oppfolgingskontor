@@ -32,7 +32,7 @@ object NotUnderOppfolging : OppfolgingsperiodeOppslagResult()
 open class OppfolgingperiodeOppslagFeil(open val message: String) : OppfolgingsperiodeOppslagResult()
 class FlereOppfolgingPerioderPåBrukerFeil(
     override val message: String,
-    val oppfolgingsperioder: List<OppfolgingsperiodeEntity>,
+    val oppfolgingsperioder: List<AktivOppfolgingsperiode>,
     val ident: IdentSomKanLagres,
     val internIdent: InternIdent
 ) : OppfolgingperiodeOppslagFeil(message)
@@ -131,8 +131,16 @@ object OppfolgingsperiodeDao {
                 OppfolgingsperiodeId(oppfolgingsperioder.first().oppfolgingsperiodeId),
                 oppfolgingsperioder.first().startDato,
             )
-            else -> FlereOppfolgingPerioderPåBrukerFeil("Fant flere oppfølgingsperioder (${oppfolgingsperioder.size}). Dnr til fnr?", oppfolgingsperioder,
-                identer.finnForetrukketIdent() ?: throw IllegalStateException("Kan ikke ha oppfølgingsperiode når det ikke finnes noen foretrukken ident"), identerResult.internIdent)
+            else -> FlereOppfolgingPerioderPåBrukerFeil(
+                "Fant flere oppfølgingsperioder (${oppfolgingsperioder.size}). Dnr til fnr?",
+                oppfolgingsperioder.map { AktivOppfolgingsperiode(
+                    fnr = Ident.validateIdentSomKanLagres(it.fnr.value, Ident.HistoriskStatus.UKJENT),
+                    internIdent =  identerResult.internIdent,
+                    periodeId = OppfolgingsperiodeId(it.oppfolgingsperiodeId),
+                    startDato = it.startDato
+                ) },
+                identer.finnForetrukketIdent() ?: throw IllegalStateException("Kan ikke ha oppfølgingsperiode når det ikke finnes noen foretrukken ident"),
+                identerResult.internIdent)
         }
     }
 }

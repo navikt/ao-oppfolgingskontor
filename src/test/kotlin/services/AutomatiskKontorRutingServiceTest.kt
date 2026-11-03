@@ -17,10 +17,8 @@ import domain.kontorForGt.KontorForGtNrFantFallbackKontorForManglendeGt
 import domain.kontorForGt.KontorForGtResultat
 import domain.kontorForGt.KontorForGtSuccess
 import io.kotest.core.spec.style.DescribeSpec
-import io.kotest.matchers.equals.shouldBeEqual
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.kotest.matchers.types.shouldBeSameInstanceAs
 import java.time.OffsetDateTime
 import java.util.UUID
 import kafka.consumers.oppfolgingsHendelser.StartetAvType
@@ -28,6 +26,7 @@ import no.nav.db.Fnr
 import no.nav.db.Ident.HistoriskStatus.AKTIV
 import no.nav.db.Ident.HistoriskStatus.UKJENT
 import no.nav.db.IdentSomKanLagres
+import no.nav.db.InternIdent
 import no.nav.domain.HarSkjerming
 import no.nav.domain.HarStrengtFortroligAdresse
 import no.nav.domain.INGEN_GT_KONTOR_FALLBACK
@@ -81,6 +80,7 @@ import no.nav.person.pdl.leesah.adressebeskyttelse.Gradering
 import no.nav.services.AktivOppfolgingsperiode
 import no.nav.services.AutomatiskKontorRutingService
 import no.nav.services.AutomatiskKontorRutingService.Companion.VIKAFOSSEN
+import no.nav.services.FlereOppfolgingPerioderPåBrukerFeil
 import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingperiodeOppslagFeil
 import no.nav.services.OppfolgingsperiodeOppslagResult
@@ -111,6 +111,72 @@ class AutomatiskKontorRutingServiceTest : DescribeSpec({
                             ungBrukerMedGodeMuligheter.gtKontor as KontorForGtFantKontor
                         ),
                         gtKontorEndret = ungBrukerMedGodeMuligheter.defaultGtKontorVedOppfolgStart()
+                    )
+                )
+            }
+
+            it("skal sette AO kontor på startet periode selvom bruker har flere aktive perioder (siste periode)") {
+                val sistePeriodePåBruker = (brukerMedFlereAktiveOppfolgingperioder.oppfolgingsPeriodeResult as? FlereOppfolgingPerioderPåBrukerFeil)!!.oppfolgingsperioder.last()
+                gitt(brukerMedFlereAktiveOppfolgingperioder).tilordneKontorAutomatiskVedStartOppfolging(
+                    OppfolgingsperiodeStartet(
+                        fnr = brukerMedFlereAktiveOppfolgingperioder.fnr(),
+                        startDato = sistePeriodePåBruker.startDato.toZonedDateTime(),
+                        periodeId = sistePeriodePåBruker.periodeId,
+                        erArbeidssøkerRegistrering = false,
+                        foretrukketArbeidsoppfolgingskontor = null,
+                        kontorOverstyring = null
+                    )
+                ) shouldBe TilordningSuccessKontorEndret(
+                    KontorEndringer(
+                        aoKontorEndret = OppfolgingsPeriodeStartetLokalKontorTilordning(
+                            KontorTilordning(
+                                brukerMedFlereAktiveOppfolgingperioder.fnr(),
+                                brukerMedFlereAktiveOppfolgingperioder.gtKontor(),
+                                sistePeriodePåBruker.periodeId
+                            ),
+                            brukerMedFlereAktiveOppfolgingperioder.gtKontor as KontorForGtFantKontor
+                        ),
+                        gtKontorEndret = GTKontorEndret.syncVedStartOppfolging(
+                            tilordning = KontorTilordning(
+                                brukerMedFlereAktiveOppfolgingperioder.fnr(),
+                                brukerMedFlereAktiveOppfolgingperioder.gtKontor(),
+                                sistePeriodePåBruker.periodeId
+                            ),
+                            gt = brukerMedFlereAktiveOppfolgingperioder.gtForBruker as GtForBrukerSuccess
+                        )
+                    )
+                )
+            }
+
+            it("skal sette AO kontor på startet periode selvom bruker har flere aktive perioder (tidligste periode)") {
+                val førstePeriodePåBruker = (brukerMedFlereAktiveOppfolgingperioder.oppfolgingsPeriodeResult as? FlereOppfolgingPerioderPåBrukerFeil)!!.oppfolgingsperioder.first()
+                gitt(brukerMedFlereAktiveOppfolgingperioder).tilordneKontorAutomatiskVedStartOppfolging(
+                    OppfolgingsperiodeStartet(
+                        fnr = brukerMedFlereAktiveOppfolgingperioder.fnr(),
+                        startDato = førstePeriodePåBruker.startDato.toZonedDateTime(),
+                        periodeId = førstePeriodePåBruker.periodeId,
+                        erArbeidssøkerRegistrering = false,
+                        foretrukketArbeidsoppfolgingskontor = null,
+                        kontorOverstyring = null
+                    )
+                ) shouldBe TilordningSuccessKontorEndret(
+                    KontorEndringer(
+                        aoKontorEndret = OppfolgingsPeriodeStartetLokalKontorTilordning(
+                            KontorTilordning(
+                                brukerMedFlereAktiveOppfolgingperioder.fnr(),
+                                brukerMedFlereAktiveOppfolgingperioder.gtKontor(),
+                                førstePeriodePåBruker.periodeId
+                            ),
+                            brukerMedFlereAktiveOppfolgingperioder.gtKontor as KontorForGtFantKontor
+                        ),
+                        gtKontorEndret = GTKontorEndret.syncVedStartOppfolging(
+                            tilordning = KontorTilordning(
+                                brukerMedFlereAktiveOppfolgingperioder.fnr(),
+                                brukerMedFlereAktiveOppfolgingperioder.gtKontor(),
+                                førstePeriodePåBruker.periodeId
+                            ),
+                            gt = brukerMedFlereAktiveOppfolgingperioder.gtForBruker as GtForBrukerSuccess
+                        )
                     )
                 )
             }
@@ -1377,6 +1443,44 @@ val brukerMedFeilendeOppfolgingperiodeOppslagFeil = Bruker(
     HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)),
     OppfolgingperiodeOppslagFeil("Incorrect resultsize exception")
 )
+
+val brukerMedFlereAktiveOppfolgingperioder = run {
+    val fnr = Fnr("11144111111", AKTIV)
+    val internIdent = InternIdent(889898)
+    Bruker(
+        IdentFunnet(fnr),
+        AlderFunnet(20),
+        ProfileringFunnet(ProfileringsResultat.ANTATT_GODE_MULIGHETER),
+        KontorForGtFantDefaultKontor(
+            KontorId("1234"),
+            HarSkjerming(false),
+            HarStrengtFortroligAdresse(false),
+            GeografiskTilknytningBydelNr("1111")
+        ),
+        GtNummerForBrukerFunnet(GeografiskTilknytningBydelNr("1111")),
+        SkjermingFunnet(HarSkjerming(false)),
+        HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)),
+        FlereOppfolgingPerioderPåBrukerFeil(
+            "Incorrect resultsize exception",
+            oppfolgingsperioder = listOf(
+                AktivOppfolgingsperiode(
+                    fnr,
+                    internIdent,
+                    OppfolgingsperiodeId(UUID.randomUUID()),
+                    OffsetDateTime.now().minusMinutes(10)
+                ),
+                AktivOppfolgingsperiode(
+                    fnr,
+                    internIdent,
+                    OppfolgingsperiodeId(UUID.randomUUID()),
+                    OffsetDateTime.now().minusMinutes(5)
+                )
+            ),
+            ident = Fnr("11144111111", AKTIV),
+            internIdent = internIdent
+        ),
+    )
+}
 val feilendeBrukere = listOf(
     brukerMedFeilendeFnr,
     brukerMedFeilendeAlder,
