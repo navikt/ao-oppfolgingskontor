@@ -101,7 +101,7 @@ data class AutomatiskKontorRutingService(
     private val hentHarStrengtFortroligAdresse:
     suspend (fnr: Ident) -> HarStrengtFortroligAdresseResult,
     private val hentGjeldendeOppfolgingsperiode: suspend (fnr: IdentSomKanLagres) -> OppfolgingsperiodeOppslagResult,
-    private val harAlleredeTilordnetAoKontorForOppfolgingsperiode: suspend (fnr: Ident, oppfolgingsperiodeId: OppfolgingsperiodeId) -> Outcome<Boolean>,
+    private val harAlleredeTilordnetAoKontorForOppfolgingsperiode: suspend (oppfolgingsperiodeId: OppfolgingsperiodeId) -> Outcome<Boolean>,
     private val hentAoKontor: suspend (IdentSomKanLagres) -> ArbeidsoppfolgingsKontor?,
 ) {
     companion object {
@@ -125,8 +125,7 @@ data class AutomatiskKontorRutingService(
                 }
                 is OppfolgingperiodeOppslagFeil -> return TilordningFeil("Feil ved oppslag på oppfolgingsperiode: ${underOppfolgingResult.message}")
             }
-            val harAlleredeTilordnetAoKontorForOppfolgingsperiode =
-                harAlleredeTilordnetAoKontorForOppfolgingsperiode(ident, oppfolgingsperiodeId)
+            val harAlleredeTilordnetAoKontorForOppfolgingsperiode = harAlleredeTilordnetAoKontorForOppfolgingsperiode(oppfolgingsperiodeId)
             when (harAlleredeTilordnetAoKontorForOppfolgingsperiode) {
                 is Outcome.Failure -> return TilordningFeil("Feil ved sjekk av om vi allerede har tilordnet et AO-kontor for oppfølgingsperioden")
                 is Outcome.Success -> if (harAlleredeTilordnetAoKontorForOppfolgingsperiode.data) return TilordningSuccessIngenEndring

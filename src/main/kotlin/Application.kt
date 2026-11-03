@@ -114,10 +114,10 @@ fun Application.module() {
         hentSkjerming = { skjermingsClient.hentSkjerming(it) },
         hentHarStrengtFortroligAdresse = { pdlClient.harStrengtFortroligAdresse(it) },
         hentGjeldendeOppfolgingsperiode = { oppfolgingsperiodeService.getCurrentOppfolgingsperiode(it) },
-        harAlleredeTilordnetAoKontorForOppfolgingsperiode = { _, oppfolgingsperiodeId -> OppfolgingsperiodeDao.finnesAoKontorPåPeriode(oppfolgingsperiodeId) },
+        harAlleredeTilordnetAoKontorForOppfolgingsperiode = { oppfolgingsperiodeId -> OppfolgingsperiodeDao.finnesAoKontorPåPeriode(oppfolgingsperiodeId) },
         hentAoKontor = { ident: IdentSomKanLagres -> kontorTilhorighetService.getArbeidsoppfolgingKontorTilhorighet(ident) },
     )
-    val dryRunKontorRutingService = automatiskKontorRutingService.copy(harAlleredeTilordnetAoKontorForOppfolgingsperiode = { Ident, b: OppfolgingsperiodeId -> Outcome.Success(false) })
+    val dryRunKontorRutingService = automatiskKontorRutingService.copy(harAlleredeTilordnetAoKontorForOppfolgingsperiode = { b: OppfolgingsperiodeId -> Outcome.Success(false) })
     val simulerKontorTilordning: suspend (IdentSomKanLagres, Boolean) -> TilordningResultat =
         { ident, erArbeidssøker ->
             dryRunKontorRutingService.tilordneKontorAutomatisk(

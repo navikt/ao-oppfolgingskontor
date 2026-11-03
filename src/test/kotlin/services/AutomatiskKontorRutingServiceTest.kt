@@ -1050,7 +1050,7 @@ fun gitt(bruker: Bruker): AutomatiskKontorRutingService {
         { bruker.skjerming },
         { bruker.strengtFortroligAdresse },
         { bruker.oppfolgingsPeriodeResult },
-        { _, _ -> bruker.harTilordnetKontorForOppfolgingsperiodeStartet },
+        { _ -> bruker.harTilordnetKontorForOppfolgingsperiodeStartet },
         { null },
     )
 }
