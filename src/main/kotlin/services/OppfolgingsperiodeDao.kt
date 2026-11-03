@@ -109,8 +109,7 @@ object OppfolgingsperiodeDao {
         return transaction {
             val eksisterendeStartDato = OppfolgingsperiodeTable.select(OppfolgingsperiodeTable.startDato)
                 .where { (OppfolgingsperiodeTable.id eq oppfolgingsperiode.fnr.value) and (oppfolgingsperiodeId neq oppfolgingsperiode.periodeId.value) }
-                .map { row -> row[OppfolgingsperiodeTable.startDato] }
-                .firstOrNull()
+                .maxOfOrNull { row -> row[OppfolgingsperiodeTable.startDato] }
             if (eksisterendeStartDato != null) {
                 return@transaction eksisterendeStartDato.isAfter(oppfolgingsperiode.startDato.toOffsetDateTime())
             }
