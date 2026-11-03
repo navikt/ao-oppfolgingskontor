@@ -29,7 +29,13 @@ import org.jetbrains.exposed.v1.jdbc.upsert
 sealed class OppfolgingsperiodeOppslagResult()
 data class AktivOppfolgingsperiode(val fnr: IdentSomKanLagres, val internIdent: InternIdent, val periodeId: OppfolgingsperiodeId, val startDato: OffsetDateTime) : OppfolgingsperiodeOppslagResult()
 object NotUnderOppfolging : OppfolgingsperiodeOppslagResult()
-data class OppfolgingperiodeOppslagFeil(val message: String) : OppfolgingsperiodeOppslagResult()
+open class OppfolgingperiodeOppslagFeil(open val message: String) : OppfolgingsperiodeOppslagResult()
+class FlereOppfolgingPerioderPåBrukerFeil(
+    override val message: String,
+    val oppfolgingsperioder: List<AktivOppfolgingsperiode>,
+    val ident: IdentSomKanLagres,
+    val internIdent: InternIdent
+) : OppfolgingperiodeOppslagFeil(message)
 
 object OppfolgingsperiodeDao {
     private val log = LoggerFactory.getLogger(this::class.java)
@@ -103,8 +109,7 @@ object OppfolgingsperiodeDao {
         return transaction {
             val eksisterendeStartDato = OppfolgingsperiodeTable.select(OppfolgingsperiodeTable.startDato)
                 .where { (OppfolgingsperiodeTable.id eq oppfolgingsperiode.fnr.value) and (oppfolgingsperiodeId neq oppfolgingsperiode.periodeId.value) }
-                .map { row -> row[OppfolgingsperiodeTable.startDato] }
-                .firstOrNull()
+                .maxOfOrNull { row -> row[OppfolgingsperiodeTable.startDato] }
             if (eksisterendeStartDato != null) {
                 return@transaction eksisterendeStartDato.isAfter(oppfolgingsperiode.startDato.toOffsetDateTime())
             }
@@ -126,7 +131,16 @@ object OppfolgingsperiodeDao {
                 OppfolgingsperiodeId(oppfolgingsperioder.first().oppfolgingsperiodeId),
                 oppfolgingsperioder.first().startDato,
             )
-            else -> OppfolgingperiodeOppslagFeil("Fant flere oppfølgingsperioder (${oppfolgingsperioder.size}). Dnr til fnr?")
+            else -> FlereOppfolgingPerioderPåBrukerFeil(
+                "Fant flere oppfølgingsperioder (${oppfolgingsperioder.size}). Dnr til fnr?",
+                oppfolgingsperioder.map { AktivOppfolgingsperiode(
+                    fnr = Ident.validateIdentSomKanLagres(it.fnr.value, Ident.HistoriskStatus.UKJENT),
+                    internIdent =  identerResult.internIdent,
+                    periodeId = OppfolgingsperiodeId(it.oppfolgingsperiodeId),
+                    startDato = it.startDato
+                ) },
+                identer.finnForetrukketIdent() ?: throw IllegalStateException("Kan ikke ha oppfølgingsperiode når det ikke finnes noen foretrukken ident"),
+                identerResult.internIdent)
         }
     }
 }

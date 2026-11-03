@@ -17,12 +17,15 @@ import no.nav.http.client.IdentIkkeFunnet
 import no.nav.http.client.IdentOppslagFeil
 import no.nav.http.client.IdentResult
 import no.nav.services.AktivOppfolgingsperiode
+import no.nav.services.FlereOppfolgingPerioderPåBrukerFeil
+import no.nav.services.NotUnderOppfolging
 import no.nav.services.OppfolgingperiodeOppslagFeil
 import no.nav.services.OppfolgingsperiodeDao
 import no.nav.services.OppfolgingsperiodeOppslagResult
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.slf4j.LoggerFactory
 import utils.Outcome
+import java.util.UUID
 
 class OppfolgingsperiodeService(
     val hentAlleIdenter: suspend (Ident) -> IdenterResult,
@@ -32,14 +35,25 @@ class OppfolgingsperiodeService(
 
     fun handterPeriodeAvsluttet(oppfolgingsperiode: OppfolgingsperiodeAvsluttet): HandterPeriodeAvsluttetResultat {
         // Bør variabelnavnet være lagretOppfolgingsperiode?
-        val aktivOppfolgingsperiode: AktivOppfolgingsperiode? = getNåværendePeriode(oppfolgingsperiode.fnr)
+        val identerResult = runBlocking { hentAlleIdenter(oppfolgingsperiode.fnr) }
+        val identer = when (identerResult) {
+            is IdenterFunnet -> identerResult
+            is IdenterIkkeFunnet -> {
+                throw Exception("Fant ingen indenter på bruker ved behandling av avslutt-oppfølgingsperiode melding ${oppfolgingsperiode.periodeId.value}: ${identerResult.message}")
+            }
+            is IdenterOppslagFeil -> {
+                throw Exception("Feil ved oppslag på identer ved behandling av avslutt-oppfølgingsperiode melding ${oppfolgingsperiode.periodeId.value}: ${identerResult.message}")
+            }
+        }
+        val aktiveOppfolgingsperioder: List<AktivOppfolgingsperiode> = getNåværendePerioder(oppfolgingsperiode.fnr)
 
         return when {
-            aktivOppfolgingsperiode == null -> {
+            aktiveOppfolgingsperioder.isEmpty() -> {
                 // Ikke gjør noe? Skal egentlig ikke være noe å rydde opp
                 IngenAktivePerioderÅAvslutte
             }
-            aktivOppfolgingsperiode.periodeId != oppfolgingsperiode.periodeId -> {
+            aktiveOppfolgingsperioder.size == 1 && aktiveOppfolgingsperioder.first().periodeId != oppfolgingsperiode.periodeId -> {
+                val aktivOppfolgingsperiode = aktiveOppfolgingsperioder.first()
                 val periodenViHarMottattAvsluttetMeldingPaaErEldreEnnAktivPeriode = aktivOppfolgingsperiode.startDato.isAfter(oppfolgingsperiode.startDato.toOffsetDateTime())
 
                 if (periodenViHarMottattAvsluttetMeldingPaaErEldreEnnAktivPeriode) {
@@ -63,7 +77,8 @@ class OppfolgingsperiodeService(
                     AvsluttetAktivPeriode(aktivOppfolgingsperiode.internIdent)
                 }
             }
-            aktivOppfolgingsperiode.periodeId == oppfolgingsperiode.periodeId -> {
+            aktiveOppfolgingsperioder.size == 1 && aktiveOppfolgingsperioder.first().periodeId == oppfolgingsperiode.periodeId -> {
+                val aktivOppfolgingsperiode = aktiveOppfolgingsperioder.first()
                 // Mottok avslutning på aktiv periode (Happy case)
                 slettArbeidsoppfolgingskontorTilordning(aktivOppfolgingsperiode.periodeId).fold(
                     ifLeft = {
@@ -75,6 +90,19 @@ class OppfolgingsperiodeService(
                 OppfolgingsperiodeDao.deleteOppfolgingsperiode(aktivOppfolgingsperiode.periodeId)
                 AvsluttetAktivPeriode(aktivOppfolgingsperiode.internIdent)
             }
+            aktiveOppfolgingsperioder.size > 1 -> {
+                val periodeSomViVetBleAvsluttet = oppfolgingsperiode
+                // Mottok avslutning på aktiv periode men hadde flere aktive perioder
+                slettArbeidsoppfolgingskontorTilordning(periodeSomViVetBleAvsluttet.periodeId).fold(
+                    ifLeft = {
+                        log.error("Uventet feil ved sletting av arbeidsoppfølgingskontor: ${it.message}")
+                        throw Exception("Klarte ikke behandle avslutning på oppfølgingsperiode, klarte ikke slette arbeidsoppfølgingkontor: ${it.message}", it)
+                    },
+                    ifRight = { log.info("Slettet arbeidsoppfølgingskontor fordi oppfølgingsperiode ble avsluttet") }
+                )
+                OppfolgingsperiodeDao.deleteOppfolgingsperiode(periodeSomViVetBleAvsluttet.periodeId)
+                AvsluttetAktivPeriode(identer.internIdent)
+            }
             else -> throw Exception("Skal ikke skje")
         }
     }
@@ -84,6 +112,48 @@ class OppfolgingsperiodeService(
             log.warn("Hadde nyere periode på ident, hopper over melding")
             return HaddeNyerePeriodePåIdent
         }
+
+        val identer = runBlocking { hentAlleIdenter(oppfolgingsperiode.fnr) }
+        when (identer) {
+            is IdenterFunnet -> {
+                val currentOppfolgingsperiode = OppfolgingsperiodeDao.getCurrentOppfolgingsperiode(identer)
+                when (currentOppfolgingsperiode) {
+                    is AktivOppfolgingsperiode  -> {
+                        if (oppfolgingsperiode.periodeId != currentOppfolgingsperiode.periodeId)
+                        handterPeriodeAvsluttet(
+                            oppfolgingsperiode = OppfolgingsperiodeAvsluttet(
+                                fnr = currentOppfolgingsperiode.fnr,
+                                startDato = currentOppfolgingsperiode.startDato.toZonedDateTime(),
+                                periodeId = currentOppfolgingsperiode.periodeId
+                            )
+                        )
+                    }
+                    is FlereOppfolgingPerioderPåBrukerFeil -> {
+                        currentOppfolgingsperiode.oppfolgingsperioder
+                            .filter { it.periodeId != oppfolgingsperiode.periodeId }
+                            .forEach { gammelPeriode ->
+                                handterPeriodeAvsluttet(
+                                    oppfolgingsperiode = OppfolgingsperiodeAvsluttet(
+                                        fnr = currentOppfolgingsperiode.ident,
+                                        startDato = gammelPeriode.startDato.toZonedDateTime(),
+                                        periodeId = gammelPeriode.periodeId
+                                    )
+                                )
+                            }
+                    }
+                    NotUnderOppfolging -> {}
+                    is OppfolgingperiodeOppslagFeil -> {}
+                }
+            }
+            is IdenterIkkeFunnet -> {
+                throw Exception("Fant ingen indenter på bruker ved behandling av start-oppfølgingsperiode melding ${oppfolgingsperiode.periodeId.value}: ${identer.message}")
+            }
+            is IdenterOppslagFeil -> {
+                throw Exception("Feil ved oppslag på identer ved behandling av start-oppfølgingsperiode melding ${oppfolgingsperiode.periodeId.value}: ${identer.message}")
+            }
+        }
+
+
         if (OppfolgingsperiodeDao.finnesPeriode(oppfolgingsperiode.periodeId)) {
             val periodeHarFåttTilordning = when (val result = OppfolgingsperiodeDao.finnesAoKontorPåPeriode(oppfolgingsperiode.periodeId)) {
                 is Outcome.Failure -> throw Error("Klarte ikke sjekke om oppfolgingsperiode hadde tilordning: ${result.exception.message}", result.exception)
@@ -141,11 +211,18 @@ class OppfolgingsperiodeService(
         }
     }
 
-    private fun getNåværendePeriode(ident: IdentSomKanLagres): AktivOppfolgingsperiode? {
+    private fun getNåværendePerioder(ident: IdentSomKanLagres): List<AktivOppfolgingsperiode> {
         val currentOppfolgingsperiodeResult = getCurrentOppfolgingsperiode(IdentFunnet(ident))
         return when (currentOppfolgingsperiodeResult) {
-            is AktivOppfolgingsperiode -> currentOppfolgingsperiodeResult
-            else -> null
+            is AktivOppfolgingsperiode -> listOf(currentOppfolgingsperiodeResult)
+            is FlereOppfolgingPerioderPåBrukerFeil  -> currentOppfolgingsperiodeResult.oppfolgingsperioder
+                .map { AktivOppfolgingsperiode(
+                    currentOppfolgingsperiodeResult.ident,
+                    currentOppfolgingsperiodeResult.internIdent,
+                    it.periodeId,
+                    it.startDato)
+                }
+            else -> emptyList()
         }
     }
 }

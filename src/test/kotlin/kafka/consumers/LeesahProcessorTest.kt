@@ -227,7 +227,7 @@ class LeesahProcessorTest {
             hentSkjerming = { SkjermingFunnet(HarSkjerming(false)) },
             hentHarStrengtFortroligAdresse = strengtFortroligAdresseProvider,
             hentGjeldendeOppfolgingsperiode = { AktivOppfolgingsperiode(Fnr("66666666666", Ident.HistoriskStatus.AKTIV), randomInternIdent(), oppfølgingsperiodeId, OffsetDateTime.now()) },
-            harAlleredeTilordnetAoKontorForOppfolgingsperiode = { _, _ -> Outcome.Success(false) },
+            harAlleredeTilordnetAoKontorForOppfolgingsperiode = { _ -> Outcome.Success(false) },
             hentAoKontor = hentAoKontor,
         )
     }

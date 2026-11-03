@@ -265,7 +265,7 @@ class BigAppTest {
             { SkjermingFunnet(harSkjerming) },
             { HarStrengtFortroligAdresseFunnet(HarStrengtFortroligAdresse(false)) },
             oppfolgingsperiodeProvider,
-            { _, _ -> Outcome.Success(false) },
+            { _ -> Outcome.Success(false) },
             { null },
         )
         val tilordningProcessor = KontortilordningsProcessor(automatiskKontorRutingService, kontorTilordningService)
