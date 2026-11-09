@@ -1,11 +1,11 @@
 [versions]
-exposed-version = "1.6.0"
+exposed-version = "1.6.1"
 kotlin-version = "2.4.21"
 kafka-streams = "4.4.0"
 ktor-version = "3.6.1"
 logback-version = "1.6.6"
 postgres-version = "42.7.14"
-flyway-version = "13.11.1"
+flyway-version = "13.12.1"
 hikari-version = "7.1.0"
 logstash-version = "9.0"
 embedded-postgres-version = "2.2.2"
@@ -19,10 +19,10 @@ caffeine-version = "3.3.1"
 kafka-avro = "8.4.0"
 shedlock-version = "7.10.1"
 micrometer-version = "1.17.2"
-bigquery-version = "2.74.0"
-google-libraries-bom-version = "26.91.0"
+bigquery-version = "2.75.0"
+google-libraries-bom-version = "26.92.0"
 arrow-version = "2.3.0.1"
-unleash-version = "12.3.1"
+unleash-version = "12.3.2"
 
 [libraries]
 ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor-version" }
