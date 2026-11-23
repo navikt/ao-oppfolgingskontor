@@ -44,7 +44,7 @@ jobs:
           upload-artifact: 'true'
 
       - name: Push docker image to GAR
-        uses: nais/docker-build-push@v0
+        uses: nais/docker-build-push@v1
         id: docker-build-push
         with:
           docker_context: .
