@@ -25,7 +25,6 @@ import org.jetbrains.exposed.v1.core.JoinType
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
-import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.core.not
@@ -35,6 +34,8 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
+
+class IkkeTilgangTilBrukerException : RuntimeException("Ikke tilgang til bruker")
 
 class KontorHistorikkQuery(
     val hentAlleIdenter: suspend (Ident) -> IdenterResult,
@@ -53,7 +54,7 @@ class KontorHistorikkQuery(
             val inputIdent = Ident.validateOrThrow(ident, Ident.HistoriskStatus.UKJENT)
             val harTilgang = harLeseTilgangTilBruker(principal, inputIdent, traceId)
             AuditLogger.logLesKontorhistorikk(harTilgang.toAuditEntry())
-            if (harTilgang !is HarTilgangTilBruker) throw Exception("Ikke tilgang til bruker")
+            if (harTilgang !is HarTilgangTilBruker) throw IkkeTilgangTilBrukerException()
 
             transaction {
                 val alleIdenter = runBlocking { hentAlleIdenter(inputIdent).getOrThrow() }
@@ -100,7 +101,10 @@ class KontorHistorikkQuery(
             .fold(
                 { historikk -> return historikk },
                 {
-                    logger.error("Feil ved henting av kontorhistorikk: ${it.message}", it)
+                    when (it is IkkeTilgangTilBrukerException) {
+                        true -> logger.warn("Feil ved hentind av kontorhistorikk: Ikke tilgang til bruker")
+                        else -> logger.error("Feil ved henting av kontorhistorikk: ${it.message}", it)
+                    }
                     throw it
                 }
             )
