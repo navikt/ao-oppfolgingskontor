@@ -38,6 +38,7 @@ class OppfolgingsHendelseProcessor(
 
             return when (oppfolgingsperiodeEvent) {
                 is OppfolgingStartetHendelseDto -> {
+                    hendelseType = "Oppfolging startet"
                     val oppfolgingStartetInternalEvent = oppfolgingsperiodeEvent.toDomainObject()
                     log.info("Mottatt melding om start av oppfølgingsperiode med id ${oppfolgingStartetInternalEvent.periodeId.value}")
                     val periodeResult = oppfolgingsPeriodeService.handterPeriodeStartet(oppfolgingStartetInternalEvent)
@@ -60,6 +61,7 @@ class OppfolgingsHendelseProcessor(
                 }
 
                 is OppfolgingsAvsluttetHendelseDto -> {
+                    hendelseType = "Oppfolging avsluttet"
                     val oppfolgingsPeriodeAvsluttet = oppfolgingsperiodeEvent.toDomainObject()
                     log.info("Mottatt melding om avslutning av oppfølgingsperiode med id ${oppfolgingsPeriodeAvsluttet.periodeId.value}")
                     oppfolgingsPeriodeService.handterPeriodeAvsluttet(oppfolgingsPeriodeAvsluttet)
