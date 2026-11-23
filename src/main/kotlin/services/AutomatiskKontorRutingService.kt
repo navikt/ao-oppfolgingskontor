@@ -38,6 +38,11 @@ import domain.kontorForGt.KontorForGtFantKontor
 import domain.kontorForGt.KontorForGtFantKontorForArbeidsgiverAdresse
 import domain.kontorForGt.KontorForGtResultat
 import domain.kontorForGt.KontorForGtSuccess
+import no.nav.db.Dnr
+import no.nav.db.Fnr
+import no.nav.db.InvalidIdent
+import no.nav.db.Npid
+import no.nav.db.ValidIdent
 import no.nav.domain.events.OppfolgingsperiodeStartetManuellTilordning
 import no.nav.domain.externalEvents.KontorOverstyring
 import no.nav.http.client.HarStrengtFortroligAdresseFunnet
@@ -96,7 +101,7 @@ data class AutomatiskKontorRutingService(
     private val hentHarStrengtFortroligAdresse:
     suspend (fnr: Ident) -> HarStrengtFortroligAdresseResult,
     private val hentGjeldendeOppfolgingsperiode: suspend (fnr: IdentSomKanLagres) -> OppfolgingsperiodeOppslagResult,
-    private val harAlleredeTilordnetAoKontorForOppfolgingsperiode: suspend (fnr: Ident, oppfolgingsperiodeId: OppfolgingsperiodeId) -> Outcome<Boolean>,
+    private val harAlleredeTilordnetAoKontorForOppfolgingsperiode: suspend (oppfolgingsperiodeId: OppfolgingsperiodeId) -> Outcome<Boolean>,
     private val hentAoKontor: suspend (IdentSomKanLagres) -> ArbeidsoppfolgingsKontor?,
 ) {
     companion object {
@@ -113,10 +118,14 @@ data class AutomatiskKontorRutingService(
             val (ident, _, oppfolgingsperiodeId) = when (underOppfolgingResult) {
                 is AktivOppfolgingsperiode -> underOppfolgingResult
                 NotUnderOppfolging -> return TilordningSuccessIngenEndring
+                is FlereOppfolgingPerioderPåBrukerFeil -> {
+                    underOppfolgingResult.oppfolgingsperioder
+                        .firstOrNull { it.periodeId == oppfolgingsperiodeStartet.periodeId }
+                        ?: return TilordningFeil("Feil ved oppslag på oppfolgingsperiode: Bruker hadde flere aktive perioder og ingen av dem er lik periode ${oppfolgingsperiodeStartet.periodeId.value} som nylig ble startet: ${underOppfolgingResult.message}")
+                }
                 is OppfolgingperiodeOppslagFeil -> return TilordningFeil("Feil ved oppslag på oppfolgingsperiode: ${underOppfolgingResult.message}")
             }
-            val harAlleredeTilordnetAoKontorForOppfolgingsperiode =
-                harAlleredeTilordnetAoKontorForOppfolgingsperiode(ident, oppfolgingsperiodeId)
+            val harAlleredeTilordnetAoKontorForOppfolgingsperiode = harAlleredeTilordnetAoKontorForOppfolgingsperiode(oppfolgingsperiodeId)
             when (harAlleredeTilordnetAoKontorForOppfolgingsperiode) {
                 is Outcome.Failure -> return TilordningFeil("Feil ved sjekk av om vi allerede har tilordnet et AO-kontor for oppfølgingsperioden")
                 is Outcome.Success -> if (harAlleredeTilordnetAoKontorForOppfolgingsperiode.data) return TilordningSuccessIngenEndring
