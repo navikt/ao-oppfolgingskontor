@@ -86,6 +86,9 @@ spec:
           namespace: tpts
         - application: veilarboppfolging
           namespace: poao
+        - application: tiltaksgjennomforing-api
+          namespace: arbeidsgiver
+          cluster: prod-fss
     outbound:
       rules:
         - application: norg2
