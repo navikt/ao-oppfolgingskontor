@@ -35,6 +35,7 @@ import org.jetbrains.exposed.v1.core.JoinType
 import org.jetbrains.exposed.v1.core.alias
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.jdbc.JdbcTransaction
 import org.jetbrains.exposed.v1.jdbc.andWhere
 import org.jetbrains.exposed.v1.jdbc.batchUpsert
@@ -257,6 +258,7 @@ class IdentService(
                     identMappingAlias[internIdent]
                 )
                 .where { (IdentMappingTable.id inList identeneTilEnPerson.map { it.value }) }
+                .andWhere { identMappingAlias[slettetHosOss].isNull() }
                 .let { query ->
                     if (!includeHistorisk) {
                         query.andWhere { identMappingAlias[historisk] eq false }
