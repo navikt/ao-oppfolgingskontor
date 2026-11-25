@@ -33,6 +33,7 @@ class KontorQuery(
 
     suspend fun kontorTilhorighet(ident: String, dataFetchingEnvironment: DataFetchingEnvironment): KontorTilhorighetQueryDto? {
         val principal = dataFetchingEnvironment.graphQlContext.get<AOPrincipal>("principal")
+            ?: throw IllegalStateException("Missing principal in graphql context")
         val traceId = dataFetchingEnvironment.graphQlContext.get<String>("traceId")
             ?: throw IllegalStateException("Missing traceparent header")
 
@@ -52,7 +53,9 @@ class KontorQuery(
 
     suspend fun kontorTilhorigheter(ident: String, dataFetchingEnvironment: DataFetchingEnvironment): KontorTilhorigheterQueryDto {
         val principal = dataFetchingEnvironment.graphQlContext.get<AOPrincipal>("principal")
+            ?: throw IllegalStateException("Missing principal in graphql context")
         val traceId = dataFetchingEnvironment.graphQlContext.get<String>("traceId")
+            ?: throw IllegalStateException("Missing traceparent header")
 
         val ident = Ident.validateOrThrow(ident, Ident.HistoriskStatus.UKJENT)
         val identer = hentAlleIdenter(ident).getOrThrow()

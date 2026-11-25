@@ -48,7 +48,9 @@ class KontorHistorikkQuery(
 
     suspend fun kontorHistorikk(ident: String, dataFetchingEnvironment: DataFetchingEnvironment): List<KontorHistorikkQueryDto> {
         val principal = dataFetchingEnvironment.graphQlContext.get<AOPrincipal>("principal")
+            ?: throw IllegalStateException("Missing principal in graphql context")
         val traceId = dataFetchingEnvironment.graphQlContext.get<String>("traceId")
+            ?: throw IllegalStateException("Missing traceparent header")
 
         runCatching {
             val inputIdent = Ident.validateOrThrow(ident, Ident.HistoriskStatus.UKJENT)
